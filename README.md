@@ -6,7 +6,6 @@ Once you clone the repository, you can do the following;
 
 ```
 yarn install
-yarn run apps:start
 ```
 
 ## Contract Deployment
@@ -20,13 +19,3 @@ To deploy a contract, you can run the following command:
 ```
 yarn terrariums deploy <contract>
 ```
-
-### Payment Protocol Deployment
-
-The `tasks/deploy_payment_minter.ts` script manages the deployment of the payment protocol. It can be run by: `yarn terrariums deploy payment-minter`.
-
-### Enterprise Deployment
-
-The `tasks/deploy_enterprise.ts` script manages the deployment of the Enterprise contract. It can be run by: `yarn terrariums deploy enterprise`.
-
-**Note:** You must first deploy the payment protocol using its deploy task.
