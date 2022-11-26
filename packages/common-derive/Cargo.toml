@@ -1,0 +1,13 @@
+[package]
+name = "common-derive"
+version = "0.1.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1"
+syn = "1"
+thiserror = "1"

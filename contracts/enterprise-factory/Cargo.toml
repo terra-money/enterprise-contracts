@@ -1,0 +1,55 @@
+[package]
+name = "enterprise-factory"
+version = "0.1.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+exclude = [
+    # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+    "contract.wasm",
+    "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
+[features]
+default = ["contract"]
+
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use contract feature to enable all instantiate/execute/query exports
+contract = []
+
+[package.metadata.scripts]
+optimize = """docker run --rm -v "${process.cwd()}":/code \
+  -v "${path.join(process.cwd(), "../../", "packages")}":/packages \
+  --mount type=volume,source="${contract}_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/rust-optimizer${process.env.TERRARIUM_ARCH_ARM64 ? "-arm64" : ""}:0.12.6
+"""
+
+[dependencies]
+common = { path = "../../packages/common" }
+cosmwasm-std = "1"
+cosmwasm-storage = "1"
+cw-asset = "2.2"
+cw-storage-plus = "0.15"
+cw-utils = "0.15"
+cw2 = "0.15"
+enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
+itertools = "0.10"
+schemars = "0.8"
+serde = { version = "1", default-features = false, features = ["derive"] }
+serde_with = { version = "2", features = ["json", "macros"] }
+thiserror = "1"
+
+[dev-dependencies]
+anyhow = "1"
+cosmwasm-schema = "1"
+cw-multi-test = "0.15"
+cw20 = "0.15"

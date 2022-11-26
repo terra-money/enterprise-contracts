@@ -1,0 +1,26 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+
+[dependencies]
+common-derive = { path = "../common-derive" }
+cosmwasm-std = "1"
+cw-storage-plus = "0.15"
+cw20 = "0.15"
+cw20-base = { version = "0.15", features = ["library"] }
+cw721 = "0.15"
+cw721-base = { version = "0.15", features = ["library"] }
+schemars = "0.8"
+serde = { version = "1", default-features = false, features = ["derive"] }
+serde-json-wasm = "0.4"
+serde_with = { version = "2", features = ["json", "macros"] }
+thiserror = "1"
+
+[dev-dependencies]
+serde_json = "1.0"
