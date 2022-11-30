@@ -57,7 +57,7 @@ use enterprise_protocol::api::{
     UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
-    InsufficientStakedAssets, InvalidArgument, NotMultisigMember, ProposalAlreadyExecuted,
+    InsufficientStakedAssets, InvalidCosmosMessage, NotMultisigMember, ProposalAlreadyExecuted,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -765,14 +765,12 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Vec<SubMsg>> 
     })])
 }
 
-// TODO: tests
 fn execute_msgs(_ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg>> {
     let mut submsgs: Vec<SubMsg> = vec![];
     for msg in msg.msgs {
         submsgs.push(SubMsg::new(
-            serde_json_wasm::from_str::<CosmosMsg>(msg.as_str()).map_err(|_| InvalidArgument {
-                msg: "Error parsing message into Cosmos message".to_string(),
-            })?,
+            serde_json_wasm::from_str::<CosmosMsg>(msg.as_str())
+                .map_err(|_| InvalidCosmosMessage)?,
         ))
     }
     Ok(submsgs)
