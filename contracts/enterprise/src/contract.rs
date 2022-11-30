@@ -639,8 +639,7 @@ fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoRe
     let mut submsgs: Vec<SubMsg> = vec![];
 
     for proposal_action in proposal_actions {
-        // TODO: avoid this '.append(&mut ...)' stuff somehow, really ugly
-        submsgs.append(&mut match proposal_action {
+        let mut actions = match proposal_action {
             UpdateMetadata(msg) => update_metadata(ctx, msg)?,
             UpdateGovConfig(msg) => update_gov_config(ctx, msg)?,
             RequestFundingFromDao(msg) => execute_funding_from_dao(msg)?,
@@ -649,10 +648,11 @@ fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoRe
             UpgradeDao(msg) => upgrade_dao(ctx, msg)?,
             ExecuteMsgs(msg) => execute_msgs(ctx, msg)?,
             ModifyMultisigMembership(msg) => modify_multisig_membership(ctx, msg)?,
-        })
+        };
+        submsgs.append(&mut actions)
     }
 
-    Ok(submsgs) // TODO: maybe also include attributes from various actions this took?
+    Ok(submsgs)
 }
 
 fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Vec<SubMsg>> {
