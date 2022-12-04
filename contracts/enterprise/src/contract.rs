@@ -499,7 +499,6 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
         .add_attribute("amount", user_available_votes.to_string()))
 }
 
-// TODO: think whether this should be renamed to 'end_proposal'
 fn execute_proposal(ctx: &mut Context, msg: ExecuteProposalMsg) -> DaoResult<Response> {
     if is_proposal_executed(ctx.deps.storage, msg.proposal_id)? {
         return Err(ProposalAlreadyExecuted);
@@ -562,6 +561,7 @@ fn execute_poll_engine_proposal(
 
     let total_available_votes = match dao_type {
         Token | Nft => {
+            // TODO: add tests for this
             if ctx.env.block.time >= poll.poll.ends_at {
                 load_total_staked_at_time(ctx.deps.storage, poll.poll.ends_at)?
             } else {
