@@ -1045,13 +1045,11 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
     let remaining_claims = claims
         .into_iter()
         .filter_map(|claim| {
-            // TODO: test
             let is_releasable = is_releasable(&claim, &block);
             if is_releasable {
                 releasable_claims.push(claim);
                 None
             } else {
-                // TODO: test
                 Some(claim)
             }
         })
@@ -1059,26 +1057,16 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
 
     CLAIMS.save(ctx.deps.storage, &ctx.info.sender, &remaining_claims)?;
 
-    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
     let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
     for releasable_claim in releasable_claims {
         match releasable_claim.asset {
-            Cw20(msg) => {
-                if dao_type != Token {
-                    // TODO: test
-                    return Err(InvalidStakingAsset);
-                }
-                submsgs.push(SubMsg::new(
-                    Asset::cw20(dao_membership_contract.clone(), msg.amount)
-                        .transfer_msg(ctx.info.sender.clone())?,
-                ))
-            }
+            Cw20(msg) => submsgs.push(SubMsg::new(
+                Asset::cw20(dao_membership_contract.clone(), msg.amount)
+                    .transfer_msg(ctx.info.sender.clone())?,
+            )),
             Cw721(msg) => {
-                if dao_type != Nft {
-                    return Err(InvalidStakingAsset);
-                }
                 for token in msg.tokens {
                     submsgs.push(transfer_nft_submsg(
                         dao_membership_contract.to_string(),

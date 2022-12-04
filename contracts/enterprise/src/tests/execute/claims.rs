@@ -260,6 +260,8 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
 
     env.block.time = env.block.time.plus_seconds(50);
 
+    unstake_tokens(deps.as_mut(), &env, "sender", 1u8)?;
+
     // users with no releasable claims cannot claim
     let result = execute(
         deps.as_mut(),
@@ -290,7 +292,13 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
             owner: "sender".to_string(),
         },
     )?;
-    assert!(claims.claims.is_empty());
+    assert_eq!(
+        claims.claims,
+        vec![Claim {
+            asset: ClaimAsset::Cw20(Cw20ClaimAsset { amount: 1u8.into() }),
+            release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(200u64)),
+        },]
+    );
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
