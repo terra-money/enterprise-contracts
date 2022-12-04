@@ -1350,7 +1350,6 @@ fn current_total_available_votes(dao_type: DaoType, store: &dyn Storage) -> StdR
     }
 }
 
-// TODO: tests
 pub fn query_member_vote(
     qctx: QueryContext,
     params: MemberVoteParams,
