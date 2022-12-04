@@ -1252,7 +1252,6 @@ fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<Pr
 
     let actions = match actions_opt {
         None => {
-            // TODO: test
             return Err(PollError::PollNotFound {
                 poll_id: poll.id.into(),
             }
