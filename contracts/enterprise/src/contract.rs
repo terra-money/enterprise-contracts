@@ -81,11 +81,12 @@ use poll_engine::state::Poll;
 use std::cmp::min;
 use std::ops::{Add, Not, Sub};
 use DaoError::{
-    CustomError, NoNftTokenStaked, NoSuchProposal, Unauthorized, UnsupportedOperationForDaoType,
-    ZeroInitialWeightMember,
+    CustomError, InvalidStakingAsset, NoNftTokenStaked, NoSuchProposal, Unauthorized,
+    UnsupportedOperationForDaoType, ZeroInitialWeightMember,
 };
 use DaoMembershipInfo::{Existing, New};
 use DaoType::Token;
+use Duration::{Height, Time};
 use NewMembershipInfo::{NewMultisig, NewNft, NewToken};
 use ProposalAction::{
     ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao, UpdateAssetWhitelist,
@@ -818,7 +819,7 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
     let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
     let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
     if dao_type != Token || ctx.info.sender != membership_contract {
-        return Err(DaoError::InvalidStakingAsset);
+        return Err(InvalidStakingAsset);
     }
 
     match from_binary(&cw20_msg.msg) {
@@ -859,7 +860,7 @@ pub fn receive_cw721(ctx: &mut Context, cw721_msg: Cw721ReceiveMsg) -> DaoResult
     let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
     let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
     if dao_type != Nft || ctx.info.sender != membership_contract {
-        return Err(DaoError::InvalidStakingAsset);
+        return Err(InvalidStakingAsset);
     }
 
     match from_binary(&cw721_msg.msg) {
@@ -897,9 +898,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
 
     match msg {
         UnstakeMsg::Cw20(msg) => {
-            // TODO: test
             if dao_type != Token {
-                return Err(DaoError::InvalidStakingAsset);
+                return Err(InvalidStakingAsset);
             }
 
             let stake = CW20_STAKES
@@ -920,10 +920,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
             // TODO: extract to function, this is duplicate code
             let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
             let release_at = match gov_config.unlocking_period {
-                Duration::Height(height) => {
-                    ReleaseAt::Height((ctx.env.block.height + height).into())
-                }
-                Duration::Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
+                Height(height) => ReleaseAt::Height((ctx.env.block.height + height).into()),
+                Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
             };
 
             add_claim(
@@ -943,9 +941,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 .add_attribute("stake", new_stake.to_string()))
         }
         UnstakeMsg::Cw721(msg) => {
-            // TODO: test
             if dao_type != Nft {
-                return Err(DaoError::InvalidStakingAsset);
+                return Err(InvalidStakingAsset);
             }
 
             for token in &msg.tokens {
@@ -954,14 +951,12 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
 
                 match nft_stake {
                     None => {
-                        // TODO: test
                         return Err(NoNftTokenStaked {
                             token_id: token.to_string(),
                         });
                     }
                     Some(stake) => {
                         if stake.staker != ctx.info.sender {
-                            // TODO: test
                             return Err(Unauthorized);
                         } else {
                             NFT_STAKES().remove(ctx.deps.storage, token.to_string())?;
@@ -976,11 +971,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
 
             let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
             let release_at = match gov_config.unlocking_period {
-                Duration::Height(height) => {
-                    // TODO: test
-                    ReleaseAt::Height((ctx.env.block.height + height).into())
-                }
-                Duration::Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
+                Height(height) => ReleaseAt::Height((ctx.env.block.height + height).into()),
+                Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
             };
 
             add_claim(
@@ -1076,7 +1068,7 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
             Cw20(msg) => {
                 if dao_type != Token {
                     // TODO: test
-                    return Err(DaoError::InvalidStakingAsset);
+                    return Err(InvalidStakingAsset);
                 }
                 submsgs.push(SubMsg::new(
                     Asset::cw20(dao_membership_contract.clone(), msg.amount)
@@ -1085,7 +1077,7 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
             }
             Cw721(msg) => {
                 if dao_type != Nft {
-                    return Err(DaoError::InvalidStakingAsset);
+                    return Err(InvalidStakingAsset);
                 }
                 for token in msg.tokens {
                     submsgs.push(transfer_nft_submsg(

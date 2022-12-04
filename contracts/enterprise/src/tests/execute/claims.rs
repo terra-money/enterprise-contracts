@@ -418,7 +418,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.block.time = Timestamp::from_seconds(100u64);
+    env.block.height = 100u64;
 
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
@@ -428,7 +428,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         Some(DaoGovConfig {
-            unlocking_period: Duration::Time(50),
+            unlocking_period: Duration::Height(50),
             vote_duration: 40,
             ..stub_dao_gov_config()
         }),
@@ -460,7 +460,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
     )?;
     assert!(releasable_claims.claims.is_empty());
 
-    env.block.time = env.block.time.plus_seconds(49);
+    env.block.height += 49;
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
@@ -472,7 +472,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
 
     unstake_nfts(deps.as_mut(), &env, "sender", vec!["token2"])?;
 
-    env.block.time = env.block.time.plus_seconds(1);
+    env.block.height += 1;
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
@@ -486,11 +486,11 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
             asset: ClaimAsset::Cw721(Cw721ClaimAsset {
                 tokens: vec!["token1".to_string()],
             }),
-            release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(150u64))
+            release_at: Height(150u64.into()),
         },]
     );
 
-    env.block.time = env.block.time.plus_seconds(49);
+    env.block.height += 49;
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
@@ -505,13 +505,13 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
                 asset: ClaimAsset::Cw721(Cw721ClaimAsset {
                     tokens: vec!["token1".to_string()],
                 }),
-                release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(150u64))
+                release_at: Height(150u64.into()),
             },
             Claim {
                 asset: ClaimAsset::Cw721(Cw721ClaimAsset {
                     tokens: vec!["token2".to_string()],
                 }),
-                release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(199u64))
+                release_at: Height(199u64.into()),
             },
         ]
     );
