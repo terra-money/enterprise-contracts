@@ -776,7 +776,6 @@ fn execute_msgs(_ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg
     Ok(submsgs)
 }
 
-// TODO: tests
 fn modify_multisig_membership(
     ctx: &mut Context,
     msg: ModifyMultisigMembershipMsg,

@@ -1,6 +1,6 @@
 use crate::contract::{
-    execute, instantiate, query_asset_whitelist, query_dao_info, query_nft_whitelist,
-    query_proposal,
+    execute, instantiate, query_asset_whitelist, query_dao_info, query_list_multisig_members,
+    query_nft_whitelist, query_proposal,
 };
 use crate::tests::helpers::{
     assert_member_voting_power, assert_proposal_result_amount, assert_proposal_status,
@@ -25,9 +25,9 @@ use enterprise_protocol::api::ProposalAction::{
 use enterprise_protocol::api::ProposalStatus::{Passed, Rejected};
 use enterprise_protocol::api::{
     CreateProposalMsg, DaoGovConfig, DaoMetadata, DaoSocialData, ExecuteMsgsMsg,
-    ExecuteProposalMsg, Logo, ModifyMultisigMembershipMsg, MultisigMember, ProposalAction,
-    ProposalParams, RequestFundingFromDaoMsg, UpdateAssetWhitelistMsg, UpdateGovConfigMsg,
-    UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
+    ExecuteProposalMsg, ListMultisigMembersMsg, Logo, ModifyMultisigMembershipMsg, MultisigMember,
+    ProposalAction, ProposalParams, RequestFundingFromDaoMsg, UpdateAssetWhitelistMsg,
+    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{ExecuteProposal, Receive};
@@ -371,6 +371,31 @@ fn execute_passed_proposal_to_update_multisig_members_changes_membership() -> Da
     assert_member_voting_power(&qctx, "member2", Decimal::from_ratio(2u8, 11u8));
     assert_member_voting_power(&qctx, "member3", Decimal::from_ratio(5u8, 11u8));
     assert_member_voting_power(&qctx, "member4", Decimal::from_ratio(4u8, 11u8));
+
+    let list_members = query_list_multisig_members(
+        mock_query_ctx(deps.as_ref(), &env),
+        ListMultisigMembersMsg {
+            start_after: None,
+            limit: None,
+        },
+    )?;
+    assert_eq!(
+        list_members.members,
+        vec![
+            MultisigMember {
+                address: "member2".to_string(),
+                weight: 2u8.into()
+            },
+            MultisigMember {
+                address: "member3".to_string(),
+                weight: 5u8.into()
+            },
+            MultisigMember {
+                address: "member4".to_string(),
+                weight: 4u8.into()
+            },
+        ]
+    );
 
     Ok(())
 }
