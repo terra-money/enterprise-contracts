@@ -117,6 +117,9 @@ pub fn query_poll_voters(
         .unwrap_or(Order::Ascending);
 
     let iter = votes()
+        .idx
+        .poll
+        .prefix(poll_id)
         .range(qctx.deps.storage, min, max, order)
         .flatten()
         .map(|(_, vote)| vote);

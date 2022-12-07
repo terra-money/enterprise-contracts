@@ -1365,7 +1365,6 @@ pub fn query_member_vote(
     Ok(MemberVoteResponse { vote: vote.vote })
 }
 
-// TODO: tests
 pub fn query_proposal_votes(
     qctx: QueryContext,
     params: ProposalVotesParams,
