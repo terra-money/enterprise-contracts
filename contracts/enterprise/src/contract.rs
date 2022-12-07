@@ -1449,7 +1449,6 @@ fn calculate_multisig_member_voting_power(
     }
 }
 
-// TODO: tests
 pub fn query_list_multisig_members(
     qctx: QueryContext,
     msg: ListMultisigMembersMsg,
