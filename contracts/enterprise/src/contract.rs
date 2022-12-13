@@ -1507,7 +1507,7 @@ pub fn query_user_stake(
     let user_stake: UserStake = match dao_type {
         Token => UserStake::Token(get_user_staked_tokens(qctx, user)?),
         Nft => UserStake::Nft(get_user_staked_nfts(qctx, user)?),
-        Multisig => UserStake::None, // TODO: test
+        Multisig => UserStake::None,
     };
 
     Ok(UserStakeResponse { user_stake })

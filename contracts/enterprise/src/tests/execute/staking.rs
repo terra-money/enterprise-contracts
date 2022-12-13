@@ -188,5 +188,7 @@ fn stake_multisig_dao_fails() -> DaoResult<()> {
     );
     assert!(result.is_err());
 
+    assert_user_stake_is_none(mock_query_ctx(deps.as_ref(), &env), "sender");
+
     Ok(())
 }
