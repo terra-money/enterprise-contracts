@@ -561,7 +561,6 @@ fn execute_poll_engine_proposal(
 
     let total_available_votes = match dao_type {
         Token | Nft => {
-            // TODO: add tests for this
             if ctx.env.block.time >= poll.poll.ends_at {
                 load_total_staked_at_time(ctx.deps.storage, poll.poll.ends_at)?
             } else {
@@ -569,7 +568,6 @@ fn execute_poll_engine_proposal(
             }
         }
         Multisig => {
-            // TODO: add tests for this
             if ctx.env.block.time >= poll.poll.ends_at {
                 load_total_multisig_weight_at_time(ctx.deps.storage, poll.poll.ends_at)?
             } else {
@@ -1230,7 +1228,6 @@ pub fn query_proposal_status(
     let status = match poll_status.status {
         PollStatus::InProgress { .. } => ProposalStatus::InProgress,
         PollStatus::Passed { .. } => {
-            // TODO: add tests for this
             if is_proposal_executed(qctx.deps.storage, msg.proposal_id)? {
                 ProposalStatus::Executed
             } else {
@@ -1394,7 +1391,7 @@ pub fn query_member_info(
     let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
 
     let voting_power = match dao_type {
-        Token => calculate_token_member_voting_power(qctx, msg.member_address)?, // TODO: test
+        Token => calculate_token_member_voting_power(qctx, msg.member_address)?,
         Nft => calculate_nft_member_voting_power(qctx, msg.member_address)?,
         Multisig => calculate_multisig_member_voting_power(qctx, msg.member_address)?,
     };
