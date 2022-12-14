@@ -1573,7 +1573,7 @@ pub fn query_releasable_claims(
 }
 
 // TODO: tests
-fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryResponse> {
+pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryResponse> {
     let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
     let global_asset_whitelist: AssetWhitelistResponse = qctx
         .deps
