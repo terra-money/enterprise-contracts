@@ -100,7 +100,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 1;
 
-pub const CODE_VERSION: u64 = 1;
+pub const CODE_VERSION: u64 = 2;
 
 pub const PROPOSAL_OUTCOME_YES: u8 = 0;
 pub const PROPOSAL_OUTCOME_NO: u8 = 1;
