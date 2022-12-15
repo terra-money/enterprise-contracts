@@ -16,11 +16,11 @@ use enterprise_protocol::api::{
     ProposalActionType, ProposalDeposit, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
-    InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage, MinimumDepositNotAllowed,
-    UnsupportedCouncilProposalAction,
+    DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
+    MinimumDepositNotAllowed, UnsupportedCouncilProposalAction,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use DaoError::{
     InvalidEnterpriseCodeId, InvalidExistingMultisigContract, InvalidExistingNftContract,
     InvalidExistingTokenContract, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
@@ -282,11 +282,24 @@ pub fn validate_dao_council(dao_council: Option<DaoCouncil>) -> DaoResult<()> {
     match dao_council {
         None => Ok(()),
         Some(dao_council) => {
+            validate_no_duplicate_council_members(dao_council.members)?;
             validate_allowed_council_proposal_types(dao_council.allowed_proposal_action_types)?;
 
             Ok(())
         }
     }
+}
+
+// TODO: test
+pub fn validate_no_duplicate_council_members(members: Vec<String>) -> DaoResult<()> {
+    let mut members_map: HashMap<String, ()> = HashMap::new();
+    for member in members {
+        if members_map.contains_key(&member) {
+            return Err(DuplicateCouncilMember { member });
+        }
+        members_map.insert(member, ());
+    }
+    Ok(())
 }
 
 // TODO: test

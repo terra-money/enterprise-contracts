@@ -717,7 +717,7 @@ fn execute_poll_engine_proposal(
 
             match dao_council {
                 None => return Err(NoDaoCouncil),
-                Some(dao_council) => Uint128::from(dao_council.members.len() as u128), // TODO: ensure members are de-duplicated when storing
+                Some(dao_council) => Uint128::from(dao_council.members.len() as u128),
             }
         }
     };

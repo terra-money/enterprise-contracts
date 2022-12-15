@@ -22,6 +22,9 @@ pub enum DaoError {
     #[error("Proposal action {action} is not supported in council proposals")]
     UnsupportedCouncilProposalAction { action: ProposalActionType },
 
+    #[error("Council members must be unique, however {member} was duplicated")]
+    DuplicateCouncilMember { member: String },
+
     #[error("{code_id} is not a valid Enterprise code ID")]
     InvalidEnterpriseCodeId { code_id: u64 },
 
