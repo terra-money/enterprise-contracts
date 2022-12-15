@@ -8,13 +8,16 @@ use cw_asset::AssetInfo;
 use cw_utils::Duration;
 use enterprise_factory_api::api::{IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
-use enterprise_protocol::api::ProposalAction::{ExecuteMsgs, ModifyMultisigMembership, UpgradeDao};
+use enterprise_protocol::api::ProposalAction::{
+    ExecuteMsgs, ModifyMultisigMembership, UpdateCouncil, UpgradeDao,
+};
 use enterprise_protocol::api::{
-    DaoGovConfig, DaoType, ExecuteMsgsMsg, ModifyMultisigMembershipMsg, ProposalAction,
-    ProposalDeposit, UpgradeDaoMsg,
+    DaoCouncil, DaoGovConfig, DaoType, ExecuteMsgsMsg, ModifyMultisigMembershipMsg, ProposalAction,
+    ProposalActionType, ProposalDeposit, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage, MinimumDepositNotAllowed,
+    UnsupportedCouncilProposalAction,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use std::collections::HashSet;
@@ -117,6 +120,8 @@ pub fn validate_proposal_actions(
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
             ModifyMultisigMembership(msg) => validate_modify_multisig_membership(deps, msg)?,
+            // TODO: test
+            UpdateCouncil(msg) => validate_dao_council(msg.dao_council.clone())?,
             _ => {}
         }
     }
@@ -270,4 +275,44 @@ pub fn validate_modify_multisig_membership(
         });
     }
     Ok(())
+}
+
+// TODO: test
+pub fn validate_dao_council(dao_council: Option<DaoCouncil>) -> DaoResult<()> {
+    match dao_council {
+        None => Ok(()),
+        Some(dao_council) => {
+            validate_allowed_council_proposal_types(dao_council.allowed_proposal_action_types)?;
+
+            Ok(())
+        }
+    }
+}
+
+// TODO: test
+/// Check if allowed council proposal types contain dangerous types of actions that a council
+/// shouldn't be allowed to do.
+pub fn validate_allowed_council_proposal_types(
+    proposal_action_types: Option<Vec<ProposalActionType>>,
+) -> DaoResult<()> {
+    match proposal_action_types {
+        None => Ok(()),
+        Some(action_types) => {
+            for action_type in action_types {
+                match action_type {
+                    ProposalActionType::UpdateGovConfig
+                    | ProposalActionType::UpdateCouncil
+                    | ProposalActionType::RequestFundingFromDao
+                    | ProposalActionType::ExecuteMsgs
+                    | ProposalActionType::ModifyMultisigMembership => {
+                        return Err(UnsupportedCouncilProposalAction {
+                            action: action_type,
+                        });
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        }
+    }
 }

@@ -19,8 +19,8 @@ use crate::state::{
     NFT_WHITELIST, STATE,
 };
 use crate::validate::{
-    validate_dao_gov_config, validate_deposit, validate_existing_dao_contract,
-    validate_modify_multisig_membership, validate_proposal_actions,
+    validate_dao_council, validate_dao_gov_config, validate_deposit,
+    validate_existing_dao_contract, validate_modify_multisig_membership, validate_proposal_actions,
 };
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::Order::Ascending;
@@ -123,6 +123,8 @@ pub fn instantiate(
         &dao_type_from_membership(&msg.dao_membership_info),
         &msg.dao_gov_config,
     )?;
+
+    validate_dao_council(msg.dao_council.clone())?;
 
     STATE.save(
         deps.storage,
