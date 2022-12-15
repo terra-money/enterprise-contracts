@@ -43,7 +43,7 @@ use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
+    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil, DaoGovConfig,
     DaoInfoResponse, DaoMembershipInfo, DaoType, ExecuteMsgsMsg, ExecuteProposalMsg,
     ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse,
@@ -348,6 +348,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::CreateProposal(msg) => create_proposal(&mut ctx, msg, None),
         ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(&mut ctx, msg),
         ExecuteMsg::CastVote(msg) => cast_vote(&mut ctx, msg),
+        ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(&mut ctx, msg),
         ExecuteMsg::ExecuteProposal(msg) => execute_proposal(&mut ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(&mut ctx, msg),
         ExecuteMsg::ReceiveNft(msg) => receive_cw721(&mut ctx, msg),
@@ -576,6 +577,42 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
         .add_attribute("voter", ctx.info.sender.clone().to_string())
         .add_attribute("outcome", msg.outcome.to_string())
         .add_attribute("amount", user_available_votes.to_string()))
+}
+
+// TODO: test
+fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
+    let dao_council = DAO_COUNCIL.load(ctx.deps.storage)?;
+
+    match dao_council {
+        None => Err(NoDaoCouncil),
+        Some(dao_council) => {
+            if !dao_council.members.contains(&ctx.info.sender.to_string()) {
+                return Err(Unauthorized);
+            }
+
+            // ensure this proposal is actually a council proposal
+            if !COUNCIL_PROPOSAL_INFOS.has(ctx.deps.storage, msg.proposal_id) {
+                return Err(NoSuchProposal);
+            }
+
+            poll_engine::execute::cast_vote(
+                ctx,
+                CastVoteParams {
+                    poll_id: msg.proposal_id.into(),
+                    outcome: Default(msg.outcome),
+                    amount: Uint128::one(),
+                },
+            )?;
+
+            Ok(Response::new()
+                .add_attribute("action", "cast_vote")
+                .add_attribute("dao_address", ctx.env.contract.address.to_string())
+                .add_attribute("proposal_id", msg.proposal_id.to_string())
+                .add_attribute("voter", ctx.info.sender.clone().to_string())
+                .add_attribute("outcome", msg.outcome.to_string())
+                .add_attribute("amount", 1u8.to_string()))
+        }
+    }
 }
 
 // TODO: think whether this should be renamed to 'end_proposal'

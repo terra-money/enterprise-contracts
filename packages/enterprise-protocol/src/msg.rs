@@ -33,6 +33,7 @@ pub enum ExecuteMsg {
     CreateProposal(CreateProposalMsg),
     CreateCouncilProposal(CreateProposalMsg),
     CastVote(CastVoteMsg),
+    CastCouncilVote(CastVoteMsg),
     ExecuteProposal(ExecuteProposalMsg),
     Unstake(UnstakeMsg),
     Claim {},
