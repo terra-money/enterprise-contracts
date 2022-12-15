@@ -135,6 +135,7 @@ pub fn instantiate(
 
     DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
     DAO_GOV_CONFIG.save(deps.storage, &msg.dao_gov_config)?;
+    DAO_COUNCIL.save(deps.storage, &msg.dao_council)?;
     ENTERPRISE_FACTORY_CONTRACT.save(
         deps.storage,
         &deps.api.addr_validate(&msg.enterprise_factory_contract)?,
