@@ -4,7 +4,7 @@ use crate::multisig::{
 };
 use crate::nft_staking;
 use crate::nft_staking::{load_all_nft_stakes_for_user, save_nft_stake, NftStake};
-use crate::proposals::ProposalType::General;
+use crate::proposals::ProposalType::{Council, General};
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo, ProposalType,
     COUNCIL_PROPOSAL_INFOS, PROPOSAL_INFOS, TOTAL_DEPOSITS,
@@ -58,8 +58,8 @@ use enterprise_protocol::api::{
     UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
-    InsufficientStakedAssets, InvalidArgument, NotMultisigMember, ProposalAlreadyExecuted,
-    UnsupportedCouncilProposalAction,
+    InsufficientStakedAssets, InvalidArgument, NoVotesAvailable, NotMultisigMember,
+    ProposalAlreadyExecuted, UnsupportedCouncilProposalAction,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -350,7 +350,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(&mut ctx, msg),
         ExecuteMsg::CastVote(msg) => cast_vote(&mut ctx, msg),
         ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(&mut ctx, msg),
-        ExecuteMsg::ExecuteProposal(msg) => execute_proposal(&mut ctx, msg),
+        ExecuteMsg::ExecuteProposal(msg) => execute_proposal(&mut ctx, msg, General),
+        ExecuteMsg::ExecuteCouncilProposal(msg) => execute_proposal(&mut ctx, msg, Council),
         ExecuteMsg::Receive(msg) => receive_cw20(&mut ctx, msg),
         ExecuteMsg::ReceiveNft(msg) => receive_cw721(&mut ctx, msg),
         ExecuteMsg::Unstake(msg) => unstake(&mut ctx, msg),
@@ -541,7 +542,7 @@ fn create_poll_engine_proposal(
                 proposal_actions: msg.proposal_actions,
             },
         )?,
-        ProposalType::Council => COUNCIL_PROPOSAL_INFOS.save(
+        Council => COUNCIL_PROPOSAL_INFOS.save(
             ctx.deps.storage,
             poll.id,
             &ProposalInfo {
@@ -624,12 +625,17 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
 }
 
 // TODO: think whether this should be renamed to 'end_proposal'
-fn execute_proposal(ctx: &mut Context, msg: ExecuteProposalMsg) -> DaoResult<Response> {
-    if is_proposal_executed(ctx.deps.storage, msg.proposal_id)? {
+// TODO: test for proposal type council
+fn execute_proposal(
+    ctx: &mut Context,
+    msg: ExecuteProposalMsg,
+    proposal_type: ProposalType,
+) -> DaoResult<Response> {
+    if is_proposal_executed(ctx.deps.storage, msg.proposal_id, proposal_type.clone())? {
         return Err(ProposalAlreadyExecuted);
     }
 
-    let submsgs = execute_poll_engine_proposal(ctx, &msg)?;
+    let submsgs = execute_poll_engine_proposal(ctx, &msg, proposal_type)?;
 
     Ok(Response::new()
         .add_submessages(submsgs)
@@ -673,6 +679,7 @@ fn return_deposit_submsgs(
 fn execute_poll_engine_proposal(
     ctx: &mut Context,
     msg: &ExecuteProposalMsg,
+    proposal_type: ProposalType,
 ) -> DaoResult<Vec<SubMsg>> {
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
     let poll = query_poll(
@@ -682,28 +689,39 @@ fn execute_poll_engine_proposal(
         },
     )?;
 
-    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
-
-    let total_available_votes = match dao_type {
-        Token | Nft => {
-            if ctx.env.block.time >= poll.poll.ends_at {
-                load_total_staked_at_time(ctx.deps.storage, poll.poll.ends_at)?
-            } else {
-                load_total_staked(ctx.deps.storage)?
+    let total_available_votes = match proposal_type {
+        General => {
+            let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
+            match dao_type {
+                Token | Nft => {
+                    if ctx.env.block.time >= poll.poll.ends_at {
+                        load_total_staked_at_time(ctx.deps.storage, poll.poll.ends_at)?
+                    } else {
+                        load_total_staked(ctx.deps.storage)?
+                    }
+                }
+                Multisig => {
+                    // TODO: add tests for this
+                    if ctx.env.block.time >= poll.poll.ends_at {
+                        load_total_multisig_weight_at_time(ctx.deps.storage, poll.poll.ends_at)?
+                    } else {
+                        load_total_multisig_weight(ctx.deps.storage)?
+                    }
+                }
             }
         }
-        Multisig => {
-            // TODO: add tests for this
-            if ctx.env.block.time >= poll.poll.ends_at {
-                load_total_multisig_weight_at_time(ctx.deps.storage, poll.poll.ends_at)?
-            } else {
-                load_total_multisig_weight(ctx.deps.storage)?
+        Council => {
+            let dao_council = DAO_COUNCIL.load(ctx.deps.storage)?;
+
+            match dao_council {
+                None => return Err(NoDaoCouncil),
+                Some(dao_council) => Uint128::from(dao_council.members.len() as u128), // TODO: ensure members are de-duplicated when storing
             }
         }
     };
 
     if total_available_votes == Uint128::zero() {
-        return Err(DaoError::NoAssetsStaked);
+        return Err(NoVotesAvailable);
     }
 
     end_poll(
@@ -726,15 +744,25 @@ fn execute_poll_engine_proposal(
             .into())
         }
         PollStatus::Passed { .. } => {
-            set_proposal_executed(ctx.deps.storage, msg.proposal_id, ctx.env.block.clone())?;
-            let mut submsgs = execute_proposal_actions(ctx, msg.proposal_id)?;
+            set_proposal_executed(
+                ctx.deps.storage,
+                msg.proposal_id,
+                ctx.env.block.clone(),
+                proposal_type.clone(),
+            )?;
+            let mut submsgs = execute_proposal_actions(ctx, msg.proposal_id, proposal_type)?;
             let mut return_deposit = return_proposal_deposit_submsgs(ctx, msg.proposal_id)?;
             submsgs.append(&mut return_deposit);
 
             submsgs
         }
         PollStatus::Rejected { outcome, .. } => {
-            set_proposal_executed(ctx.deps.storage, msg.proposal_id, ctx.env.block.clone())?;
+            set_proposal_executed(
+                ctx.deps.storage,
+                msg.proposal_id,
+                ctx.env.block.clone(),
+                proposal_type,
+            )?;
 
             // return deposits only if not vetoed
             if Some(PROPOSAL_OUTCOME_VETO) != outcome {
@@ -757,9 +785,13 @@ fn execute_poll_engine_proposal(
     Ok(submsgs)
 }
 
-fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoResult<Vec<SubMsg>> {
-    let proposal_actions =
-        get_proposal_actions(ctx.deps.storage, proposal_id)?.ok_or(NoSuchProposal)?;
+fn execute_proposal_actions(
+    ctx: &mut Context,
+    proposal_id: ProposalId,
+    proposal_type: ProposalType,
+) -> DaoResult<Vec<SubMsg>> {
+    let proposal_actions = get_proposal_actions(ctx.deps.storage, proposal_id, proposal_type)?
+        .ok_or(NoSuchProposal)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
 
@@ -1387,7 +1419,8 @@ pub fn query_proposal_status(
         PollStatus::InProgress { .. } => ProposalStatus::InProgress,
         PollStatus::Passed { .. } => {
             // TODO: add tests for this
-            if is_proposal_executed(qctx.deps.storage, msg.proposal_id)? {
+            if is_proposal_executed(qctx.deps.storage, msg.proposal_id, General)? {
+                // TODO: add branch for Council, too
                 ProposalStatus::Executed
             } else {
                 ProposalStatus::Passed
@@ -1404,7 +1437,7 @@ pub fn query_proposal_status(
 }
 
 fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<ProposalResponse> {
-    let actions_opt = get_proposal_actions(deps.storage, poll.id)?;
+    let actions_opt = get_proposal_actions(deps.storage, poll.id, General)?; // TODO: add branch for Council type as well
 
     let actions = match actions_opt {
         None => {

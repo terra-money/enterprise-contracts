@@ -49,8 +49,8 @@ pub enum DaoError {
     #[error("The given proposal has already been executed")]
     ProposalAlreadyExecuted,
 
-    #[error("No assets have been staked")]
-    NoAssetsStaked,
+    #[error("No votes are available")]
+    NoVotesAvailable,
 
     #[error("Asset cannot be staked or unstaked - does not match DAO's governance asset")]
     InvalidStakingAsset,
