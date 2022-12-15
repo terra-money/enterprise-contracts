@@ -91,6 +91,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
     let instantiate_enterprise_msg = enterprise_protocol::msg::InstantiateMsg {
         dao_metadata: msg.dao_metadata.clone(),
         dao_gov_config: msg.dao_gov_config,
+        dao_council: msg.dao_council,
         dao_membership_info,
         enterprise_factory_contract: env.contract.address.to_string(),
         asset_whitelist: msg.asset_whitelist,

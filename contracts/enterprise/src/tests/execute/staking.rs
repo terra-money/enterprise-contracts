@@ -165,6 +165,7 @@ fn stake_multisig_dao() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: dao_gov_config.clone(),
+            dao_council: None,
             dao_membership_info: Existing(ExistingDaoMembershipMsg {
                 dao_type: Multisig,
                 membership_contract_addr: dao_cw3_membership_contract.clone(),

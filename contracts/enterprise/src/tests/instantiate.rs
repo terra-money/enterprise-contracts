@@ -70,6 +70,13 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
             telegram_username: Some("telegram".to_string()),
         },
     };
+    let dao_gov_config = DaoGovConfig {
+        quorum: Decimal::from_ratio(13u8, 23u8),
+        threshold: Decimal::from_ratio(7u8, 29u8),
+        vote_duration: 65,
+        unlocking_period: Duration::Height(113),
+        minimum_deposit: Some(17u8.into()),
+    };
     let asset_whitelist = vec![
         AssetInfo::native("luna"),
         AssetInfo::cw20(Addr::unchecked(CW20_ADDR)),
@@ -81,13 +88,8 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         info,
         InstantiateMsg {
             dao_metadata: metadata.clone(),
-            dao_gov_config: DaoGovConfig {
-                quorum: Decimal::from_ratio(13u8, 23u8),
-                threshold: Decimal::from_ratio(7u8, 29u8),
-                vote_duration: 65,
-                unlocking_period: Duration::Height(113),
-                minimum_deposit: Some(17u8.into()),
-            },
+            dao_gov_config: dao_gov_config.clone(),
+            dao_council: None, // TODO: add this to verification
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract: "enterprise_factory_addr".to_string(),
             asset_whitelist: Some(asset_whitelist.clone()),
@@ -100,16 +102,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
     assert_eq!(dao_info.metadata, metadata);
     assert_eq!(dao_info.dao_code_version, Uint64::from(1u8));
     assert_eq!(dao_info.dao_type, Token);
-    assert_eq!(
-        dao_info.gov_config,
-        DaoGovConfig {
-            quorum: Decimal::from_ratio(13u8, 23u8),
-            threshold: Decimal::from_ratio(7u8, 29u8),
-            vote_duration: 65,
-            unlocking_period: Duration::Height(113),
-            minimum_deposit: Some(17u8.into()),
-        }
-    );
+    assert_eq!(dao_info.gov_config, dao_gov_config);
     assert_eq!(
         dao_info.enterprise_factory_contract,
         Addr::unchecked("enterprise_factory_addr")
@@ -192,6 +185,7 @@ fn instantiate_existing_multisig_membership_stores_proper_info() -> DaoResult<()
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
             dao_membership_info: Existing(ExistingDaoMembershipMsg {
                 dao_type: Multisig,
                 membership_contract_addr: "random_cw3_multisig".to_string(),
@@ -228,6 +222,7 @@ fn instantiate_existing_token_membership_with_not_valid_cw20_contract_fails() ->
         InstantiateMsg {
             dao_metadata,
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: stub_dao_membership_info(Token, "non_cw20_addr"),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -235,7 +230,7 @@ fn instantiate_existing_token_membership_with_not_valid_cw20_contract_fails() ->
         },
     );
 
-    assert_eq!(result, Err(InvalidExistingTokenContract),);
+    assert_eq!(result, Err(InvalidExistingTokenContract));
 
     Ok(())
 }
@@ -315,6 +310,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
             dao_membership_info: New(NewDaoMembershipMsg {
                 membership_contract_code_id: CW20_CODE_ID,
                 membership_info,
@@ -405,6 +401,7 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
             dao_membership_info: New(NewDaoMembershipMsg {
                 membership_contract_code_id: CW20_CODE_ID,
                 membership_info,
@@ -495,6 +492,7 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
             dao_membership_info: New(NewDaoMembershipMsg {
                 membership_contract_code_id: CW721_CODE_ID,
                 membership_info,
@@ -570,6 +568,7 @@ fn instantiate_new_multisig_membership_stores_members_properly() -> DaoResult<()
         InstantiateMsg {
             dao_metadata,
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: New(NewDaoMembershipMsg {
                 membership_contract_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 membership_info,
@@ -653,6 +652,7 @@ fn instantiate_dao_with_shorter_unstaking_than_voting_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: stub_token_dao_membership_info(),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -683,6 +683,7 @@ fn instantiate_nft_dao_with_minimum_deposit_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: stub_nft_dao_membership_info(),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -713,6 +714,7 @@ fn instantiate_multisig_dao_with_minimum_deposit_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: stub_multisig_dao_membership_info(),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -749,6 +751,7 @@ fn instantiate_dao_with_quorum_over_one_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -790,6 +793,7 @@ fn instantiate_dao_with_quorum_of_zero_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -831,6 +835,7 @@ fn instantiate_dao_with_threshold_over_one_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -872,6 +877,7 @@ fn instantiate_dao_with_threshold_of_zero_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
+            dao_council: None,
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,

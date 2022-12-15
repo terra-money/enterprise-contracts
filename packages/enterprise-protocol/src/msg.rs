@@ -1,6 +1,6 @@
 use crate::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    CreateProposalMsg, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo, DaoMetadata,
+    CreateProposalMsg, DaoCouncil, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo, DaoMetadata,
     ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse, NftWhitelistResponse,
     ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
@@ -17,6 +17,8 @@ use cw_asset::AssetInfo;
 pub struct InstantiateMsg {
     pub dao_metadata: DaoMetadata,
     pub dao_gov_config: DaoGovConfig,
+    /// Optional council structure that can manage certain aspects of the DAO
+    pub dao_council: Option<DaoCouncil>,
     pub dao_membership_info: DaoMembershipInfo,
     /// Address of enterprise-factory contract that is creating this DAO
     pub enterprise_factory_contract: String,
@@ -54,6 +56,7 @@ pub struct MigrateMsg {}
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    // TODO: add DAO council to the response here
     #[returns(DaoInfoResponse)]
     DaoInfo {},
     #[returns(MemberInfoResponse)]

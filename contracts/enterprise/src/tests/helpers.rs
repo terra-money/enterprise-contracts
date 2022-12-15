@@ -125,6 +125,7 @@ pub fn instantiate_stub_dao(
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: gov_config.unwrap_or(stub_dao_gov_config()),
+            dao_council: None,
             dao_membership_info: membership,
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,

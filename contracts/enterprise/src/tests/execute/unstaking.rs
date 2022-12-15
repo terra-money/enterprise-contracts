@@ -1,18 +1,16 @@
-use crate::contract::{execute, instantiate};
+use crate::contract::execute;
 use crate::tests::helpers::{
     assert_proposal_result_amount, assert_total_stake, assert_user_nft_stake,
     assert_user_token_stake, create_stub_proposal, existing_nft_dao_membership,
     existing_token_dao_membership, instantiate_stub_dao, stake_nfts, stake_tokens,
-    stub_dao_gov_config, stub_dao_membership_info, stub_dao_metadata,
-    stub_enterprise_factory_contract, stub_token_info, unstake_nfts, unstake_tokens, CW20_ADDR,
-    NFT_ADDR,
+    stub_dao_membership_info, stub_token_info, unstake_nfts, unstake_tokens, CW20_ADDR, NFT_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use enterprise_protocol::api::CastVoteMsg;
 use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::error::DaoResult;
-use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg};
+use enterprise_protocol::msg::ExecuteMsg;
 use poll_engine::api::DefaultVoteOption;
 
 #[test]
@@ -57,21 +55,14 @@ fn unstake_nft_dao() -> DaoResult<()> {
     let env = mock_env();
     let info = mock_info("sender", &[]);
 
-    let dao_gov_config = stub_dao_gov_config();
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config: dao_gov_config.clone(),
-            dao_membership_info: existing_nft_dao_membership(NFT_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_nft_dao_membership(NFT_ADDR),
+        None,
     )?;
 
     stake_nfts(
@@ -114,18 +105,12 @@ fn unstake_multisig_dao() -> DaoResult<()> {
     deps.querier
         .with_multisig_members(&[("cw3_addr", &[("sender", 10u64)])]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config: stub_dao_gov_config().clone(),
-            dao_membership_info: stub_dao_membership_info(Multisig, "cw3_addr"),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        stub_dao_membership_info(Multisig, "cw3_addr"),
+        None,
     )?;
 
     // cannot unstake in multisig DAO

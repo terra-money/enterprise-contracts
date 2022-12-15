@@ -25,6 +25,7 @@ fn reply_with_unknown_reply_id_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
             dao_membership_info: existing_token_dao_membership("cw20_addr"),
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,

@@ -2,8 +2,7 @@ use crate::contract::{execute, instantiate, query_proposals};
 use crate::tests::helpers::{
     create_proposal, create_stub_proposal, existing_nft_dao_membership,
     existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
-    stake_nfts, stub_dao_gov_config, stub_dao_metadata, stub_enterprise_factory_contract,
-    stub_token_info, CW20_ADDR, NFT_ADDR,
+    stake_nfts, stub_dao_gov_config, stub_dao_metadata, stub_token_info, CW20_ADDR, NFT_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
@@ -207,18 +206,12 @@ fn create_proposal_with_no_token_deposit_when_minimum_deposit_is_specified_fails
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config: dao_gov_config.clone(),
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     let result = create_stub_proposal(deps.as_mut(), &env, &info);
@@ -250,18 +243,12 @@ fn create_proposal_with_insufficient_token_deposit_fails() -> DaoResult<()> {
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config: dao_gov_config.clone(),
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     let create_proposal_msg = CreateProposalMsg {
@@ -307,18 +294,12 @@ fn create_proposal_with_sufficient_token_deposit_succeeds() -> DaoResult<()> {
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config: dao_gov_config.clone(),
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     let create_proposal_msg = CreateProposalMsg {
@@ -354,18 +335,12 @@ fn create_proposal_with_duplicate_add_whitelist_assets_fails() -> DaoResult<()> 
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config: stub_dao_gov_config(),
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        None,
     )?;
 
     let result = create_proposal(
@@ -562,6 +537,7 @@ fn create_proposal_with_invalid_upgrade_dao_version_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract: enterprise_factory_contract.to_string(),
             asset_whitelist: None,

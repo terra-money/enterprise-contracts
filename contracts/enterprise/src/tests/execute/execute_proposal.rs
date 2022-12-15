@@ -86,18 +86,12 @@ fn execute_proposal_with_outcome_yes_but_not_ended_fails() -> DaoResult<()> {
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -158,6 +152,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: dao_gov_config.clone(),
+            dao_council: None,
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract,
             asset_whitelist: Some(vec![token1.clone(), token2.clone()]),
@@ -545,18 +540,12 @@ fn execute_proposal_with_outcome_yes_refunds_token_deposits() -> DaoResult<()> {
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -620,18 +609,12 @@ fn execute_proposal_with_outcome_no_refunds_token_deposits() -> DaoResult<()> {
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -694,18 +677,12 @@ fn execute_proposal_with_no_outcome_refunds_token_deposits() -> DaoResult<()> {
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -766,18 +743,12 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -831,18 +802,12 @@ fn execute_proposal_that_was_executed_fails() -> DaoResult<()> {
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -887,18 +852,12 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -971,18 +930,12 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
     deps.querier
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -1030,22 +983,16 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
         ..stub_dao_gov_config()
     };
 
-    instantiate(
+    instantiate_stub_dao(
         deps.as_mut(),
-        env.clone(),
-        info.clone(),
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config,
-            dao_membership_info: multisig_dao_membership_info_with_members(&[
-                ("member1", 5u64),
-                ("member2", 5u64),
-                ("member3", 10u64),
-            ]),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
+        &env,
+        &info,
+        multisig_dao_membership_info_with_members(&[
+            ("member1", 5u64),
+            ("member2", 5u64),
+            ("member3", 10u64),
+        ]),
+        Some(dao_gov_config.clone()),
     )?;
 
     create_proposal(

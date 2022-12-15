@@ -76,6 +76,16 @@ pub struct DaoGovConfig {
 }
 
 #[cw_serde]
+pub struct DaoCouncil {
+    /// Addresses of council members. Each member has equal voting power.
+    pub members: Vec<String>,
+    /// Proposal action types allowed in proposals that are voted on by the council.
+    /// Effectively defines what types of actions council can propose and vote on.
+    /// If None, will default to a predefined set of actions.
+    pub allowed_proposal_action_types: Option<Vec<ProposalActionType>>,
+}
+
+#[cw_serde]
 #[allow(clippy::large_enum_variant)]
 pub enum DaoMembershipInfo {
     New(NewDaoMembershipMsg),
@@ -152,6 +162,19 @@ pub struct CreateProposalMsg {
 pub struct ProposalDeposit {
     pub depositor: Addr,
     pub amount: Uint128,
+}
+
+// TODO: try to find a language construct allowing us to merge this with ProposalAction
+#[cw_serde]
+pub enum ProposalActionType {
+    UpdateMetadata,
+    UpdateGovConfig,
+    UpdateAssetWhitelist,
+    UpdateNftWhitelist,
+    RequestFundingFromDao,
+    UpgradeDao,
+    ExecuteMsgs,
+    ModifyMultisigMembership,
 }
 
 #[cw_serde]
