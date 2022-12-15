@@ -467,11 +467,17 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
 
             let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
 
+            let council_gov_config = DaoGovConfig {
+                quorum: Decimal::percent(75u64),
+                threshold: Decimal::percent(50u64),
+                vote_duration: u64::MAX, // TODO: probably not going to work
+                ..gov_config
+            };
+
             // TODO: this ends_at is not good probably, won't allow ending of the proposal even when targets are reached
-            // TODO: gotta create a separate function, this one creates PROPOSAL_INFO internally
             let proposal_id = create_poll_engine_proposal(
                 ctx,
-                gov_config,
+                council_gov_config,
                 Timestamp::from_seconds(u64::MAX),
                 msg,
                 None,
