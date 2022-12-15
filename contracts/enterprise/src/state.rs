@@ -2,7 +2,9 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint64};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
-use enterprise_protocol::api::{Claim, DaoGovConfig, DaoMetadata, DaoType, ProposalAction};
+use enterprise_protocol::api::{
+    Claim, DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, ProposalAction,
+};
 
 #[cw_serde]
 pub struct State {
@@ -24,6 +26,7 @@ pub const DAO_TYPE: Item<DaoType> = Item::new("dao_type");
 pub const DAO_CODE_VERSION: Item<Uint64> = Item::new("dao_code_version");
 pub const DAO_METADATA: Item<DaoMetadata> = Item::new("dao_metadata");
 pub const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
+pub const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
 pub const ASSET_WHITELIST: Item<Vec<AssetInfo>> = Item::new("asset_whitelist");
 pub const NFT_WHITELIST: Map<Addr, ()> = Map::new("nft_whitelist");
 

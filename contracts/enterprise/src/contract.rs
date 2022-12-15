@@ -4,18 +4,19 @@ use crate::multisig::{
 };
 use crate::nft_staking;
 use crate::nft_staking::{load_all_nft_stakes_for_user, save_nft_stake, NftStake};
+use crate::proposals::ProposalType::General;
 use crate::proposals::{
-    get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo,
-    PROPOSAL_INFOS, TOTAL_DEPOSITS,
+    get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo, ProposalType,
+    COUNCIL_PROPOSAL_INFOS, PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
 use crate::staking::{
     load_total_staked, load_total_staked_at_height, load_total_staked_at_time, save_total_staked,
     CW20_STAKES,
 };
 use crate::state::{
-    add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_CREATION_DATE, DAO_GOV_CONFIG,
-    DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT, NFT_WHITELIST,
-    STATE,
+    add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
+    DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
+    NFT_WHITELIST, STATE,
 };
 use crate::validate::{
     validate_dao_gov_config, validate_deposit, validate_existing_dao_contract,
@@ -48,16 +49,17 @@ use enterprise_protocol::api::{
     MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse,
     NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo,
     NewTokenMembershipInfo, NftCollection, NftTreasuryResponse, NftUserStake, NftWhitelistResponse,
-    Proposal, ProposalAction, ProposalDeposit, ProposalId, ProposalParams, ProposalResponse,
-    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReleaseAt, RequestFundingFromDaoMsg, TokenUserStake,
+    Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
+    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
+    ProposalsResponse, QueryMemberInfoMsg, ReleaseAt, RequestFundingFromDaoMsg, TokenUserStake,
     TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateGovConfigMsg,
     UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake, UserStakeParams,
     UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     InsufficientStakedAssets, InvalidArgument, NotMultisigMember, ProposalAlreadyExecuted,
+    UnsupportedCouncilProposalAction,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -81,8 +83,8 @@ use poll_engine::state::Poll;
 use std::cmp::min;
 use std::ops::{Add, Not, Sub};
 use DaoError::{
-    CustomError, NoNftTokenStaked, NoSuchProposal, Unauthorized, UnsupportedOperationForDaoType,
-    ZeroInitialWeightMember,
+    CustomError, NoDaoCouncil, NoNftTokenStaked, NoSuchProposal, Unauthorized,
+    UnsupportedOperationForDaoType, ZeroInitialWeightMember,
 };
 use DaoMembershipInfo::{Existing, New};
 use DaoType::Token;
@@ -344,6 +346,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
     let mut ctx = Context { deps, env, info };
     match msg {
         ExecuteMsg::CreateProposal(msg) => create_proposal(&mut ctx, msg, None),
+        ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(&mut ctx, msg),
         ExecuteMsg::CastVote(msg) => cast_vote(&mut ctx, msg),
         ExecuteMsg::ExecuteProposal(msg) => execute_proposal(&mut ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(&mut ctx, msg),
@@ -373,7 +376,8 @@ fn create_proposal(
 
     match dao_type {
         Token => {
-            let poll_id = create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit)?;
+            let poll_id =
+                create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit, General)?;
 
             Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
         }
@@ -382,7 +386,8 @@ fn create_proposal(
                 return Err(DaoError::NotNftOwner {});
             }
 
-            let poll_id = create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit)?;
+            let poll_id =
+                create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit, General)?;
 
             Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
         }
@@ -394,7 +399,8 @@ fn create_proposal(
                 return Err(NotMultisigMember {});
             }
 
-            let poll_id = create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit)?;
+            let poll_id =
+                create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit, General)?;
 
             Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
         }
@@ -428,12 +434,75 @@ fn user_holds_nft(ctx: &Context) -> StdResult<bool> {
     Ok(tokens.tokens.is_empty().not())
 }
 
+// TODO: tests
+fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResult<Response> {
+    let dao_council = DAO_COUNCIL.load(ctx.deps.storage)?;
+
+    match dao_council {
+        None => Err(NoDaoCouncil),
+        Some(dao_council) => {
+            let proposer = ctx.info.sender.to_string();
+
+            if !dao_council.members.contains(&proposer) {
+                return Err(Unauthorized);
+            }
+
+            let allowed_actions = dao_council
+                .allowed_proposal_action_types
+                .unwrap_or_else(|| vec![ProposalActionType::UpgradeDao]);
+
+            // TODO: ban certain action types like funding and modify membership? they are unsafe, the council could hijack the DAO
+
+            // validate that proposal actions are allowed
+            for proposal_action in &msg.proposal_actions {
+                let proposal_action_type = to_proposal_action_type(proposal_action);
+                if !allowed_actions.contains(&proposal_action_type) {
+                    return Err(UnsupportedCouncilProposalAction {
+                        action: proposal_action_type,
+                    });
+                }
+            }
+
+            let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
+
+            // TODO: this ends_at is not good probably, won't allow ending of the proposal even when targets are reached
+            // TODO: gotta create a separate function, this one creates PROPOSAL_INFO internally
+            let proposal_id = create_poll_engine_proposal(
+                ctx,
+                gov_config,
+                Timestamp::from_seconds(u64::MAX),
+                msg,
+                None,
+                General,
+            )?;
+
+            Ok(Response::new()
+                .add_attribute("action", "create_council_proposal")
+                .add_attribute("proposal_id", proposal_id.to_string()))
+        }
+    }
+}
+
+fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionType {
+    match proposal_action {
+        UpdateMetadata(_) => ProposalActionType::UpdateMetadata,
+        UpdateGovConfig(_) => ProposalActionType::UpdateGovConfig,
+        UpdateAssetWhitelist(_) => ProposalActionType::UpdateAssetWhitelist,
+        UpdateNftWhitelist(_) => ProposalActionType::UpdateNftWhitelist,
+        RequestFundingFromDao(_) => ProposalActionType::RequestFundingFromDao,
+        UpgradeDao(_) => ProposalActionType::UpgradeDao,
+        ExecuteMsgs(_) => ProposalActionType::ExecuteMsgs,
+        ModifyMultisigMembership(_) => ProposalActionType::ModifyMultisigMembership,
+    }
+}
+
 fn create_poll_engine_proposal(
     ctx: &mut Context,
     gov_config: DaoGovConfig,
     ends_at: Timestamp,
     msg: CreateProposalMsg,
     deposit: Option<ProposalDeposit>,
+    proposal_type: ProposalType,
 ) -> DaoResult<PollId> {
     let poll = create_poll(
         ctx,
@@ -453,15 +522,26 @@ fn create_poll_engine_proposal(
         },
     )?;
 
-    PROPOSAL_INFOS.save(
-        ctx.deps.storage,
-        poll.id,
-        &ProposalInfo {
-            executed_at: None,
-            proposal_deposit: deposit.clone(),
-            proposal_actions: msg.proposal_actions,
-        },
-    )?;
+    match proposal_type {
+        General => PROPOSAL_INFOS.save(
+            ctx.deps.storage,
+            poll.id,
+            &ProposalInfo {
+                executed_at: None,
+                proposal_deposit: deposit.clone(),
+                proposal_actions: msg.proposal_actions,
+            },
+        )?,
+        ProposalType::Council => COUNCIL_PROPOSAL_INFOS.save(
+            ctx.deps.storage,
+            poll.id,
+            &ProposalInfo {
+                executed_at: None,
+                proposal_deposit: deposit.clone(),
+                proposal_actions: msg.proposal_actions,
+            },
+        )?,
+    }
 
     if let Some(deposit) = deposit {
         TOTAL_DEPOSITS.update(ctx.deps.storage, |deposits| -> StdResult<Uint128> {

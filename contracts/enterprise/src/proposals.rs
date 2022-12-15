@@ -4,7 +4,15 @@ use cw_storage_plus::{Item, Map};
 use enterprise_protocol::api::{ProposalAction, ProposalDeposit, ProposalId};
 use enterprise_protocol::error::{DaoError, DaoResult};
 
+#[cw_serde]
+pub enum ProposalType {
+    General,
+    Council,
+}
+
 pub const PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> = Map::new("proposal_infos");
+pub const COUNCIL_PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> =
+    Map::new("council_proposal_infos");
 
 // TODO: test usages of this, in relation to excluding deposits from treasury queries
 pub const TOTAL_DEPOSITS: Item<Uint128> = Item::new("total_proposal_deposits");

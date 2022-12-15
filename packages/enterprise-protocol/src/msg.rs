@@ -31,6 +31,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     CreateProposal(CreateProposalMsg),
+    CreateCouncilProposal(CreateProposalMsg),
     CastVote(CastVoteMsg),
     ExecuteProposal(ExecuteProposalMsg),
     Unstake(UnstakeMsg),

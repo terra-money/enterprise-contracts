@@ -1,3 +1,4 @@
+use crate::api::ProposalActionType;
 use cosmwasm_std::{StdError, Uint128};
 use poll_engine::error::PollError;
 use thiserror::Error;
@@ -14,6 +15,12 @@ pub enum DaoError {
 
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("The DAO does not have a council specified")]
+    NoDaoCouncil,
+
+    #[error("Proposal action {action} is not supported in council proposals")]
+    UnsupportedCouncilProposalAction { action: ProposalActionType },
 
     #[error("{code_id} is not a valid Enterprise code ID")]
     InvalidEnterpriseCodeId { code_id: u64 },

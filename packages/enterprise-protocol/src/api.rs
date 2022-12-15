@@ -166,6 +166,7 @@ pub struct ProposalDeposit {
 
 // TODO: try to find a language construct allowing us to merge this with ProposalAction
 #[cw_serde]
+#[derive(Display)]
 pub enum ProposalActionType {
     UpdateMetadata,
     UpdateGovConfig,
