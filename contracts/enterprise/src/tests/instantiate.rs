@@ -19,10 +19,11 @@ use cw_utils::Duration;
 use enterprise_protocol::api::DaoMembershipInfo::{Existing, New};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
 use enterprise_protocol::api::NewMembershipInfo::{NewMultisig, NewNft, NewToken};
+use enterprise_protocol::api::ProposalActionType::{UpdateAssetWhitelist, UpdateNftWhitelist};
 use enterprise_protocol::api::{
-    DaoGovConfig, DaoMetadata, DaoSocialData, ExistingDaoMembershipMsg, Logo, MultisigMember,
-    NewDaoMembershipMsg, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
-    TokenMarketingInfo,
+    DaoCouncil, DaoGovConfig, DaoMetadata, DaoSocialData, ExistingDaoMembershipMsg, Logo,
+    MultisigMember, NewDaoMembershipMsg, NewMultisigMembershipInfo, NewNftMembershipInfo,
+    NewTokenMembershipInfo, TokenMarketingInfo,
 };
 use enterprise_protocol::error::DaoError::{
     InvalidExistingMultisigContract, InvalidExistingNftContract, InvalidExistingTokenContract,
@@ -77,6 +78,10 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         unlocking_period: Duration::Height(113),
         minimum_deposit: Some(17u8.into()),
     };
+    let dao_council = Some(DaoCouncil {
+        members: vec!["council_member1".to_string(), "council_member2".to_string()],
+        allowed_proposal_action_types: Some(vec![UpdateAssetWhitelist, UpdateNftWhitelist]),
+    });
     let asset_whitelist = vec![
         AssetInfo::native("luna"),
         AssetInfo::cw20(Addr::unchecked(CW20_ADDR)),
@@ -89,7 +94,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: metadata.clone(),
             dao_gov_config: dao_gov_config.clone(),
-            dao_council: None, // TODO: add this to verification
+            dao_council: dao_council.clone(),
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
             enterprise_factory_contract: "enterprise_factory_addr".to_string(),
             asset_whitelist: Some(asset_whitelist.clone()),
@@ -103,6 +108,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
     assert_eq!(dao_info.dao_code_version, Uint64::from(2u8));
     assert_eq!(dao_info.dao_type, Token);
     assert_eq!(dao_info.gov_config, dao_gov_config);
+    assert_eq!(dao_info.dao_council, dao_council);
     assert_eq!(
         dao_info.enterprise_factory_contract,
         Addr::unchecked("enterprise_factory_addr")

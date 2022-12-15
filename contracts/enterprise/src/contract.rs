@@ -1343,6 +1343,7 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
     let creation_date = DAO_CREATION_DATE.load(qctx.deps.storage)?;
     let metadata = DAO_METADATA.load(qctx.deps.storage)?;
     let gov_config = DAO_GOV_CONFIG.load(qctx.deps.storage)?;
+    let dao_council = DAO_COUNCIL.load(qctx.deps.storage)?;
     let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
     let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
     let enterprise_factory_contract = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
@@ -1352,6 +1353,7 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
         creation_date,
         metadata,
         gov_config,
+        dao_council,
         dao_type,
         dao_membership_contract,
         enterprise_factory_contract,
@@ -1459,7 +1461,7 @@ fn poll_to_proposal_response(
     poll: &Poll,
     proposal_type: ProposalType,
 ) -> DaoResult<ProposalResponse> {
-    let actions_opt = get_proposal_actions(deps.storage, poll.id, proposal_type.clone())?;
+    let actions_opt = get_proposal_actions(deps.storage, poll.id, proposal_type)?;
 
     let actions = match actions_opt {
         None => {
@@ -1963,7 +1965,16 @@ fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
     }
 }
 
+// TODO: test
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
+    let old_code_version = DAO_CODE_VERSION.load(deps.storage)?;
+
+    if old_code_version == Uint64::from(1u8) {
+        DAO_COUNCIL.save(deps.storage, &None)?;
+    }
+
+    DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
+
     Ok(Response::new())
 }

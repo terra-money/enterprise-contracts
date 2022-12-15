@@ -333,6 +333,7 @@ pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
     pub gov_config: DaoGovConfig,
+    pub dao_council: Option<DaoCouncil>,
     pub dao_type: DaoType,
     pub dao_membership_contract: Addr,
     pub enterprise_factory_contract: Addr,
