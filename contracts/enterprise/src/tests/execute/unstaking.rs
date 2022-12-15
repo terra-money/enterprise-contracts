@@ -1,4 +1,5 @@
 use crate::contract::execute;
+use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     assert_proposal_result_amount, assert_total_stake, assert_user_nft_stake,
     assert_user_token_stake, create_stub_proposal, existing_nft_dao_membership,
@@ -160,6 +161,7 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
     assert_proposal_result_amount(
         &mock_query_ctx(deps.as_ref(), &env),
         1,
+        General,
         DefaultVoteOption::No,
         40u128,
     );
@@ -168,6 +170,7 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
     assert_proposal_result_amount(
         &mock_query_ctx(deps.as_ref(), &env),
         1,
+        General,
         DefaultVoteOption::No,
         10u128,
     );
@@ -176,6 +179,7 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
     assert_proposal_result_amount(
         &mock_query_ctx(deps.as_ref(), &env),
         1,
+        General,
         DefaultVoteOption::No,
         0u128,
     );
@@ -224,6 +228,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
     assert_proposal_result_amount(
         &mock_query_ctx(deps.as_ref(), &env),
         1,
+        General,
         DefaultVoteOption::Yes,
         2u128,
     );
@@ -232,6 +237,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
     assert_proposal_result_amount(
         &mock_query_ctx(deps.as_ref(), &env),
         1,
+        General,
         DefaultVoteOption::Yes,
         1u128,
     );
@@ -240,6 +246,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
     assert_proposal_result_amount(
         &mock_query_ctx(deps.as_ref(), &env),
         1,
+        General,
         DefaultVoteOption::Yes,
         0u128,
     );

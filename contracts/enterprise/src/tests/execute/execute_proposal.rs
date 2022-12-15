@@ -2,6 +2,7 @@ use crate::contract::{
     execute, instantiate, query_asset_whitelist, query_dao_info, query_nft_whitelist,
     query_proposal,
 };
+use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     assert_member_voting_power, assert_proposal_result_amount, assert_proposal_status,
     create_proposal, create_stub_proposal, existing_token_dao_membership, instantiate_stub_dao,
@@ -297,6 +298,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
+        General,
     )?;
     assert_eq!(proposal.proposal.proposal_actions, proposal_actions);
 
@@ -435,9 +437,9 @@ fn execute_passed_proposal_to_update_multisig_members_does_not_change_votes_on_e
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_result_amount(&qctx, 1, Yes, 3u128);
+    assert_proposal_result_amount(&qctx, 1, General, Yes, 3u128);
 
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 1 })?;
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 1 }, General)?;
     assert_eq!(proposal.total_votes_available, Uint128::from(6u8));
 
     Ok(())
@@ -512,10 +514,10 @@ fn execute_passed_proposal_to_update_multisig_members_updates_votes_on_active_pr
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_result_amount(&qctx, 2, Yes, 5u128);
-    assert_proposal_result_amount(&qctx, 2, No, 2u128);
+    assert_proposal_result_amount(&qctx, 2, General, Yes, 5u128);
+    assert_proposal_result_amount(&qctx, 2, General, No, 2u128);
 
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 2 })?;
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 2 }, General)?;
     assert_eq!(proposal.total_votes_available, Uint128::from(11u8));
 
     Ok(())
@@ -875,6 +877,7 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
+        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(190u128));
 
@@ -889,6 +892,7 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
+        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(195u128));
 
@@ -908,6 +912,7 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
+        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(195u128));
 
@@ -953,6 +958,7 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
+        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(300u128));
 
@@ -964,7 +970,7 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
     )?;
 
     // has to be rejected, since at the time of expiration, there were 300 total votes, 100 cast, and quorum is 50%
-    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, Rejected);
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, Rejected, General);
 
     Ok(())
 }
@@ -1034,6 +1040,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
+        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(20u128));
 
@@ -1067,6 +1074,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 2 },
+        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(21u128));
 
@@ -1078,7 +1086,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     )?;
 
     // should pass, since at the time of expiration, there were 21 total votes and 11 cast for 'yes'
-    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 2, Passed);
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 2, Passed, General);
 
     Ok(())
 }

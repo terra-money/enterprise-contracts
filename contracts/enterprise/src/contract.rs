@@ -484,7 +484,7 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
                 Timestamp::from_seconds(u64::MAX),
                 msg,
                 None,
-                General,
+                Council,
             )?;
 
             Ok(Response::new()
@@ -1317,9 +1317,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::ListMultisigMembers(msg) => to_binary(&query_list_multisig_members(qctx, msg)?)?,
         QueryMsg::AssetWhitelist {} => to_binary(&query_asset_whitelist(qctx)?)?,
         QueryMsg::NftWhitelist {} => to_binary(&query_nft_whitelist(qctx)?)?,
-        QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params)?)?,
-        QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params)?)?,
-        QueryMsg::ProposalStatus(params) => to_binary(&query_proposal_status(qctx, params)?)?,
+        QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params, General)?)?,
+        QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params, General)?)?,
+        QueryMsg::ProposalStatus(params) => {
+            to_binary(&query_proposal_status(qctx, params, General)?)?
+        }
+        QueryMsg::CouncilProposal(params) => to_binary(&query_proposal(qctx, params, Council)?)?,
+        QueryMsg::CouncilProposals(params) => to_binary(&query_proposals(qctx, params, Council)?)?,
+        QueryMsg::CouncilProposalStatus(params) => {
+            to_binary(&query_proposal_status(qctx, params, Council)?)?
+        }
         QueryMsg::MemberVote(params) => to_binary(&query_member_vote(qctx, params)?)?,
         QueryMsg::ProposalVotes(params) => to_binary(&query_proposal_votes(qctx, params)?)?,
         QueryMsg::UserStake(params) => to_binary(&query_user_stake(qctx, params)?)?,
@@ -1369,7 +1376,11 @@ pub fn query_nft_whitelist(qctx: QueryContext) -> DaoResult<NftWhitelistResponse
     Ok(NftWhitelistResponse { nfts })
 }
 
-pub fn query_proposal(qctx: QueryContext, msg: ProposalParams) -> DaoResult<ProposalResponse> {
+pub fn query_proposal(
+    qctx: QueryContext,
+    msg: ProposalParams,
+    proposal_type: ProposalType,
+) -> DaoResult<ProposalResponse> {
     let deps = qctx.deps;
     let poll = query_poll(
         &qctx,
@@ -1378,12 +1389,16 @@ pub fn query_proposal(qctx: QueryContext, msg: ProposalParams) -> DaoResult<Prop
         },
     )?;
 
-    let proposal = poll_to_proposal_response(deps, &qctx.env, &poll.poll)?;
+    let proposal = poll_to_proposal_response(deps, &qctx.env, &poll.poll, proposal_type)?;
 
     Ok(proposal)
 }
 
-pub fn query_proposals(qctx: QueryContext, msg: ProposalsParams) -> DaoResult<ProposalsResponse> {
+pub fn query_proposals(
+    qctx: QueryContext,
+    msg: ProposalsParams,
+    proposal_type: ProposalType,
+) -> DaoResult<ProposalsResponse> {
     let deps = qctx.deps;
     let polls = query_polls(
         &qctx,
@@ -1405,7 +1420,7 @@ pub fn query_proposals(qctx: QueryContext, msg: ProposalsParams) -> DaoResult<Pr
     let proposals = polls
         .polls
         .into_iter()
-        .map(|poll| poll_to_proposal_response(deps, &qctx.env, &poll))
+        .map(|poll| poll_to_proposal_response(deps, &qctx.env, &poll, proposal_type.clone()))
         .collect::<DaoResult<Vec<ProposalResponse>>>()?;
 
     Ok(ProposalsResponse { proposals })
@@ -1414,6 +1429,7 @@ pub fn query_proposals(qctx: QueryContext, msg: ProposalsParams) -> DaoResult<Pr
 pub fn query_proposal_status(
     qctx: QueryContext,
     msg: ProposalStatusParams,
+    proposal_type: ProposalType,
 ) -> DaoResult<ProposalStatusResponse> {
     let poll_status = query_poll_status(&qctx, msg.proposal_id)?;
 
@@ -1421,8 +1437,7 @@ pub fn query_proposal_status(
         PollStatus::InProgress { .. } => ProposalStatus::InProgress,
         PollStatus::Passed { .. } => {
             // TODO: add tests for this
-            if is_proposal_executed(qctx.deps.storage, msg.proposal_id, General)? {
-                // TODO: add branch for Council, too
+            if is_proposal_executed(qctx.deps.storage, msg.proposal_id, proposal_type)? {
                 ProposalStatus::Executed
             } else {
                 ProposalStatus::Passed
@@ -1438,8 +1453,13 @@ pub fn query_proposal_status(
     })
 }
 
-fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<ProposalResponse> {
-    let actions_opt = get_proposal_actions(deps.storage, poll.id, General)?; // TODO: add branch for Council type as well
+fn poll_to_proposal_response(
+    deps: Deps,
+    env: &Env,
+    poll: &Poll,
+    proposal_type: ProposalType,
+) -> DaoResult<ProposalResponse> {
+    let actions_opt = get_proposal_actions(deps.storage, poll.id, proposal_type.clone())?;
 
     let actions = match actions_opt {
         None => {

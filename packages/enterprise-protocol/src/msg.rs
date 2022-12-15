@@ -76,6 +76,12 @@ pub enum QueryMsg {
     Proposals(ProposalsParams),
     #[returns(ProposalStatusResponse)]
     ProposalStatus(ProposalStatusParams),
+    #[returns(ProposalResponse)]
+    CouncilProposal(ProposalParams),
+    #[returns(ProposalsResponse)]
+    CouncilProposals(ProposalsParams),
+    #[returns(ProposalStatusResponse)]
+    CouncilProposalStatus(ProposalStatusParams),
     #[returns(MemberVoteResponse)]
     MemberVote(MemberVoteParams),
     #[returns(ProposalVotesResponse)]

@@ -2,6 +2,7 @@ use crate::contract::{
     execute, instantiate, query_member_info, query_proposal, query_total_staked_amount,
     query_user_stake,
 };
+use crate::proposals::ProposalType;
 use common::cw::testing::{mock_info, mock_query_ctx};
 use common::cw::QueryContext;
 use cosmwasm_std::{to_binary, Decimal, DepsMut, Env, MessageInfo, Response, Uint128};
@@ -330,25 +331,31 @@ pub fn assert_proposal_status(
     qctx: &QueryContext,
     proposal_id: ProposalId,
     status: ProposalStatus,
+    proposal_type: ProposalType,
 ) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id }, proposal_type).unwrap();
     assert_eq!(proposal.proposal.status, status);
 }
 
 pub fn assert_proposal_result_amount(
     qctx: &QueryContext,
     proposal_id: ProposalId,
+    proposal_type: ProposalType,
     result: DefaultVoteOption,
     amount: u128,
 ) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id }, proposal_type).unwrap();
     assert_eq!(proposal.results.get(&(result as u8)), Some(&amount));
 }
 
-pub fn assert_proposal_no_votes(qctx: &QueryContext, proposal_id: ProposalId) {
+pub fn assert_proposal_no_votes(
+    qctx: &QueryContext,
+    proposal_id: ProposalId,
+    proposal_type: ProposalType,
+) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id }, proposal_type).unwrap();
     assert_eq!(proposal.results, BTreeMap::new());
 }

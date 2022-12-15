@@ -164,7 +164,7 @@ pub struct ProposalDeposit {
     pub amount: Uint128,
 }
 
-// TODO: try to find a language construct allowing us to merge this with ProposalAction
+// TODO: try to find a (Rust) language construct allowing us to merge this with ProposalAction
 #[cw_serde]
 #[derive(Display)]
 pub enum ProposalActionType {

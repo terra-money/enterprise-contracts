@@ -1,4 +1,5 @@
 use crate::contract::{execute, instantiate, query_proposals};
+use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     create_proposal, create_stub_proposal, existing_nft_dao_membership,
     existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
@@ -82,6 +83,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
             start_after: None,
             limit: None,
         },
+        General,
     )?;
 
     assert_eq!(
@@ -162,6 +164,7 @@ fn create_proposal_nft_dao() -> DaoResult<()> {
             start_after: None,
             limit: None,
         },
+        General,
     )?;
 
     assert_eq!(
