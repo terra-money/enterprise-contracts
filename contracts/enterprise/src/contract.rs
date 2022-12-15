@@ -43,7 +43,7 @@ use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil, DaoGovConfig,
+    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
     DaoInfoResponse, DaoMembershipInfo, DaoType, ExecuteMsgsMsg, ExecuteProposalMsg,
     ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse,
@@ -53,9 +53,9 @@ use enterprise_protocol::api::{
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
     ProposalsResponse, QueryMemberInfoMsg, ReleaseAt, RequestFundingFromDaoMsg, TokenUserStake,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateGovConfigMsg,
-    UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake, UserStakeParams,
-    UserStakeResponse,
+    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
+    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake,
+    UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     InsufficientStakedAssets, InvalidArgument, NotMultisigMember, ProposalAlreadyExecuted,
@@ -91,7 +91,7 @@ use DaoType::Token;
 use NewMembershipInfo::{NewMultisig, NewNft, NewToken};
 use ProposalAction::{
     ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao, UpdateAssetWhitelist,
-    UpdateGovConfig, UpdateMetadata, UpdateNftWhitelist, UpgradeDao,
+    UpdateCouncil, UpdateGovConfig, UpdateMetadata, UpdateNftWhitelist, UpgradeDao,
 };
 
 // version info for migration info
@@ -495,6 +495,7 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
     match proposal_action {
         UpdateMetadata(_) => ProposalActionType::UpdateMetadata,
         UpdateGovConfig(_) => ProposalActionType::UpdateGovConfig,
+        UpdateCouncil(_) => ProposalActionType::UpdateCouncil,
         UpdateAssetWhitelist(_) => ProposalActionType::UpdateAssetWhitelist,
         UpdateNftWhitelist(_) => ProposalActionType::UpdateNftWhitelist,
         RequestFundingFromDao(_) => ProposalActionType::RequestFundingFromDao,
@@ -767,6 +768,7 @@ fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoRe
         submsgs.append(&mut match proposal_action {
             UpdateMetadata(msg) => update_metadata(ctx, msg)?,
             UpdateGovConfig(msg) => update_gov_config(ctx, msg)?,
+            UpdateCouncil(msg) => update_council(ctx, msg)?,
             RequestFundingFromDao(msg) => execute_funding_from_dao(msg)?,
             UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx, msg)?,
             UpdateNftWhitelist(msg) => update_nft_whitelist(ctx, msg)?,
@@ -846,6 +848,13 @@ fn update_gov_config(ctx: &mut Context, msg: UpdateGovConfigMsg) -> DaoResult<Ve
     }
 
     DAO_GOV_CONFIG.save(ctx.deps.storage, &gov_config)?;
+
+    Ok(vec![])
+}
+
+// TODO: test
+fn update_council(ctx: &mut Context, msg: UpdateCouncilMsg) -> DaoResult<Vec<SubMsg>> {
+    DAO_COUNCIL.save(ctx.deps.storage, &msg.dao_council)?;
 
     Ok(vec![])
 }

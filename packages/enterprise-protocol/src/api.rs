@@ -170,6 +170,7 @@ pub struct ProposalDeposit {
 pub enum ProposalActionType {
     UpdateMetadata,
     UpdateGovConfig,
+    UpdateCouncil,
     UpdateAssetWhitelist,
     UpdateNftWhitelist,
     RequestFundingFromDao,
@@ -182,6 +183,7 @@ pub enum ProposalActionType {
 pub enum ProposalAction {
     UpdateMetadata(UpdateMetadataMsg),
     UpdateGovConfig(UpdateGovConfigMsg),
+    UpdateCouncil(UpdateCouncilMsg),
     UpdateAssetWhitelist(UpdateAssetWhitelistMsg),
     UpdateNftWhitelist(UpdateNftWhitelistMsg),
     RequestFundingFromDao(RequestFundingFromDaoMsg),
@@ -207,6 +209,11 @@ pub struct UpdateGovConfigMsg {
     pub voting_duration: ModifyValue<Uint64>,
     pub unlocking_period: ModifyValue<Duration>,
     pub minimum_deposit: ModifyValue<Option<Uint128>>,
+}
+
+#[cw_serde]
+pub struct UpdateCouncilMsg {
+    pub dao_council: Option<DaoCouncil>,
 }
 
 #[cw_serde]
