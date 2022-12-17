@@ -98,6 +98,7 @@ pub fn end_poll(
         poll_id,
         maximum_available_votes,
         error_if_already_ended,
+        allow_early_ending,
     }: EndPollParams,
 ) -> PollResult<()> {
     let now = ctx.env.block.time;
@@ -105,7 +106,10 @@ pub fn end_poll(
         .may_load(ctx.deps.storage, poll_id.into())?
         .ok_or(PollNotFound { poll_id })?;
 
-    validate_voting_period_ended(now, poll.ends_at)?;
+    if !allow_early_ending {
+        validate_voting_period_ended(now, poll.ends_at)?;
+    }
+
     if error_if_already_ended {
         validate_not_already_ended(&poll)?;
     }
@@ -130,7 +134,7 @@ mod tests {
         PollStatusFilter, PollType, VoteOutcome, VotingScheme,
     };
     use crate::error::PollError;
-    use crate::error::PollError::PollAlreadyEnded;
+    use crate::error::PollError::{PollAlreadyEnded, WithinVotingPeriod};
     use crate::execute::{cast_vote, create_poll, end_poll, initialize_poll_engine};
     use crate::helpers::mock_poll;
     use crate::query::query_poll_status;
@@ -270,6 +274,7 @@ mod tests {
             poll_id: poll.id.into(),
             maximum_available_votes: Uint128::from(10u8),
             error_if_already_ended: true,
+            allow_early_ending: false,
         };
         end_poll(&mut ctx, params).unwrap();
 
@@ -307,6 +312,7 @@ mod tests {
             poll_id: poll.id.into(),
             maximum_available_votes: Uint128::from(1u8),
             error_if_already_ended: true,
+            allow_early_ending: false,
         };
         let res = end_poll(&mut ctx, params);
 
@@ -373,10 +379,80 @@ mod tests {
             poll_id: poll.id.into(),
             maximum_available_votes: Uint128::from(1u8),
             error_if_already_ended: false,
+            allow_early_ending: false,
         };
         let res = end_poll(&mut ctx, params);
 
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn cannot_end_poll_before_expiration() {
+        let mut deps = mock_dependencies();
+        let mut ctx = mock_ctx(deps.as_mut());
+        GOV_STATE
+            .save(ctx.deps.storage, &GovState::default())
+            .unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.results = BTreeMap::from([(0, 10)]);
+        poll.deposit_amount = 10;
+        poll.ends_at = Timestamp::from_nanos(3);
+        polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
+
+        ctx.env.block.time = Timestamp::from_nanos(2);
+        let params = EndPollParams {
+            poll_id: poll.id.into(),
+            maximum_available_votes: Uint128::from(10u8),
+            error_if_already_ended: true,
+            allow_early_ending: false,
+        };
+        let res = end_poll(&mut ctx, params);
+
+        assert!(res.is_err());
+        assert_eq!(
+            WithinVotingPeriod {
+                now: Timestamp::from_nanos(2),
+                ends_at: Timestamp::from_nanos(3),
+            },
+            res.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn can_end_poll_before_expiration_with_allow_early_ending_flag_set_to_true() {
+        let mut deps = mock_dependencies();
+        let mut ctx = mock_ctx(deps.as_mut());
+        GOV_STATE
+            .save(ctx.deps.storage, &GovState::default())
+            .unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.results = BTreeMap::from([(0, 10)]);
+        poll.deposit_amount = 10;
+        poll.ends_at = Timestamp::from_nanos(3);
+        polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
+
+        ctx.env.block.time = Timestamp::from_nanos(2);
+        let params = EndPollParams {
+            poll_id: poll.id.into(),
+            maximum_available_votes: Uint128::from(10u8),
+            error_if_already_ended: true,
+            allow_early_ending: true,
+        };
+        end_poll(&mut ctx, params).unwrap();
+
+        let res = query_poll_status(&ctx.to_query(), poll.id).unwrap();
+
+        assert_eq!(
+            PollStatus::Passed {
+                outcome: 0,
+                count: Uint128::new(10),
+            },
+            res.status
+        );
+        assert_eq!(poll.results, res.results);
+        assert_eq!(poll.ends_at, res.ends_at);
     }
 
     #[test]
@@ -438,6 +514,7 @@ mod tests {
             poll_id: poll.id.into(),
             maximum_available_votes: Uint128::from(372u16),
             error_if_already_ended: true,
+            allow_early_ending: false,
         };
         let _ = end_poll(&mut ctx, end_params).unwrap();
         let poll = polls().load(ctx.deps.storage, poll.id).unwrap();

@@ -385,8 +385,6 @@ fn create_proposal(
     validate_deposit(&gov_config, &deposit)?;
     validate_proposal_actions(ctx.deps.as_ref(), &msg.proposal_actions)?;
 
-    let ends_at = ctx.env.block.time.plus_seconds(gov_config.vote_duration);
-
     let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
 
     let base_response = Response::new()
@@ -395,8 +393,7 @@ fn create_proposal(
 
     match dao_type {
         Token => {
-            let poll_id =
-                create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit, General)?;
+            let poll_id = create_poll_engine_proposal(ctx, gov_config, msg, deposit, General)?;
 
             Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
         }
@@ -405,8 +402,7 @@ fn create_proposal(
                 return Err(DaoError::NotNftOwner {});
             }
 
-            let poll_id =
-                create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit, General)?;
+            let poll_id = create_poll_engine_proposal(ctx, gov_config, msg, deposit, General)?;
 
             Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
         }
@@ -418,8 +414,7 @@ fn create_proposal(
                 return Err(NotMultisigMember {});
             }
 
-            let poll_id =
-                create_poll_engine_proposal(ctx, gov_config, ends_at, msg, deposit, General)?;
+            let poll_id = create_poll_engine_proposal(ctx, gov_config, msg, deposit, General)?;
 
             Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
         }
@@ -487,19 +482,11 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
             let council_gov_config = DaoGovConfig {
                 quorum: Decimal::percent(75u64),
                 threshold: Decimal::percent(50u64),
-                vote_duration: u64::MAX, // TODO: probably not going to work
                 ..gov_config
             };
 
-            // TODO: this ends_at is not good probably, won't allow ending of the proposal even when targets are reached
-            let proposal_id = create_poll_engine_proposal(
-                ctx,
-                council_gov_config,
-                Timestamp::from_seconds(u64::MAX),
-                msg,
-                None,
-                Council,
-            )?;
+            let proposal_id =
+                create_poll_engine_proposal(ctx, council_gov_config, msg, None, Council)?;
 
             Ok(Response::new()
                 .add_attribute("action", "create_council_proposal")
@@ -525,11 +512,11 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
 fn create_poll_engine_proposal(
     ctx: &mut Context,
     gov_config: DaoGovConfig,
-    ends_at: Timestamp,
     msg: CreateProposalMsg,
     deposit: Option<ProposalDeposit>,
     proposal_type: ProposalType,
 ) -> DaoResult<PollId> {
+    let ends_at = ctx.env.block.time.plus_seconds(gov_config.vote_duration);
     let poll = create_poll(
         ctx,
         CreatePollParams {
@@ -739,12 +726,18 @@ fn execute_poll_engine_proposal(
         return Err(NoVotesAvailable);
     }
 
+    let allow_early_ending = match proposal_type {
+        General => false,
+        Council => true,
+    };
+
     end_poll(
         ctx,
         EndPollParams {
             poll_id: msg.proposal_id.into(),
             maximum_available_votes: total_available_votes,
             error_if_already_ended: false,
+            allow_early_ending,
         },
     )?;
 

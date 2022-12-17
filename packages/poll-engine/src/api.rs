@@ -145,8 +145,10 @@ pub struct EndPollParams {
     pub poll_id: Uint64,
     /// Maximum total votes that could be cast, used to determine whether quorum was reached.
     pub maximum_available_votes: Uint128,
-    /// Whether ending a poll should error if the poll had already ended
+    /// Whether ending the poll should error if the poll had already ended
     pub error_if_already_ended: bool,
+    /// Whether ending the poll should be allowed before its expiration is reached
+    pub allow_early_ending: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
