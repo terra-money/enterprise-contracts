@@ -31,7 +31,7 @@ use cosmwasm_std::{
     StdResult, Storage, SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw20::{Cw20ReceiveMsg, Logo, MinterResponse};
+use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw3::VoterListResponse;
 use cw721::{Cw721ReceiveMsg, TokensResponse};
@@ -212,11 +212,23 @@ fn instantiate_new_token_dao(
             logo: marketing.logo_url.map(Logo::Url),
         });
 
+    let initial_balances = match info.initial_dao_balance {
+        None => info.initial_token_balances,
+        Some(initial_dao_balance) => {
+            let mut token_balances = info.initial_token_balances;
+            token_balances.push(Cw20Coin {
+                address: ctx.env.contract.address.to_string(),
+                amount: initial_dao_balance,
+            });
+            token_balances
+        }
+    };
+
     let create_token_msg = cw20_base::msg::InstantiateMsg {
         name: info.token_name.clone(),
         symbol: info.token_symbol,
         decimals: info.token_decimals,
-        initial_balances: info.initial_token_balances,
+        initial_balances,
         mint: info.token_mint.or_else(|| {
             Some(MinterResponse {
                 minter: ctx.env.contract.address.to_string(),

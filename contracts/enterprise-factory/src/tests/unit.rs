@@ -136,6 +136,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         token_symbol: TOKEN_SYMBOL.to_string(),
         token_decimals: TOKEN_DECIMALS,
         initial_token_balances: initial_token_balances.clone(),
+        initial_dao_balance: Some(456u128.into()),
         token_mint: token_mint.clone(),
         token_marketing: Some(token_marketing_info.clone()),
     }));
@@ -179,6 +180,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                             token_symbol: TOKEN_SYMBOL.to_string(),
                             token_decimals: TOKEN_DECIMALS,
                             initial_token_balances,
+                            initial_dao_balance: Some(456u128.into()),
                             token_mint,
                             token_marketing: Some(token_marketing_info),
                         }),

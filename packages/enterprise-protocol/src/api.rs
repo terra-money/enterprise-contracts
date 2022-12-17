@@ -118,6 +118,8 @@ pub struct NewTokenMembershipInfo {
     pub token_symbol: String,
     pub token_decimals: u8,
     pub initial_token_balances: Vec<Cw20Coin>,
+    /// Optional amount of tokens to be minted to the DAO's address
+    pub initial_dao_balance: Option<Uint128>,
     pub token_mint: Option<MinterResponse>,
     pub token_marketing: Option<TokenMarketingInfo>,
 }

@@ -283,8 +283,11 @@ fn instantiate_existing_multisig_membership_with_not_valid_cw3_contract_fails() 
 #[test]
 fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResult<()> {
     let mut deps = mock_dependencies();
-    let env = mock_env();
+    let mut env = mock_env();
     let info = mock_info("sender", &[]);
+
+    let dao_addr = "dao_addr";
+    env.contract.address = Addr::unchecked(dao_addr);
 
     let membership_info = NewToken(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
@@ -294,6 +297,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
             address: "my_address".to_string(),
             amount: 1234u128.into(),
         }],
+        initial_dao_balance: Some(456u128.into()),
         token_mint: Some(MinterResponse {
             minter: MINTER.to_string(),
             cap: Some(123456789u128.into()),
@@ -337,10 +341,16 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
                     name: TOKEN_NAME.to_string(),
                     symbol: TOKEN_SYMBOL.to_string(),
                     decimals: TOKEN_DECIMALS,
-                    initial_balances: vec![Cw20Coin {
-                        address: "my_address".to_string(),
-                        amount: 1234u128.into()
-                    },],
+                    initial_balances: vec![
+                        Cw20Coin {
+                            address: "my_address".to_string(),
+                            amount: 1234u128.into()
+                        },
+                        Cw20Coin {
+                            address: dao_addr.to_string(),
+                            amount: 456u128.into()
+                        },
+                    ],
                     mint: Some(MinterResponse {
                         minter: MINTER.to_string(),
                         cap: Some(123456789u128.into())
@@ -390,6 +400,7 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
                 amount: Uint128::zero(),
             },
         ],
+        initial_dao_balance: None,
         token_mint: Some(MinterResponse {
             minter: MINTER.to_string(),
             cap: Some(123456789u128.into()),
@@ -436,6 +447,7 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
         token_symbol: TOKEN_SYMBOL.to_string(),
         token_decimals: TOKEN_DECIMALS,
         initial_token_balances: vec![],
+        initial_dao_balance: None,
         token_mint: None,
         token_marketing: None,
     });
