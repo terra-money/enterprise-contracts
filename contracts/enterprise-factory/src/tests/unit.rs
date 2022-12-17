@@ -517,6 +517,7 @@ fn stub_config() -> Config {
 fn anonymous_dao_metadata() -> DaoMetadata {
     DaoMetadata {
         name: "DAO name".to_string(),
+        description: Some("DAO description".to_string()),
         logo: Logo::Url("logo_url".to_string()),
         socials: DaoSocialData {
             github_username: Some("github_url".to_string()),

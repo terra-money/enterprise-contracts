@@ -29,6 +29,7 @@ pub enum DaoType {
 #[cw_serde]
 pub struct DaoMetadata {
     pub name: String,
+    pub description: Option<String>,
     pub logo: Logo,
     pub socials: DaoSocialData,
 }
@@ -195,6 +196,7 @@ pub enum ProposalAction {
 #[cw_serde]
 pub struct UpdateMetadataMsg {
     pub name: ModifyValue<String>,
+    pub description: ModifyValue<Option<String>>,
     pub logo: ModifyValue<Logo>,
     pub github_username: ModifyValue<Option<String>>,
     pub discord_username: ModifyValue<Option<String>>,

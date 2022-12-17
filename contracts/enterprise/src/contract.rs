@@ -822,6 +822,10 @@ fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Vec<S
         metadata.name = name;
     }
 
+    if let Change(description) = msg.description {
+        metadata.description = description;
+    }
+
     if let Change(logo) = msg.logo {
         metadata.logo = logo;
     }

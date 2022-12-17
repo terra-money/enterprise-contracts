@@ -63,6 +63,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
 
     let metadata = DaoMetadata {
         name: "Dao name".to_string(),
+        description: Some("Dao description".to_string()),
         logo: Logo::Url("logo_url".to_string()),
         socials: DaoSocialData {
             github_username: Some("github".to_string()),

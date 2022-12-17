@@ -37,6 +37,7 @@ pub const PROPOSAL_DESCRIPTION: &str = "Description";
 pub fn stub_dao_metadata() -> DaoMetadata {
     DaoMetadata {
         name: "Stub DAO".to_string(),
+        description: None,
         logo: Logo::None,
         socials: DaoSocialData {
             github_username: None,

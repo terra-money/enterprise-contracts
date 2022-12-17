@@ -184,6 +184,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         }),
         UpdateMetadata(UpdateMetadataMsg {
             name: Change("Updated name".to_string()),
+            description: Change(Some("Updated description".to_string())),
             logo: Change(Logo::Url("updated_logo_url".to_string())),
             github_username: Change(Some("updated_github".to_string())),
             discord_username: Change(Some("updated_discord".to_string())),
@@ -269,6 +270,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         dao_info.metadata,
         DaoMetadata {
             name: "Updated name".to_string(),
+            description: Some("Updated description".to_string()),
             logo: Logo::Url("updated_logo_url".to_string()),
             socials: DaoSocialData {
                 github_username: Some("updated_github".to_string()),
