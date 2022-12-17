@@ -1,3 +1,4 @@
+use crate::migration::migrate_v1_to_v2;
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -1946,10 +1947,11 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
     let old_code_version = DAO_CODE_VERSION.load(deps.storage)?;
 
     if old_code_version == Uint64::from(1u8) {
-        DAO_COUNCIL.save(deps.storage, &None)?;
+        migrate_v1_to_v2(deps.storage)?;
     }
 
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new())
 }
