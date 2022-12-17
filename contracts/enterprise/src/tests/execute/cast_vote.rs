@@ -44,7 +44,7 @@ fn cast_vote_token_dao() -> DaoResult<()> {
     create_stub_proposal(deps.as_mut(), &env, &info)?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, InProgress, General);
+    assert_proposal_status(&qctx, 1, General, InProgress);
     assert_proposal_no_votes(&qctx, 1, General);
 
     execute(
@@ -78,7 +78,7 @@ fn cast_vote_token_dao() -> DaoResult<()> {
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, InProgress, General);
+    assert_proposal_status(&qctx, 1, General, InProgress);
     assert_proposal_result_amount(&qctx, 1, General, Yes, 12);
     assert_proposal_result_amount(&qctx, 1, General, Abstain, 14);
     assert_proposal_result_amount(&qctx, 1, General, Veto, 7);
@@ -113,7 +113,7 @@ fn cast_vote_nft_dao() -> DaoResult<()> {
     create_stub_proposal(deps.as_mut(), &env, &info)?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, InProgress, General);
+    assert_proposal_status(&qctx, 1, General, InProgress);
     assert_proposal_no_votes(&qctx, 1, General);
 
     execute(
@@ -127,7 +127,7 @@ fn cast_vote_nft_dao() -> DaoResult<()> {
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, InProgress, General);
+    assert_proposal_status(&qctx, 1, General, InProgress);
     assert_proposal_result_amount(&qctx, 1, General, No, 2);
 
     Ok(())
@@ -150,7 +150,7 @@ fn cast_vote_multisig_dao() -> DaoResult<()> {
     create_stub_proposal(deps.as_mut(), &env, &mock_info("member1", &vec![]))?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, InProgress, General);
+    assert_proposal_status(&qctx, 1, General, InProgress);
     assert_proposal_no_votes(&qctx, 1, General);
 
     execute(
@@ -174,7 +174,7 @@ fn cast_vote_multisig_dao() -> DaoResult<()> {
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, InProgress, General);
+    assert_proposal_status(&qctx, 1, General, InProgress);
     assert_proposal_result_amount(&qctx, 1, General, No, 1);
     assert_proposal_result_amount(&qctx, 1, General, Yes, 2);
 

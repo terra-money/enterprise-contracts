@@ -1,14 +1,15 @@
 use crate::contract::{
-    execute, instantiate, query_asset_whitelist, query_dao_info, query_nft_whitelist,
-    query_proposal,
+    execute, instantiate, query_asset_whitelist, query_dao_info, query_list_multisig_members,
+    query_nft_whitelist, query_proposal,
 };
 use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     assert_member_voting_power, assert_proposal_result_amount, assert_proposal_status,
-    create_proposal, create_stub_proposal, existing_token_dao_membership, instantiate_stub_dao,
-    multisig_dao_membership_info_with_members, stake_tokens, stub_dao_gov_config,
-    stub_dao_metadata, stub_enterprise_factory_contract, stub_token_info, unstake_tokens,
-    vote_on_proposal, CW20_ADDR, PROPOSAL_DESCRIPTION, PROPOSAL_TITLE,
+    create_proposal, create_stub_proposal, existing_nft_dao_membership,
+    existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
+    stake_nfts, stake_tokens, stub_dao_gov_config, stub_dao_metadata,
+    stub_enterprise_factory_contract, stub_token_info, unstake_nfts, unstake_tokens,
+    vote_on_proposal, CW20_ADDR, NFT_ADDR, PROPOSAL_DESCRIPTION, PROPOSAL_TITLE,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
@@ -26,9 +27,9 @@ use enterprise_protocol::api::ProposalAction::{
 use enterprise_protocol::api::ProposalStatus::{Passed, Rejected};
 use enterprise_protocol::api::{
     CreateProposalMsg, DaoGovConfig, DaoMetadata, DaoSocialData, ExecuteMsgsMsg,
-    ExecuteProposalMsg, Logo, ModifyMultisigMembershipMsg, MultisigMember, ProposalAction,
-    ProposalParams, RequestFundingFromDaoMsg, UpdateAssetWhitelistMsg, UpdateGovConfigMsg,
-    UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
+    ExecuteProposalMsg, ListMultisigMembersMsg, Logo, ModifyMultisigMembershipMsg, MultisigMember,
+    ProposalAction, ProposalParams, RequestFundingFromDaoMsg, UpdateAssetWhitelistMsg,
+    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{ExecuteProposal, Receive};
@@ -368,6 +369,31 @@ fn execute_passed_proposal_to_update_multisig_members_changes_membership() -> Da
     assert_member_voting_power(&qctx, "member2", Decimal::from_ratio(2u8, 11u8));
     assert_member_voting_power(&qctx, "member3", Decimal::from_ratio(5u8, 11u8));
     assert_member_voting_power(&qctx, "member4", Decimal::from_ratio(4u8, 11u8));
+
+    let list_members = query_list_multisig_members(
+        mock_query_ctx(deps.as_ref(), &env),
+        ListMultisigMembersMsg {
+            start_after: None,
+            limit: None,
+        },
+    )?;
+    assert_eq!(
+        list_members.members,
+        vec![
+            MultisigMember {
+                address: "member2".to_string(),
+                weight: 2u8.into()
+            },
+            MultisigMember {
+                address: "member3".to_string(),
+                weight: 5u8.into()
+            },
+            MultisigMember {
+                address: "member4".to_string(),
+                weight: 4u8.into()
+            },
+        ]
+    );
 
     Ok(())
 }
@@ -970,7 +996,80 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
     )?;
 
     // has to be rejected, since at the time of expiration, there were 300 total votes, 100 cast, and quorum is 50%
-    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, Rejected, General);
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, General, Rejected);
+
+    Ok(())
+}
+
+// TODO: rename
+#[test]
+fn execute_proposal_uses_total_votes_available_at_expiration2() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    let info = mock_info("user", &[]);
+
+    env.block.time = Timestamp::from_seconds(12000);
+    let dao_gov_config = DaoGovConfig {
+        vote_duration: 1000,
+        quorum: Decimal::from_ratio(50u8, 100u8),
+        threshold: Decimal::from_ratio(50u8, 100u8),
+        ..stub_dao_gov_config()
+    };
+
+    deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
+
+    deps.querier
+        .with_nft_holders(&[(NFT_ADDR, &[("user1", &["token1"])])]);
+
+    instantiate_stub_dao(
+        deps.as_mut(),
+        &env,
+        &info,
+        existing_nft_dao_membership(NFT_ADDR),
+        Some(dao_gov_config),
+    )?;
+
+    create_stub_proposal(deps.as_mut(), &env, &mock_info("user1", &vec![]))?;
+
+    stake_nfts(&mut deps.as_mut(), &env, NFT_ADDR, "user1", vec!["token1"])?;
+    stake_nfts(
+        &mut deps.as_mut(),
+        &env,
+        NFT_ADDR,
+        "user2",
+        vec!["token2", "token3"],
+    )?;
+
+    vote_on_proposal(deps.as_mut(), &env, "user1", 1, Yes)?;
+    vote_on_proposal(deps.as_mut(), &env, "user2", 1, Yes)?;
+
+    env.block.time = env.block.time.plus_seconds(1001);
+
+    unstake_nfts(deps.as_mut(), &env, "user2", vec!["token2", "token3"])?;
+    stake_nfts(
+        &mut deps.as_mut(),
+        &env,
+        NFT_ADDR,
+        "user3",
+        vec!["token4", "token5", "token6", "token7", "token8", "token9"],
+    )?;
+
+    let proposal = query_proposal(
+        mock_query_ctx(deps.as_ref(), &env),
+        ProposalParams { proposal_id: 1 },
+        General,
+    )?;
+    assert_eq!(proposal.total_votes_available, Uint128::from(3u128));
+
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        ExecuteProposal(ExecuteProposalMsg { proposal_id: 1 }),
+    )?;
+
+    // has to be passed, since at the time of expiration, there were 3 total available votes, 3 cast for yes, and quorum is 50%
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, General, Passed);
 
     Ok(())
 }
@@ -1001,6 +1100,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
         Some(dao_gov_config.clone()),
     )?;
 
+    // proposal to modify members' weights
     create_proposal(
         deps.as_mut(),
         &env,
@@ -1008,19 +1108,27 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
         None,
         None,
         vec![ModifyMultisigMembership(ModifyMultisigMembershipMsg {
-            edit_members: vec![MultisigMember {
-                address: "member3".to_string(),
-                weight: Uint128::from(11u64),
-            }],
+            edit_members: vec![
+                MultisigMember {
+                    address: "member2".to_string(),
+                    weight: Uint128::from(20u64),
+                },
+                MultisigMember {
+                    address: "member3".to_string(),
+                    weight: Uint128::from(11u64),
+                },
+            ],
         })],
     )?;
 
     env.block.time = env.block.time.plus_seconds(10);
 
+    // actual proposal whose votes are to be tested
     create_stub_proposal(deps.as_mut(), &env, &mock_info("member1", &vec![]))?;
 
     env.block.time = env.block.time.plus_seconds(10);
 
+    // proposal to modify members' weights that will execute after proposal being tested ends
     create_proposal(
         deps.as_mut(),
         &env,
@@ -1029,7 +1137,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
         None,
         vec![ModifyMultisigMembership(ModifyMultisigMembershipMsg {
             edit_members: vec![MultisigMember {
-                address: "member3".to_string(),
+                address: "member2".to_string(),
                 weight: Uint128::zero(),
             }],
         })],
@@ -1044,7 +1152,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(20u128));
 
-    env.block.time = env.block.time.plus_seconds(980);
+    env.block.time = env.block.time.plus_seconds(981);
 
     execute(
         deps.as_mut(),
@@ -1054,7 +1162,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     )?;
 
     vote_on_proposal(deps.as_mut(), &env, "member3", 2, Yes)?;
-    vote_on_proposal(deps.as_mut(), &env, "member3", 3, Yes)?;
+    vote_on_proposal(deps.as_mut(), &env, "member2", 3, Yes)?;
 
     env.block.time = env.block.time.plus_seconds(20);
 
@@ -1067,7 +1175,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
 
     assert_member_voting_power(
         &mock_query_ctx(deps.as_ref(), &env),
-        "member3",
+        "member2",
         Decimal::zero(),
     );
 
@@ -1076,7 +1184,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
         ProposalParams { proposal_id: 2 },
         General,
     )?;
-    assert_eq!(proposal.total_votes_available, Uint128::from(21u128));
+    assert_eq!(proposal.total_votes_available, Uint128::from(36u128));
 
     execute(
         deps.as_mut(),
@@ -1085,8 +1193,15 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
         ExecuteProposal(ExecuteProposalMsg { proposal_id: 2 }),
     )?;
 
-    // should pass, since at the time of expiration, there were 21 total votes and 11 cast for 'yes'
-    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 2, Passed, General);
+    let proposal = query_proposal(
+        mock_query_ctx(deps.as_ref(), &env),
+        ProposalParams { proposal_id: 2 },
+        General,
+    )?;
+    assert_eq!(proposal.total_votes_available, Uint128::from(36u128));
+
+    // should not pass, since at the time of expiration there were 36 total votes and 11 cast for 'yes' with 50% quorum
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 2, General, Rejected);
 
     Ok(())
 }

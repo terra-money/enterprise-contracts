@@ -10,6 +10,7 @@ use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use enterprise_protocol::api::CastVoteMsg;
 use enterprise_protocol::api::DaoType::Multisig;
+use enterprise_protocol::error::DaoError::{InvalidStakingAsset, NoNftTokenStaked, Unauthorized};
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg;
 use poll_engine::api::DefaultVoteOption;
@@ -35,7 +36,7 @@ fn unstake_token_dao() -> DaoResult<()> {
 
     // cannot unstake CW721 in token DAO
     let result = unstake_nfts(deps.as_mut(), &env, "sender", vec!["token1"]);
-    assert!(result.is_err());
+    assert_eq!(result, Err(InvalidStakingAsset));
 
     // cannot unstake more than staked
     let result = unstake_tokens(deps.as_mut(), &env, "sender", 51u8);
@@ -76,11 +77,16 @@ fn unstake_nft_dao() -> DaoResult<()> {
 
     // cannot unstake CW20 in NFT DAO
     let result = unstake_tokens(deps.as_mut(), &env, "sender", 1u8);
-    assert!(result.is_err());
+    assert_eq!(result, Err(InvalidStakingAsset));
 
     // cannot unstake if they don't have it staked
     let result = unstake_nfts(deps.as_mut(), &env, "sender", vec!["token4"]);
-    assert!(result.is_err());
+    assert_eq!(
+        result,
+        Err(NoNftTokenStaked {
+            token_id: "token4".to_string()
+        })
+    );
 
     unstake_nfts(deps.as_mut(), &env, "sender", vec!["token1"])?;
     unstake_nfts(deps.as_mut(), &env, "sender", vec!["token3"])?;
@@ -91,6 +97,31 @@ fn unstake_nft_dao() -> DaoResult<()> {
         vec!["token2".to_string()],
     );
     assert_total_stake(mock_query_ctx(deps.as_ref(), &env), 1u8);
+
+    Ok(())
+}
+
+#[test]
+fn unstake_nft_staked_by_another_user_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
+
+    instantiate_stub_dao(
+        deps.as_mut(),
+        &env,
+        &info,
+        existing_nft_dao_membership(NFT_ADDR),
+        None,
+    )?;
+
+    stake_nfts(&mut deps.as_mut(), &env, NFT_ADDR, "user1", vec!["token1"])?;
+
+    // cannot unstake if another user staked it
+    let result = unstake_nfts(deps.as_mut(), &env, "user2", vec!["token1"]);
+    assert_eq!(result, Err(Unauthorized));
 
     Ok(())
 }

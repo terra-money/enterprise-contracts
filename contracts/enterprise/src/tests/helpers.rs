@@ -330,8 +330,8 @@ pub fn assert_member_voting_power(qctx: &QueryContext, member: &str, voting_powe
 pub fn assert_proposal_status(
     qctx: &QueryContext,
     proposal_id: ProposalId,
-    status: ProposalStatus,
     proposal_type: ProposalType,
+    status: ProposalStatus,
 ) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
     let proposal = query_proposal(qctx, ProposalParams { proposal_id }, proposal_type).unwrap();
