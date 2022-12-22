@@ -18,6 +18,7 @@ pub fn mock_poll_with_id(id: u64) -> Poll {
             threshold: Decimal::percent(50),
             n_outcomes: 3,
             rejecting_outcomes: vec![1],
+            abstaining_outcomes: vec![2],
         },
         scheme: VotingScheme::CoinVoting,
         status: PollStatus::InProgress {

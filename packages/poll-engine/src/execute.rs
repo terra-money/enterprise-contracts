@@ -172,6 +172,7 @@ mod tests {
                 threshold: Decimal::percent(50),
                 n_outcomes: 2,
                 rejecting_outcomes: vec![1],
+                abstaining_outcomes: vec![2],
             },
             scheme: VotingScheme::CoinVoting,
             ends_at: ends_at.clone(),
@@ -185,6 +186,7 @@ mod tests {
             PollType::Multichoice {
                 n_outcomes: 2,
                 rejecting_outcomes: vec![1],
+                abstaining_outcomes: vec![2],
                 threshold: Decimal::percent(50),
             },
             poll.poll_type
@@ -469,6 +471,7 @@ mod tests {
             threshold: Default::default(),
             n_outcomes: 4,
             rejecting_outcomes: vec![1],
+            abstaining_outcomes: vec![],
         };
         poll.results = BTreeMap::from([(0, 10)]);
         polls().save(ctx.deps.storage, poll.id, &poll).unwrap();

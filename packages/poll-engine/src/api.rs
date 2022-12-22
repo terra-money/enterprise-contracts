@@ -73,6 +73,10 @@ pub enum PollType {
         /// List of possible winning outcomes that will cause a poll's status to become "Rejected".
         /// Can for example be used to create a Yes/No poll.
         rejecting_outcomes: Vec<u8>,
+        /// List of possible outcomes that will not count toward either passing or rejecting a poll,
+        /// i.e. not affect threshold, but rather just count towards the quorum.
+        /// Can for example be used to create a Yes/No/Abstain poll.
+        abstaining_outcomes: Vec<u8>,
     },
 }
 
