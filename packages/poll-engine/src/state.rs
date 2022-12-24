@@ -746,6 +746,7 @@ impl Poll {
     }
 
     /// Returns the most voted outcome/count, if any.
+    /// Does not consider abstaining outcomes.
     ///
     /// # Example
     ///
@@ -755,12 +756,20 @@ impl Poll {
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
+    /// # use cosmwasm_std::Decimal;
+    /// use poll_engine::api::PollType::Multichoice;
     /// # use poll_engine::state::{GOV_STATE, GovState, MostVoted};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// # let mut poll = mock_poll(&mut deps.storage);
-    /// # poll.results = BTreeMap::from([(1, 10), (2, 3), (0, 1)]);
+    /// # poll.poll_type = Multichoice {
+    /// #     threshold: Decimal::default(),
+    /// #     n_outcomes: 5,
+    /// #     rejecting_outcomes: vec![1],
+    /// #     abstaining_outcomes: vec![2],
+    /// # };
+    /// # poll.results = BTreeMap::from([(1, 10), (2, 11), (0, 1)]);
     /// // let poll = Poll::new(...); // with the voting results [(1, 10), (2, 3), (0, 1)]
     ///
     /// assert_eq!(MostVoted::Some((1, 10)), poll.most_voted());
@@ -772,6 +781,16 @@ impl Poll {
         let top_two = self
             .results
             .iter()
+            .filter(|result| {
+                match &self.poll_type {
+                    PollType::Default => true,
+                    // filter out abstaining outcomes for multi-choice polls
+                    PollType::Multichoice {
+                        abstaining_outcomes,
+                        ..
+                    } => !abstaining_outcomes.contains(result.0),
+                }
+            })
             .sorted_by(|&(_, a), &(_, b)| b.cmp(a))
             .take(2)
             .map(|(outcome, count)| (*outcome, *count))
@@ -888,6 +907,7 @@ mod tests {
 
     use common::cw::testing::mock_ctx;
 
+    use crate::api::PollType::Multichoice;
     use crate::api::{PollRejectionReason, PollStatus, PollType};
     use crate::error::PollError::OutcomeOutOfBound;
     use crate::helpers::mock_poll;
@@ -901,14 +921,15 @@ mod tests {
         GOV_STATE.save(ctx.deps.storage, &state).unwrap();
 
         let mut poll = mock_poll(ctx.deps.storage);
-        poll.results = BTreeMap::from([(1, 3), (2, 8), (3, 2)]);
+        poll.quorum = Decimal::percent(10);
+        poll.results = BTreeMap::from([(1, 2), (2, 8), (3, 3)]);
 
         assert_eq!(
             PollStatus::Passed {
-                outcome: 2,
-                count: Uint128::new(8),
+                outcome: 3,
+                count: Uint128::new(3),
             },
-            poll.final_status(20u8.into()).unwrap()
+            poll.final_status(130u8.into()).unwrap()
         );
     }
 
@@ -920,7 +941,8 @@ mod tests {
         GOV_STATE.save(ctx.deps.storage, &state).unwrap();
 
         let mut poll = mock_poll(ctx.deps.storage);
-        poll.results = BTreeMap::from([(1, 10), (2, 4), (3, 2)]);
+        poll.quorum = Decimal::percent(10);
+        poll.results = BTreeMap::from([(1, 10), (2, 13), (3, 2)]);
 
         assert_eq!(
             PollStatus::Rejected {
@@ -928,7 +950,7 @@ mod tests {
                 count: Some(Uint128::new(10)),
                 reason: PollRejectionReason::IsRejectingOutcome
             },
-            poll.final_status(20u8.into()).unwrap()
+            poll.final_status(250u8.into()).unwrap()
         );
     }
 
@@ -965,11 +987,38 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(2),
-                count: Some(Uint128::new(3)),
+                outcome: Some(1),
+                count: Some(Uint128::new(1)),
                 reason: PollRejectionReason::QuorumNotReached
             },
             poll.final_status(15u8.into()).unwrap()
+        );
+    }
+
+    #[test]
+    fn final_status_rejected_abstained_to_quorum_but_threshold_not_reached() {
+        let mut deps = mock_dependencies();
+        let ctx = mock_ctx(deps.as_mut());
+        let state = GovState::default();
+        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.quorum = Decimal::percent(50);
+        poll.poll_type = Multichoice {
+            threshold: Decimal::percent(76),
+            n_outcomes: 3,
+            rejecting_outcomes: vec![1],
+            abstaining_outcomes: vec![2],
+        };
+        poll.results = BTreeMap::from([(0, 3), (1, 1), (2, 9)]);
+
+        assert_eq!(
+            PollStatus::Rejected {
+                outcome: Some(0),
+                count: Some(Uint128::new(3)),
+                reason: PollRejectionReason::ThresholdNotReached
+            },
+            poll.final_status(21u8.into()).unwrap()
         );
     }
 
