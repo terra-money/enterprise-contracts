@@ -68,6 +68,7 @@ use enterprise_protocol::msg::{
 };
 use itertools::Itertools;
 use nft_staking::NFT_STAKES;
+use poll_engine::api::DefaultVoteOption::Veto;
 use poll_engine::api::VoteOutcome::Default;
 use poll_engine::api::{
     CastVoteParams, CreatePollParams, DefaultVoteOption, EndPollParams, PollId, PollParams,
@@ -103,11 +104,6 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 1;
 
 pub const CODE_VERSION: u64 = 2;
-
-pub const PROPOSAL_OUTCOME_YES: u8 = 0;
-pub const PROPOSAL_OUTCOME_NO: u8 = 1;
-pub const PROPOSAL_OUTCOME_ABSTAIN: u8 = 2;
-pub const PROPOSAL_OUTCOME_VETO: u8 = 3;
 
 pub const DEFAULT_QUERY_LIMIT: u32 = 50u32;
 pub const MAX_QUERY_LIMIT: u32 = 100u32;
@@ -524,11 +520,7 @@ fn create_poll_engine_proposal(
             deposit_amount: Uint128::zero(),
             label: msg.title,
             description: msg.description.unwrap_or_default(),
-            poll_type: PollType::Multichoice {
-                n_outcomes: 4,
-                rejecting_outcomes: vec![PROPOSAL_OUTCOME_NO, PROPOSAL_OUTCOME_VETO],
-                abstaining_outcomes: vec![PROPOSAL_OUTCOME_ABSTAIN],
-            },
+            poll_type: PollType::Default,
             scheme: VotingScheme::CoinVoting,
             ends_at,
             quorum: gov_config.quorum,
@@ -774,7 +766,7 @@ fn execute_poll_engine_proposal(
             )?;
 
             // return deposits only if not vetoed
-            if Some(PROPOSAL_OUTCOME_VETO) != outcome {
+            if Some(Veto as u8) != outcome {
                 return_proposal_deposit_submsgs(ctx, msg.proposal_id)?
             } else {
                 let proposal_deposit = PROPOSAL_INFOS

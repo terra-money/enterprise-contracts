@@ -1,7 +1,4 @@
-use crate::contract::{
-    query_member_vote, query_proposal_votes, PROPOSAL_OUTCOME_ABSTAIN, PROPOSAL_OUTCOME_NO,
-    PROPOSAL_OUTCOME_YES,
-};
+use crate::contract::{query_member_vote, query_proposal_votes};
 use crate::tests::helpers::{
     create_stub_proposal, existing_nft_dao_membership, existing_token_dao_membership,
     instantiate_stub_dao, multisig_dao_membership_info_with_members, stake_nfts, stake_tokens,
@@ -50,7 +47,7 @@ fn vote_on_proposal_in_token_dao_stores_member_vote() -> DaoResult<()> {
         Vote {
             poll_id: 1,
             voter: Addr::unchecked("user"),
-            outcome: PROPOSAL_OUTCOME_NO,
+            outcome: No as u8,
             amount: 123u128,
         }
     );
@@ -68,7 +65,7 @@ fn vote_on_proposal_in_token_dao_stores_member_vote() -> DaoResult<()> {
         vec![Vote {
             poll_id: 1,
             voter: Addr::unchecked("user"),
-            outcome: PROPOSAL_OUTCOME_NO,
+            outcome: No as u8,
             amount: 123u128,
         }]
     );
@@ -119,7 +116,7 @@ fn vote_on_proposal_in_nft_dao_stores_member_vote() -> DaoResult<()> {
         Vote {
             poll_id: 1,
             voter: Addr::unchecked("user"),
-            outcome: PROPOSAL_OUTCOME_YES,
+            outcome: Yes as u8,
             amount: 2u128,
         }
     );
@@ -137,7 +134,7 @@ fn vote_on_proposal_in_nft_dao_stores_member_vote() -> DaoResult<()> {
         vec![Vote {
             poll_id: 1,
             voter: Addr::unchecked("user"),
-            outcome: PROPOSAL_OUTCOME_YES,
+            outcome: Yes as u8,
             amount: 2u128,
         }]
     );
@@ -177,7 +174,7 @@ fn vote_on_proposal_in_multisig_dao_stores_member_vote() -> DaoResult<()> {
         Vote {
             poll_id: 1,
             voter: Addr::unchecked(member),
-            outcome: PROPOSAL_OUTCOME_ABSTAIN,
+            outcome: Abstain as u8,
             amount: 101u128,
         }
     );
@@ -195,7 +192,7 @@ fn vote_on_proposal_in_multisig_dao_stores_member_vote() -> DaoResult<()> {
         vec![Vote {
             poll_id: 1,
             voter: Addr::unchecked("member"),
-            outcome: PROPOSAL_OUTCOME_ABSTAIN,
+            outcome: Abstain as u8,
             amount: 101u128,
         }]
     );
