@@ -4,7 +4,7 @@ use cosmwasm_std::{Decimal, Timestamp};
 
 use common::cw::Context;
 
-use crate::api::{CreatePollParams, PollStatus, PollType};
+use crate::api::{CreatePollParams, PollStatus};
 use crate::error::PollError::{OutsideVotingPeriod, PollAlreadyEnded, WithinVotingPeriod};
 use crate::error::*;
 use crate::state::Poll;
@@ -27,24 +27,6 @@ pub fn validate_create_poll(ctx: &mut Context, params: &CreatePollParams) -> Pol
         CreatePollParams { ends_at, .. } if now.ge(ends_at) => Err(PollError::InvalidArgument {
             msg: format!("Invalid end time, must be {} < {} (now)", ends_at, now),
         }),
-
-        CreatePollParams {
-            poll_type:
-                PollType::Multichoice {
-                    rejecting_outcomes,
-                    n_outcomes,
-                    ..
-                },
-            ..
-        } if rejecting_outcomes.len() >= (*n_outcomes) as usize => {
-            Err(PollError::InvalidArgument {
-                msg: format!(
-                    "Invalid rejecting outcomes count {}, must be count < {} (n_outcomes)",
-                    rejecting_outcomes.len(),
-                    n_outcomes,
-                ),
-            })
-        }
 
         _ => Ok(()),
     }

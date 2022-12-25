@@ -72,8 +72,7 @@ use poll_engine::api::DefaultVoteOption::Veto;
 use poll_engine::api::VoteOutcome::Default;
 use poll_engine::api::{
     CastVoteParams, CreatePollParams, DefaultVoteOption, EndPollParams, PollId, PollParams,
-    PollStatus, PollStatusFilter, PollType, PollVoterParams, PollVotersParams, PollsParams,
-    VotingScheme,
+    PollStatus, PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VotingScheme,
 };
 use poll_engine::error::PollError;
 use poll_engine::error::PollError::PollInProgress;
@@ -520,7 +519,6 @@ fn create_poll_engine_proposal(
             deposit_amount: Uint128::zero(),
             label: msg.title,
             description: msg.description.unwrap_or_default(),
-            poll_type: PollType::Default,
             scheme: VotingScheme::CoinVoting,
             ends_at,
             quorum: gov_config.quorum,

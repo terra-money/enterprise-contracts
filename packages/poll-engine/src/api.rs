@@ -59,25 +59,6 @@ impl From<VoteOutcome> for u8 {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum PollType {
-    Default,
-
-    /// Sentiment voting.
-    Multichoice {
-        /// Number of outcomes, 0-indexed.
-        n_outcomes: u8,
-        /// List of possible winning outcomes that will cause a poll's status to become "Rejected".
-        /// Can for example be used to create a Yes/No poll.
-        rejecting_outcomes: Vec<u8>,
-        /// List of possible outcomes that will not count toward either passing or rejecting a poll,
-        /// i.e. not affect threshold, but rather just count towards the quorum.
-        /// Can for example be used to create a Yes/No/Abstain poll.
-        abstaining_outcomes: Vec<u8>,
-    },
-}
-
 /// Unique identifier for a vote, (voter, poll_id, outcome).
 pub type VoteUid = (Addr, PollId, u8);
 
@@ -117,8 +98,6 @@ pub struct CreatePollParams {
     pub label: String,
     /// User-defined label for the poll.
     pub description: String,
-    /// Type of the poll
-    pub poll_type: PollType,
     /// The poll type, e.g. "CoinVoting"
     pub scheme: VotingScheme,
     /// End-time for poll.

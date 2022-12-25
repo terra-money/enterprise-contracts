@@ -131,7 +131,7 @@ mod tests {
 
     use crate::api::{
         CastVoteParams, CreatePollParams, EndPollParams, PollRejectionReason, PollStatus,
-        PollStatusFilter, PollType, VoteOutcome, VotingScheme,
+        PollStatusFilter, VoteOutcome, VotingScheme,
     };
     use crate::error::PollError;
     use crate::error::PollError::{PollAlreadyEnded, WithinVotingPeriod};
@@ -169,11 +169,6 @@ mod tests {
             deposit_amount: Uint128::new(1000000),
             label: "some poll".to_string(),
             description: "some description".to_string(),
-            poll_type: PollType::Multichoice {
-                n_outcomes: 2,
-                rejecting_outcomes: vec![1],
-                abstaining_outcomes: vec![2],
-            },
             scheme: VotingScheme::CoinVoting,
             ends_at: ends_at.clone(),
             quorum: quorum.clone(),
@@ -183,14 +178,6 @@ mod tests {
         create_poll(&mut ctx, params).unwrap();
 
         let poll = polls().load(ctx.deps.storage, 1).unwrap();
-        assert_eq!(
-            PollType::Multichoice {
-                n_outcomes: 2,
-                rejecting_outcomes: vec![1],
-                abstaining_outcomes: vec![2],
-            },
-            poll.poll_type
-        );
         assert_eq!(PollStatus::InProgress { ends_at }, poll.status);
         assert_eq!(current_time, poll.started_at);
         assert_eq!(quorum, poll.quorum);
@@ -469,11 +456,6 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.deposit_amount = 10;
-        poll.poll_type = PollType::Multichoice {
-            n_outcomes: 4,
-            rejecting_outcomes: vec![1],
-            abstaining_outcomes: vec![],
-        };
         poll.results = BTreeMap::from([(0, 10)]);
         polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
 
