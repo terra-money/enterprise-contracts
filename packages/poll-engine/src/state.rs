@@ -817,13 +817,18 @@ impl Poll {
             self.quorum_reached(&self.quorum, maximum_available_votes.u128()),
             self.threshold_reached(),
         ) {
-            (MostVoted::Some(most_voted), true, true)
-                if most_voted.0 == No as u8 || most_voted.0 == Veto as u8 =>
-            {
+            (MostVoted::Some(most_voted), true, true) if most_voted.0 == No as u8 => {
                 PollStatus::Rejected {
                     outcome: Some(most_voted.0),
                     count: Some(most_voted.1.into()),
                     reason: PollRejectionReason::IsRejectingOutcome,
+                }
+            }
+            (MostVoted::Some(most_voted), true, true) if most_voted.0 == Veto as u8 => {
+                PollStatus::Rejected {
+                    outcome: Some(most_voted.0),
+                    count: Some(most_voted.1.into()),
+                    reason: PollRejectionReason::IsVetoOutcome,
                 }
             }
             (MostVoted::Some(most_voted), true, true) => PollStatus::Passed {
@@ -875,7 +880,7 @@ mod tests {
 
     use common::cw::testing::mock_ctx;
 
-    use crate::api::VoteOutcome::{Abstain, No, Yes};
+    use crate::api::VoteOutcome::{Abstain, No, Veto, Yes};
     use crate::api::{PollRejectionReason, PollStatus};
     use crate::helpers::mock_poll;
     use crate::state::{GovState, GOV_STATE};
@@ -902,27 +907,6 @@ mod tests {
     }
 
     #[test]
-    fn final_status_passed_default_type() {
-        // TODO: rename?
-        let mut deps = mock_dependencies();
-        let ctx = mock_ctx(deps.as_mut());
-        let state = GovState::default();
-        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
-
-        let mut poll = mock_poll(ctx.deps.storage);
-        poll.quorum = Decimal::percent(10);
-        poll.results = BTreeMap::from([(No as u8, 2), (Abstain as u8, 8), (Yes as u8, 3)]);
-
-        assert_eq!(
-            PollStatus::Passed {
-                outcome: Yes as u8,
-                count: Uint128::new(3),
-            },
-            poll.final_status(130u8.into()).unwrap()
-        );
-    }
-
-    #[test]
     fn final_status_rejected_is_rejecting_outcome() {
         let mut deps = mock_dependencies();
         let ctx = mock_ctx(deps.as_mut());
@@ -931,7 +915,7 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.quorum = Decimal::percent(10);
-        poll.results = BTreeMap::from([(1, 10), (2, 13), (3, 2)]);
+        poll.results = BTreeMap::from([(No as u8, 10), (Abstain as u8, 13), (Veto as u8, 2)]);
 
         assert_eq!(
             PollStatus::Rejected {
@@ -944,8 +928,7 @@ mod tests {
     }
 
     #[test]
-    fn final_status_rejected_is_rejecting_outcome_default_type() {
-        // TODO: rename?
+    fn final_status_rejected_is_veto_outcome() {
         let mut deps = mock_dependencies();
         let ctx = mock_ctx(deps.as_mut());
         let state = GovState::default();
@@ -953,13 +936,13 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.quorum = Decimal::percent(10);
-        poll.results = BTreeMap::from([(No as u8, 10), (Abstain as u8, 13), (Yes as u8, 2)]);
+        poll.results = BTreeMap::from([(No as u8, 2), (Abstain as u8, 13), (Veto as u8, 10)]);
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(1),
+                outcome: Some(3),
                 count: Some(Uint128::new(10)),
-                reason: PollRejectionReason::IsRejectingOutcome
+                reason: PollRejectionReason::IsVetoOutcome,
             },
             poll.final_status(250u8.into()).unwrap()
         );
@@ -1017,29 +1000,6 @@ mod tests {
         poll.quorum = Decimal::percent(50);
         poll.threshold = Decimal::percent(76);
         poll.results = BTreeMap::from([(0, 3), (1, 1), (2, 9)]);
-
-        assert_eq!(
-            PollStatus::Rejected {
-                outcome: Some(0),
-                count: Some(Uint128::new(3)),
-                reason: PollRejectionReason::ThresholdNotReached
-            },
-            poll.final_status(21u8.into()).unwrap()
-        );
-    }
-
-    #[test]
-    fn final_status_rejected_abstained_to_quorum_but_threshold_not_reached_default_type() {
-        // TODO: rename?
-        let mut deps = mock_dependencies();
-        let ctx = mock_ctx(deps.as_mut());
-        let state = GovState::default();
-        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
-
-        let mut poll = mock_poll(ctx.deps.storage);
-        poll.quorum = Decimal::percent(10);
-        poll.threshold = Decimal::percent(76);
-        poll.results = BTreeMap::from([(Yes as u8, 3), (No as u8, 1), (Abstain as u8, 9)]);
 
         assert_eq!(
             PollStatus::Rejected {
