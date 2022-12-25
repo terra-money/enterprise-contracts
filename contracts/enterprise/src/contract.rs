@@ -525,7 +525,6 @@ fn create_poll_engine_proposal(
             label: msg.title,
             description: msg.description.unwrap_or_default(),
             poll_type: PollType::Multichoice {
-                threshold: gov_config.threshold,
                 n_outcomes: 4,
                 rejecting_outcomes: vec![PROPOSAL_OUTCOME_NO, PROPOSAL_OUTCOME_VETO],
                 abstaining_outcomes: vec![PROPOSAL_OUTCOME_ABSTAIN],
@@ -533,6 +532,7 @@ fn create_poll_engine_proposal(
             scheme: VotingScheme::CoinVoting,
             ends_at,
             quorum: gov_config.quorum,
+            threshold: gov_config.threshold,
         },
     )?;
 

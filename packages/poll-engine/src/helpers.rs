@@ -15,7 +15,6 @@ pub fn mock_poll_with_id(id: u64) -> Poll {
         label: "some label".to_string(),
         description: "some description".to_string(),
         poll_type: PollType::Multichoice {
-            threshold: Decimal::percent(50),
             n_outcomes: 3,
             rejecting_outcomes: vec![1],
             abstaining_outcomes: vec![2],
@@ -27,6 +26,7 @@ pub fn mock_poll_with_id(id: u64) -> Poll {
         started_at: Default::default(),
         ends_at: Timestamp::from_nanos(3),
         quorum: Default::default(),
+        threshold: Decimal::percent(50),
         results: Default::default(),
     }
 }

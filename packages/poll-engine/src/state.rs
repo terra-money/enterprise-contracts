@@ -9,6 +9,7 @@ use serde_with::serde_as;
 
 use common::cw::RangeArgs;
 
+use crate::api::DefaultVoteOption::{Abstain, No, Veto};
 use crate::api::{
     CreatePollParams, PollId, PollRejectionReason, PollStatus, PollStatusFilter, PollType, Vote,
     VotingScheme,
@@ -61,8 +62,12 @@ pub struct Poll {
     pub started_at: Timestamp,
     /// End-time of poll.
     pub ends_at: Timestamp,
-    /// Quorum to be reached for the poll to be valid
+    /// Quorum to be reached for the poll to be valid.
+    /// Calculated as (total votes) / (total available votes).
     pub quorum: Decimal,
+    /// Threshold ratio for a vote option to be the winning one.
+    /// Calculated as (votes for certain option) / (total available votes - abstaining votes).
+    pub threshold: Decimal,
 
     #[schemars(with = "Vec<(u8, Uint128)>")]
     #[serde_as(as = "Vec<(_, _)>")]
@@ -119,17 +124,19 @@ pub trait PollStorage {
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// let poll_id = 123;
     /// let quorum = Decimal::from_ratio(3u8, 10u8);
+    /// let threshold = Decimal::percent(50);
     /// let initial_poll = Poll::new(
     ///     &mut deps.as_mut(),
     ///     Addr::unchecked("proposer"),
     ///     10000,
     ///     "some label",
     ///     "some description",
-    ///     PollType::Multichoice { threshold: Decimal::percent(50), n_outcomes: 2, rejecting_outcomes: vec![], abstaining_outcomes: vec![]},
+    ///     PollType::Multichoice { n_outcomes: 2, rejecting_outcomes: vec![], abstaining_outcomes: vec![]},
     ///     VotingScheme::CoinVoting,
     ///     Timestamp::from_seconds(5),
     ///     Timestamp::from_seconds(10),
     ///     quorum,
+    ///     threshold,
     /// )?;
     /// polls().save(&mut deps.storage, poll_id, &initial_poll)?;
     /// let loaded_poll = polls().load_poll(&deps.storage, poll_id)?;
@@ -155,17 +162,19 @@ pub trait PollStorage {
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// let poll_id = 123;
     /// let quorum = Decimal::from_ratio(3u8, 10u8);
+    /// let threshold = Decimal::percent(50);
     /// let initial_poll = Poll::new(
     ///     &mut deps.as_mut(),
     ///     Addr::unchecked("proposer"),
     ///     10000,
     ///     "some label",
     ///     "some description",
-    ///     PollType::Multichoice { threshold: Decimal::percent(50), n_outcomes: 2, rejecting_outcomes: vec![], abstaining_outcomes: vec![]},
+    ///     PollType::Multichoice { n_outcomes: 2, rejecting_outcomes: vec![], abstaining_outcomes: vec![]},
     ///     VotingScheme::CoinVoting,
     ///     Timestamp::from_seconds(5),
     ///     Timestamp::from_seconds(10),
     ///     quorum,
+    ///     threshold,
     /// )?;
     /// polls().save(&mut deps.storage, poll_id, &initial_poll)?;
     /// let loaded_poll = polls().load_poll(&mut deps.storage, poll_id)?;
@@ -422,6 +431,7 @@ impl Poll {
         started_at: Timestamp,
         ends_at: Timestamp,
         quorum: Decimal,
+        threshold: Decimal,
     ) -> PollResult<Self> {
         Ok(Poll {
             id: GOV_STATE.increment_poll_id(deps.storage)?,
@@ -435,6 +445,7 @@ impl Poll {
             started_at,
             ends_at,
             quorum,
+            threshold,
             results: BTreeMap::new(),
         })
     }
@@ -456,7 +467,7 @@ impl Poll {
     /// # let mut env = mock_env();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
-    /// # let poll_type = PollType::Multichoice { threshold: Decimal::percent(50), n_outcomes: 3, rejecting_outcomes: vec![], abstaining_outcomes: vec![]};
+    /// # let poll_type = PollType::Multichoice { n_outcomes: 3, rejecting_outcomes: vec![], abstaining_outcomes: vec![]};
     /// # let scheme = VotingScheme::CoinVoting;
     /// # let label = "some_label".to_string();
     /// # let description = "some_description".to_string();
@@ -465,6 +476,7 @@ impl Poll {
     /// # env.block.time = started_at;
     /// # let ends_at = Timestamp::from_nanos(3);
     /// # let quorum = Decimal::from_ratio(3u8, 10u8);
+    /// # let threshold = Decimal::percent(50);
     /// # let params = CreatePollParams {
     /// #     proposer: "proposer".to_string(),
     /// #     deposit_amount: Uint128::new(1000),
@@ -474,6 +486,7 @@ impl Poll {
     /// #     scheme,
     /// #     ends_at: ends_at.clone(),
     /// #     quorum: quorum.clone(),
+    /// #     threshold: threshold.clone(),
     /// # };
     /// # let expected = Poll {
     /// #     id: poll_id.into(),
@@ -488,6 +501,7 @@ impl Poll {
     /// #     started_at,
     /// #     ends_at,
     /// #     quorum,
+    /// #     threshold,
     /// #     results: Default::default(),
     /// #     deposit_amount: 1000
     /// # };
@@ -512,6 +526,7 @@ impl Poll {
             env.block.time,
             params.ends_at,
             params.quorum,
+            params.threshold,
         )
     }
 
@@ -620,7 +635,6 @@ impl Poll {
     /// ```
     pub fn threshold_reached(&self) -> bool {
         match self.most_voted() {
-            // TODO: change to most_non_abstain_voted
             MostVoted::None => false,
             MostVoted::Some((_, count)) => self.ge_threshold(count),
             MostVoted::Draw((_, a), (_, b)) => self.ge_threshold(a) && self.ge_threshold(b),
@@ -629,14 +643,9 @@ impl Poll {
 
     /// Checks if the count-to-total-votes ratio is greater than the threshold.
     fn ge_threshold(&self, count: u128) -> bool {
-        match self.poll_type {
-            PollType::Default => true,
-            PollType::Multichoice { threshold, .. } => {
-                Decimal::checked_from_ratio(count, self.total_votes() - self.abstain_votes())
-                    .unwrap_or(Decimal::zero())
-                    .ge(&threshold)
-            }
-        }
+        Decimal::checked_from_ratio(count, self.total_votes() - self.abstain_votes())
+            .unwrap_or(Decimal::zero())
+            .ge(&self.threshold)
     }
 
     /// Determines if the voting quorum has been reached.
@@ -719,7 +728,6 @@ impl Poll {
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// # let mut poll = mock_poll(&mut deps.storage);
     /// # poll.poll_type = PollType::Multichoice {
-    /// #     threshold: Decimal::percent(50),
     /// #     n_outcomes: 3,
     /// #     rejecting_outcomes: vec![1],
     /// #     abstaining_outcomes: vec![2],
@@ -731,18 +739,17 @@ impl Poll {
     /// # }
     /// ```
     pub fn abstain_votes(&self) -> u128 {
-        match &self.poll_type {
-            PollType::Default => 0u128,
-            PollType::Multichoice {
-                abstaining_outcomes,
-                ..
-            } => self
-                .results
-                .iter()
-                .filter(|result| abstaining_outcomes.contains(result.0))
-                .map(|result| result.1)
-                .sum(),
-        }
+        self.results
+            .iter()
+            .filter(|result| match &self.poll_type {
+                PollType::Default => result.0 == &(Abstain as u8),
+                PollType::Multichoice {
+                    abstaining_outcomes,
+                    ..
+                } => abstaining_outcomes.contains(result.0),
+            })
+            .map(|result| result.1)
+            .sum()
     }
 
     /// Returns the most voted outcome/count, if any.
@@ -764,7 +771,6 @@ impl Poll {
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// # let mut poll = mock_poll(&mut deps.storage);
     /// # poll.poll_type = Multichoice {
-    /// #     threshold: Decimal::default(),
     /// #     n_outcomes: 5,
     /// #     rejecting_outcomes: vec![1],
     /// #     abstaining_outcomes: vec![2],
@@ -783,7 +789,7 @@ impl Poll {
             .iter()
             .filter(|result| {
                 match &self.poll_type {
-                    PollType::Default => true,
+                    PollType::Default => result.0 != &(Abstain as u8),
                     // filter out abstaining outcomes for multi-choice polls
                     PollType::Multichoice {
                         abstaining_outcomes,
@@ -858,6 +864,15 @@ impl Poll {
                 count: Some(most_voted.1.into()),
                 reason: PollRejectionReason::IsRejectingOutcome,
             },
+            (PollType::Default, MostVoted::Some(most_voted), true, true)
+                if most_voted.0 == No as u8 || most_voted.0 == Veto as u8 =>
+            {
+                PollStatus::Rejected {
+                    outcome: Some(most_voted.0),
+                    count: Some(most_voted.1.into()),
+                    reason: PollRejectionReason::IsRejectingOutcome,
+                }
+            }
             (_, MostVoted::Some(most_voted), true, true) => PollStatus::Passed {
                 outcome: most_voted.0,
                 count: most_voted.1.into(),
@@ -907,6 +922,7 @@ mod tests {
 
     use common::cw::testing::mock_ctx;
 
+    use crate::api::DefaultVoteOption::{Abstain, No, Yes};
     use crate::api::PollType::Multichoice;
     use crate::api::{PollRejectionReason, PollStatus, PollType};
     use crate::error::PollError::OutcomeOutOfBound;
@@ -934,6 +950,28 @@ mod tests {
     }
 
     #[test]
+    fn final_status_passed_default_type() {
+        // TODO: rename?
+        let mut deps = mock_dependencies();
+        let ctx = mock_ctx(deps.as_mut());
+        let state = GovState::default();
+        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.quorum = Decimal::percent(10);
+        poll.poll_type = PollType::Default;
+        poll.results = BTreeMap::from([(No as u8, 2), (Abstain as u8, 8), (Yes as u8, 3)]);
+
+        assert_eq!(
+            PollStatus::Passed {
+                outcome: Yes as u8,
+                count: Uint128::new(3),
+            },
+            poll.final_status(130u8.into()).unwrap()
+        );
+    }
+
+    #[test]
     fn final_status_rejected_is_rejecting_outcome() {
         let mut deps = mock_dependencies();
         let ctx = mock_ctx(deps.as_mut());
@@ -943,6 +981,29 @@ mod tests {
         let mut poll = mock_poll(ctx.deps.storage);
         poll.quorum = Decimal::percent(10);
         poll.results = BTreeMap::from([(1, 10), (2, 13), (3, 2)]);
+
+        assert_eq!(
+            PollStatus::Rejected {
+                outcome: Some(1),
+                count: Some(Uint128::new(10)),
+                reason: PollRejectionReason::IsRejectingOutcome
+            },
+            poll.final_status(250u8.into()).unwrap()
+        );
+    }
+
+    #[test]
+    fn final_status_rejected_is_rejecting_outcome_default_type() {
+        // TODO: rename?
+        let mut deps = mock_dependencies();
+        let ctx = mock_ctx(deps.as_mut());
+        let state = GovState::default();
+        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.quorum = Decimal::percent(10);
+        poll.poll_type = PollType::Default;
+        poll.results = BTreeMap::from([(No as u8, 10), (Abstain as u8, 13), (Yes as u8, 2)]);
 
         assert_eq!(
             PollStatus::Rejected {
@@ -1004,13 +1065,37 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.quorum = Decimal::percent(50);
+        poll.threshold = Decimal::percent(76);
         poll.poll_type = Multichoice {
-            threshold: Decimal::percent(76),
             n_outcomes: 3,
             rejecting_outcomes: vec![1],
             abstaining_outcomes: vec![2],
         };
         poll.results = BTreeMap::from([(0, 3), (1, 1), (2, 9)]);
+
+        assert_eq!(
+            PollStatus::Rejected {
+                outcome: Some(0),
+                count: Some(Uint128::new(3)),
+                reason: PollRejectionReason::ThresholdNotReached
+            },
+            poll.final_status(21u8.into()).unwrap()
+        );
+    }
+
+    #[test]
+    fn final_status_rejected_abstained_to_quorum_but_threshold_not_reached_default_type() {
+        // TODO: rename?
+        let mut deps = mock_dependencies();
+        let ctx = mock_ctx(deps.as_mut());
+        let state = GovState::default();
+        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.quorum = Decimal::percent(10);
+        poll.threshold = Decimal::percent(76);
+        poll.poll_type = PollType::Default;
+        poll.results = BTreeMap::from([(Yes as u8, 3), (No as u8, 1), (Abstain as u8, 9)]);
 
         assert_eq!(
             PollStatus::Rejected {
@@ -1051,8 +1136,8 @@ mod tests {
         GOV_STATE.save(ctx.deps.storage, &state).unwrap();
 
         let mut poll = mock_poll(ctx.deps.storage);
-        poll.poll_type = PollType::Multichoice {
-            threshold: Decimal::percent(1),
+        poll.threshold = Decimal::percent(1);
+        poll.poll_type = Multichoice {
             n_outcomes: 4,
             rejecting_outcomes: vec![1],
             abstaining_outcomes: vec![],

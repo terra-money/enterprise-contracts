@@ -163,13 +163,13 @@ mod tests {
 
         let ends_at = Timestamp::from_nanos(1015u64);
         let quorum = Decimal::from_ratio(3u8, 10u8);
+        let threshold = Decimal::percent(50);
         let params = CreatePollParams {
             proposer: "proposer".to_string(),
             deposit_amount: Uint128::new(1000000),
             label: "some poll".to_string(),
             description: "some description".to_string(),
             poll_type: PollType::Multichoice {
-                threshold: Decimal::percent(50),
                 n_outcomes: 2,
                 rejecting_outcomes: vec![1],
                 abstaining_outcomes: vec![2],
@@ -177,6 +177,7 @@ mod tests {
             scheme: VotingScheme::CoinVoting,
             ends_at: ends_at.clone(),
             quorum: quorum.clone(),
+            threshold: threshold.clone(),
         };
 
         create_poll(&mut ctx, params).unwrap();
@@ -187,12 +188,13 @@ mod tests {
                 n_outcomes: 2,
                 rejecting_outcomes: vec![1],
                 abstaining_outcomes: vec![2],
-                threshold: Decimal::percent(50),
             },
             poll.poll_type
         );
         assert_eq!(PollStatus::InProgress { ends_at }, poll.status);
         assert_eq!(current_time, poll.started_at);
+        assert_eq!(quorum, poll.quorum);
+        assert_eq!(threshold, poll.threshold);
     }
 
     #[test]
@@ -468,7 +470,6 @@ mod tests {
         let mut poll = mock_poll(ctx.deps.storage);
         poll.deposit_amount = 10;
         poll.poll_type = PollType::Multichoice {
-            threshold: Default::default(),
             n_outcomes: 4,
             rejecting_outcomes: vec![1],
             abstaining_outcomes: vec![],

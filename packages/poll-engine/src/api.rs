@@ -66,8 +66,6 @@ pub enum PollType {
 
     /// Sentiment voting.
     Multichoice {
-        /// Threshold ratio, i.e. sum(most_voted) / total_votes.
-        threshold: Decimal,
         /// Number of outcomes, 0-indexed.
         n_outcomes: u8,
         /// List of possible winning outcomes that will cause a poll's status to become "Rejected".
@@ -127,6 +125,9 @@ pub struct CreatePollParams {
     pub ends_at: Timestamp, // TODO: consider supporting Height as well as Timestamp
     /// Quorum to be reached for the poll to be valid.
     pub quorum: Decimal,
+    /// Threshold ratio for a vote option to be the winning one.
+    /// Calculated as (votes for certain option) / (total available votes - abstaining votes).
+    pub threshold: Decimal,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
