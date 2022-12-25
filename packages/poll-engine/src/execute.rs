@@ -2,7 +2,7 @@ use cosmwasm_std::Uint64;
 
 use common::cw::Context;
 
-use crate::api::{CastVoteParams, CreatePollParams, EndPollParams, Vote};
+use crate::api::{CastVoteParams, CreatePollParams, EndPollParams, Vote, VoteOutcome};
 use crate::error::PollError::PollNotFound;
 use crate::error::*;
 use crate::state::{polls, votes, GovState, Poll, PollStorage, GOV_STATE};
@@ -55,12 +55,10 @@ pub fn cast_vote(
     validate_not_already_ended(&poll)?;
     validate_within_voting_period(ctx.env.block.time, (poll.started_at, poll.ends_at))?;
 
-    let outcome = outcome.into();
-
     let new = Vote {
         poll_id: poll_id.u64(),
         voter: voter.clone(),
-        outcome,
+        outcome: outcome as u8,
         amount: amount.u128(),
     };
     // 3. load potential old voting data
@@ -69,7 +67,7 @@ pub fn cast_vote(
         .update(ctx.deps.storage, key, |old| match old {
             // 5a. if old voting data for same outcome exists, subtract before adding new one to the results
             Some(old) => {
-                poll.decrease_results(old.outcome, old.amount);
+                poll.decrease_results(VoteOutcome::from(old.outcome), old.amount);
                 poll.increase_results(outcome, new.amount)
                     .map_err(|e| e.std_err())?;
                 // 6. also save vote in the voting storage
@@ -128,7 +126,9 @@ mod tests {
     use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 
     use common::cw::testing::mock_ctx;
+    use VoteOutcome::{No, Veto};
 
+    use crate::api::VoteOutcome::Abstain;
     use crate::api::{
         CastVoteParams, CreatePollParams, EndPollParams, PollRejectionReason, PollStatus,
         PollStatusFilter, VoteOutcome, VotingScheme,
@@ -199,7 +199,7 @@ mod tests {
 
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
             amount: Uint128::new(10),
         };
         cast_vote(&mut ctx, params).unwrap();
@@ -229,22 +229,22 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
             amount: Uint128::new(4),
         };
-        let _ = cast_vote(&mut ctx, params).unwrap();
+        cast_vote(&mut ctx, params).unwrap();
 
         // then again
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
             amount: Uint128::new(9),
         };
-        let _ = cast_vote(&mut ctx, params).unwrap();
+        cast_vote(&mut ctx, params).unwrap();
 
         let poll = polls().load(ctx.deps.storage, poll.id).unwrap();
-        assert_eq!(&9, poll.results.get(&1).unwrap());
+        assert_eq!(&9, poll.results.get(&(No as u8)).unwrap());
     }
 
     #[test]
@@ -263,7 +263,7 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(3);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(10u8),
+            maximum_available_votes: 10u8.into(),
             error_if_already_ended: true,
             allow_early_ending: false,
         };
@@ -301,7 +301,7 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(3);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(1u8),
+            maximum_available_votes: Uint128::one(),
             error_if_already_ended: true,
             allow_early_ending: false,
         };
@@ -332,7 +332,7 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(4);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
             amount: Uint128::new(4),
         };
         let result = cast_vote(&mut ctx, params);
@@ -368,7 +368,7 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(3);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(1u8),
+            maximum_available_votes: Uint128::one(),
             error_if_already_ended: false,
             allow_early_ending: false,
         };
@@ -394,7 +394,7 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(10u8),
+            maximum_available_votes: 10u8.into(),
             error_if_already_ended: true,
             allow_early_ending: false,
         };
@@ -427,7 +427,7 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(10u8),
+            maximum_available_votes: 10u8.into(),
             error_if_already_ended: true,
             allow_early_ending: true,
         };
@@ -462,23 +462,23 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
             amount: Uint128::new(10),
         };
         let params2 = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
             amount: Uint128::new(121),
         };
         let params3 = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(2),
-            amount: Uint128::new(131),
+            outcome: Abstain,
+            amount: Uint128::new(110),
         };
         let params4 = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(3),
-            amount: Uint128::new(110),
+            outcome: Veto,
+            amount: Uint128::new(131),
         };
 
         ctx.info.sender = Addr::unchecked("voter_1");
@@ -492,7 +492,7 @@ mod tests {
         let poll = polls().load(ctx.deps.storage, poll.id).unwrap();
 
         // Expected second vote on choice 1 to override first vote
-        let expected_results = BTreeMap::from([(0, 10), (1, 131), (2, 131), (3, 110)]);
+        let expected_results = BTreeMap::from([(0, 10), (1, 131), (2, 110), (3, 131)]);
         assert_eq!(expected_results, poll.results);
 
         ctx.env.block.time = Timestamp::from_nanos(3);
@@ -509,7 +509,7 @@ mod tests {
             PollStatus::Rejected {
                 outcome: None,
                 count: None,
-                reason: PollRejectionReason::OutcomeDraw(1, 2, Uint128::new(131)),
+                reason: PollRejectionReason::OutcomeDraw(No as u8, Veto as u8, Uint128::new(131)),
             },
             poll.status
         );

@@ -13,7 +13,7 @@ use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::error::DaoError::{InvalidStakingAsset, NoNftTokenStaked, Unauthorized};
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg;
-use poll_engine::api::DefaultVoteOption;
+use poll_engine::api::VoteOutcome;
 
 #[test]
 fn unstake_token_dao() -> DaoResult<()> {
@@ -184,7 +184,7 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
         mock_info("user", &vec![]),
         ExecuteMsg::CastVote(CastVoteMsg {
             proposal_id: 1,
-            outcome: DefaultVoteOption::No,
+            outcome: VoteOutcome::No,
         }),
     )?;
 
@@ -193,7 +193,7 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
         &mock_query_ctx(deps.as_ref(), &env),
         1,
         General,
-        DefaultVoteOption::No,
+        VoteOutcome::No,
         40u128,
     );
 
@@ -202,7 +202,7 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
         &mock_query_ctx(deps.as_ref(), &env),
         1,
         General,
-        DefaultVoteOption::No,
+        VoteOutcome::No,
         10u128,
     );
 
@@ -211,7 +211,7 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
         &mock_query_ctx(deps.as_ref(), &env),
         1,
         General,
-        DefaultVoteOption::No,
+        VoteOutcome::No,
         0u128,
     );
 
@@ -251,7 +251,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
         mock_info("user", &vec![]),
         ExecuteMsg::CastVote(CastVoteMsg {
             proposal_id: 1,
-            outcome: DefaultVoteOption::Yes,
+            outcome: VoteOutcome::Yes,
         }),
     )?;
 
@@ -260,7 +260,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
         &mock_query_ctx(deps.as_ref(), &env),
         1,
         General,
-        DefaultVoteOption::Yes,
+        VoteOutcome::Yes,
         2u128,
     );
 
@@ -269,7 +269,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
         &mock_query_ctx(deps.as_ref(), &env),
         1,
         General,
-        DefaultVoteOption::Yes,
+        VoteOutcome::Yes,
         1u128,
     );
 
@@ -278,7 +278,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
         &mock_query_ctx(deps.as_ref(), &env),
         1,
         General,
-        DefaultVoteOption::Yes,
+        VoteOutcome::Yes,
         0u128,
     );
 

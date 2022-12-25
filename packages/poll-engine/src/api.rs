@@ -24,37 +24,22 @@ pub enum VotingScheme {
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, JsonSchema, Display)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
-pub enum DefaultVoteOption {
+// TODO: rename to VoteOption?
+pub enum VoteOutcome {
     Yes = 0,
     No = 1,
     Abstain = 2,
     Veto = 3,
 }
 
-impl From<u8> for DefaultVoteOption {
-    fn from(v: u8) -> DefaultVoteOption {
+impl From<u8> for VoteOutcome {
+    fn from(v: u8) -> VoteOutcome {
         match v {
-            0u8 => DefaultVoteOption::Yes,
-            1u8 => DefaultVoteOption::No,
-            2u8 => DefaultVoteOption::Abstain,
-            3u8 => DefaultVoteOption::Veto,
+            0u8 => VoteOutcome::Yes,
+            1u8 => VoteOutcome::No,
+            2u8 => VoteOutcome::Abstain,
+            3u8 => VoteOutcome::Veto,
             _ => panic!("invalid vote option"),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum VoteOutcome {
-    Default(DefaultVoteOption),
-    Multichoice(u8),
-}
-
-impl From<VoteOutcome> for u8 {
-    fn from(source: VoteOutcome) -> Self {
-        match source {
-            VoteOutcome::Default(opt) => opt as u8,
-            VoteOutcome::Multichoice(outcome) => outcome,
         }
     }
 }
@@ -76,11 +61,11 @@ pub struct Vote {
 }
 
 impl Vote {
-    pub fn new(poll_id: PollId, voter: Addr, outcome: u8, count: u128) -> Self {
+    pub fn new(poll_id: PollId, voter: Addr, outcome: VoteOutcome, count: u128) -> Self {
         Vote {
             poll_id,
             voter,
-            outcome,
+            outcome: outcome as u8,
             amount: count,
         }
     }
@@ -151,6 +136,7 @@ pub enum PollRejectionReason {
     ThresholdNotReached,
     QuorumAndThresholdNotReached,
     IsRejectingOutcome,
+    IsVetoOutcome,
     OutcomeDraw(u8, u8, Uint128),
 }
 

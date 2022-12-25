@@ -9,9 +9,10 @@ use serde_with::serde_as;
 
 use common::cw::RangeArgs;
 
-use crate::api::DefaultVoteOption::{Abstain, No, Veto};
+use crate::api::VoteOutcome::{Abstain, No, Veto};
 use crate::api::{
-    CreatePollParams, PollId, PollRejectionReason, PollStatus, PollStatusFilter, Vote, VotingScheme,
+    CreatePollParams, PollId, PollRejectionReason, PollStatus, PollStatusFilter, Vote, VoteOutcome,
+    VotingScheme,
 };
 use crate::error::*;
 
@@ -247,9 +248,10 @@ pub trait VoteStorage {
     /// # use poll_engine::api::Vote;
     /// # use poll_engine::state::votes;
     /// # use poll_engine::state::VoteStorage;
+    /// # use poll_engine::api::VoteOutcome::No;
     /// # fn main() -> PollResult<()> {
     /// let mut deps = mock_dependencies();
-    /// let vote = Vote::new(123, Addr::unchecked("voter"), 1, 9);
+    /// let vote = Vote::new(123, Addr::unchecked("voter"), No, 9);
     /// let res = votes().save_vote(&mut deps.storage, vote);
     ///
     /// assert!(res.is_ok());
@@ -268,17 +270,18 @@ pub trait VoteStorage {
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::api::Vote;
     /// # use poll_engine::state::{votes, VoteStorage};
+    /// # use poll_engine::api::VoteOutcome::{Yes, No};
     /// # fn main() -> PollResult<()> {
     /// let mut deps = mock_dependencies();
-    /// votes().save_vote(&mut deps.storage, Vote::new(123, Addr::unchecked("voter"), 1, 9))?;
-    /// votes().save_vote(&mut deps.storage, Vote::new(123, Addr::unchecked("voter"), 0, 3))?;
+    /// votes().save_vote(&mut deps.storage, Vote::new(123, Addr::unchecked("voter"), No, 9))?;
+    /// votes().save_vote(&mut deps.storage, Vote::new(123, Addr::unchecked("voter"), Yes, 3))?;
     /// let voter_vote = votes().poll_voter(
     ///     &deps.storage, 123,
     ///     Addr::unchecked("voter")
     /// )?;
     ///
     /// assert_eq!(
-    ///     Some(Vote::new(123, Addr::unchecked("voter"), 0, 3)),
+    ///     Some(Vote::new(123, Addr::unchecked("voter"), Yes, 3)),
     ///     voter_vote
     /// );
     /// # Ok(())
@@ -306,6 +309,7 @@ pub trait VoteStorage {
     /// # use common::cw::*;
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::helpers::mock_poll_with_id;
+    /// # use poll_engine::api::VoteOutcome::{Abstain, Yes};
     /// # fn main() -> PollResult<()> {
     /// # use common::cw::RangeArgs;
     /// # use poll_engine::api::{PollStatusFilter, Vote};
@@ -314,8 +318,8 @@ pub trait VoteStorage {
     /// # let voter = Addr::unchecked("voter");
     /// # polls().save_poll(&mut deps.storage, mock_poll_with_id(123))?;
     /// # polls().save_poll(&mut deps.storage, mock_poll_with_id(456))?;
-    /// # votes().save_vote(&mut deps.storage, Vote::new(123, voter.clone(), 1, 10));
-    /// # votes().save_vote(&mut deps.storage, Vote::new(456, voter.clone(), 2, 20));
+    /// # votes().save_vote(&mut deps.storage, Vote::new(123, voter.clone(), Yes, 10));
+    /// # votes().save_vote(&mut deps.storage, Vote::new(456, voter.clone(), Abstain, 20));
     /// let max = votes().max_vote(
     ///     &deps.storage, Addr::unchecked("voter"),
     ///     PollStatusFilter::InProgress,
@@ -323,7 +327,7 @@ pub trait VoteStorage {
     ///     RangeArgs::default(),
     /// )?;
     ///
-    /// assert_eq!(Some(Vote::new(456, voter.clone(), 2, 20)), max);
+    /// assert_eq!(Some(Vote::new(456, voter.clone(), Abstain, 20)), max);
     /// # Ok(())
     /// # }
     /// ```
@@ -529,27 +533,32 @@ impl Poll {
     /// # use poll_engine::state::{GOV_STATE, GovState};
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
+    /// use poll_engine::api::VoteOutcome::{No, Yes};
     /// let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// # let mut poll = mock_poll(&mut deps.storage);
     /// // let poll = Poll::new(...);
-    /// poll.increase_results(0, 5)?;
-    /// poll.increase_results(1, 3)?;
-    /// poll.increase_results(1, 6)?;
+    /// poll.increase_results(Yes, 5)?;
+    /// poll.increase_results(No, 3)?;
+    /// poll.increase_results(No, 6)?;
     ///
-    /// assert_eq!(9, *poll.results.get(&1).unwrap());
-    /// assert_eq!(5, *poll.results.get(&0).unwrap());
+    /// assert_eq!(9, *poll.results.get(&(No as u8)).unwrap());
+    /// assert_eq!(5, *poll.results.get(&(Yes as u8)).unwrap());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn increase_results(&mut self, outcome: u8, count: u128) -> PollResult<Option<u128>> {
-        match self.results.get_mut(&outcome) {
+    pub fn increase_results(
+        &mut self,
+        outcome: VoteOutcome,
+        count: u128,
+    ) -> PollResult<Option<u128>> {
+        match self.results.get_mut(&(outcome as u8)) {
             Some(total_count) => {
                 *total_count += count;
                 Ok(Some(*total_count))
             }
-            None => Ok(self.results.insert(outcome, count)),
+            None => Ok(self.results.insert(outcome as u8, count)),
         }
     }
 
@@ -562,26 +571,27 @@ impl Poll {
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine::api::VoteOutcome::{No, Yes};
+    /// use poll_engine::state::{GOV_STATE, GovState};
     /// let mut  deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// # let mut poll = mock_poll(&mut deps.storage);
     /// // let poll = Poll::new(...);
-    /// poll.increase_results(0, 5);
-    /// poll.increase_results(1, 9);
+    /// poll.increase_results(Yes, 5);
+    /// poll.increase_results(No, 9);
     ///
-    /// poll.decrease_results(0, 3);
-    /// poll.decrease_results(1, 3);
-    /// poll.decrease_results(1, 1);
+    /// poll.decrease_results(Yes, 3);
+    /// poll.decrease_results(No, 3);
+    /// poll.decrease_results(No, 1);
     ///
-    /// assert_eq!(2, *poll.results.get(&0).unwrap());
-    /// assert_eq!(5, *poll.results.get(&1).unwrap());
+    /// assert_eq!(2, *poll.results.get(&(Yes as u8)).unwrap());
+    /// assert_eq!(5, *poll.results.get(&(No as u8)).unwrap());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn decrease_results(&mut self, outcome: u8, count: u128) -> Option<u128> {
-        match self.results.get_mut(&outcome) {
+    pub fn decrease_results(&mut self, outcome: VoteOutcome, count: u128) -> Option<u128> {
+        match self.results.get_mut(&(outcome as u8)) {
             Some(total_count) => {
                 *total_count -= count;
                 Some(*total_count)
@@ -600,7 +610,8 @@ impl Poll {
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine::api::VoteOutcome::No;
+    /// use poll_engine::state::{GOV_STATE, GovState};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -609,7 +620,7 @@ impl Poll {
     ///
     /// assert!(poll.threshold_reached().not());
     ///
-    /// poll.increase_results(1, 9);
+    /// poll.increase_results(No, 9);
     /// assert!(poll.threshold_reached());
     /// # Ok(())
     /// # }
@@ -640,7 +651,8 @@ impl Poll {
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine::api::VoteOutcome::No;
+    /// use poll_engine::state::{GOV_STATE, GovState};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -651,10 +663,10 @@ impl Poll {
     ///
     /// assert!(poll.quorum_reached(&quorum, maximum_available_votes).not());
     ///
-    /// poll.increase_results(1, 9);
+    /// poll.increase_results(No, 9);
     /// assert!(poll.quorum_reached(&quorum, maximum_available_votes).not());
     ///
-    /// poll.increase_results(1, 1);
+    /// poll.increase_results(No, 1);
     /// assert!(poll.quorum_reached(&quorum, maximum_available_votes));
     /// # Ok(())
     /// # }
@@ -863,9 +875,8 @@ mod tests {
 
     use common::cw::testing::mock_ctx;
 
-    use crate::api::DefaultVoteOption::{Abstain, No, Yes};
+    use crate::api::VoteOutcome::{Abstain, No, Yes};
     use crate::api::{PollRejectionReason, PollStatus};
-    use crate::error::PollError::OutcomeOutOfBound;
     use crate::helpers::mock_poll;
     use crate::state::{GovState, GOV_STATE};
 
@@ -878,11 +889,12 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.quorum = Decimal::percent(10);
-        poll.results = BTreeMap::from([(1, 2), (2, 8), (3, 3)]);
+        poll.threshold = Decimal::percent(50);
+        poll.results = BTreeMap::from([(0, 3), (2, 8), (3, 2)]);
 
         assert_eq!(
             PollStatus::Passed {
-                outcome: 3,
+                outcome: Yes as u8,
                 count: Uint128::new(3),
             },
             poll.final_status(130u8.into()).unwrap()
@@ -1069,34 +1081,15 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.threshold = Decimal::percent(1);
-        poll.results = BTreeMap::from([(1, 5), (2, 5), (0, 1), (4, 4)]);
+        poll.results = BTreeMap::from([(1, 5), (2, 6), (0, 5)]);
 
         assert_eq!(
             PollStatus::Rejected {
                 outcome: None,
                 count: None,
-                reason: PollRejectionReason::OutcomeDraw(1, 2, Uint128::new(5))
+                reason: PollRejectionReason::OutcomeDraw(0, 1, Uint128::new(5))
             },
             poll.final_status(20u8.into()).unwrap()
-        );
-    }
-
-    #[test]
-    fn cannot_increase_results_beyond_n_outcomes() {
-        let mut deps = mock_dependencies();
-        let ctx = mock_ctx(deps.as_mut());
-        let state = GovState::default();
-        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
-
-        let mut poll = mock_poll(ctx.deps.storage); // n_outcomes = 3
-
-        assert_eq!(
-            Err(OutcomeOutOfBound {
-                outcome: 5,
-                n_outcomes: 3
-            }
-            .into()),
-            poll.increase_results(5, 5)
         );
     }
 }

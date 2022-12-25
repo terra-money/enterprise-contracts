@@ -34,8 +34,7 @@ use enterprise_protocol::api::{
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{ExecuteProposal, Receive};
 use enterprise_protocol::msg::{Cw20HookMsg, InstantiateMsg, MigrateMsg};
-use poll_engine::api::DefaultVoteOption;
-use DefaultVoteOption::{No, Veto, Yes};
+use poll_engine::api::VoteOutcome::{No, Veto, Yes};
 use ProposalAction::{UpdateAssetWhitelist, UpdateGovConfig};
 
 #[test]

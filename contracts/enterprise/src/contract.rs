@@ -68,11 +68,10 @@ use enterprise_protocol::msg::{
 };
 use itertools::Itertools;
 use nft_staking::NFT_STAKES;
-use poll_engine::api::DefaultVoteOption::Veto;
-use poll_engine::api::VoteOutcome::Default;
+use poll_engine::api::VoteOutcome::Veto;
 use poll_engine::api::{
-    CastVoteParams, CreatePollParams, DefaultVoteOption, EndPollParams, PollId, PollParams,
-    PollStatus, PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VotingScheme,
+    CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollStatus,
+    PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VoteOutcome, VotingScheme,
 };
 use poll_engine::error::PollError;
 use poll_engine::error::PollError::PollInProgress;
@@ -568,7 +567,7 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
         ctx,
         CastVoteParams {
             poll_id: msg.proposal_id.into(),
-            outcome: Default(msg.outcome),
+            outcome: msg.outcome,
             amount: user_available_votes,
         },
     )?;
@@ -602,7 +601,7 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
                 ctx,
                 CastVoteParams {
                     poll_id: msg.proposal_id.into(),
-                    outcome: Default(msg.outcome),
+                    outcome: msg.outcome,
                     amount: Uint128::one(),
                 },
             )?;
@@ -1185,7 +1184,7 @@ pub fn update_user_poll_engine_votes(ctx: &mut Context, user: Addr) -> DaoResult
                     cast_vote_ctx,
                     CastVoteParams {
                         poll_id: vote.poll_id.into(),
-                        outcome: Default(DefaultVoteOption::from(vote.outcome)),
+                        outcome: VoteOutcome::from(vote.outcome),
                         amount: user_available_votes,
                     },
                 )?;

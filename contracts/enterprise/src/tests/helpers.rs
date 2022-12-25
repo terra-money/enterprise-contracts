@@ -23,7 +23,7 @@ use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{CastVote, CreateProposal};
 use enterprise_protocol::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 use itertools::Itertools;
-use poll_engine::api::DefaultVoteOption;
+use poll_engine::api::VoteOutcome;
 use std::collections::BTreeMap;
 use ExecuteMsg::{Receive, ReceiveNft, Unstake};
 use NewMembershipInfo::NewMultisig;
@@ -253,7 +253,7 @@ pub fn vote_on_proposal(
     env: &Env,
     voter: &str,
     proposal_id: ProposalId,
-    outcome: DefaultVoteOption,
+    outcome: VoteOutcome,
 ) -> DaoResult<Response> {
     execute(
         deps,
@@ -343,7 +343,7 @@ pub fn assert_proposal_result_amount(
     qctx: &QueryContext,
     proposal_id: ProposalId,
     proposal_type: ProposalType,
-    result: DefaultVoteOption,
+    result: VoteOutcome,
     amount: u128,
 ) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());

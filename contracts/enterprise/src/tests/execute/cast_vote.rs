@@ -13,10 +13,9 @@ use enterprise_protocol::api::{CastVoteMsg, DaoGovConfig, ProposalStatus};
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::CastVote;
-use poll_engine::api::DefaultVoteOption;
+use poll_engine::api::VoteOutcome::{Abstain, No, Veto, Yes};
 use poll_engine::error::PollError;
 use DaoError::Poll;
-use DefaultVoteOption::{Abstain, No, Veto, Yes};
 use PollError::OutsideVotingPeriod;
 use ProposalStatus::InProgress;
 

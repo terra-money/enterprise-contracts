@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::{Asset, AssetInfo};
 use cw_utils::{Duration, Expiration};
-use poll_engine::api::{DefaultVoteOption, Vote};
+use poll_engine::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -264,7 +264,7 @@ pub struct ModifyMultisigMembershipMsg {
 #[cw_serde]
 pub struct CastVoteMsg {
     pub proposal_id: ProposalId,
-    pub outcome: DefaultVoteOption,
+    pub outcome: VoteOutcome,
 }
 
 #[cw_serde]

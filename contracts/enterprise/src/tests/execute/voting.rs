@@ -9,8 +9,8 @@ use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::Addr;
 use enterprise_protocol::api::{MemberVoteParams, ProposalVotesParams};
 use enterprise_protocol::error::DaoResult;
-use poll_engine::api::DefaultVoteOption::{Abstain, No, Yes};
 use poll_engine::api::Vote;
+use poll_engine::api::VoteOutcome::{Abstain, No, Yes};
 
 #[test]
 fn vote_on_proposal_in_token_dao_stores_member_vote() -> DaoResult<()> {
