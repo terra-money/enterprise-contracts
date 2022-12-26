@@ -10,6 +10,8 @@ pub fn migrate_v1_to_v2(store: &mut dyn Storage) -> DaoResult<()> {
 
     migrate_dao_metadata_v1(store)?;
 
+    poll_engine::migration::migrate_v1_to_v2(store)?;
+
     Ok(())
 }
 
