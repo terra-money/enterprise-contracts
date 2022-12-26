@@ -522,6 +522,7 @@ fn create_poll_engine_proposal(
             ends_at,
             quorum: gov_config.quorum,
             threshold: gov_config.threshold,
+            veto_threshold: gov_config.veto_threshold,
         },
     )?;
 

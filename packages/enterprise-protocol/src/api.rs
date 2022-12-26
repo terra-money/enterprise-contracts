@@ -68,6 +68,10 @@ pub struct DaoGovConfig {
     /// required to determine the 'winning' option
     /// e.g. 51% threshold means that an option has to have at least 51% of the cast votes to win
     pub threshold: Decimal,
+    /// Portion of votes assigned to veto option from all the votes cast in the given proposal
+    /// required to veto the proposal.
+    /// If None, will default to the threshold set for all proposal options.
+    pub veto_threshold: Option<Decimal>,
     /// Duration of proposals before they end, expressed in seconds
     pub vote_duration: u64, // TODO: change from u64 to Duration
     /// Duration that has to pass for unstaked membership tokens to be claimable

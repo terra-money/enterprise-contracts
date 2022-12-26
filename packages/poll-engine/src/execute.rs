@@ -173,6 +173,7 @@ mod tests {
             ends_at: ends_at.clone(),
             quorum: quorum.clone(),
             threshold: threshold.clone(),
+            veto_threshold: None,
         };
 
         create_poll(&mut ctx, params).unwrap();

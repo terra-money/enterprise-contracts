@@ -92,6 +92,10 @@ pub struct CreatePollParams {
     /// Threshold ratio for a vote option to be the winning one.
     /// Calculated as (votes for certain option) / (total available votes - abstaining votes).
     pub threshold: Decimal,
+    /// Optional separate threshold ratio for a veto option to be the winning one.
+    /// Calculated as (veto votes) / (total available votes - abstaining votes).
+    /// If None, regular threshold will be used for veto option.
+    pub veto_threshold: Option<Decimal>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

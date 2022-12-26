@@ -73,8 +73,9 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         },
     };
     let dao_gov_config = DaoGovConfig {
-        quorum: Decimal::from_ratio(13u8, 23u8),
-        threshold: Decimal::from_ratio(7u8, 29u8),
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(50),
+        veto_threshold: Some(Decimal::percent(33)),
         vote_duration: 65,
         unlocking_period: Duration::Height(113),
         minimum_deposit: Some(17u8.into()),
@@ -657,8 +658,9 @@ fn instantiate_dao_with_shorter_unstaking_than_voting_fails() -> DaoResult<()> {
     let info = mock_info("sender", &[]);
 
     let dao_gov_config = DaoGovConfig {
-        quorum: Decimal::from_ratio(1u8, 10u8),
-        threshold: Decimal::from_ratio(1u8, 10u8),
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(50),
+        veto_threshold: None,
         vote_duration: 10u64,
         unlocking_period: Duration::Time(9u64),
         minimum_deposit: None,
@@ -758,6 +760,7 @@ fn instantiate_dao_with_quorum_over_one_fails() -> DaoResult<()> {
     let dao_gov_config = DaoGovConfig {
         quorum: Decimal::from_ratio(1001u64, 1000u64),
         threshold: Decimal::from_ratio(1u8, 10u8),
+        veto_threshold: None,
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
@@ -800,6 +803,7 @@ fn instantiate_dao_with_quorum_of_zero_fails() -> DaoResult<()> {
     let dao_gov_config = DaoGovConfig {
         quorum: Decimal::zero(),
         threshold: Decimal::from_ratio(1u8, 10u8),
+        veto_threshold: None,
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
@@ -842,6 +846,7 @@ fn instantiate_dao_with_threshold_over_one_fails() -> DaoResult<()> {
     let dao_gov_config = DaoGovConfig {
         quorum: Decimal::from_ratio(1u8, 10u8),
         threshold: Decimal::from_ratio(1001u64, 1000u64),
+        veto_threshold: None,
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
@@ -884,6 +889,7 @@ fn instantiate_dao_with_threshold_of_zero_fails() -> DaoResult<()> {
     let dao_gov_config = DaoGovConfig {
         quorum: Decimal::from_ratio(1u8, 10u8),
         threshold: Decimal::zero(),
+        veto_threshold: None,
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
@@ -908,6 +914,92 @@ fn instantiate_dao_with_threshold_of_zero_fails() -> DaoResult<()> {
         result,
         Err(InvalidArgument {
             msg: "Invalid threshold, must be 0 < threshold <= 1".to_string()
+        })
+    );
+
+    Ok(())
+}
+
+#[test]
+fn instantiate_dao_with_veto_threshold_over_one_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    let dao_gov_config = DaoGovConfig {
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(50),
+        veto_threshold: Some(Decimal::from_ratio(1001u64, 1000u64)),
+        vote_duration: 10u64,
+        unlocking_period: Duration::Time(10u64),
+        minimum_deposit: None,
+    };
+
+    let result = instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config,
+            dao_council: None,
+            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    );
+
+    assert_eq!(
+        result,
+        Err(InvalidArgument {
+            msg: "Invalid veto threshold, must be 0 < threshold <= 1".to_string()
+        })
+    );
+
+    Ok(())
+}
+
+#[test]
+fn instantiate_dao_with_veto_threshold_of_zero_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    let dao_gov_config = DaoGovConfig {
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(50),
+        veto_threshold: Some(Decimal::zero()),
+        vote_duration: 10u64,
+        unlocking_period: Duration::Time(10u64),
+        minimum_deposit: None,
+    };
+
+    let result = instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config,
+            dao_council: None,
+            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    );
+
+    assert_eq!(
+        result,
+        Err(InvalidArgument {
+            msg: "Invalid veto threshold, must be 0 < threshold <= 1".to_string()
         })
     );
 

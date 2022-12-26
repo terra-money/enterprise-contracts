@@ -52,6 +52,7 @@ pub fn stub_dao_gov_config() -> DaoGovConfig {
     DaoGovConfig {
         quorum: Decimal::from_ratio(1u8, 10u8),
         threshold: Decimal::from_ratio(3u8, 10u8),
+        veto_threshold: None,
         vote_duration: 1,
         unlocking_period: Duration::Height(100),
         minimum_deposit: None,

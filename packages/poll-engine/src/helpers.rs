@@ -22,6 +22,7 @@ pub fn mock_poll_with_id(id: u64) -> Poll {
         ends_at: Timestamp::from_nanos(3),
         quorum: Default::default(),
         threshold: Decimal::percent(50),
+        veto_threshold: None,
         results: Default::default(),
     }
 }

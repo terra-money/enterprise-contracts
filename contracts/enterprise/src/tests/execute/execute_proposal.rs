@@ -130,6 +130,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         threshold: Decimal::from_ratio(2u8, 10u8),
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
+        veto_threshold: None,
     };
 
     let enterprise_factory_contract = stub_enterprise_factory_contract();
@@ -284,6 +285,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         DaoGovConfig {
             quorum: Decimal::from_ratio(3u8, 10u8),
             threshold: Decimal::from_ratio(4u8, 10u8),
+            veto_threshold: None,
             vote_duration: 10u64.into(),
             unlocking_period: Duration::Height(10),
             minimum_deposit: Some(Uint128::one()),
@@ -564,6 +566,7 @@ fn execute_proposal_with_outcome_yes_refunds_token_deposits() -> DaoResult<()> {
         threshold: Decimal::from_ratio(2u8, 10u8),
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
+        veto_threshold: None,
     };
 
     deps.querier
@@ -633,6 +636,7 @@ fn execute_proposal_with_outcome_no_refunds_token_deposits() -> DaoResult<()> {
         threshold: Decimal::from_ratio(2u8, 10u8),
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
+        veto_threshold: None,
     };
 
     deps.querier
@@ -701,6 +705,7 @@ fn execute_proposal_with_no_outcome_refunds_token_deposits() -> DaoResult<()> {
         threshold: Decimal::from_ratio(2u8, 10u8),
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
+        veto_threshold: None,
     };
 
     deps.querier
@@ -767,6 +772,7 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
         threshold: Decimal::from_ratio(2u8, 10u8),
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
+        veto_threshold: None,
     };
 
     deps.querier

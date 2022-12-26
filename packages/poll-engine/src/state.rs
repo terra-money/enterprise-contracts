@@ -66,6 +66,10 @@ pub struct Poll {
     /// Threshold ratio for a vote option to be the winning one.
     /// Calculated as (votes for certain option) / (total available votes - abstaining votes).
     pub threshold: Decimal,
+    /// Optional separate threshold ratio for a veto option to be the winning one.
+    /// Calculated as (veto votes) / (total available votes - abstaining votes).
+    /// If None, regular threshold will be used for veto option.
+    pub veto_threshold: Option<Decimal>,
 
     #[schemars(with = "Vec<(u8, Uint128)>")]
     #[serde_as(as = "Vec<(_, _)>")]
@@ -123,6 +127,7 @@ pub trait PollStorage {
     /// let poll_id = 123;
     /// let quorum = Decimal::from_ratio(3u8, 10u8);
     /// let threshold = Decimal::percent(50);
+    /// let veto_threshold = Some(Decimal::percent(33));
     /// let initial_poll = Poll::new(
     ///     &mut deps.as_mut(),
     ///     Addr::unchecked("proposer"),
@@ -134,6 +139,7 @@ pub trait PollStorage {
     ///     Timestamp::from_seconds(10),
     ///     quorum,
     ///     threshold,
+    ///     veto_threshold,
     /// )?;
     /// polls().save(&mut deps.storage, poll_id, &initial_poll)?;
     /// let loaded_poll = polls().load_poll(&deps.storage, poll_id)?;
@@ -160,6 +166,7 @@ pub trait PollStorage {
     /// let poll_id = 123;
     /// let quorum = Decimal::from_ratio(3u8, 10u8);
     /// let threshold = Decimal::percent(50);
+    /// let veto_threshold = Some(Decimal::percent(33));
     /// let initial_poll = Poll::new(
     ///     &mut deps.as_mut(),
     ///     Addr::unchecked("proposer"),
@@ -171,6 +178,7 @@ pub trait PollStorage {
     ///     Timestamp::from_seconds(10),
     ///     quorum,
     ///     threshold,
+    ///     veto_threshold,
     /// )?;
     /// polls().save(&mut deps.storage, poll_id, &initial_poll)?;
     /// let loaded_poll = polls().load_poll(&mut deps.storage, poll_id)?;
@@ -430,6 +438,7 @@ impl Poll {
         ends_at: Timestamp,
         quorum: Decimal,
         threshold: Decimal,
+        veto_threshold: Option<Decimal>,
     ) -> PollResult<Self> {
         Ok(Poll {
             id: GOV_STATE.increment_poll_id(deps.storage)?,
@@ -443,6 +452,7 @@ impl Poll {
             ends_at,
             quorum,
             threshold,
+            veto_threshold,
             results: BTreeMap::new(),
         })
     }
@@ -473,6 +483,7 @@ impl Poll {
     /// # let ends_at = Timestamp::from_nanos(3);
     /// # let quorum = Decimal::from_ratio(3u8, 10u8);
     /// # let threshold = Decimal::percent(50);
+    /// # let veto_threshold = Some(Decimal::percent(33));
     /// # let params = CreatePollParams {
     /// #     proposer: "proposer".to_string(),
     /// #     deposit_amount: Uint128::new(1000),
@@ -482,6 +493,7 @@ impl Poll {
     /// #     ends_at: ends_at.clone(),
     /// #     quorum: quorum.clone(),
     /// #     threshold: threshold.clone(),
+    /// #     veto_threshold: veto_threshold.clone(),
     /// # };
     /// # let expected = Poll {
     /// #     id: poll_id.into(),
@@ -496,6 +508,7 @@ impl Poll {
     /// #     ends_at,
     /// #     quorum,
     /// #     threshold,
+    /// #     veto_threshold,
     /// #     results: Default::default(),
     /// #     deposit_amount: 1000
     /// # };
@@ -520,6 +533,7 @@ impl Poll {
             params.ends_at,
             params.quorum,
             params.threshold,
+            params.veto_threshold,
         )
     }
 
@@ -945,6 +959,29 @@ mod tests {
                 reason: PollRejectionReason::IsVetoOutcome,
             },
             poll.final_status(250u8.into()).unwrap()
+        );
+    }
+
+    #[test]
+    fn final_status_rejected_is_veto_outcome_respects_veto_threshold() {
+        let mut deps = mock_dependencies();
+        let ctx = mock_ctx(deps.as_mut());
+        let state = GovState::default();
+        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.quorum = Decimal::percent(10);
+        poll.threshold = Decimal::percent(50);
+        poll.veto_threshold = Some(Decimal::percent(33));
+        poll.results = BTreeMap::from([(No as u8, 3), (Abstain as u8, 13), (Veto as u8, 6)]);
+
+        assert_eq!(
+            PollStatus::Rejected {
+                outcome: Some(3),
+                count: Some(Uint128::new(6)),
+                reason: PollRejectionReason::IsVetoOutcome,
+            },
+            poll.final_status(220u8.into()).unwrap()
         );
     }
 

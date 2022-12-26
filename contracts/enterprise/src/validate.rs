@@ -46,6 +46,14 @@ pub fn validate_dao_gov_config(dao_type: &DaoType, dao_gov_config: &DaoGovConfig
         });
     }
 
+    if let Some(veto_threshold) = dao_gov_config.veto_threshold {
+        if veto_threshold > Decimal::one() || veto_threshold == Decimal::zero() {
+            return Err(InvalidArgument {
+                msg: "Invalid veto threshold, must be 0 < threshold <= 1".to_string(),
+            });
+        }
+    }
+
     if dao_gov_config.minimum_deposit.is_some() && (dao_type == &Nft || dao_type == &Multisig) {
         return Err(MinimumDepositNotAllowed {});
     }

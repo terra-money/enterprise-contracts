@@ -412,8 +412,9 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
         ExecuteMsg::CreateDao(CreateDaoMsg {
             dao_metadata: dao_metadata.clone(),
             dao_gov_config: DaoGovConfig {
-                quorum: Decimal::from_ratio(1u8, 10u8),
-                threshold: Decimal::from_ratio(2u8, 10u8),
+                quorum: Decimal::percent(10),
+                threshold: Decimal::percent(20),
+                veto_threshold: Some(Decimal::percent(33)),
                 vote_duration: 1000,
                 unlocking_period: Duration::Height(10),
                 minimum_deposit: Some(713u128.into()),
@@ -434,8 +435,9 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
                     dao_metadata,
                     dao_gov_config: DaoGovConfig {
-                        quorum: Decimal::from_ratio(1u8, 10u8),
-                        threshold: Decimal::from_ratio(2u8, 10u8),
+                        quorum: Decimal::percent(10),
+                        threshold: Decimal::percent(20),
+                        veto_threshold: Some(Decimal::percent(33)),
                         vote_duration: 1000,
                         unlocking_period: Duration::Height(10),
                         minimum_deposit: Some(713u128.into()),
@@ -532,8 +534,9 @@ fn anonymous_dao_metadata() -> DaoMetadata {
 
 fn anonymous_dao_gov_config() -> DaoGovConfig {
     DaoGovConfig {
-        quorum: Decimal::from_ratio(7u8, 10u8),
-        threshold: Decimal::from_ratio(3u8, 10u8),
+        quorum: Decimal::percent(70),
+        threshold: Decimal::percent(30),
+        veto_threshold: Some(Decimal::percent(33)),
         vote_duration: 1000,
         unlocking_period: Duration::Height(10),
         minimum_deposit: Some(713u128.into()),
