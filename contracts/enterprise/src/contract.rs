@@ -870,6 +870,10 @@ fn update_gov_config(ctx: &mut Context, msg: UpdateGovConfigMsg) -> DaoResult<Ve
         gov_config.threshold = threshold;
     }
 
+    if let Change(veto_threshold) = msg.veto_threshold {
+        gov_config.veto_threshold = veto_threshold;
+    }
+
     if let Change(voting_duration) = msg.voting_duration {
         gov_config.vote_duration = voting_duration.u64();
     }

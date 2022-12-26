@@ -214,6 +214,7 @@ pub struct UpdateMetadataMsg {
 pub struct UpdateGovConfigMsg {
     pub quorum: ModifyValue<Decimal>,
     pub threshold: ModifyValue<Decimal>,
+    pub veto_threshold: ModifyValue<Option<Decimal>>,
     pub voting_duration: ModifyValue<Uint64>,
     pub unlocking_period: ModifyValue<Duration>,
     pub minimum_deposit: ModifyValue<Option<Uint128>>,

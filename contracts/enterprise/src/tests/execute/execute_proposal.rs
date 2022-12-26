@@ -166,8 +166,9 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
 
     let proposal_actions = vec![
         UpdateGovConfig(UpdateGovConfigMsg {
-            quorum: Change(Decimal::from_ratio(3u8, 10u8)),
-            threshold: Change(Decimal::from_ratio(4u8, 10u8)),
+            quorum: Change(Decimal::percent(30)),
+            threshold: Change(Decimal::percent(40)),
+            veto_threshold: Change(Some(Decimal::percent(37))),
             voting_duration: Change(10u64.into()),
             unlocking_period: Change(Duration::Height(10)),
             minimum_deposit: Change(Some(Uint128::one())),
@@ -283,9 +284,9 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
     assert_eq!(
         dao_info.gov_config,
         DaoGovConfig {
-            quorum: Decimal::from_ratio(3u8, 10u8),
-            threshold: Decimal::from_ratio(4u8, 10u8),
-            veto_threshold: None,
+            quorum: Decimal::percent(30),
+            threshold: Decimal::percent(40),
+            veto_threshold: Some(Decimal::percent(37)),
             vote_duration: 10u64.into(),
             unlocking_period: Duration::Height(10),
             minimum_deposit: Some(Uint128::one()),

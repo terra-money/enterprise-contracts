@@ -53,6 +53,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
     let proposal_actions = vec![UpdateGovConfig(UpdateGovConfigMsg {
         quorum: NoChange,
         threshold: NoChange,
+        veto_threshold: NoChange,
         voting_duration: Change(Uint64::from(20u8)),
         unlocking_period: NoChange,
         minimum_deposit: NoChange,
@@ -132,6 +133,7 @@ fn create_proposal_nft_dao() -> DaoResult<()> {
     let proposal_actions = vec![UpdateGovConfig(UpdateGovConfigMsg {
         quorum: NoChange,
         threshold: NoChange,
+        veto_threshold: NoChange,
         voting_duration: Change(Uint64::from(20u8)),
         unlocking_period: NoChange,
         minimum_deposit: NoChange,
@@ -697,5 +699,7 @@ fn create_proposal_by_non_member_in_multisig_dao_fails() -> DaoResult<()> {
 
     Ok(())
 }
+
+// TODO: disallow creation of proposals with invalid quorum or threshold or veto threshold
 
 // TODO: create NFT or multisig DAO with minimum deposit not set to None fails
