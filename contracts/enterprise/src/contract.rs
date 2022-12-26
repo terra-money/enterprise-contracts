@@ -68,7 +68,7 @@ use enterprise_protocol::msg::{
 };
 use itertools::Itertools;
 use nft_staking::NFT_STAKES;
-use poll_engine::api::VoteOutcome::Veto;
+use poll_engine::api::PollRejectionReason::IsVetoOutcome;
 use poll_engine::api::{
     CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollStatus,
     PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VoteOutcome, VotingScheme,
@@ -755,7 +755,7 @@ fn execute_poll_engine_proposal(
 
             submsgs
         }
-        PollStatus::Rejected { outcome, .. } => {
+        PollStatus::Rejected { reason } => {
             set_proposal_executed(
                 ctx.deps.storage,
                 msg.proposal_id,
@@ -764,7 +764,7 @@ fn execute_poll_engine_proposal(
             )?;
 
             // return deposits only if not vetoed
-            if Some(Veto as u8) != outcome {
+            if reason != IsVetoOutcome {
                 return_proposal_deposit_submsgs(ctx, msg.proposal_id)?
             } else {
                 let proposal_deposit = PROPOSAL_INFOS

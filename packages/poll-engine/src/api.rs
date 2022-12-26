@@ -149,18 +149,9 @@ pub enum PollRejectionReason {
 #[strum(serialize_all = "snake_case")]
 /// Status of a poll.
 pub enum PollStatus {
-    InProgress {
-        ends_at: Timestamp,
-    },
-    Passed {
-        outcome: u8,
-        count: Uint128,
-    },
-    Rejected {
-        outcome: Option<u8>,
-        count: Option<Uint128>,
-        reason: PollRejectionReason,
-    },
+    InProgress { ends_at: Timestamp },
+    Passed { outcome: u8, count: Uint128 },
+    Rejected { reason: PollRejectionReason },
 }
 
 impl PollStatus {

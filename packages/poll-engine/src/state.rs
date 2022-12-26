@@ -1,4 +1,7 @@
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::ops::Not;
+use Ordering::{Equal, Greater, Less};
 
 use cosmwasm_std::{to_binary, Addr, Decimal, DepsMut, Env, Storage, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
@@ -8,8 +11,10 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use common::cw::RangeArgs;
+use PollRejectionReason::{IsVetoOutcome, OutcomeDraw, QuorumNotReached, ThresholdNotReached};
 
-use crate::api::VoteOutcome::{Abstain, No, Veto};
+use crate::api::PollRejectionReason::IsRejectingOutcome;
+use crate::api::VoteOutcome::{Abstain, No, Veto, Yes};
 use crate::api::{
     CreatePollParams, PollId, PollRejectionReason, PollStatus, PollStatusFilter, Vote, VoteOutcome,
     VotingScheme,
@@ -614,7 +619,7 @@ impl Poll {
         }
     }
 
-    /// Determines if the voting threshold has been reached.
+    /// Determines if the voting threshold has been reached for a specific vote outcome.
     ///
     /// # Example
     ///
@@ -624,7 +629,7 @@ impl Poll {
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::api::VoteOutcome::No;
+    /// # use poll_engine::api::VoteOutcome::{No, Yes};
     /// use poll_engine::state::{GOV_STATE, GovState};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
@@ -632,26 +637,29 @@ impl Poll {
     /// # let mut poll = mock_poll(&mut deps.storage);
     /// // let poll = Poll::new(...); // with 50 % threshold
     ///
-    /// assert!(poll.threshold_reached().not());
+    /// assert!(poll.threshold_reached(No).not());
+    /// assert!(poll.threshold_reached(Yes).not());
     ///
     /// poll.increase_results(No, 9);
-    /// assert!(poll.threshold_reached());
+    /// assert!(poll.threshold_reached(No));
+    /// assert!(poll.threshold_reached(Yes).not());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn threshold_reached(&self) -> bool {
-        match self.most_voted() {
-            MostVoted::None => false,
-            MostVoted::Some((_, count)) => self.ge_threshold(count),
-            MostVoted::Draw((_, a), (_, b)) => self.ge_threshold(a) && self.ge_threshold(b),
-        }
+    pub fn threshold_reached(&self, outcome: VoteOutcome) -> bool {
+        self.ge_threshold(outcome, self.votes_for(outcome))
     }
 
     /// Checks if the count-to-total-votes ratio is greater than the threshold.
-    fn ge_threshold(&self, count: u128) -> bool {
-        Decimal::checked_from_ratio(count, self.total_votes() - self.abstain_votes())
+    fn ge_threshold(&self, outcome: VoteOutcome, count: u128) -> bool {
+        let threshold = if outcome == Veto {
+            self.veto_threshold.unwrap_or(self.threshold)
+        } else {
+            self.threshold
+        };
+        Decimal::checked_from_ratio(count, self.total_votes() - self.votes_for(Abstain))
             .unwrap_or(Decimal::zero())
-            .ge(&self.threshold)
+            .ge(&threshold)
     }
 
     /// Determines if the voting quorum has been reached.
@@ -717,7 +725,7 @@ impl Poll {
         self.results.iter().fold(0u128, |acc, i| acc + i.1)
     }
 
-    /// Returns the vote count for abstaining options of the poll.
+    /// Returns the vote count for specific vote outcome.
     ///
     /// # Example
     ///
@@ -726,6 +734,7 @@ impl Poll {
     /// # use cosmwasm_std::testing::mock_dependencies;
     /// # use poll_engine::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
+    /// # use poll_engine::api::VoteOutcome::{Abstain, No, Yes, Veto};
     /// # fn main() -> PollResult<()> {
     /// # use cosmwasm_std::Decimal;
     /// use poll_engine::state::{GOV_STATE, GovState};
@@ -733,18 +742,17 @@ impl Poll {
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
     /// # let mut poll = mock_poll(&mut deps.storage);
-    /// # poll.results = BTreeMap::from([(1, 10), (2, 3), (0, 1)]);
+    /// # poll.results = BTreeMap::from([(No as u8, 10), (Abstain as u8, 3), (Yes as u8, 1)]);
     ///
-    /// assert_eq!(3, poll.abstain_votes());
+    /// assert_eq!(1, poll.votes_for(Yes));
+    /// assert_eq!(10, poll.votes_for(No));
+    /// assert_eq!(3, poll.votes_for(Abstain));
+    /// assert_eq!(0, poll.votes_for(Veto));
     /// # Ok(())
     /// # }
     /// ```
-    pub fn abstain_votes(&self) -> u128 {
-        self.results
-            .iter()
-            .filter(|result| result.0 == &(Abstain as u8))
-            .map(|result| result.1)
-            .sum()
+    pub fn votes_for(&self, outcome: VoteOutcome) -> u128 {
+        *self.results.get(&(outcome as u8)).unwrap_or(&0u128)
     }
 
     /// Returns the most voted outcome/count, if any.
@@ -767,26 +775,30 @@ impl Poll {
     /// # poll.results = BTreeMap::from([(1, 10), (2, 11), (0, 1)]);
     /// // let poll = Poll::new(...); // with the voting results [(1, 10), (2, 3), (0, 1)]
     ///
-    /// assert_eq!(MostVoted::Some((1, 10)), poll.most_voted());
+    /// assert_eq!(MostVoted::Some((1, 10)), poll.most_voted_over_threshold());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn most_voted(&self) -> MostVoted<(u8, u128)> {
-        // even if there are more than two with the same outcome, it's still a rejection
-        let top_two = self
-            .results
-            .iter()
-            .filter(|result| result.0 != &(Abstain as u8))
-            .sorted_by(|&(_, a), &(_, b)| b.cmp(a))
-            .take(2)
-            .map(|(outcome, count)| (*outcome, *count))
-            .collect::<Vec<(u8, u128)>>();
+    pub fn most_voted_over_threshold(&self) -> MostVoted<(u8, u128)> {
+        if self.threshold_reached(Veto) {
+            // if veto threshold reached, no need to check anything else
+            return MostVoted::Some((Veto as u8, self.votes_for(Veto)));
+        };
 
-        match top_two.as_slice() {
-            [] => MostVoted::None,
-            [most_voted] => MostVoted::Some(*most_voted),
-            [first @ (_, a), second @ (_, b)] if a.eq(b) => MostVoted::Draw(*first, *second),
-            [a, ..] => MostVoted::Some(*a),
+        match (self.threshold_reached(Yes), self.threshold_reached(No)) {
+            (true, true) => {
+                let yes_votes = self.votes_for(Yes);
+                let no_votes = self.votes_for(No);
+
+                match yes_votes.cmp(&no_votes) {
+                    Less => MostVoted::Some((No as u8, no_votes)),
+                    Equal => MostVoted::Draw((Yes as u8, yes_votes), (No as u8, no_votes)),
+                    Greater => MostVoted::Some((Yes as u8, yes_votes)),
+                }
+            }
+            (true, false) => MostVoted::Some((Yes as u8, self.votes_for(Yes))),
+            (false, true) => MostVoted::Some((No as u8, self.votes_for(No))),
+            (false, false) => MostVoted::None,
         }
     }
 
@@ -815,8 +827,6 @@ impl Poll {
     ///
     /// assert_eq!(
     ///     PollStatus::Rejected {
-    ///         outcome: Some(1),
-    ///         count: Some(Uint128::new(10)),
     ///         reason: PollRejectionReason::IsRejectingOutcome
     ///     },
     ///     poll.final_status(100u8.into())?
@@ -825,60 +835,39 @@ impl Poll {
     /// # }
     /// ```
     pub fn final_status(&self, maximum_available_votes: Uint128) -> PollResult<PollStatus> {
-        let most_voted = self.most_voted();
-        let status = match (
-            most_voted,
-            self.quorum_reached(&self.quorum, maximum_available_votes.u128()),
-            self.threshold_reached(),
-        ) {
-            (MostVoted::Some(most_voted), true, true) if most_voted.0 == No as u8 => {
-                PollStatus::Rejected {
-                    outcome: Some(most_voted.0),
-                    count: Some(most_voted.1.into()),
-                    reason: PollRejectionReason::IsRejectingOutcome,
-                }
+        let status = if self
+            .quorum_reached(&self.quorum, maximum_available_votes.u128())
+            .not()
+        {
+            PollStatus::Rejected {
+                reason: QuorumNotReached,
             }
-            (MostVoted::Some(most_voted), true, true) if most_voted.0 == Veto as u8 => {
-                PollStatus::Rejected {
-                    outcome: Some(most_voted.0),
-                    count: Some(most_voted.1.into()),
-                    reason: PollRejectionReason::IsVetoOutcome,
+        } else {
+            let most_voted = self.most_voted_over_threshold();
+            match most_voted {
+                MostVoted::None => PollStatus::Rejected {
+                    reason: ThresholdNotReached,
+                },
+                MostVoted::Some((outcome, count)) => {
+                    if outcome == Yes as u8 {
+                        PollStatus::Passed {
+                            outcome,
+                            count: count.into(),
+                        }
+                    } else if outcome == Veto as u8 {
+                        PollStatus::Rejected {
+                            reason: IsVetoOutcome,
+                        }
+                    } else {
+                        PollStatus::Rejected {
+                            reason: IsRejectingOutcome,
+                        }
+                    }
                 }
+                MostVoted::Draw(a, b) => PollStatus::Rejected {
+                    reason: OutcomeDraw(a.0, b.0, b.1.into()),
+                },
             }
-            (MostVoted::Some(most_voted), true, true) => PollStatus::Passed {
-                outcome: most_voted.0,
-                count: most_voted.1.into(),
-            },
-            (MostVoted::Draw(a, b), true, _) => PollStatus::Rejected {
-                outcome: None,
-                count: None,
-                reason: PollRejectionReason::OutcomeDraw(a.0, b.0, b.1.into()),
-            },
-            (most_voted, false, true) => {
-                let (outcome, count) = most_voted.destructure();
-                PollStatus::Rejected {
-                    outcome,
-                    count: count.map(Uint128::new),
-                    reason: PollRejectionReason::QuorumNotReached,
-                }
-            }
-            (most_voted, true, false) => {
-                let (outcome, count) = most_voted.destructure();
-                PollStatus::Rejected {
-                    outcome,
-                    count: count.map(Uint128::new),
-                    reason: PollRejectionReason::ThresholdNotReached,
-                }
-            }
-            (most_voted, false, false) => {
-                let (outcome, count) = most_voted.destructure();
-                PollStatus::Rejected {
-                    outcome,
-                    count: count.map(Uint128::new),
-                    reason: PollRejectionReason::QuorumAndThresholdNotReached,
-                }
-            }
-            (MostVoted::None, true, true) => unreachable!(),
         };
 
         Ok(status)
@@ -894,6 +883,9 @@ mod tests {
 
     use common::cw::testing::mock_ctx;
 
+    use crate::api::PollRejectionReason::{
+        IsVetoOutcome, OutcomeDraw, QuorumNotReached, ThresholdNotReached,
+    };
     use crate::api::VoteOutcome::{Abstain, No, Veto, Yes};
     use crate::api::{PollRejectionReason, PollStatus};
     use crate::helpers::mock_poll;
@@ -933,8 +925,6 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(1),
-                count: Some(Uint128::new(10)),
                 reason: PollRejectionReason::IsRejectingOutcome
             },
             poll.final_status(250u8.into()).unwrap()
@@ -954,9 +944,7 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(3),
-                count: Some(Uint128::new(10)),
-                reason: PollRejectionReason::IsVetoOutcome,
+                reason: IsVetoOutcome,
             },
             poll.final_status(250u8.into()).unwrap()
         );
@@ -973,13 +961,16 @@ mod tests {
         poll.quorum = Decimal::percent(10);
         poll.threshold = Decimal::percent(50);
         poll.veto_threshold = Some(Decimal::percent(33));
-        poll.results = BTreeMap::from([(No as u8, 3), (Abstain as u8, 13), (Veto as u8, 6)]);
+        poll.results = BTreeMap::from([
+            (Yes as u8, 4),
+            (No as u8, 2),
+            (Abstain as u8, 13),
+            (Veto as u8, 3),
+        ]);
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(3),
-                count: Some(Uint128::new(6)),
-                reason: PollRejectionReason::IsVetoOutcome,
+                reason: IsVetoOutcome,
             },
             poll.final_status(220u8.into()).unwrap()
         );
@@ -997,9 +988,7 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(3),
-                count: Some(Uint128::new(6)),
-                reason: PollRejectionReason::ThresholdNotReached
+                reason: ThresholdNotReached
             },
             poll.final_status(20u8.into()).unwrap()
         );
@@ -1018,9 +1007,7 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(1),
-                count: Some(Uint128::new(1)),
-                reason: PollRejectionReason::QuorumNotReached
+                reason: QuorumNotReached
             },
             poll.final_status(15u8.into()).unwrap()
         );
@@ -1040,9 +1027,7 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: Some(0),
-                count: Some(Uint128::new(3)),
-                reason: PollRejectionReason::ThresholdNotReached
+                reason: ThresholdNotReached
             },
             poll.final_status(21u8.into()).unwrap()
         );
@@ -1061,9 +1046,7 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: None,
-                count: None,
-                reason: PollRejectionReason::QuorumAndThresholdNotReached
+                reason: QuorumNotReached
             },
             poll.final_status(1u8.into()).unwrap()
         );
@@ -1082,9 +1065,7 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: None,
-                count: None,
-                reason: PollRejectionReason::OutcomeDraw(0, 1, Uint128::new(5))
+                reason: OutcomeDraw(0, 1, Uint128::new(5))
             },
             poll.final_status(20u8.into()).unwrap()
         );

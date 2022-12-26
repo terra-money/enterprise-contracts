@@ -126,9 +126,10 @@ mod tests {
     use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 
     use common::cw::testing::mock_ctx;
+    use PollRejectionReason::OutcomeDraw;
     use VoteOutcome::{No, Veto};
 
-    use crate::api::VoteOutcome::Abstain;
+    use crate::api::VoteOutcome::{Abstain, Yes};
     use crate::api::{
         CastVoteParams, CreatePollParams, EndPollParams, PollRejectionReason, PollStatus,
         PollStatusFilter, VoteOutcome, VotingScheme,
@@ -292,8 +293,6 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.status = PollStatus::Rejected {
-            outcome: Some(1),
-            count: Some(Uint128::new(20)),
             reason: PollRejectionReason::IsRejectingOutcome,
         };
         poll.results = BTreeMap::from([(0, 10)]);
@@ -359,8 +358,6 @@ mod tests {
             ..mock_poll(ctx.deps.storage)
         };
         poll.status = PollStatus::Rejected {
-            outcome: Some(1),
-            count: Some(Uint128::new(20)),
             reason: PollRejectionReason::IsRejectingOutcome,
         };
         poll.results = BTreeMap::from([(0, 10)]);
@@ -457,7 +454,8 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.deposit_amount = 10;
-        poll.results = BTreeMap::from([(0, 10)]);
+        poll.threshold = Decimal::percent(15);
+        poll.results = BTreeMap::from([(0, 131)]);
         polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
 
         ctx.env.block.time = Timestamp::from_nanos(2);
@@ -479,7 +477,7 @@ mod tests {
         let params4 = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: Veto,
-            amount: Uint128::new(131),
+            amount: Uint128::new(10),
         };
 
         ctx.info.sender = Addr::unchecked("voter_1");
@@ -493,7 +491,7 @@ mod tests {
         let poll = polls().load(ctx.deps.storage, poll.id).unwrap();
 
         // Expected second vote on choice 1 to override first vote
-        let expected_results = BTreeMap::from([(0, 10), (1, 131), (2, 110), (3, 131)]);
+        let expected_results = BTreeMap::from([(0, 131), (1, 131), (2, 110), (3, 10)]);
         assert_eq!(expected_results, poll.results);
 
         ctx.env.block.time = Timestamp::from_nanos(3);
@@ -508,9 +506,7 @@ mod tests {
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: None,
-                count: None,
-                reason: PollRejectionReason::OutcomeDraw(No as u8, Veto as u8, Uint128::new(131)),
+                reason: OutcomeDraw(Yes as u8, No as u8, Uint128::new(131)),
             },
             poll.status
         );
