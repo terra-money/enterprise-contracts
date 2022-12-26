@@ -104,6 +104,7 @@ pub struct NewDaoMembershipMsg {
 }
 
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum NewMembershipInfo {
     NewToken(NewTokenMembershipInfo),
     NewNft(NewNftMembershipInfo),
