@@ -68,10 +68,10 @@ use enterprise_protocol::msg::{
 };
 use itertools::Itertools;
 use nft_staking::NFT_STAKES;
-use poll_engine::api::PollRejectionReason::IsVetoOutcome;
 use poll_engine::api::{
-    CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollStatus,
-    PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VoteOutcome, VotingScheme,
+    CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollRejectionReason,
+    PollStatus, PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VoteOutcome,
+    VotingScheme,
 };
 use poll_engine::error::PollError;
 use poll_engine::error::PollError::PollInProgress;
@@ -90,6 +90,7 @@ use DaoMembershipInfo::{Existing, New};
 use DaoType::Token;
 use Duration::{Height, Time};
 use NewMembershipInfo::{NewMultisig, NewNft, NewToken};
+use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
 use ProposalAction::{
     ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao, UpdateAssetWhitelist,
     UpdateCouncil, UpdateGovConfig, UpdateMetadata, UpdateNftWhitelist, UpgradeDao,
@@ -763,20 +764,22 @@ fn execute_poll_engine_proposal(
                 proposal_type,
             )?;
 
-            // return deposits only if not vetoed
-            if reason != IsVetoOutcome {
-                return_proposal_deposit_submsgs(ctx, msg.proposal_id)?
-            } else {
-                let proposal_deposit = PROPOSAL_INFOS
-                    .may_load(ctx.deps.storage, msg.proposal_id)?
-                    .ok_or(NoSuchProposal)?
-                    .proposal_deposit;
-                if let Some(deposit) = proposal_deposit {
-                    TOTAL_DEPOSITS.update(ctx.deps.storage, |deposits| -> StdResult<Uint128> {
-                        Ok(deposits.sub(deposit.amount))
-                    })?;
+            match reason {
+                QuorumNotReached | IsVetoOutcome => {
+                    let proposal_deposit = PROPOSAL_INFOS
+                        .may_load(ctx.deps.storage, msg.proposal_id)?
+                        .ok_or(NoSuchProposal)?
+                        .proposal_deposit;
+                    if let Some(deposit) = proposal_deposit {
+                        TOTAL_DEPOSITS
+                            .update(ctx.deps.storage, |deposits| -> StdResult<Uint128> {
+                                Ok(deposits.sub(deposit.amount))
+                            })?;
+                    }
+                    vec![]
                 }
-                vec![]
+                // return deposits only if quorum reached and not vetoed
+                _ => return_proposal_deposit_submsgs(ctx, msg.proposal_id)?,
             }
         }
     };

@@ -34,7 +34,7 @@ use enterprise_protocol::api::{
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{ExecuteProposal, Receive};
 use enterprise_protocol::msg::{Cw20HookMsg, InstantiateMsg, MigrateMsg};
-use poll_engine::api::VoteOutcome::{No, Veto, Yes};
+use poll_engine::api::VoteOutcome::{Abstain, No, Veto, Yes};
 use ProposalAction::{UpdateAssetWhitelist, UpdateGovConfig};
 
 #[test]
@@ -693,7 +693,7 @@ fn execute_proposal_with_outcome_no_refunds_token_deposits() -> DaoResult<()> {
 }
 
 #[test]
-fn execute_proposal_with_no_outcome_refunds_token_deposits() -> DaoResult<()> {
+fn execute_proposal_with_threshold_not_reached_refunds_token_deposits() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
@@ -702,8 +702,8 @@ fn execute_proposal_with_no_outcome_refunds_token_deposits() -> DaoResult<()> {
     env.block.time = Timestamp::from_seconds(12000);
     let dao_gov_config = DaoGovConfig {
         vote_duration: 1000,
-        quorum: Decimal::from_ratio(1u8, 10u8),
-        threshold: Decimal::from_ratio(2u8, 10u8),
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(20),
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
         veto_threshold: None,
@@ -738,6 +738,8 @@ fn execute_proposal_with_no_outcome_refunds_token_deposits() -> DaoResult<()> {
         }),
     )?;
 
+    vote_on_proposal(deps.as_mut(), &env, "user", 1, Abstain)?;
+
     // TODO: check that the deposit amount is not shown in treasury
 
     env.block.time = env.block.time.plus_seconds(1000);
@@ -755,6 +757,68 @@ fn execute_proposal_with_no_outcome_refunds_token_deposits() -> DaoResult<()> {
             Asset::cw20(Addr::unchecked(CW20_ADDR), 50u128).transfer_msg("user")?
         )]
     );
+
+    Ok(())
+}
+
+#[test]
+fn execute_proposal_with_quorum_not_reached_does_not_refund_token_deposits() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    env.contract.address = Addr::unchecked("dao_addr");
+    env.block.time = Timestamp::from_seconds(12000);
+    let dao_gov_config = DaoGovConfig {
+        vote_duration: 1000,
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(20),
+        unlocking_period: Duration::Time(1000),
+        minimum_deposit: None,
+        veto_threshold: None,
+    };
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate_stub_dao(
+        deps.as_mut(),
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(dao_gov_config.clone()),
+    )?;
+
+    stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
+
+    let create_proposal_msg = CreateProposalMsg {
+        title: "Proposal title".to_string(),
+        description: Some("Description".to_string()),
+        proposal_actions: vec![],
+    };
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        mock_info(CW20_ADDR, &vec![]),
+        Receive(Cw20ReceiveMsg {
+            sender: "user".to_string(),
+            amount: 50u128.into(),
+            msg: to_binary(&Cw20HookMsg::CreateProposal(create_proposal_msg))?,
+        }),
+    )?;
+
+    env.block.time = env.block.time.plus_seconds(1000);
+
+    let response = execute(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        ExecuteProposal(ExecuteProposalMsg { proposal_id: 1 }),
+    )?;
+
+    assert!(response.messages.is_empty());
+
+    // TODO: assert deposit is now shown in treasury
 
     Ok(())
 }
@@ -805,8 +869,6 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
         }),
     )?;
 
-    // TODO: check that the deposit amount is not shown in treasury
-
     vote_on_proposal(deps.as_mut(), &env, "user", 1, Veto)?;
 
     env.block.time = env.block.time.plus_seconds(1000);
@@ -819,6 +881,8 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
     )?;
 
     assert!(response.messages.is_empty());
+
+    // TODO: assert deposit is now shown in treasury
 
     Ok(())
 }
