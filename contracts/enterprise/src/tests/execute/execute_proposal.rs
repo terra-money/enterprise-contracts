@@ -204,6 +204,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
             migrate_msg: migrate_msg.clone(),
         }),
         ExecuteMsgs(ExecuteMsgsMsg {
+            action_type: "execute_and_send".to_string(),
             msgs: vec![
                 "{\"wasm\": { \"execute\": { \"contract_addr\": \"execute_addr\", \"msg\": \"InsgXCJ0ZXN0X21zZ1wiOiB7IFwiaWRcIjogXCIxMjNcIiB9IH0i\", \"funds\": [] } } }".to_string(),
                 "{\"bank\": { \"send\": { \"to_address\": \"send_addr\", \"amount\": [{\"amount\": \"123456789\", \"denom\": \"some_denom\"}]} } }".to_string()

@@ -256,6 +256,7 @@ pub struct UpgradeDaoMsg {
 
 #[cw_serde]
 pub struct ExecuteMsgsMsg {
+    pub action_type: String,
     pub msgs: Vec<String>,
 }
 

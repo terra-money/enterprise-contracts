@@ -5,7 +5,7 @@ use enterprise_protocol::api::{ProposalAction, ProposalDeposit, ProposalId};
 use enterprise_protocol::error::DaoError::NoSuchProposal;
 use enterprise_protocol::error::DaoResult;
 
-// TODO: this is junk, unify somehow; causes a lot of duplication wherever we match on this value
+// TODO: unify somehow; causes a lot of duplication wherever we match on this value
 #[cw_serde]
 pub enum ProposalType {
     General,

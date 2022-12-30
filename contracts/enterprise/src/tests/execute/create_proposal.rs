@@ -509,6 +509,7 @@ fn create_proposal_with_invalid_execute_msg_fails() -> DaoResult<()> {
         None,
         None,
         vec![ExecuteMsgs(ExecuteMsgsMsg {
+            action_type: "random".to_string(),
             msgs: vec!["random_message".to_string()],
         })],
     );
