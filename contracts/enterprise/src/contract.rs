@@ -260,7 +260,6 @@ fn instantiate_new_multisig_dao(
 
     save_total_multisig_weight(ctx.deps.storage, total_weight, &ctx.env.block)?;
 
-    // TODO: do we even need this? just for consistency, but otherwise makes no sense since multisig members are now internally stored
     DAO_MEMBERSHIP_CONTRACT.save(ctx.deps.storage, &ctx.env.contract.address)?;
 
     Ok(vec![])
@@ -460,8 +459,6 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
                 .allowed_proposal_action_types
                 .unwrap_or_else(|| vec![ProposalActionType::UpgradeDao]);
 
-            // TODO: ban certain action types like funding and modify membership? they are unsafe, the council could hijack the DAO
-
             // validate that proposal actions are allowed
             for proposal_action in &msg.proposal_actions {
                 let proposal_action_type = to_proposal_action_type(proposal_action);
@@ -619,7 +616,6 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
     }
 }
 
-// TODO: think whether this should be renamed to 'end_proposal'
 // TODO: test for proposal type council
 fn execute_proposal(
     ctx: &mut Context,
@@ -1183,7 +1179,6 @@ pub fn update_user_poll_engine_votes(ctx: &mut Context, user: Addr) -> DaoResult
     };
 
     for vote in votes {
-        // TODO: remove this when qctx.clone() is in
         let qctx = QueryContext::from(cast_vote_ctx.deps.as_ref(), ctx.env.clone());
         let status = query_poll_status(&qctx, vote.poll_id)?;
         if let PollStatus::InProgress { ends_at } = status.status {
@@ -1479,7 +1474,6 @@ fn poll_to_proposal_response(
     let total_votes_available = match info.executed_at {
         Some(block) => match proposal.expires {
             Expiration::AtHeight(height) => {
-                // TODO: test
                 total_available_votes_at_height(dao_type, deps.storage, min(height, block.height))?
             }
             Expiration::AtTime(time) => {
@@ -1779,9 +1773,7 @@ pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryRespons
         .querier
         .query_wasm_smart(enterprise_factory, &GlobalAssetWhitelist {})?;
 
-    // TODO: add clone() to qctx?
-    let qctx2 = QueryContext::from(qctx.deps, qctx.env.clone());
-    let mut asset_whitelist = query_asset_whitelist(qctx2)?.assets;
+    let mut asset_whitelist = query_asset_whitelist(qctx.clone())?.assets;
 
     for asset in global_asset_whitelist.assets {
         // TODO: suboptimal, use maps or sth
@@ -1842,9 +1834,7 @@ fn query_nft_treasury(qctx: QueryContext) -> DaoResult<NftTreasuryResponse> {
         .querier
         .query_wasm_smart(enterprise_factory, &GlobalNftWhitelist {})?;
 
-    // TODO: add clone() to qctx?
-    let qctx2 = QueryContext::from(qctx.deps, qctx.env.clone());
-    let mut nft_whitelist = query_nft_whitelist(qctx2)?.nfts;
+    let mut nft_whitelist = query_nft_whitelist(qctx.clone())?.nfts;
 
     for nft in global_nft_whitelist.nfts {
         // TODO: suboptimal, use maps or sth
