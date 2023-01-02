@@ -53,7 +53,6 @@ pub fn instantiate(
 
     ENTERPRISE_CODE_IDS.save(deps.storage, msg.config.enterprise_code_id, &())?;
 
-    // TODO: add more attributes?
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -147,9 +146,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> DaoResult<Binary> {
-    // TODO: use query context
-    // let qctx = QueryContext::from(deps, env);
-
     let response = match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?)?,
         QueryMsg::GlobalAssetWhitelist {} => to_binary(&query_asset_whitelist(deps)?)?,

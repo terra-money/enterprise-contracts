@@ -15,14 +15,16 @@ use enterprise_protocol::api::ModifyValue::{Change, NoChange};
 use enterprise_protocol::api::ProposalAction::{
     ExecuteMsgs, ModifyMultisigMembership, UpdateAssetWhitelist, UpdateNftWhitelist, UpgradeDao,
 };
+use enterprise_protocol::api::ProposalActionType::UpdateCouncil;
 use enterprise_protocol::api::{
-    CreateProposalMsg, DaoGovConfig, ExecuteMsgsMsg, ModifyMultisigMembershipMsg, Proposal,
-    ProposalAction, ProposalResponse, ProposalStatus, ProposalsParams, UpdateAssetWhitelistMsg,
-    UpdateGovConfigMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
+    CreateProposalMsg, DaoCouncil, DaoGovConfig, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
+    Proposal, ProposalAction, ProposalResponse, ProposalStatus, ProposalsParams,
+    UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateNftWhitelistMsg,
+    UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     InsufficientProposalDeposit, InvalidEnterpriseCodeId, NotNftOwner,
-    UnsupportedOperationForDaoType,
+    UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::Receive;
@@ -711,6 +713,45 @@ fn create_proposal_by_non_member_in_multisig_dao_fails() -> DaoResult<()> {
     );
 
     assert_eq!(result, Err(NotMultisigMember {}));
+
+    Ok(())
+}
+
+#[test]
+fn create_proposal_to_update_council_with_non_allowed_types_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    instantiate_stub_dao(
+        deps.as_mut(),
+        &env,
+        &info,
+        multisig_dao_membership_info_with_members(&[("member", 100u64)]),
+        None,
+        None,
+    )?;
+
+    let result = create_proposal(
+        deps.as_mut(),
+        &env,
+        &mock_info("non_member", &vec![]),
+        None,
+        None,
+        vec![ProposalAction::UpdateCouncil(UpdateCouncilMsg {
+            dao_council: Some(DaoCouncil {
+                members: vec!["member".to_string()],
+                allowed_proposal_action_types: Some(vec![UpdateCouncil]),
+            }),
+        })],
+    );
+
+    assert_eq!(
+        result,
+        Err(UnsupportedCouncilProposalAction {
+            action: UpdateCouncil
+        })
+    );
 
     Ok(())
 }

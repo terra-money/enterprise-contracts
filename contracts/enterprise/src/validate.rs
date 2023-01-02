@@ -128,7 +128,6 @@ pub fn validate_proposal_actions(
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
             ModifyMultisigMembership(msg) => validate_modify_multisig_membership(deps, msg)?,
-            // TODO: test
             UpdateCouncil(msg) => validate_dao_council(msg.dao_council.clone())?,
             _ => {}
         }
@@ -285,7 +284,6 @@ pub fn validate_modify_multisig_membership(
     Ok(())
 }
 
-// TODO: test
 pub fn validate_dao_council(dao_council: Option<DaoCouncil>) -> DaoResult<()> {
     match dao_council {
         None => Ok(()),
@@ -298,7 +296,6 @@ pub fn validate_dao_council(dao_council: Option<DaoCouncil>) -> DaoResult<()> {
     }
 }
 
-// TODO: test
 pub fn validate_no_duplicate_council_members(members: Vec<String>) -> DaoResult<()> {
     let mut members_map: HashMap<String, ()> = HashMap::new();
     for member in members {
@@ -310,7 +307,6 @@ pub fn validate_no_duplicate_council_members(members: Vec<String>) -> DaoResult<
     Ok(())
 }
 
-// TODO: test
 /// Check if allowed council proposal types contain dangerous types of actions that a council
 /// shouldn't be allowed to do.
 pub fn validate_allowed_council_proposal_types(

@@ -196,8 +196,6 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         )]
     );
 
-    // TODO: add reply() and verify that the address has been stored properly
-
     Ok(())
 }
 
@@ -276,8 +274,6 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
             ENTERPRISE_INSTANTIATE_ID,
         )]
     );
-
-    // TODO: add reply() and verify that the address has been stored properly
 
     Ok(())
 }
@@ -364,8 +360,6 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
             ENTERPRISE_INSTANTIATE_ID,
         )]
     );
-
-    // TODO: add reply() and verify that the address has been stored properly
 
     Ok(())
 }
@@ -457,8 +451,6 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
             ENTERPRISE_INSTANTIATE_ID,
         )]
     );
-
-    // TODO: add reply() and verify that the address has been stored properly
 
     Ok(())
 }

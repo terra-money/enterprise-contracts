@@ -4,3 +4,4 @@ mod instantiate;
 mod querier;
 mod query;
 mod reply;
+mod validate;
