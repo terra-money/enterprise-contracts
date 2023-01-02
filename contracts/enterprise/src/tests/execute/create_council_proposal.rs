@@ -1,0 +1,291 @@
+use crate::contract::{execute, instantiate, query_proposal};
+use crate::proposals::ProposalType;
+use crate::tests::helpers::{
+    existing_token_dao_membership, stub_dao_gov_config, stub_dao_metadata,
+    stub_enterprise_factory_contract, stub_token_info, CW20_ADDR,
+};
+use crate::tests::querier::mock_querier::mock_dependencies;
+use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
+use cosmwasm_std::{to_binary, Addr, Timestamp};
+use enterprise_protocol::api::ProposalAction::UpgradeDao;
+use enterprise_protocol::api::ProposalActionType::UpdateMetadata;
+use enterprise_protocol::api::{
+    CreateProposalMsg, DaoCouncil, ProposalActionType, ProposalParams, UpgradeDaoMsg,
+};
+use enterprise_protocol::error::DaoError::{
+    NoDaoCouncil, Unauthorized, UnsupportedCouncilProposalAction,
+};
+use enterprise_protocol::error::DaoResult;
+use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg};
+use ProposalType::Council;
+
+#[test]
+fn create_council_proposal_with_no_council_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    env.contract.address = Addr::unchecked("dao_addr");
+    let current_time = Timestamp::from_seconds(12);
+    env.block.time = current_time;
+    let info = mock_info("sender", &[]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
+            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    )?;
+
+    let create_proposal_msg = CreateProposalMsg {
+        title: "Proposal title".to_string(),
+        description: Some("Description".to_string()),
+        proposal_actions: vec![],
+    };
+    let result = execute(
+        deps.as_mut(),
+        env.clone(),
+        mock_info("user", &vec![]),
+        ExecuteMsg::CreateCouncilProposal(create_proposal_msg),
+    );
+
+    assert_eq!(result, Err(NoDaoCouncil));
+
+    Ok(())
+}
+
+#[test]
+fn create_council_proposal_by_non_council_member_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    env.contract.address = Addr::unchecked("dao_addr");
+    let current_time = Timestamp::from_seconds(12);
+    env.block.time = current_time;
+    let info = mock_info("sender", &[]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config: stub_dao_gov_config(),
+            dao_council: Some(DaoCouncil {
+                members: vec!["council_member".to_string()],
+                allowed_proposal_action_types: None,
+            }),
+            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    )?;
+
+    let create_proposal_msg = CreateProposalMsg {
+        title: "Proposal title".to_string(),
+        description: Some("Description".to_string()),
+        proposal_actions: vec![],
+    };
+    let result = execute(
+        deps.as_mut(),
+        env.clone(),
+        mock_info("non_council_member", &vec![]),
+        ExecuteMsg::CreateCouncilProposal(create_proposal_msg),
+    );
+
+    assert_eq!(result, Err(Unauthorized));
+
+    Ok(())
+}
+
+#[test]
+fn create_council_proposal_allows_upgrade_dao_by_default() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    env.contract.address = Addr::unchecked("dao_addr");
+    let current_time = Timestamp::from_seconds(12);
+    env.block.time = current_time;
+    let info = mock_info("sender", &[]);
+
+    let enterprise_factory_contract = "enterprise_factory_contract";
+
+    deps.querier
+        .with_enterprise_code_ids(&[(enterprise_factory_contract, &[10u64])]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config: stub_dao_gov_config(),
+            dao_council: Some(DaoCouncil {
+                members: vec!["council_member".to_string()],
+                allowed_proposal_action_types: None,
+            }),
+            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    )?;
+
+    let create_proposal_msg = CreateProposalMsg {
+        title: "Proposal title".to_string(),
+        description: Some("Description".to_string()),
+        proposal_actions: vec![UpgradeDao(UpgradeDaoMsg {
+            new_dao_code_id: 10,
+            migrate_msg: to_binary(&MigrateMsg {})?,
+        })],
+    };
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        mock_info("council_member", &vec![]),
+        ExecuteMsg::CreateCouncilProposal(create_proposal_msg),
+    )?;
+
+    // TODO: what about confirming that other types are not allowed?
+
+    Ok(())
+}
+
+#[test]
+fn create_council_proposal_with_not_allowed_proposal_action_type_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    env.contract.address = Addr::unchecked("dao_addr");
+    let current_time = Timestamp::from_seconds(12);
+    env.block.time = current_time;
+    let info = mock_info("sender", &[]);
+
+    let enterprise_factory_contract = "enterprise_factory_contract";
+
+    deps.querier
+        .with_enterprise_code_ids(&[(enterprise_factory_contract, &[10u64])]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config: stub_dao_gov_config(),
+            dao_council: Some(DaoCouncil {
+                members: vec!["council_member".to_string()],
+                allowed_proposal_action_types: Some(vec![UpdateMetadata]),
+            }),
+            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    )?;
+
+    let create_proposal_msg = CreateProposalMsg {
+        title: "Proposal title".to_string(),
+        description: Some("Description".to_string()),
+        proposal_actions: vec![UpgradeDao(UpgradeDaoMsg {
+            new_dao_code_id: 10,
+            migrate_msg: to_binary(&MigrateMsg {})?,
+        })],
+    };
+    let result = execute(
+        deps.as_mut(),
+        env.clone(),
+        mock_info("council_member", &vec![]),
+        ExecuteMsg::CreateCouncilProposal(create_proposal_msg),
+    );
+
+    assert_eq!(
+        result,
+        Err(UnsupportedCouncilProposalAction {
+            action: ProposalActionType::UpgradeDao
+        })
+    );
+
+    Ok(())
+}
+
+#[test]
+fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    env.contract.address = Addr::unchecked("dao_addr");
+    let current_time = Timestamp::from_seconds(12);
+    env.block.time = current_time;
+    let info = mock_info("sender", &[]);
+
+    let enterprise_factory_contract = "enterprise_factory_contract";
+
+    deps.querier
+        .with_enterprise_code_ids(&[(enterprise_factory_contract, &[10u64])]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config: stub_dao_gov_config(),
+            dao_council: Some(DaoCouncil {
+                members: vec!["council_member1".to_string(), "council_member2".to_string()],
+                allowed_proposal_action_types: None,
+            }),
+            dao_membership_info: existing_token_dao_membership(CW20_ADDR),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    )?;
+
+    let create_proposal_msg = CreateProposalMsg {
+        title: "Proposal title".to_string(),
+        description: Some("Description".to_string()),
+        proposal_actions: vec![UpgradeDao(UpgradeDaoMsg {
+            new_dao_code_id: 10,
+            migrate_msg: to_binary(&MigrateMsg {})?,
+        })],
+    };
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        mock_info("council_member1", &vec![]),
+        ExecuteMsg::CreateCouncilProposal(create_proposal_msg),
+    )?;
+
+    let proposal = query_proposal(
+        mock_query_ctx(deps.as_ref(), &env),
+        ProposalParams { proposal_id: 1 },
+        Council,
+    )?;
+
+    assert_eq!(proposal.proposal.id, 1u64);
+
+    // TODO: there is a bug with total votes calculation, fix this and then uncomment
+    // TODO: also check whether the same calculation mistake is present in the proposal finalization
+    // assert_eq!(proposal.total_votes_available, Uint128::from(2u8));
+
+    Ok(())
+}

@@ -1440,7 +1440,7 @@ fn poll_to_proposal_response(
     poll: &Poll,
     proposal_type: ProposalType,
 ) -> DaoResult<ProposalResponse> {
-    let actions_opt = get_proposal_actions(deps.storage, poll.id, proposal_type)?;
+    let actions_opt = get_proposal_actions(deps.storage, poll.id, proposal_type.clone())?;
 
     let actions = match actions_opt {
         None => {
@@ -1468,7 +1468,10 @@ fn poll_to_proposal_response(
         proposal_actions: actions,
     };
 
-    let info = PROPOSAL_INFOS.load(deps.storage, poll.id)?;
+    let info = match proposal_type {
+        General => PROPOSAL_INFOS.load(deps.storage, poll.id)?,
+        Council => COUNCIL_PROPOSAL_INFOS.load(deps.storage, poll.id)?,
+    };
 
     let dao_type = DAO_TYPE.load(deps.storage)?;
 

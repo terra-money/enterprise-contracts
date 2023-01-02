@@ -26,6 +26,7 @@ impl<'a> Context<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct QueryContext<'a> {
     pub deps: Deps<'a>,
     pub env: Env,
@@ -34,12 +35,6 @@ pub struct QueryContext<'a> {
 impl<'a> QueryContext<'a> {
     pub fn from(deps: Deps<'a>, env: Env) -> QueryContext<'a> {
         QueryContext { deps, env }
-    }
-    pub fn clone(&self) -> QueryContext<'a> {
-        QueryContext {
-            deps: self.deps.clone(),
-            env: self.env.clone(),
-        }
     }
 }
 
