@@ -1087,12 +1087,7 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
             let new_stake = stake.sub(msg.amount);
             CW20_STAKES.save(ctx.deps.storage, ctx.info.sender.clone(), &new_stake)?;
 
-            // TODO: extract to function, this is duplicate code
-            let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
-            let release_at = match gov_config.unlocking_period {
-                Height(height) => ReleaseAt::Height((ctx.env.block.height + height).into()),
-                Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
-            };
+            let release_at = calculate_release_at(ctx)?;
 
             add_claim(
                 ctx.deps.storage,
@@ -1139,11 +1134,7 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
             let new_total_staked = total_staked.sub(Uint128::from(msg.tokens.len() as u128));
             save_total_staked(ctx.deps.storage, &new_total_staked, &ctx.env.block)?;
 
-            let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
-            let release_at = match gov_config.unlocking_period {
-                Height(height) => ReleaseAt::Height((ctx.env.block.height + height).into()),
-                Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
-            };
+            let release_at = calculate_release_at(ctx)?;
 
             add_claim(
                 ctx.deps.storage,
@@ -1161,6 +1152,16 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 .add_attribute("total_staked", new_total_staked.to_string()))
         }
     }
+}
+
+fn calculate_release_at(ctx: &mut Context) -> DaoResult<ReleaseAt> {
+    let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
+
+    let release_at = match gov_config.unlocking_period {
+        Height(height) => ReleaseAt::Height((ctx.env.block.height + height).into()),
+        Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
+    };
+    Ok(release_at)
 }
 
 pub fn update_user_poll_engine_votes(ctx: &mut Context, user: Addr) -> DaoResult<()> {
