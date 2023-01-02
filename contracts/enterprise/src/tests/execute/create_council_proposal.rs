@@ -1,16 +1,18 @@
-use crate::contract::{execute, instantiate, query_proposal};
+use crate::contract::{execute, instantiate, query_proposal, query_proposals};
 use crate::proposals::ProposalType;
+use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     existing_token_dao_membership, stub_dao_gov_config, stub_dao_metadata,
     stub_enterprise_factory_contract, stub_token_info, CW20_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
-use cosmwasm_std::{to_binary, Addr, Timestamp};
+use cosmwasm_std::{to_binary, Addr, Timestamp, Uint128};
 use enterprise_protocol::api::ProposalAction::UpgradeDao;
 use enterprise_protocol::api::ProposalActionType::UpdateMetadata;
 use enterprise_protocol::api::{
-    CreateProposalMsg, DaoCouncil, ProposalActionType, ProposalParams, UpgradeDaoMsg,
+    CreateProposalMsg, DaoCouncil, ProposalActionType, ProposalParams, ProposalsParams,
+    UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     NoDaoCouncil, Unauthorized, UnsupportedCouncilProposalAction,
@@ -160,8 +162,6 @@ fn create_council_proposal_allows_upgrade_dao_by_default() -> DaoResult<()> {
         ExecuteMsg::CreateCouncilProposal(create_proposal_msg),
     )?;
 
-    // TODO: what about confirming that other types are not allowed?
-
     Ok(())
 }
 
@@ -250,7 +250,11 @@ fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: Some(DaoCouncil {
-                members: vec!["council_member1".to_string(), "council_member2".to_string()],
+                members: vec![
+                    "council_member1".to_string(),
+                    "council_member2".to_string(),
+                    "council_member3".to_string(),
+                ],
                 allowed_proposal_action_types: None,
             }),
             dao_membership_info: existing_token_dao_membership(CW20_ADDR),
@@ -282,10 +286,19 @@ fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
     )?;
 
     assert_eq!(proposal.proposal.id, 1u64);
+    assert_eq!(proposal.total_votes_available, Uint128::from(3u8));
 
-    // TODO: there is a bug with total votes calculation, fix this and then uncomment
-    // TODO: also check whether the same calculation mistake is present in the proposal finalization
-    // assert_eq!(proposal.total_votes_available, Uint128::from(2u8));
+    assert!(query_proposals(
+        mock_query_ctx(deps.as_ref(), &env),
+        ProposalsParams {
+            filter: None,
+            start_after: None,
+            limit: None,
+        },
+        General,
+    )?
+    .proposals
+    .is_empty());
 
     Ok(())
 }

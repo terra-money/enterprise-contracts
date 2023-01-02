@@ -21,15 +21,16 @@ use cw_asset::{Asset, AssetInfo};
 use cw_utils::Duration;
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalAction::{
-    ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao, UpdateMetadata,
+    ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao, UpdateCouncil, UpdateMetadata,
     UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_protocol::api::ProposalStatus::{Passed, Rejected};
 use enterprise_protocol::api::{
-    CreateProposalMsg, DaoGovConfig, DaoMetadata, DaoSocialData, ExecuteMsgsMsg,
+    CreateProposalMsg, DaoCouncil, DaoGovConfig, DaoMetadata, DaoSocialData, ExecuteMsgsMsg,
     ExecuteProposalMsg, ListMultisigMembersMsg, Logo, ModifyMultisigMembershipMsg, MultisigMember,
-    ProposalAction, ProposalParams, RequestFundingFromDaoMsg, UpdateAssetWhitelistMsg,
-    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
+    ProposalAction, ProposalActionType, ProposalParams, RequestFundingFromDaoMsg,
+    UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg,
+    UpdateNftWhitelistMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{ExecuteProposal, Receive};
@@ -51,6 +52,7 @@ fn execute_proposal_with_outcome_no_fails() -> DaoResult<()> {
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
+        None,
         None,
     )?;
 
@@ -93,6 +95,7 @@ fn execute_proposal_with_outcome_yes_but_not_ended_fails() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -164,6 +167,11 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
 
     let migrate_msg = to_binary(&MigrateMsg {})?;
 
+    let new_dao_council = Some(DaoCouncil {
+        members: vec!["new_member1".to_string(), "new_member2".to_string()],
+        allowed_proposal_action_types: Some(vec![ProposalActionType::UpdateMetadata]),
+    });
+
     let proposal_actions = vec![
         UpdateGovConfig(UpdateGovConfigMsg {
             quorum: Change(Decimal::percent(30)),
@@ -210,6 +218,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
                 "{\"bank\": { \"send\": { \"to_address\": \"send_addr\", \"amount\": [{\"amount\": \"123456789\", \"denom\": \"some_denom\"}]} } }".to_string()
             ],
         }),
+        UpdateCouncil(UpdateCouncilMsg { dao_council: new_dao_council.clone() }),
     ];
 
     let response = create_proposal(
@@ -282,6 +291,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
             },
         }
     );
+    assert_eq!(dao_info.dao_council, new_dao_council);
     assert_eq!(
         dao_info.gov_config,
         DaoGovConfig {
@@ -329,6 +339,7 @@ fn execute_passed_proposal_to_update_multisig_members_changes_membership() -> Da
             ("member2", 2u64),
             ("member3", 3u64),
         ]),
+        None,
         None,
     )?;
 
@@ -426,6 +437,7 @@ fn execute_passed_proposal_to_update_multisig_members_does_not_change_votes_on_e
             vote_duration: 1000,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &mock_info("member1", &vec![]))?;
@@ -499,6 +511,7 @@ fn execute_passed_proposal_to_update_multisig_members_updates_votes_on_active_pr
             vote_duration: 1000,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     create_proposal(
@@ -580,6 +593,7 @@ fn execute_proposal_with_outcome_yes_refunds_token_deposits() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -589,7 +603,6 @@ fn execute_proposal_with_outcome_yes_refunds_token_deposits() -> DaoResult<()> {
         description: Some("Description".to_string()),
         proposal_actions: vec![],
     };
-    // TODO: extract a helper
     execute(
         deps.as_mut(),
         env.clone(),
@@ -600,8 +613,6 @@ fn execute_proposal_with_outcome_yes_refunds_token_deposits() -> DaoResult<()> {
             msg: to_binary(&Cw20HookMsg::CreateProposal(create_proposal_msg))?,
         }),
     )?;
-
-    // TODO: check that the deposit amount is not shown in treasury
 
     vote_on_proposal(deps.as_mut(), &env, "user", 1, Yes)?;
 
@@ -650,6 +661,7 @@ fn execute_proposal_with_outcome_no_refunds_token_deposits() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -669,8 +681,6 @@ fn execute_proposal_with_outcome_no_refunds_token_deposits() -> DaoResult<()> {
             msg: to_binary(&Cw20HookMsg::CreateProposal(create_proposal_msg))?,
         }),
     )?;
-
-    // TODO: check that the deposit amount is not shown in treasury
 
     vote_on_proposal(deps.as_mut(), &env, "user", 1, No)?;
 
@@ -719,6 +729,7 @@ fn execute_proposal_with_threshold_not_reached_refunds_token_deposits() -> DaoRe
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -740,8 +751,6 @@ fn execute_proposal_with_threshold_not_reached_refunds_token_deposits() -> DaoRe
     )?;
 
     vote_on_proposal(deps.as_mut(), &env, "user", 1, Abstain)?;
-
-    // TODO: check that the deposit amount is not shown in treasury
 
     env.block.time = env.block.time.plus_seconds(1000);
 
@@ -788,6 +797,7 @@ fn execute_proposal_with_quorum_not_reached_does_not_refund_token_deposits() -> 
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -819,8 +829,6 @@ fn execute_proposal_with_quorum_not_reached_does_not_refund_token_deposits() -> 
 
     assert!(response.messages.is_empty());
 
-    // TODO: assert deposit is now shown in treasury
-
     Ok(())
 }
 
@@ -850,6 +858,7 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 300u128)?;
@@ -883,8 +892,6 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
 
     assert!(response.messages.is_empty());
 
-    // TODO: assert deposit is now shown in treasury
-
     Ok(())
 }
 
@@ -909,6 +916,7 @@ fn execute_proposal_that_was_executed_fails() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -959,6 +967,7 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -972,7 +981,6 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user2", 20u128)?;
 
-    // TODO: extract a helper
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
@@ -1040,6 +1048,7 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -1074,9 +1083,8 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
     Ok(())
 }
 
-// TODO: rename
 #[test]
-fn execute_proposal_uses_total_votes_available_at_expiration2() -> DaoResult<()> {
+fn execute_proposal_uses_total_votes_available_at_expiration_nft() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
     let info = mock_info("user", &[]);
@@ -1100,6 +1108,7 @@ fn execute_proposal_uses_total_votes_available_at_expiration2() -> DaoResult<()>
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         Some(dao_gov_config),
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &mock_info("user1", &vec![]))?;
@@ -1171,6 +1180,7 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
             ("member3", 10u64),
         ]),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     // proposal to modify members' weights

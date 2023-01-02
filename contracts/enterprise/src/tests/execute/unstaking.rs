@@ -1,19 +1,16 @@
-use crate::contract::execute;
 use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     assert_proposal_result_amount, assert_total_stake, assert_user_nft_stake,
     assert_user_token_stake, create_stub_proposal, existing_nft_dao_membership,
-    existing_token_dao_membership, instantiate_stub_dao, stake_nfts, stake_tokens,
-    stub_dao_membership_info, stub_token_info, unstake_nfts, unstake_tokens, CW20_ADDR, NFT_ADDR,
+    existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
+    stake_nfts, stake_tokens, stub_token_info, unstake_nfts, unstake_tokens, vote_on_proposal,
+    CW20_ADDR, NFT_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
-use enterprise_protocol::api::CastVoteMsg;
-use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::error::DaoError::{InvalidStakingAsset, NoNftTokenStaked, Unauthorized};
 use enterprise_protocol::error::DaoResult;
-use enterprise_protocol::msg::ExecuteMsg;
-use poll_engine::api::VoteOutcome;
+use poll_engine::api::VoteOutcome::{No, Yes};
 
 #[test]
 fn unstake_token_dao() -> DaoResult<()> {
@@ -29,6 +26,7 @@ fn unstake_token_dao() -> DaoResult<()> {
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
+        None,
         None,
     )?;
 
@@ -64,6 +62,7 @@ fn unstake_nft_dao() -> DaoResult<()> {
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
+        None,
         None,
     )?;
 
@@ -115,6 +114,7 @@ fn unstake_nft_staked_by_another_user_fails() -> DaoResult<()> {
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         None,
+        None,
     )?;
 
     stake_nfts(&mut deps.as_mut(), &env, NFT_ADDR, "user1", vec!["token1"])?;
@@ -126,22 +126,18 @@ fn unstake_nft_staked_by_another_user_fails() -> DaoResult<()> {
     Ok(())
 }
 
-// TODO: probably has to be replaced by an integration test and deleted
-#[ignore]
 #[test]
 fn unstake_multisig_dao() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let env = mock_env();
     let info = mock_info("sender", &[]);
 
-    deps.querier
-        .with_multisig_members(&[("cw3_addr", &[("sender", 10u64)])]);
-
     instantiate_stub_dao(
         deps.as_mut(),
         &env,
         &info,
-        stub_dao_membership_info(Multisig, "cw3_addr"),
+        multisig_dao_membership_info_with_members(&[("member", 100u64)]),
+        None,
         None,
     )?;
 
@@ -171,49 +167,23 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 100u8)?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
 
-    // TODO: extract to a helper
-    execute(
-        deps.as_mut(),
-        env.clone(),
-        mock_info("user", &vec![]),
-        ExecuteMsg::CastVote(CastVoteMsg {
-            proposal_id: 1,
-            outcome: VoteOutcome::No,
-        }),
-    )?;
+    vote_on_proposal(deps.as_mut(), &env, "user", 1, No)?;
 
     unstake_tokens(deps.as_mut(), &env, "user", 60u8)?;
-    assert_proposal_result_amount(
-        &mock_query_ctx(deps.as_ref(), &env),
-        1,
-        General,
-        VoteOutcome::No,
-        40u128,
-    );
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, No, 40u128);
 
     unstake_tokens(deps.as_mut(), &env, "user", 30u8)?;
-    assert_proposal_result_amount(
-        &mock_query_ctx(deps.as_ref(), &env),
-        1,
-        General,
-        VoteOutcome::No,
-        10u128,
-    );
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, No, 10u128);
 
     unstake_tokens(deps.as_mut(), &env, "user", 10u8)?;
-    assert_proposal_result_amount(
-        &mock_query_ctx(deps.as_ref(), &env),
-        1,
-        General,
-        VoteOutcome::No,
-        0u128,
-    );
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, No, 0u128);
 
     Ok(())
 }
@@ -232,6 +202,7 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         None,
+        None,
     )?;
 
     stake_nfts(
@@ -244,43 +215,16 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
 
     create_stub_proposal(deps.as_mut(), &env, &mock_info("user", &vec![]))?;
 
-    // TODO: extract to a helper
-    execute(
-        deps.as_mut(),
-        env.clone(),
-        mock_info("user", &vec![]),
-        ExecuteMsg::CastVote(CastVoteMsg {
-            proposal_id: 1,
-            outcome: VoteOutcome::Yes,
-        }),
-    )?;
+    vote_on_proposal(deps.as_mut(), &env, "user", 1, Yes)?;
 
     unstake_nfts(deps.as_mut(), &env, "user", vec!["token2"])?;
-    assert_proposal_result_amount(
-        &mock_query_ctx(deps.as_ref(), &env),
-        1,
-        General,
-        VoteOutcome::Yes,
-        2u128,
-    );
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, Yes, 2u128);
 
     unstake_nfts(deps.as_mut(), &env, "user", vec!["token3"])?;
-    assert_proposal_result_amount(
-        &mock_query_ctx(deps.as_ref(), &env),
-        1,
-        General,
-        VoteOutcome::Yes,
-        1u128,
-    );
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, Yes, 1u128);
 
     unstake_nfts(deps.as_mut(), &env, "user", vec!["token1"])?;
-    assert_proposal_result_amount(
-        &mock_query_ctx(deps.as_ref(), &env),
-        1,
-        General,
-        VoteOutcome::Yes,
-        0u128,
-    );
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, Yes, 0u128);
 
     Ok(())
 }

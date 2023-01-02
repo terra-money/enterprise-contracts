@@ -48,6 +48,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let proposal_actions = vec![UpdateGovConfig(UpdateGovConfigMsg {
@@ -127,6 +128,7 @@ fn create_proposal_nft_dao() -> DaoResult<()> {
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
+        None,
         None,
     )?;
 
@@ -217,6 +219,7 @@ fn create_proposal_with_no_token_deposit_when_minimum_deposit_is_specified_fails
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     let result = create_stub_proposal(deps.as_mut(), &env, &info);
@@ -254,6 +257,7 @@ fn create_proposal_with_insufficient_token_deposit_fails() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     let create_proposal_msg = CreateProposalMsg {
@@ -305,6 +309,7 @@ fn create_proposal_with_sufficient_token_deposit_succeeds() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         Some(dao_gov_config.clone()),
+        None,
     )?;
 
     let create_proposal_msg = CreateProposalMsg {
@@ -346,6 +351,7 @@ fn create_proposal_with_duplicate_add_whitelist_assets_fails() -> DaoResult<()> 
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let result = create_proposal(
@@ -385,6 +391,7 @@ fn create_proposal_with_duplicate_remove_whitelist_assets_fails() -> DaoResult<(
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
+        None,
         None,
     )?;
 
@@ -426,6 +433,7 @@ fn create_proposal_with_duplicate_add_whitelist_nft_fails() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let result = create_proposal(
@@ -463,6 +471,7 @@ fn create_proposal_with_duplicate_remove_whitelist_nft_fails() -> DaoResult<()> 
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let result = create_proposal(
@@ -499,6 +508,7 @@ fn create_proposal_with_invalid_execute_msg_fails() -> DaoResult<()> {
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
+        None,
         None,
     )?;
 
@@ -583,6 +593,7 @@ fn create_modify_multisig_members_proposal_for_token_dao_fails() -> DaoResult<()
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let result = create_proposal(
@@ -619,6 +630,7 @@ fn create_modify_multisig_members_proposal_for_nft_dao_fails() -> DaoResult<()> 
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
+        None,
         None,
     )?;
 
@@ -662,6 +674,7 @@ fn create_proposal_by_non_nft_holder_or_staker_fails() -> DaoResult<()> {
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         None,
+        None,
     )?;
 
     let result = create_stub_proposal(deps.as_mut(), &env, &info);
@@ -683,6 +696,7 @@ fn create_proposal_by_non_member_in_multisig_dao_fails() -> DaoResult<()> {
         &info,
         multisig_dao_membership_info_with_members(&[("member", 100u64)]),
         None,
+        None,
     )?;
 
     let result = create_proposal(
@@ -701,6 +715,4 @@ fn create_proposal_by_non_member_in_multisig_dao_fails() -> DaoResult<()> {
     Ok(())
 }
 
-// TODO: disallow creation of proposals with invalid quorum or threshold or veto threshold
-
-// TODO: create NFT or multisig DAO with minimum deposit not set to None fails
+// TODO: create multisig DAO with minimum deposit not set to None fails

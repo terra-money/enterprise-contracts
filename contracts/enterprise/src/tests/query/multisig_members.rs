@@ -24,6 +24,7 @@ fn query_token_dao_multisig_members_fails() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let result = query_list_multisig_members(
@@ -57,6 +58,7 @@ fn query_nft_dao_multisig_members_fails() -> DaoResult<()> {
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
+        None,
         None,
     )?;
 

@@ -73,7 +73,6 @@ use poll_engine::api::{
     PollStatus, PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VoteOutcome,
     VotingScheme,
 };
-use poll_engine::error::PollError;
 use poll_engine::error::PollError::PollInProgress;
 use poll_engine::execute::{create_poll, end_poll, initialize_poll_engine};
 use poll_engine::query::{
@@ -442,7 +441,6 @@ fn user_holds_nft(ctx: &Context) -> StdResult<bool> {
     Ok(tokens.tokens.is_empty().not())
 }
 
-// TODO: tests
 fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResult<Response> {
     let dao_council = DAO_COUNCIL.load(ctx.deps.storage)?;
 
@@ -482,6 +480,7 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
 
             Ok(Response::new()
                 .add_attribute("action", "create_council_proposal")
+                .add_attribute("dao_address", ctx.env.contract.address.to_string())
                 .add_attribute("proposal_id", proposal_id.to_string()))
         }
     }
@@ -580,7 +579,6 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
         .add_attribute("amount", user_available_votes.to_string()))
 }
 
-// TODO: test
 fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
     let dao_council = DAO_COUNCIL.load(ctx.deps.storage)?;
 
@@ -616,7 +614,6 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
     }
 }
 
-// TODO: test for proposal type council
 fn execute_proposal(
     ctx: &mut Context,
     msg: ExecuteProposalMsg,
@@ -638,12 +635,18 @@ fn execute_proposal(
 fn return_proposal_deposit_submsgs(
     ctx: &mut Context,
     proposal_id: ProposalId,
+    proposal_type: ProposalType,
 ) -> DaoResult<Vec<SubMsg>> {
-    let proposal_info = PROPOSAL_INFOS
-        .may_load(ctx.deps.storage, proposal_id)?
-        .ok_or(NoSuchProposal)?;
+    match proposal_type {
+        General => {
+            let proposal_info = PROPOSAL_INFOS
+                .may_load(ctx.deps.storage, proposal_id)?
+                .ok_or(NoSuchProposal)?;
 
-    return_deposit_submsgs(ctx, proposal_info.proposal_deposit)
+            return_deposit_submsgs(ctx, proposal_info.proposal_deposit)
+        }
+        Council => Ok(vec![]),
+    }
 }
 
 fn return_deposit_submsgs(
@@ -746,9 +749,11 @@ fn execute_poll_engine_proposal(
                 ctx.env.block.clone(),
                 proposal_type.clone(),
             )?;
-            let mut submsgs = execute_proposal_actions(ctx, msg.proposal_id, proposal_type)?;
-            let mut return_deposit = return_proposal_deposit_submsgs(ctx, msg.proposal_id)?;
-            submsgs.append(&mut return_deposit);
+            let mut submsgs =
+                execute_proposal_actions(ctx, msg.proposal_id, proposal_type.clone())?;
+            let mut return_deposit_submsgs =
+                return_proposal_deposit_submsgs(ctx, msg.proposal_id, proposal_type)?;
+            submsgs.append(&mut return_deposit_submsgs);
 
             submsgs
         }
@@ -757,25 +762,30 @@ fn execute_poll_engine_proposal(
                 ctx.deps.storage,
                 msg.proposal_id,
                 ctx.env.block.clone(),
-                proposal_type,
+                proposal_type.clone(),
             )?;
 
-            match reason {
-                QuorumNotReached | IsVetoOutcome => {
-                    let proposal_deposit = PROPOSAL_INFOS
-                        .may_load(ctx.deps.storage, msg.proposal_id)?
-                        .ok_or(NoSuchProposal)?
-                        .proposal_deposit;
-                    if let Some(deposit) = proposal_deposit {
-                        TOTAL_DEPOSITS
-                            .update(ctx.deps.storage, |deposits| -> StdResult<Uint128> {
-                                Ok(deposits.sub(deposit.amount))
-                            })?;
+            match proposal_type {
+                General => match reason {
+                    QuorumNotReached | IsVetoOutcome => {
+                        let proposal_deposit = PROPOSAL_INFOS
+                            .may_load(ctx.deps.storage, msg.proposal_id)?
+                            .ok_or(NoSuchProposal)?
+                            .proposal_deposit;
+                        if let Some(deposit) = proposal_deposit {
+                            TOTAL_DEPOSITS.update(
+                                ctx.deps.storage,
+                                |deposits| -> StdResult<Uint128> {
+                                    Ok(deposits.sub(deposit.amount))
+                                },
+                            )?;
+                        }
+                        vec![]
                     }
-                    vec![]
-                }
-                // return deposits only if quorum reached and not vetoed
-                _ => return_proposal_deposit_submsgs(ctx, msg.proposal_id)?,
+                    // return deposits only if quorum reached and not vetoed
+                    _ => return_proposal_deposit_submsgs(ctx, msg.proposal_id, General)?,
+                },
+                Council => vec![],
             }
         }
     };
@@ -890,7 +900,6 @@ fn update_gov_config(ctx: &mut Context, msg: UpdateGovConfigMsg) -> DaoResult<Ve
     Ok(vec![])
 }
 
-// TODO: test
 fn update_council(ctx: &mut Context, msg: UpdateCouncilMsg) -> DaoResult<Vec<SubMsg>> {
     DAO_COUNCIL.save(ctx.deps.storage, &msg.dao_council)?;
 
@@ -1402,7 +1411,19 @@ pub fn query_proposals(
     let proposals = polls
         .polls
         .into_iter()
-        .map(|poll| poll_to_proposal_response(deps, &qctx.env, &poll, proposal_type.clone()))
+        .filter_map(|poll| {
+            let proposal_response =
+                poll_to_proposal_response(deps, &qctx.env, &poll, proposal_type.clone());
+            // filthy hack: we do not store whether a poll is of type General or Council
+            // we listed all polls in poll-engine, but only when we try to add remaining data
+            // contained in this contract can we know what their type is and exclude them from
+            // the results if they're not of the requested type
+            if let Err(NoSuchProposal) = proposal_response {
+                None
+            } else {
+                Some(proposal_response)
+            }
+        })
         .collect::<DaoResult<Vec<ProposalResponse>>>()?;
 
     Ok(ProposalsResponse { proposals })
@@ -1443,12 +1464,7 @@ fn poll_to_proposal_response(
     let actions_opt = get_proposal_actions(deps.storage, poll.id, proposal_type.clone())?;
 
     let actions = match actions_opt {
-        None => {
-            return Err(PollError::PollNotFound {
-                poll_id: poll.id.into(),
-            }
-            .into());
-        }
+        None => return Err(NoSuchProposal),
         Some(actions) => actions,
     };
 
@@ -1475,36 +1491,48 @@ fn poll_to_proposal_response(
 
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
-    let total_votes_available = match info.executed_at {
-        Some(block) => match proposal.expires {
-            Expiration::AtHeight(height) => {
-                total_available_votes_at_height(dao_type, deps.storage, min(height, block.height))?
-            }
-            Expiration::AtTime(time) => {
-                total_available_votes_at_time(dao_type, deps.storage, min(time, block.time))?
-            }
-            Expiration::Never { .. } => {
-                // TODO: test
-                total_available_votes_at_height(dao_type, deps.storage, block.height)?
-            }
-        },
-        None => match proposal.expires {
-            Expiration::AtHeight(height) => {
-                if env.block.height >= height {
-                    total_available_votes_at_height(dao_type, deps.storage, height)?
-                } else {
-                    current_total_available_votes(dao_type, deps.storage)?
+    let total_votes_available = match proposal_type {
+        General => match info.executed_at {
+            Some(block) => match proposal.expires {
+                Expiration::AtHeight(height) => total_available_votes_at_height(
+                    dao_type,
+                    deps.storage,
+                    min(height, block.height),
+                )?,
+                Expiration::AtTime(time) => {
+                    total_available_votes_at_time(dao_type, deps.storage, min(time, block.time))?
                 }
-            }
-            Expiration::AtTime(time) => {
-                if env.block.time >= time {
-                    total_available_votes_at_time(dao_type, deps.storage, time)?
-                } else {
-                    current_total_available_votes(dao_type, deps.storage)?
+                Expiration::Never { .. } => {
+                    // TODO: introduce a different structure to eliminate this branch
+                    total_available_votes_at_height(dao_type, deps.storage, block.height)?
                 }
-            }
-            Expiration::Never { .. } => current_total_available_votes(dao_type, deps.storage)?,
+            },
+            None => match proposal.expires {
+                Expiration::AtHeight(height) => {
+                    if env.block.height >= height {
+                        total_available_votes_at_height(dao_type, deps.storage, height)?
+                    } else {
+                        current_total_available_votes(dao_type, deps.storage)?
+                    }
+                }
+                Expiration::AtTime(time) => {
+                    if env.block.time >= time {
+                        total_available_votes_at_time(dao_type, deps.storage, time)?
+                    } else {
+                        current_total_available_votes(dao_type, deps.storage)?
+                    }
+                }
+                Expiration::Never { .. } => current_total_available_votes(dao_type, deps.storage)?,
+            },
         },
+        Council => {
+            let dao_council = DAO_COUNCIL.load(deps.storage)?;
+
+            match dao_council {
+                None => return Err(NoDaoCouncil),
+                Some(dao_council) => Uint128::from(dao_council.members.len() as u128),
+            }
+        }
     };
 
     Ok(ProposalResponse {
@@ -1519,7 +1547,6 @@ fn total_available_votes_at_height(
     store: &dyn Storage,
     height: u64,
 ) -> StdResult<Uint128> {
-    // TODO: tests
     match dao_type {
         Token | Nft => load_total_staked_at_height(store, height),
         Multisig => load_total_multisig_weight_at_height(store, height),
@@ -1769,7 +1796,6 @@ pub fn query_releasable_claims(
     })
 }
 
-// TODO: tests
 pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryResponse> {
     let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
     let global_asset_whitelist: AssetWhitelistResponse = qctx
@@ -1830,7 +1856,6 @@ pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryRespons
     Ok(AssetTreasuryResponse { assets })
 }
 
-// TODO: tests
 fn query_nft_treasury(qctx: QueryContext) -> DaoResult<NftTreasuryResponse> {
     let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
     let global_nft_whitelist: NftWhitelistResponse = qctx
@@ -1938,7 +1963,6 @@ fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
     }
 }
 
-// TODO: test
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
     let old_code_version = DAO_CODE_VERSION.load(deps.storage)?;

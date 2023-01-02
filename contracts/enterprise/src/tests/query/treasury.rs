@@ -28,6 +28,7 @@ fn cw20_treasury_lists_luna_and_dao_token_by_default() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let treasury = query_cw20_treasury(mock_query_ctx(deps.as_ref(), &env))?;

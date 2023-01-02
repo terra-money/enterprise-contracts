@@ -4,6 +4,7 @@ use cw_storage_plus::{Item, Map};
 use enterprise_protocol::api::{ProposalAction, ProposalDeposit, ProposalId};
 use enterprise_protocol::error::DaoError::NoSuchProposal;
 use enterprise_protocol::error::DaoResult;
+use ProposalType::{Council, General};
 
 // TODO: unify somehow; causes a lot of duplication wherever we match on this value
 #[cw_serde]
@@ -16,7 +17,6 @@ pub const PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> = Map::new("proposal_inf
 pub const COUNCIL_PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> =
     Map::new("council_proposal_infos");
 
-// TODO: test usages of this, in relation to excluding deposits from treasury queries
 pub const TOTAL_DEPOSITS: Item<Uint128> = Item::new("total_proposal_deposits");
 
 #[cw_serde]
@@ -31,15 +31,10 @@ pub fn is_proposal_executed(
     proposal_id: ProposalId,
     proposal_type: ProposalType,
 ) -> DaoResult<bool> {
-    match proposal_type {
-        ProposalType::General => PROPOSAL_INFOS
-            .may_load(store, proposal_id)?
-            .map(|info| info.executed_at.is_some()),
-        ProposalType::Council => COUNCIL_PROPOSAL_INFOS
-            .may_load(store, proposal_id)?
-            .map(|info| info.executed_at.is_some()),
-    }
-    .ok_or(NoSuchProposal)
+    proposal_infos_storage(&proposal_type)
+        .may_load(store, proposal_id)?
+        .map(|info| info.executed_at.is_some())
+        .ok_or(NoSuchProposal)
 }
 
 pub fn set_proposal_executed(
@@ -48,30 +43,17 @@ pub fn set_proposal_executed(
     block: BlockInfo,
     proposal_type: ProposalType,
 ) -> DaoResult<()> {
-    match proposal_type {
-        ProposalType::General => {
-            PROPOSAL_INFOS.update(store, proposal_id, |info| -> DaoResult<ProposalInfo> {
-                info.map(|info| ProposalInfo {
-                    executed_at: Some(block),
-                    ..info
-                })
-                .ok_or(NoSuchProposal)
-            })?;
-        }
-        ProposalType::Council => {
-            COUNCIL_PROPOSAL_INFOS.update(
-                store,
-                proposal_id,
-                |info| -> DaoResult<ProposalInfo> {
-                    info.map(|info| ProposalInfo {
-                        executed_at: Some(block),
-                        ..info
-                    })
-                    .ok_or(NoSuchProposal)
-                },
-            )?;
-        }
-    }
+    proposal_infos_storage(&proposal_type).update(
+        store,
+        proposal_id,
+        |info| -> DaoResult<ProposalInfo> {
+            info.map(|info| ProposalInfo {
+                executed_at: Some(block),
+                ..info
+            })
+            .ok_or(NoSuchProposal)
+        },
+    )?;
 
     Ok(())
 }
@@ -81,12 +63,14 @@ pub fn get_proposal_actions(
     proposal_id: ProposalId,
     proposal_type: ProposalType,
 ) -> StdResult<Option<Vec<ProposalAction>>> {
+    proposal_infos_storage(&proposal_type)
+        .may_load(store, proposal_id)
+        .map(|info_opt| info_opt.map(|info| info.proposal_actions))
+}
+
+fn proposal_infos_storage(proposal_type: &ProposalType) -> Map<ProposalId, ProposalInfo> {
     match proposal_type {
-        ProposalType::General => PROPOSAL_INFOS
-            .may_load(store, proposal_id)
-            .map(|info_opt| info_opt.map(|info| info.proposal_actions)),
-        ProposalType::Council => COUNCIL_PROPOSAL_INFOS
-            .may_load(store, proposal_id)
-            .map(|info_opt| info_opt.map(|info| info.proposal_actions)),
+        General => PROPOSAL_INFOS,
+        Council => COUNCIL_PROPOSAL_INFOS,
     }
 }

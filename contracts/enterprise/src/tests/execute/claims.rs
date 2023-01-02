@@ -38,6 +38,7 @@ fn unstaking_tokens_creates_claims() -> DaoResult<()> {
             vote_duration: 10,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "sender", 50u8)?;
@@ -141,6 +142,7 @@ fn unstaking_tokens_releases_claims_when_scheduled() -> DaoResult<()> {
             unlocking_period: Duration::Height(50),
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "sender", 50u8)?;
@@ -243,6 +245,7 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
             vote_duration: 50,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "sender", 50u8)?;
@@ -331,6 +334,7 @@ fn unstaking_nfts_creates_claims() -> DaoResult<()> {
             vote_duration: 10,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_nfts(
@@ -440,6 +444,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
             vote_duration: 40,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_nfts(
@@ -547,6 +552,7 @@ fn claiming_nft_claims_sends_and_removes_them() -> DaoResult<()> {
             vote_duration: 50,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_nfts(

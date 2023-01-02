@@ -34,6 +34,7 @@ fn cast_vote_token_dao() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "sender1", 12u8)?;
@@ -99,6 +100,7 @@ fn cast_vote_nft_dao() -> DaoResult<()> {
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         None,
+        None,
     )?;
 
     stake_nfts(
@@ -143,6 +145,7 @@ fn cast_vote_multisig_dao() -> DaoResult<()> {
         &env,
         &info,
         multisig_dao_membership_info_with_members(&[("member1", 1u64), ("member2", 2u64)]),
+        None,
         None,
     )?;
 
@@ -197,6 +200,7 @@ fn cast_vote_by_non_token_holder_fails() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &mock_info("holder", &vec![]))?;
@@ -232,6 +236,7 @@ fn cast_vote_by_non_nft_holder_fails() -> DaoResult<()> {
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         None,
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &mock_info("holder", &vec![]))?;
@@ -262,6 +267,7 @@ fn cast_vote_by_non_multisig_member_fails() -> DaoResult<()> {
         &env,
         &info,
         multisig_dao_membership_info_with_members(&[("member1", 1u64)]),
+        None,
         None,
     )?;
 
@@ -306,6 +312,7 @@ fn cast_vote_on_expired_proposal_fails() -> DaoResult<()> {
             vote_duration: 1000,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -344,6 +351,7 @@ fn cast_vote_multiple_times_only_records_last_vote() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &info)?;
@@ -372,6 +380,7 @@ fn cast_multisig_vote_multiple_times_only_records_last_vote() -> DaoResult<()> {
         &env,
         &info,
         multisig_dao_membership_info_with_members(&[("member", 100u64)]),
+        None,
         None,
     )?;
 

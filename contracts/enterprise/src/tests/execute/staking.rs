@@ -28,6 +28,7 @@ fn stake_token_dao() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     assert_user_token_stake(mock_query_ctx(deps.as_ref(), &env), "sender", 0u8);
@@ -91,6 +92,7 @@ fn stake_nft_dao() -> DaoResult<()> {
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
+        None,
         None,
     )?;
 
@@ -164,6 +166,7 @@ fn stake_multisig_dao_fails() -> DaoResult<()> {
         &env,
         &info,
         multisig_dao_membership_info_with_members(&[("sender", 10u64)]),
+        None,
         None,
     )?;
 

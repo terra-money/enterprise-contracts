@@ -143,6 +143,7 @@ fn instantiate_existing_token_membership_stores_proper_info() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     let dao_info = query_dao_info(mock_query_ctx(deps.as_ref(), &env))?;
@@ -165,6 +166,7 @@ fn instantiate_existing_nft_membership_stores_proper_info() -> DaoResult<()> {
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
+        None,
         None,
     )?;
 
@@ -255,6 +257,7 @@ fn instantiate_existing_nft_membership_with_not_valid_cw721_contract_fails() -> 
         &info,
         stub_dao_membership_info(Nft, "non_cw721_addr"),
         None,
+        None,
     );
 
     assert_eq!(result, Err(InvalidExistingNftContract),);
@@ -273,6 +276,7 @@ fn instantiate_existing_multisig_membership_with_not_valid_cw3_contract_fails() 
         &env,
         &info,
         stub_dao_membership_info(Multisig, "non_cw3_addr"),
+        None,
         None,
     );
 
@@ -461,6 +465,7 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
             membership_info,
         }),
         None,
+        None,
     )?;
 
     assert_eq!(
@@ -643,6 +648,7 @@ fn instantiate_new_multisig_membership_with_zero_weight_member_fails() -> DaoRes
             membership_contract_code_id: CW3_FIXED_MULTISIG_CODE_ID,
             membership_info,
         }),
+        None,
         None,
     );
 

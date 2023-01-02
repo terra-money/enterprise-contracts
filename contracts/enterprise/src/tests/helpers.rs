@@ -13,14 +13,16 @@ use cw_utils::Duration;
 use enterprise_protocol::api::DaoMembershipInfo::{Existing, New};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
 use enterprise_protocol::api::{
-    CastVoteMsg, CreateProposalMsg, DaoGovConfig, DaoMembershipInfo, DaoMetadata, DaoSocialData,
-    DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
+    CastVoteMsg, CreateProposalMsg, DaoCouncil, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
+    DaoSocialData, DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
     NewMembershipInfo, NewMultisigMembershipInfo, NftUserStake, ProposalAction, ProposalId,
     ProposalParams, ProposalStatus, QueryMemberInfoMsg, TokenUserStake, UnstakeCw20Msg,
     UnstakeCw721Msg, UnstakeMsg, UserStake, UserStakeParams,
 };
 use enterprise_protocol::error::DaoResult;
-use enterprise_protocol::msg::ExecuteMsg::{CastVote, CreateProposal};
+use enterprise_protocol::msg::ExecuteMsg::{
+    CastCouncilVote, CastVote, CreateCouncilProposal, CreateProposal,
+};
 use enterprise_protocol::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 use itertools::Itertools;
 use poll_engine::api::VoteOutcome;
@@ -120,6 +122,7 @@ pub fn instantiate_stub_dao(
     info: &MessageInfo,
     membership: DaoMembershipInfo,
     gov_config: Option<DaoGovConfig>,
+    dao_council: Option<DaoCouncil>,
 ) -> DaoResult<Response> {
     instantiate(
         deps,
@@ -128,7 +131,7 @@ pub fn instantiate_stub_dao(
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: gov_config.unwrap_or(stub_dao_gov_config()),
-            dao_council: None,
+            dao_council,
             dao_membership_info: membership,
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
@@ -249,6 +252,26 @@ pub fn create_proposal(
     )
 }
 
+pub fn create_council_proposal(
+    deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    title: Option<&str>,
+    description: Option<&str>,
+    proposal_actions: Vec<ProposalAction>,
+) -> DaoResult<Response> {
+    execute(
+        deps,
+        env.clone(),
+        info.clone(),
+        CreateCouncilProposal(CreateProposalMsg {
+            title: title.unwrap_or(PROPOSAL_TITLE).to_string(),
+            description: description.map(|desc| desc.to_string()),
+            proposal_actions,
+        }),
+    )
+}
+
 pub fn vote_on_proposal(
     deps: DepsMut,
     env: &Env,
@@ -261,6 +284,24 @@ pub fn vote_on_proposal(
         env.clone(),
         mock_info(voter, &vec![]),
         CastVote(CastVoteMsg {
+            proposal_id,
+            outcome,
+        }),
+    )
+}
+
+pub fn vote_on_council_proposal(
+    deps: DepsMut,
+    env: &Env,
+    voter: &str,
+    proposal_id: ProposalId,
+    outcome: VoteOutcome,
+) -> DaoResult<Response> {
+    execute(
+        deps,
+        env.clone(),
+        mock_info(voter, &vec![]),
+        CastCouncilVote(CastVoteMsg {
             proposal_id,
             outcome,
         }),

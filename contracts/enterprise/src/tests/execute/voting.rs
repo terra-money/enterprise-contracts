@@ -1,13 +1,14 @@
 use crate::contract::{query_member_vote, query_proposal_votes};
 use crate::tests::helpers::{
-    create_stub_proposal, existing_nft_dao_membership, existing_token_dao_membership,
-    instantiate_stub_dao, multisig_dao_membership_info_with_members, stake_nfts, stake_tokens,
-    stub_token_info, vote_on_proposal, CW20_ADDR, NFT_ADDR,
+    create_council_proposal, create_stub_proposal, existing_nft_dao_membership,
+    existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
+    stake_nfts, stake_tokens, stub_token_info, vote_on_proposal, CW20_ADDR, NFT_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::Addr;
-use enterprise_protocol::api::{MemberVoteParams, ProposalVotesParams};
+use enterprise_protocol::api::{DaoCouncil, MemberVoteParams, ProposalVotesParams};
+use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::DaoResult;
 use poll_engine::api::Vote;
 use poll_engine::api::VoteOutcome::{Abstain, No, Yes};
@@ -26,6 +27,7 @@ fn vote_on_proposal_in_token_dao_stores_member_vote() -> DaoResult<()> {
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
+        None,
         None,
     )?;
 
@@ -89,6 +91,7 @@ fn vote_on_proposal_in_nft_dao_stores_member_vote() -> DaoResult<()> {
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
+        None,
         None,
     )?;
 
@@ -156,6 +159,7 @@ fn vote_on_proposal_in_multisig_dao_stores_member_vote() -> DaoResult<()> {
         &info,
         multisig_dao_membership_info_with_members(&[(member, 101u64)]),
         None,
+        None,
     )?;
 
     create_stub_proposal(deps.as_mut(), &env, &mock_info(member, &vec![]))?;
@@ -215,6 +219,7 @@ fn member_who_did_not_vote_has_none_vote() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 123u128)?;
@@ -258,6 +263,7 @@ fn votes_on_non_existent_proposal_are_none() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 123u128)?;
@@ -284,6 +290,45 @@ fn votes_on_non_existent_proposal_are_none() -> DaoResult<()> {
         },
     )?;
     assert_eq!(proposal_votes.votes, vec![]);
+
+    Ok(())
+}
+
+#[test]
+fn vote_on_council_proposal_by_non_council_member_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate_stub_dao(
+        deps.as_mut(),
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        None,
+        Some(DaoCouncil {
+            members: vec!["council_member".to_string()],
+            allowed_proposal_action_types: None,
+        }),
+    )?;
+
+    stake_tokens(deps.as_mut(), &env, CW20_ADDR, "user", 123u128)?;
+
+    create_council_proposal(
+        deps.as_mut(),
+        &env,
+        &mock_info("council_member", &vec![]),
+        None,
+        None,
+        vec![],
+    )?;
+
+    let result = vote_on_proposal(deps.as_mut(), &env, "non_council_member", 1, Yes);
+
+    assert_eq!(result, Err(Unauthorized));
 
     Ok(())
 }
