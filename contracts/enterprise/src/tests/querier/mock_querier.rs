@@ -2,7 +2,7 @@ use crate::tests::querier::custom_querier::CustomQuerier;
 use crate::tests::querier::enterprise_factory_querier::{
     enterprise_code_ids_to_map, EnterpriseFactoryQuerier,
 };
-use crate::tests::querier::multisig_querier::{members_to_map, MultisigQuerier};
+use crate::tests::querier::multisig_querier::{MultisigQuerier, _members_to_map};
 use crate::tests::querier::nft_querier::{nft_holders_to_map, num_tokens_to_map, NftQuerier};
 use crate::tests::querier::token_querier::{balances_to_map, token_infos_to_map, TokenQuerier};
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
@@ -113,9 +113,9 @@ impl WasmMockQuerier {
         };
     }
 
-    pub fn with_multisig_members(&mut self, members: &[(&str, &[(&str, u64)])]) {
+    pub fn _with_multisig_members(&mut self, members: &[(&str, &[(&str, u64)])]) {
         self.multisig_querier = MultisigQuerier {
-            members: members_to_map(members),
+            members: _members_to_map(members),
         };
     }
 

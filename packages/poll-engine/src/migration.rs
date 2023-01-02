@@ -125,7 +125,6 @@ fn polls_v1<'a>() -> IndexedMap<'a, PollId, PollV1, PollIndices<'a>> {
     IndexedMap::new("POLLS", indices)
 }
 
-// TODO: test somehow?
 pub fn migrate_v1_to_v2(store: &mut dyn Storage) -> PollResult<()> {
     polls_v1()
         .range(store, None, None, Ascending)

@@ -755,5 +755,3 @@ fn create_proposal_to_update_council_with_non_allowed_types_fails() -> DaoResult
 
     Ok(())
 }
-
-// TODO: create multisig DAO with minimum deposit not set to None fails

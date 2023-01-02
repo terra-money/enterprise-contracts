@@ -68,7 +68,6 @@ pub fn execute(
     }
 }
 
-// TODO: tests
 fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -175,7 +174,6 @@ pub fn query_nft_whitelist(deps: Deps) -> DaoResult<NftWhitelistResponse> {
     Ok(NftWhitelistResponse { nfts })
 }
 
-// TODO: tests
 pub fn query_all_daos(deps: Deps, msg: QueryAllDaosMsg) -> DaoResult<AllDaosResponse> {
     let start_after = msg.start_after.map(Bound::exclusive);
     let limit = msg
@@ -193,7 +191,6 @@ pub fn query_all_daos(deps: Deps, msg: QueryAllDaosMsg) -> DaoResult<AllDaosResp
     Ok(AllDaosResponse { daos: addresses })
 }
 
-// TODO: tests
 pub fn query_enterprise_code_ids(
     deps: Deps,
     msg: EnterpriseCodeIdsMsg,
@@ -215,7 +212,6 @@ pub fn query_enterprise_code_ids(
     Ok(EnterpriseCodeIdsResponse { code_ids })
 }
 
-// TODO: tests
 pub fn query_is_enterprise_code_id(
     deps: Deps,
     msg: IsEnterpriseCodeIdMsg,
@@ -227,7 +223,6 @@ pub fn query_is_enterprise_code_id(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-// TODO: tests
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
     match msg.new_enterprise_code_id {
         None => {}

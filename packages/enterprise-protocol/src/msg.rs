@@ -59,7 +59,6 @@ pub struct MigrateMsg {}
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    // TODO: add DAO council to the response here
     #[returns(DaoInfoResponse)]
     DaoInfo {},
     #[returns(MemberInfoResponse)]
@@ -95,7 +94,7 @@ pub enum QueryMsg {
     #[returns(ClaimsResponse)]
     ReleasableClaims(ClaimsParams),
     #[returns(AssetTreasuryResponse)]
-    Cw20Treasury {}, // TODO: allow pagination? but how?
+    Cw20Treasury {},
     #[returns(NftTreasuryResponse)]
-    NftTreasury {}, // TODO: allow pagination? but how?
+    NftTreasury {},
 }

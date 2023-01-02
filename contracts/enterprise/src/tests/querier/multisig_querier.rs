@@ -11,7 +11,7 @@ pub struct MultisigQuerier {
     pub members: HashMap<String, HashMap<String, u64>>,
 }
 
-pub(crate) fn members_to_map(
+pub(crate) fn _members_to_map(
     members: &[(&str, &[(&str, u64)])],
 ) -> HashMap<String, HashMap<String, u64>> {
     let mut members_map: HashMap<String, HashMap<String, u64>> = HashMap::new();

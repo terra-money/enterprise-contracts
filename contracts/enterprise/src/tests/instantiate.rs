@@ -16,14 +16,14 @@ use cw20::{Cw20Coin, MinterResponse};
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_asset::AssetInfo;
 use cw_utils::Duration;
-use enterprise_protocol::api::DaoMembershipInfo::{Existing, New};
+use enterprise_protocol::api::DaoMembershipInfo::New;
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
 use enterprise_protocol::api::NewMembershipInfo::{NewMultisig, NewNft, NewToken};
 use enterprise_protocol::api::ProposalActionType::{UpdateAssetWhitelist, UpdateNftWhitelist};
 use enterprise_protocol::api::{
-    DaoCouncil, DaoGovConfig, DaoMetadata, DaoSocialData, ExistingDaoMembershipMsg, Logo,
-    MultisigMember, NewDaoMembershipMsg, NewMultisigMembershipInfo, NewNftMembershipInfo,
-    NewTokenMembershipInfo, TokenMarketingInfo,
+    DaoCouncil, DaoGovConfig, DaoMetadata, DaoSocialData, Logo, MultisigMember,
+    NewDaoMembershipMsg, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
+    TokenMarketingInfo,
 };
 use enterprise_protocol::error::DaoError::{
     InvalidExistingMultisigContract, InvalidExistingNftContract, InvalidExistingTokenContract,
@@ -173,45 +173,6 @@ fn instantiate_existing_nft_membership_stores_proper_info() -> DaoResult<()> {
     let dao_info = query_dao_info(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(dao_info.dao_type, Nft);
     assert_eq!(dao_info.dao_membership_contract, Addr::unchecked(NFT_ADDR));
-
-    Ok(())
-}
-
-// TODO: probably has to be replaced by an integration test and deleted
-#[ignore]
-#[test]
-fn instantiate_existing_multisig_membership_stores_proper_info() -> DaoResult<()> {
-    let mut deps = mock_dependencies();
-    let env = mock_env();
-    let info = mock_info("sender", &[]);
-
-    deps.querier
-        .with_multisig_members(&[("random_cw3_multisig", &[("sender", 10u64)])]);
-
-    instantiate(
-        deps.as_mut(),
-        env.clone(),
-        info,
-        InstantiateMsg {
-            dao_metadata: stub_dao_metadata(),
-            dao_gov_config: stub_dao_gov_config(),
-            dao_council: None,
-            dao_membership_info: Existing(ExistingDaoMembershipMsg {
-                dao_type: Multisig,
-                membership_contract_addr: "random_cw3_multisig".to_string(),
-            }),
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
-            asset_whitelist: None,
-            nft_whitelist: None,
-        },
-    )?;
-
-    let dao_info = query_dao_info(mock_query_ctx(deps.as_ref(), &env))?;
-    assert_eq!(dao_info.dao_type, Multisig);
-    assert_eq!(
-        dao_info.dao_membership_contract,
-        Addr::unchecked("random_cw3_multisig")
-    );
 
     Ok(())
 }
@@ -379,8 +340,6 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
 
     let nft_whitelist_response = query_nft_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(nft_whitelist_response.nfts, nft_whitelist);
-
-    // TODO: confirm that after reply() is called, the DAO membership contract is properly stored
 
     Ok(())
 }
@@ -550,8 +509,6 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
 
     let nft_whitelist_response = query_nft_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(nft_whitelist_response.nfts, nft_whitelist);
-
-    // TODO: confirm that after reply() is called, the DAO membership contract is properly stored
 
     Ok(())
 }
