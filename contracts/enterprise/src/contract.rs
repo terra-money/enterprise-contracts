@@ -15,9 +15,9 @@ use crate::staking::{
     CW20_STAKES,
 };
 use crate::state::{
-    add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
+    add_claim, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
     DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
-    NFT_WHITELIST, STATE,
+    NFT_WHITELIST,
 };
 use crate::validate::{
     validate_dao_council, validate_dao_gov_config, validate_deposit,
@@ -122,13 +122,6 @@ pub fn instantiate(
 
     validate_dao_council(msg.dao_council.clone())?;
 
-    STATE.save(
-        deps.storage,
-        &State {
-            multisig_dao_proposal_actions: None,
-        },
-    )?;
-
     DAO_CREATION_DATE.save(deps.storage, &env.block.time)?;
 
     DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
@@ -154,6 +147,8 @@ pub fn instantiate(
         New(membership) => instantiate_new_membership_dao(ctx, membership)?,
         Existing(membership) => instantiate_existing_membership_dao(ctx, membership)?,
     };
+
+    // TODO: when governance is pulled out, remember to validate membership contract when using existing contracts before passing it to the newly pulled out governance contract
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")

@@ -1,19 +1,9 @@
-use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint64};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
-use enterprise_protocol::api::{
-    Claim, DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, ProposalAction,
-};
+use enterprise_protocol::api::{Claim, DaoCouncil, DaoGovConfig, DaoMetadata, DaoType};
 
 pub const DAO_METADATA_KEY: &str = "dao_metadata";
-
-#[cw_serde]
-pub struct State {
-    pub multisig_dao_proposal_actions: Option<Vec<ProposalAction>>,
-}
-
-pub const STATE: Item<State> = Item::new("state");
 
 pub const DAO_CREATION_DATE: Item<Timestamp> = Item::new("dao_creation_date");
 
