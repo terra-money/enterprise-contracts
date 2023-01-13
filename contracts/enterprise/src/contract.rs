@@ -1,4 +1,3 @@
-use crate::migration::migrate_v1_to_v2;
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -172,7 +171,7 @@ fn instantiate_new_membership_dao(
 ) -> DaoResult<Vec<SubMsg>> {
     match membership.membership_info {
         NewToken(info) => {
-            instantiate_new_token_dao(ctx, info, membership.membership_contract_code_id)
+            instantiate_new_token_dao(ctx, *info, membership.membership_contract_code_id)
         }
         NewNft(info) => instantiate_new_nft_dao(ctx, info, membership.membership_contract_code_id),
         NewMultisig(info) => instantiate_new_multisig_dao(ctx, info),
@@ -1960,12 +1959,6 @@ fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
-    let old_code_version = DAO_CODE_VERSION.load(deps.storage)?;
-
-    if old_code_version == Uint64::from(1u8) {
-        migrate_v1_to_v2(deps.storage)?;
-    }
-
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

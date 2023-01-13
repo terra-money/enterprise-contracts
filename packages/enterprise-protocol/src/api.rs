@@ -91,7 +91,6 @@ pub struct DaoCouncil {
 }
 
 #[cw_serde]
-#[allow(clippy::large_enum_variant)]
 pub enum DaoMembershipInfo {
     New(NewDaoMembershipMsg),
     Existing(ExistingDaoMembershipMsg),
@@ -104,9 +103,8 @@ pub struct NewDaoMembershipMsg {
 }
 
 #[cw_serde]
-#[allow(clippy::large_enum_variant)]
 pub enum NewMembershipInfo {
-    NewToken(NewTokenMembershipInfo),
+    NewToken(Box<NewTokenMembershipInfo>),
     NewNft(NewNftMembershipInfo),
     NewMultisig(NewMultisigMembershipInfo),
 }

@@ -131,7 +131,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         marketing_owner: Some(TOKEN_MARKETING_OWNER.to_string()),
         logo_url: Some(TOKEN_LOGO_URL.to_string()),
     };
-    let membership_info = NewMembership(NewToken(NewTokenMembershipInfo {
+    let membership_info = NewMembership(NewToken(Box::new(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
         token_symbol: TOKEN_SYMBOL.to_string(),
         token_decimals: TOKEN_DECIMALS,
@@ -139,7 +139,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         initial_dao_balance: Some(456u128.into()),
         token_mint: token_mint.clone(),
         token_marketing: Some(token_marketing_info.clone()),
-    }));
+    })));
     let dao_metadata = anonymous_dao_metadata();
     let dao_gov_config = anonymous_dao_gov_config();
     let dao_council = anonymous_dao_council();
@@ -175,7 +175,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                     dao_council: Some(dao_council),
                     dao_membership_info: New(NewDaoMembershipMsg {
                         membership_contract_code_id: CW_20_CODE_ID,
-                        membership_info: NewToken(NewTokenMembershipInfo {
+                        membership_info: NewToken(Box::new(NewTokenMembershipInfo {
                             token_name: TOKEN_NAME.to_string(),
                             token_symbol: TOKEN_SYMBOL.to_string(),
                             token_decimals: TOKEN_DECIMALS,
@@ -183,7 +183,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                             initial_dao_balance: Some(456u128.into()),
                             token_mint,
                             token_marketing: Some(token_marketing_info),
-                        }),
+                        })),
                     }),
                     enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
                     asset_whitelist: Some(asset_whitelist),

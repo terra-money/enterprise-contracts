@@ -255,7 +255,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
     let dao_addr = "dao_addr";
     env.contract.address = Addr::unchecked(dao_addr);
 
-    let membership_info = NewToken(NewTokenMembershipInfo {
+    let membership_info = NewToken(Box::new(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
         token_symbol: TOKEN_SYMBOL.to_string(),
         token_decimals: TOKEN_DECIMALS,
@@ -274,7 +274,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
             marketing_owner: Some(TOKEN_MARKETING_OWNER.to_string()),
             logo_url: Some(TOKEN_LOGO_URL.to_string()),
         }),
-    });
+    }));
     let asset_whitelist = vec![
         AssetInfo::native("luna"),
         AssetInfo::cw20(Addr::unchecked("allowed_token")),
@@ -350,7 +350,7 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
     let env = mock_env();
     let info = mock_info("sender", &[]);
 
-    let membership_info = NewToken(NewTokenMembershipInfo {
+    let membership_info = NewToken(Box::new(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
         token_symbol: TOKEN_SYMBOL.to_string(),
         token_decimals: TOKEN_DECIMALS,
@@ -375,7 +375,7 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
             marketing_owner: Some(TOKEN_MARKETING_OWNER.to_string()),
             logo_url: Some(TOKEN_LOGO_URL.to_string()),
         }),
-    });
+    }));
     let result = instantiate(
         deps.as_mut(),
         env.clone(),
@@ -406,7 +406,7 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
     env.contract.address = Addr::unchecked("dao_addr");
     let info = mock_info("sender", &[]);
 
-    let membership_info = NewToken(NewTokenMembershipInfo {
+    let membership_info = NewToken(Box::new(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
         token_symbol: TOKEN_SYMBOL.to_string(),
         token_decimals: TOKEN_DECIMALS,
@@ -414,7 +414,7 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
         initial_dao_balance: None,
         token_mint: None,
         token_marketing: None,
-    });
+    }));
     let response = instantiate_stub_dao(
         deps.as_mut(),
         &env,
