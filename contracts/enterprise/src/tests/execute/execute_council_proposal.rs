@@ -10,7 +10,7 @@ use cosmwasm_std::{to_binary, Addr, Attribute, Decimal, SubMsg, Timestamp, WasmM
 use cw_utils::Duration;
 use enterprise_protocol::api::ProposalAction::UpgradeDao;
 use enterprise_protocol::api::{
-    DaoCouncil, DaoGovConfig, ExecuteProposalMsg, ProposalParams, UpgradeDaoMsg,
+    DaoCouncilSpec, DaoGovConfig, ExecuteProposalMsg, ProposalParams, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::ExecuteCouncilProposal;
@@ -47,7 +47,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: dao_gov_config.clone(),
-            dao_council: Some(DaoCouncil {
+            dao_council: Some(DaoCouncilSpec {
                 members: vec!["council_member1".to_string(), "council_member2".to_string()],
                 allowed_proposal_action_types: None,
             }),

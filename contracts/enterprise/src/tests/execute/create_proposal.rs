@@ -17,7 +17,7 @@ use enterprise_protocol::api::ProposalAction::{
 };
 use enterprise_protocol::api::ProposalActionType::UpdateCouncil;
 use enterprise_protocol::api::{
-    CreateProposalMsg, DaoCouncil, DaoGovConfig, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
+    CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
     Proposal, ProposalAction, ProposalResponse, ProposalStatus, ProposalsParams,
     UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateNftWhitelistMsg,
     UpgradeDaoMsg,
@@ -739,7 +739,7 @@ fn create_proposal_to_update_council_with_non_allowed_types_fails() -> DaoResult
         None,
         None,
         vec![ProposalAction::UpdateCouncil(UpdateCouncilMsg {
-            dao_council: Some(DaoCouncil {
+            dao_council: Some(DaoCouncilSpec {
                 members: vec!["member".to_string()],
                 allowed_proposal_action_types: Some(vec![UpdateCouncil]),
             }),

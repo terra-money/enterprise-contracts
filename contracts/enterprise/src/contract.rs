@@ -119,13 +119,13 @@ pub fn instantiate(
         &msg.dao_gov_config,
     )?;
 
-    validate_dao_council(msg.dao_council.clone())?;
+    let dao_council = validate_dao_council(deps.as_ref(), msg.dao_council.clone())?;
 
     DAO_CREATION_DATE.save(deps.storage, &env.block.time)?;
 
     DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
     DAO_GOV_CONFIG.save(deps.storage, &msg.dao_gov_config)?;
-    DAO_COUNCIL.save(deps.storage, &msg.dao_council)?;
+    DAO_COUNCIL.save(deps.storage, &dao_council)?;
     ENTERPRISE_FACTORY_CONTRACT.save(
         deps.storage,
         &deps.api.addr_validate(&msg.enterprise_factory_contract)?,
@@ -441,15 +441,13 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
     match dao_council {
         None => Err(NoDaoCouncil),
         Some(dao_council) => {
-            let proposer = ctx.info.sender.to_string();
+            let proposer = ctx.info.sender.clone();
 
             if !dao_council.members.contains(&proposer) {
                 return Err(Unauthorized);
             }
 
-            let allowed_actions = dao_council
-                .allowed_proposal_action_types
-                .unwrap_or_else(|| vec![ProposalActionType::UpgradeDao]);
+            let allowed_actions = dao_council.allowed_proposal_action_types;
 
             // validate that proposal actions are allowed
             for proposal_action in &msg.proposal_actions {
@@ -579,7 +577,7 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
     match dao_council {
         None => Err(NoDaoCouncil),
         Some(dao_council) => {
-            if !dao_council.members.contains(&ctx.info.sender.to_string()) {
+            if !dao_council.members.contains(&ctx.info.sender) {
                 return Err(Unauthorized);
             }
 
@@ -895,7 +893,9 @@ fn update_gov_config(ctx: &mut Context, msg: UpdateGovConfigMsg) -> DaoResult<Ve
 }
 
 fn update_council(ctx: &mut Context, msg: UpdateCouncilMsg) -> DaoResult<Vec<SubMsg>> {
-    DAO_COUNCIL.save(ctx.deps.storage, &msg.dao_council)?;
+    let dao_council = validate_dao_council(ctx.deps.as_ref(), msg.dao_council)?;
+
+    DAO_COUNCIL.save(ctx.deps.storage, &dao_council)?;
 
     Ok(vec![])
 }

@@ -21,7 +21,7 @@ use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
 use enterprise_protocol::api::NewMembershipInfo::{NewMultisig, NewNft, NewToken};
 use enterprise_protocol::api::ProposalActionType::{UpdateAssetWhitelist, UpdateNftWhitelist};
 use enterprise_protocol::api::{
-    DaoCouncil, DaoGovConfig, DaoMetadata, DaoSocialData, Logo, MultisigMember,
+    DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoMetadata, DaoSocialData, Logo, MultisigMember,
     NewDaoMembershipMsg, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
     TokenMarketingInfo,
 };
@@ -80,7 +80,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         unlocking_period: Duration::Height(113),
         minimum_deposit: Some(17u8.into()),
     };
-    let dao_council = Some(DaoCouncil {
+    let dao_council = Some(DaoCouncilSpec {
         members: vec!["council_member1".to_string(), "council_member2".to_string()],
         allowed_proposal_action_types: Some(vec![UpdateAssetWhitelist, UpdateNftWhitelist]),
     });
@@ -110,7 +110,16 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
     assert_eq!(dao_info.dao_code_version, Uint64::from(2u8));
     assert_eq!(dao_info.dao_type, Token);
     assert_eq!(dao_info.gov_config, dao_gov_config);
-    assert_eq!(dao_info.dao_council, dao_council);
+    assert_eq!(
+        dao_info.dao_council,
+        Some(DaoCouncil {
+            members: vec![
+                Addr::unchecked("council_member1"),
+                Addr::unchecked("council_member2")
+            ],
+            allowed_proposal_action_types: vec![UpdateAssetWhitelist, UpdateNftWhitelist]
+        })
+    );
     assert_eq!(
         dao_info.enterprise_factory_contract,
         Addr::unchecked("enterprise_factory_addr")

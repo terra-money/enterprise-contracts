@@ -26,9 +26,9 @@ use enterprise_protocol::api::ProposalAction::{
 };
 use enterprise_protocol::api::ProposalStatus::{Passed, Rejected};
 use enterprise_protocol::api::{
-    CreateProposalMsg, DaoCouncil, DaoGovConfig, DaoMetadata, DaoSocialData, ExecuteMsgsMsg,
-    ExecuteProposalMsg, ListMultisigMembersMsg, Logo, ModifyMultisigMembershipMsg, MultisigMember,
-    ProposalAction, ProposalActionType, ProposalParams, RequestFundingFromDaoMsg,
+    CreateProposalMsg, DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoMetadata, DaoSocialData,
+    ExecuteMsgsMsg, ExecuteProposalMsg, ListMultisigMembersMsg, Logo, ModifyMultisigMembershipMsg,
+    MultisigMember, ProposalAction, ProposalActionType, ProposalParams, RequestFundingFromDaoMsg,
     UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg,
     UpdateNftWhitelistMsg, UpgradeDaoMsg,
 };
@@ -167,7 +167,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
 
     let migrate_msg = to_binary(&MigrateMsg {})?;
 
-    let new_dao_council = Some(DaoCouncil {
+    let new_dao_council = Some(DaoCouncilSpec {
         members: vec!["new_member1".to_string(), "new_member2".to_string()],
         allowed_proposal_action_types: Some(vec![ProposalActionType::UpdateMetadata]),
     });
@@ -291,7 +291,16 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
             },
         }
     );
-    assert_eq!(dao_info.dao_council, new_dao_council);
+    assert_eq!(
+        dao_info.dao_council,
+        Some(DaoCouncil {
+            members: vec![
+                Addr::unchecked("new_member1"),
+                Addr::unchecked("new_member2")
+            ],
+            allowed_proposal_action_types: vec![ProposalActionType::UpdateMetadata],
+        })
+    );
     assert_eq!(
         dao_info.gov_config,
         DaoGovConfig {

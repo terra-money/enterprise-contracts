@@ -1,7 +1,7 @@
 use crate::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    CreateProposalMsg, DaoCouncil, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo, DaoMetadata,
-    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo,
+    DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse, NftWhitelistResponse,
     ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
@@ -18,7 +18,7 @@ pub struct InstantiateMsg {
     pub dao_metadata: DaoMetadata,
     pub dao_gov_config: DaoGovConfig,
     /// Optional council structure that can manage certain aspects of the DAO
-    pub dao_council: Option<DaoCouncil>,
+    pub dao_council: Option<DaoCouncilSpec>,
     pub dao_membership_info: DaoMembershipInfo,
     /// Address of enterprise-factory contract that is creating this DAO
     pub enterprise_factory_contract: String,

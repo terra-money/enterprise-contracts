@@ -11,7 +11,7 @@ use cosmwasm_std::{to_binary, Addr, Timestamp, Uint128};
 use enterprise_protocol::api::ProposalAction::UpgradeDao;
 use enterprise_protocol::api::ProposalActionType::UpdateMetadata;
 use enterprise_protocol::api::{
-    CreateProposalMsg, DaoCouncil, ProposalActionType, ProposalParams, ProposalsParams,
+    CreateProposalMsg, DaoCouncilSpec, ProposalActionType, ProposalParams, ProposalsParams,
     UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
@@ -84,7 +84,7 @@ fn create_council_proposal_by_non_council_member_fails() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
-            dao_council: Some(DaoCouncil {
+            dao_council: Some(DaoCouncilSpec {
                 members: vec!["council_member".to_string()],
                 allowed_proposal_action_types: None,
             }),
@@ -136,7 +136,7 @@ fn create_council_proposal_allows_upgrade_dao_by_default() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
-            dao_council: Some(DaoCouncil {
+            dao_council: Some(DaoCouncilSpec {
                 members: vec!["council_member".to_string()],
                 allowed_proposal_action_types: None,
             }),
@@ -189,7 +189,7 @@ fn create_council_proposal_with_not_allowed_proposal_action_type_fails() -> DaoR
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
-            dao_council: Some(DaoCouncil {
+            dao_council: Some(DaoCouncilSpec {
                 members: vec!["council_member".to_string()],
                 allowed_proposal_action_types: Some(vec![UpdateMetadata]),
             }),
@@ -249,7 +249,7 @@ fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
         InstantiateMsg {
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
-            dao_council: Some(DaoCouncil {
+            dao_council: Some(DaoCouncilSpec {
                 members: vec![
                     "council_member1".to_string(),
                     "council_member2".to_string(),

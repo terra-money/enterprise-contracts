@@ -12,15 +12,15 @@ use enterprise_protocol::api::ProposalAction::{
     ExecuteMsgs, ModifyMultisigMembership, UpdateCouncil, UpgradeDao,
 };
 use enterprise_protocol::api::{
-    DaoCouncil, DaoGovConfig, DaoType, ExecuteMsgsMsg, ModifyMultisigMembershipMsg, ProposalAction,
-    ProposalActionType, ProposalDeposit, UpgradeDaoMsg,
+    DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoType, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
+    ProposalAction, ProposalActionType, ProposalDeposit, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
     MinimumDepositNotAllowed, UnsupportedCouncilProposalAction,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use DaoError::{
     InvalidEnterpriseCodeId, InvalidExistingMultisigContract, InvalidExistingNftContract,
     InvalidExistingTokenContract, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
@@ -128,7 +128,9 @@ pub fn validate_proposal_actions(
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
             ModifyMultisigMembership(msg) => validate_modify_multisig_membership(deps, msg)?,
-            UpdateCouncil(msg) => validate_dao_council(msg.dao_council.clone())?,
+            UpdateCouncil(msg) => {
+                validate_dao_council(deps, msg.dao_council.clone())?;
+            }
             _ => {}
         }
     }
@@ -284,27 +286,47 @@ pub fn validate_modify_multisig_membership(
     Ok(())
 }
 
-pub fn validate_dao_council(dao_council: Option<DaoCouncil>) -> DaoResult<()> {
+pub fn validate_dao_council(
+    deps: Deps,
+    dao_council: Option<DaoCouncilSpec>,
+) -> DaoResult<Option<DaoCouncil>> {
     match dao_council {
-        None => Ok(()),
+        None => Ok(None),
         Some(dao_council) => {
-            validate_no_duplicate_council_members(dao_council.members)?;
-            validate_allowed_council_proposal_types(dao_council.allowed_proposal_action_types)?;
+            let members = validate_no_duplicate_council_members(deps, dao_council.members)?;
+            validate_allowed_council_proposal_types(
+                dao_council.allowed_proposal_action_types.clone(),
+            )?;
 
-            Ok(())
+            Ok(Some(DaoCouncil {
+                members,
+                allowed_proposal_action_types: dao_council
+                    .allowed_proposal_action_types
+                    .unwrap_or_else(|| vec![ProposalActionType::UpgradeDao]),
+            }))
         }
     }
 }
 
-pub fn validate_no_duplicate_council_members(members: Vec<String>) -> DaoResult<()> {
-    let mut members_map: HashMap<String, ()> = HashMap::new();
+pub fn validate_no_duplicate_council_members(
+    deps: Deps,
+    members: Vec<String>,
+) -> DaoResult<Vec<Addr>> {
+    // tracks whether we encountered a member or not
+    let mut members_set: HashSet<Addr> = HashSet::new();
+
+    // keeps members' validated addresses, in order in which we received them
+    let mut member_addrs: Vec<Addr> = Vec::with_capacity(members.len());
+
     for member in members {
-        if members_map.contains_key(&member) {
+        let member_addr = deps.api.addr_validate(&member)?;
+        if !members_set.insert(member_addr.clone()) {
             return Err(DuplicateCouncilMember { member });
         }
-        members_map.insert(member, ());
+        member_addrs.push(member_addr);
     }
-    Ok(())
+
+    Ok(member_addrs)
 }
 
 /// Check if allowed council proposal types contain dangerous types of actions that a council

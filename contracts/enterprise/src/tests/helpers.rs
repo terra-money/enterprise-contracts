@@ -13,7 +13,7 @@ use cw_utils::Duration;
 use enterprise_protocol::api::DaoMembershipInfo::{Existing, New};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
 use enterprise_protocol::api::{
-    CastVoteMsg, CreateProposalMsg, DaoCouncil, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
+    CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
     DaoSocialData, DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
     NewMembershipInfo, NewMultisigMembershipInfo, NftUserStake, ProposalAction, ProposalId,
     ProposalParams, ProposalStatus, QueryMemberInfoMsg, TokenUserStake, UnstakeCw20Msg,
@@ -122,7 +122,7 @@ pub fn instantiate_stub_dao(
     info: &MessageInfo,
     membership: DaoMembershipInfo,
     gov_config: Option<DaoGovConfig>,
-    dao_council: Option<DaoCouncil>,
+    dao_council: Option<DaoCouncilSpec>,
 ) -> DaoResult<Response> {
     instantiate(
         deps,

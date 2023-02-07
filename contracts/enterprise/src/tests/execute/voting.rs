@@ -7,7 +7,7 @@ use crate::tests::helpers::{
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::Addr;
-use enterprise_protocol::api::{DaoCouncil, MemberVoteParams, ProposalVotesParams};
+use enterprise_protocol::api::{DaoCouncilSpec, MemberVoteParams, ProposalVotesParams};
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::DaoResult;
 use poll_engine::api::Vote;
@@ -309,7 +309,7 @@ fn vote_on_council_proposal_by_non_council_member_fails() -> DaoResult<()> {
         &info,
         existing_token_dao_membership(CW20_ADDR),
         None,
-        Some(DaoCouncil {
+        Some(DaoCouncilSpec {
             members: vec!["council_member".to_string()],
             allowed_proposal_action_types: None,
         }),

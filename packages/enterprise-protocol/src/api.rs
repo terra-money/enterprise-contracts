@@ -81,13 +81,19 @@ pub struct DaoGovConfig {
 }
 
 #[cw_serde]
-pub struct DaoCouncil {
+pub struct DaoCouncilSpec {
     /// Addresses of council members. Each member has equal voting power.
     pub members: Vec<String>,
     /// Proposal action types allowed in proposals that are voted on by the council.
     /// Effectively defines what types of actions council can propose and vote on.
     /// If None, will default to a predefined set of actions.
     pub allowed_proposal_action_types: Option<Vec<ProposalActionType>>,
+}
+
+#[cw_serde]
+pub struct DaoCouncil {
+    pub members: Vec<Addr>,
+    pub allowed_proposal_action_types: Vec<ProposalActionType>,
 }
 
 #[cw_serde]
@@ -221,7 +227,7 @@ pub struct UpdateGovConfigMsg {
 
 #[cw_serde]
 pub struct UpdateCouncilMsg {
-    pub dao_council: Option<DaoCouncil>,
+    pub dao_council: Option<DaoCouncilSpec>,
 }
 
 #[cw_serde]

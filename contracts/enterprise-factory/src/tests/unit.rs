@@ -19,7 +19,7 @@ use enterprise_protocol::api::ProposalActionType::{
     RequestFundingFromDao, UpdateMetadata, UpgradeDao,
 };
 use enterprise_protocol::api::{
-    DaoCouncil, DaoGovConfig, DaoMembershipInfo, DaoMetadata, DaoSocialData,
+    DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata, DaoSocialData,
     ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg, NewMembershipInfo,
     NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo, TokenMarketingInfo,
 };
@@ -535,8 +535,8 @@ fn anonymous_dao_gov_config() -> DaoGovConfig {
     }
 }
 
-fn anonymous_dao_council() -> DaoCouncil {
-    DaoCouncil {
+fn anonymous_dao_council() -> DaoCouncilSpec {
+    DaoCouncilSpec {
         members: vec![],
         allowed_proposal_action_types: Some(vec![
             UpdateMetadata,
