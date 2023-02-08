@@ -128,8 +128,10 @@ pub fn validate_proposal_actions(
 ) -> DaoResult<()> {
     for proposal_action in proposal_actions {
         match proposal_action {
-            UpdateAssetWhitelist(msg) => validate_asset_whitelist_changes(&msg.add, &msg.remove)?,
-            UpdateNftWhitelist(msg) => validate_nft_whitelist_changes(&msg.add, &msg.remove)?,
+            UpdateAssetWhitelist(msg) => {
+                validate_asset_whitelist_changes(deps, &msg.add, &msg.remove)?
+            }
+            UpdateNftWhitelist(msg) => validate_nft_whitelist_changes(deps, &msg.add, &msg.remove)?,
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
             ModifyMultisigMembership(msg) => validate_modify_multisig_membership(deps, msg)?,
@@ -187,12 +189,36 @@ pub fn apply_gov_config_changes(
     gov_config
 }
 
+pub fn normalize_asset_whitelist(
+    deps: Deps,
+    asset_whitelist: &Vec<AssetInfo>,
+) -> DaoResult<Vec<AssetInfo>> {
+    let mut normalized_asset_whitelist: Vec<AssetInfo> = vec![];
+
+    let asset_hashsets = split_asset_hashsets(deps, asset_whitelist)?;
+
+    for denom in asset_hashsets.native {
+        normalized_asset_whitelist.push(AssetInfo::native(denom))
+    }
+
+    for cw20 in asset_hashsets.cw20 {
+        normalized_asset_whitelist.push(AssetInfo::cw20(cw20))
+    }
+
+    for (addr, token_id) in asset_hashsets.cw1155 {
+        normalized_asset_whitelist.push(AssetInfo::cw1155(addr, token_id))
+    }
+
+    Ok(normalized_asset_whitelist)
+}
+
 fn validate_asset_whitelist_changes(
+    deps: Deps,
     add: &Vec<AssetInfo>,
     remove: &Vec<AssetInfo>,
 ) -> DaoResult<()> {
-    let add_asset_hashsets = split_asset_hashsets(add)?;
-    let remove_asset_hashsets = split_asset_hashsets(remove)?;
+    let add_asset_hashsets = split_asset_hashsets(deps, add)?;
+    let remove_asset_hashsets = split_asset_hashsets(deps, remove)?;
 
     if add_asset_hashsets
         .native
@@ -222,7 +248,7 @@ fn validate_asset_whitelist_changes(
     Ok(())
 }
 
-fn split_asset_hashsets(assets: &Vec<AssetInfo>) -> DaoResult<AssetInfoHashSets> {
+fn split_asset_hashsets(deps: Deps, assets: &Vec<AssetInfo>) -> DaoResult<AssetInfoHashSets> {
     let mut native_assets: HashSet<String> = HashSet::new();
     let mut cw20_assets: HashSet<Addr> = HashSet::new();
     let mut cw1155_assets: HashSet<(Addr, String)> = HashSet::new();
@@ -236,17 +262,19 @@ fn split_asset_hashsets(assets: &Vec<AssetInfo>) -> DaoResult<AssetInfoHashSets>
                 }
             }
             AssetInfo::Cw20(addr) => {
-                if cw20_assets.contains(addr) {
+                let addr = deps.api.addr_validate(addr.as_ref())?;
+                if cw20_assets.contains(&addr) {
                     return Err(DaoError::DuplicateAssetFound);
                 } else {
-                    cw20_assets.insert(addr.clone());
+                    cw20_assets.insert(addr);
                 }
             }
             AssetInfo::Cw1155(addr, id) => {
+                let addr = deps.api.addr_validate(addr.as_ref())?;
                 if cw1155_assets.contains(&(addr.clone(), id.to_string())) {
                     return Err(DaoError::DuplicateAssetFound);
                 } else {
-                    cw1155_assets.insert((addr.clone(), id.to_string()));
+                    cw1155_assets.insert((addr, id.to_string()));
                 }
             }
             _ => {
@@ -270,19 +298,25 @@ struct AssetInfoHashSets {
     pub cw1155: HashSet<(Addr, String)>,
 }
 
-fn validate_nft_whitelist_changes(add: &Vec<Addr>, remove: &Vec<Addr>) -> DaoResult<()> {
-    let mut add_nfts: HashSet<&Addr> = HashSet::new();
+fn validate_nft_whitelist_changes(
+    deps: Deps,
+    add: &Vec<Addr>,
+    remove: &Vec<Addr>,
+) -> DaoResult<()> {
+    let mut add_nfts: HashSet<Addr> = HashSet::new();
     for nft in add {
-        if add_nfts.contains(nft) {
+        let nft = deps.api.addr_validate(nft.as_ref())?;
+        if add_nfts.contains(&nft) {
             return Err(DaoError::DuplicateNftFound);
         } else {
             add_nfts.insert(nft);
         }
     }
 
-    let mut remove_nfts: HashSet<&Addr> = HashSet::new();
+    let mut remove_nfts: HashSet<Addr> = HashSet::new();
     for nft in remove {
-        if remove_nfts.contains(nft) {
+        let nft = deps.api.addr_validate(nft.as_ref())?;
+        if remove_nfts.contains(&nft) {
             return Err(DaoError::DuplicateNftFound);
         } else {
             remove_nfts.insert(nft);

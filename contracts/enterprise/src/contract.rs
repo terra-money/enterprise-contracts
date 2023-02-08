@@ -19,8 +19,9 @@ use crate::state::{
     NFT_WHITELIST,
 };
 use crate::validate::{
-    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
-    validate_existing_dao_contract, validate_modify_multisig_membership, validate_proposal_actions,
+    apply_gov_config_changes, normalize_asset_whitelist, validate_dao_council,
+    validate_dao_gov_config, validate_deposit, validate_existing_dao_contract,
+    validate_modify_multisig_membership, validate_proposal_actions,
 };
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::Order::Ascending;
@@ -133,10 +134,14 @@ pub fn instantiate(
     )?;
     DAO_CODE_VERSION.save(deps.storage, &CODE_VERSION.into())?;
 
-    ASSET_WHITELIST.save(deps.storage, &msg.asset_whitelist.unwrap_or_default())?;
+    let normalized_asset_whitelist =
+        normalize_asset_whitelist(deps.as_ref(), &msg.asset_whitelist.unwrap_or_default())?;
+    ASSET_WHITELIST.save(deps.storage, &normalized_asset_whitelist)?;
+
     for nft in &msg.nft_whitelist.unwrap_or_default() {
-        NFT_WHITELIST.save(deps.storage, nft.clone(), &())?;
+        NFT_WHITELIST.save(deps.storage, deps.api.addr_validate(nft.as_ref())?, &())?;
     }
+
     save_total_staked(deps.storage, &Uint128::zero(), &env.block)?;
     TOTAL_DEPOSITS.save(deps.storage, &Uint128::zero())?;
 
@@ -911,17 +916,27 @@ fn update_asset_whitelist(
         .filter(|asset| !msg.remove.contains(asset))
         .collect_vec();
 
-    ASSET_WHITELIST.save(ctx.deps.storage, &asset_whitelist)?;
+    let normalized_asset_whitelist =
+        normalize_asset_whitelist(ctx.deps.as_ref(), &asset_whitelist)?;
+
+    ASSET_WHITELIST.save(ctx.deps.storage, &normalized_asset_whitelist)?;
 
     Ok(vec![])
 }
 
 fn update_nft_whitelist(ctx: &mut Context, msg: UpdateNftWhitelistMsg) -> DaoResult<Vec<SubMsg>> {
     for add in msg.add {
-        NFT_WHITELIST.save(ctx.deps.storage, add, &())?;
+        NFT_WHITELIST.save(
+            ctx.deps.storage,
+            ctx.deps.api.addr_validate(add.as_ref())?,
+            &(),
+        )?;
     }
     for remove in msg.remove {
-        NFT_WHITELIST.remove(ctx.deps.storage, remove);
+        NFT_WHITELIST.remove(
+            ctx.deps.storage,
+            ctx.deps.api.addr_validate(remove.as_ref())?,
+        );
     }
 
     Ok(vec![])
