@@ -18,7 +18,7 @@ use enterprise_protocol::api::{
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
-    MinimumDepositNotAllowed, UnsupportedCouncilProposalAction,
+    MinimumDepositNotAllowed, UnsupportedCouncilProposalAction, ZeroVoteDuration,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use std::collections::HashSet;
@@ -29,6 +29,10 @@ use DaoError::{
 use ProposalAction::{UpdateAssetWhitelist, UpdateNftWhitelist};
 
 pub fn validate_dao_gov_config(dao_type: &DaoType, dao_gov_config: &DaoGovConfig) -> DaoResult<()> {
+    if dao_gov_config.vote_duration == 0 {
+        return Err(ZeroVoteDuration);
+    }
+
     if let Duration::Time(unlocking_time) = dao_gov_config.unlocking_period {
         if unlocking_time < dao_gov_config.vote_duration {
             return Err(VoteDurationLongerThanUnstaking {});

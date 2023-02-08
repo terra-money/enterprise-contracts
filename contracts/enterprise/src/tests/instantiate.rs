@@ -663,6 +663,41 @@ fn instantiate_new_multisig_membership_with_duplicate_member_fails() -> DaoResul
 }
 
 #[test]
+fn instantiate_dao_with_zero_voting_duration_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    let dao_gov_config = DaoGovConfig {
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(50),
+        veto_threshold: None,
+        vote_duration: 0u64,
+        unlocking_period: Duration::Time(0u64),
+        minimum_deposit: None,
+    };
+
+    let result = instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config,
+            dao_council: None,
+            dao_membership_info: stub_token_dao_membership_info(),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    );
+
+    assert_eq!(result, Err(DaoError::ZeroVoteDuration));
+
+    Ok(())
+}
+
+#[test]
 fn instantiate_dao_with_shorter_unstaking_than_voting_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let env = mock_env();

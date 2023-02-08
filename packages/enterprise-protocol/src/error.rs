@@ -43,6 +43,9 @@ pub enum DaoError {
     #[error("Duplicate multisig members are not allowed upon DAO creation")]
     DuplicateMultisigMember,
 
+    #[error("Zero-duration voting is not allowed")]
+    ZeroVoteDuration,
+
     #[error("Proposal voting duration cannot be longer than unstaking duration")]
     VoteDurationLongerThanUnstaking,
 
