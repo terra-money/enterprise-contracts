@@ -58,8 +58,8 @@ use enterprise_protocol::api::{
     UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
-    InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable, NotMultisigMember,
-    ProposalAlreadyExecuted, UnsupportedCouncilProposalAction,
+    DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
+    NotMultisigMember, ProposalAlreadyExecuted, UnsupportedCouncilProposalAction,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -246,6 +246,11 @@ fn instantiate_new_multisig_dao(
         }
 
         let member_addr = ctx.deps.api.addr_validate(&member.address)?;
+
+        if MULTISIG_MEMBERS.has(ctx.deps.storage, member_addr.clone()) {
+            return Err(DuplicateMultisigMember);
+        }
+
         MULTISIG_MEMBERS.save(ctx.deps.storage, member_addr, &member.weight)?;
 
         total_weight = total_weight.add(member.weight);

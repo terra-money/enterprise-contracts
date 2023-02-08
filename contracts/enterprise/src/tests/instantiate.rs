@@ -26,7 +26,8 @@ use enterprise_protocol::api::{
     TokenMarketingInfo,
 };
 use enterprise_protocol::error::DaoError::{
-    InvalidExistingMultisigContract, InvalidExistingNftContract, InvalidExistingTokenContract,
+    DuplicateMultisigMember, InvalidExistingMultisigContract, InvalidExistingNftContract,
+    InvalidExistingTokenContract,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::InstantiateMsg;
@@ -619,6 +620,44 @@ fn instantiate_new_multisig_membership_with_zero_weight_member_fails() -> DaoRes
     );
 
     assert_eq!(result, Err(ZeroInitialWeightMember));
+
+    Ok(())
+}
+
+#[test]
+fn instantiate_new_multisig_membership_with_duplicate_member_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    let multisig_members = vec![
+        MultisigMember {
+            address: "member1".to_string(),
+            weight: 200u64.into(),
+        },
+        MultisigMember {
+            address: "member2".to_string(),
+            weight: 20u64.into(),
+        },
+        MultisigMember {
+            address: "member2".to_string(),
+            weight: 371u64.into(),
+        },
+    ];
+    let membership_info = NewMultisig(NewMultisigMembershipInfo { multisig_members });
+    let result = instantiate_stub_dao(
+        deps.as_mut(),
+        &env,
+        &info,
+        New(NewDaoMembershipMsg {
+            membership_contract_code_id: CW3_FIXED_MULTISIG_CODE_ID,
+            membership_info,
+        }),
+        None,
+        None,
+    );
+
+    assert_eq!(result, Err(DuplicateMultisigMember));
 
     Ok(())
 }

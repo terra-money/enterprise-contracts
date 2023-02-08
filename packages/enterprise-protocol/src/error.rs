@@ -40,6 +40,9 @@ pub enum DaoError {
     #[error("Zero-weighted members are not allowed upon DAO creation")]
     ZeroInitialWeightMember,
 
+    #[error("Duplicate multisig members are not allowed upon DAO creation")]
+    DuplicateMultisigMember,
+
     #[error("Proposal voting duration cannot be longer than unstaking duration")]
     VoteDurationLongerThanUnstaking,
 
