@@ -145,7 +145,9 @@ pub fn validate_proposal_actions(
 
                 validate_dao_gov_config(&dao_type, &updated_gov_config)?;
             }
-            _ => {}
+            ProposalAction::UpdateMetadata(_) | ProposalAction::RequestFundingFromDao(_) => {
+                // no-op
+            }
         }
     }
 
