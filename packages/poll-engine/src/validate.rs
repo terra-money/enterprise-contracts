@@ -25,7 +25,7 @@ pub fn validate_create_poll(ctx: &mut Context, params: &CreatePollParams) -> Pol
     match params {
         // if now >= ends_at
         CreatePollParams { ends_at, .. } if now.ge(ends_at) => Err(PollError::InvalidArgument {
-            msg: format!("Invalid end time, must be {} < {} (now)", ends_at, now),
+            msg: format!("Invalid end time, must be {} > {} (now)", ends_at, now),
         }),
 
         _ => Ok(()),
