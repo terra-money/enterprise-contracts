@@ -1,4 +1,4 @@
-use crate::state::{DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT};
+use crate::state::{DAO_GOV_CONFIG, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT};
 use common::cw::Context;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdResult};
 use cw20::TokenInfoResponse;
@@ -8,12 +8,13 @@ use cw_asset::AssetInfo;
 use cw_utils::Duration;
 use enterprise_factory_api::api::{IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
+use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalAction::{
-    ExecuteMsgs, ModifyMultisigMembership, UpdateCouncil, UpgradeDao,
+    ExecuteMsgs, ModifyMultisigMembership, UpdateCouncil, UpdateGovConfig, UpgradeDao,
 };
 use enterprise_protocol::api::{
     DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoType, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
-    ProposalAction, ProposalActionType, ProposalDeposit, UpgradeDaoMsg,
+    ProposalAction, ProposalActionType, ProposalDeposit, UpdateGovConfigMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
@@ -131,11 +132,53 @@ pub fn validate_proposal_actions(
             UpdateCouncil(msg) => {
                 validate_dao_council(deps, msg.dao_council.clone())?;
             }
+            UpdateGovConfig(msg) => {
+                let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
+
+                let updated_gov_config = apply_gov_config_changes(gov_config, msg);
+
+                let dao_type = DAO_TYPE.load(deps.storage)?;
+
+                validate_dao_gov_config(&dao_type, &updated_gov_config)?;
+            }
             _ => {}
         }
     }
 
     Ok(())
+}
+
+pub fn apply_gov_config_changes(
+    gov_config: DaoGovConfig,
+    msg: &UpdateGovConfigMsg,
+) -> DaoGovConfig {
+    let mut gov_config = gov_config;
+
+    if let Change(quorum) = msg.quorum {
+        gov_config.quorum = quorum;
+    }
+
+    if let Change(threshold) = msg.threshold {
+        gov_config.threshold = threshold;
+    }
+
+    if let Change(veto_threshold) = msg.veto_threshold {
+        gov_config.veto_threshold = veto_threshold;
+    }
+
+    if let Change(voting_duration) = msg.voting_duration {
+        gov_config.vote_duration = voting_duration.u64();
+    }
+
+    if let Change(unlocking_period) = msg.unlocking_period {
+        gov_config.unlocking_period = unlocking_period;
+    }
+
+    if let Change(minimum_deposit) = msg.minimum_deposit {
+        gov_config.minimum_deposit = minimum_deposit;
+    }
+
+    gov_config
 }
 
 fn validate_asset_whitelist_changes(

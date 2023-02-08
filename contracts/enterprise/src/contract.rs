@@ -19,7 +19,7 @@ use crate::state::{
     NFT_WHITELIST,
 };
 use crate::validate::{
-    validate_dao_council, validate_dao_gov_config, validate_deposit,
+    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
     validate_existing_dao_contract, validate_modify_multisig_membership, validate_proposal_actions,
 };
 use common::cw::{Context, Pagination, QueryContext};
@@ -866,33 +866,15 @@ fn execute_funding_from_dao(msg: RequestFundingFromDaoMsg) -> DaoResult<Vec<SubM
 }
 
 fn update_gov_config(ctx: &mut Context, msg: UpdateGovConfigMsg) -> DaoResult<Vec<SubMsg>> {
-    let mut gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
+    let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
 
-    if let Change(quorum) = msg.quorum {
-        gov_config.quorum = quorum;
-    }
+    let updated_gov_config = apply_gov_config_changes(gov_config, &msg);
 
-    if let Change(threshold) = msg.threshold {
-        gov_config.threshold = threshold;
-    }
+    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
 
-    if let Change(veto_threshold) = msg.veto_threshold {
-        gov_config.veto_threshold = veto_threshold;
-    }
+    validate_dao_gov_config(&dao_type, &updated_gov_config)?;
 
-    if let Change(voting_duration) = msg.voting_duration {
-        gov_config.vote_duration = voting_duration.u64();
-    }
-
-    if let Change(unlocking_period) = msg.unlocking_period {
-        gov_config.unlocking_period = unlocking_period;
-    }
-
-    if let Change(minimum_deposit) = msg.minimum_deposit {
-        gov_config.minimum_deposit = minimum_deposit;
-    }
-
-    DAO_GOV_CONFIG.save(ctx.deps.storage, &gov_config)?;
+    DAO_GOV_CONFIG.save(ctx.deps.storage, &updated_gov_config)?;
 
     Ok(vec![])
 }

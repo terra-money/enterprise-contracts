@@ -10,6 +10,7 @@ use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::{to_binary, Addr, Attribute, Timestamp, Uint128, Uint64};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
+use cw_utils::Duration::Time;
 use cw_utils::Expiration;
 use enterprise_protocol::api::ModifyValue::{Change, NoChange};
 use enterprise_protocol::api::ProposalAction::{
@@ -25,6 +26,7 @@ use enterprise_protocol::api::{
 use enterprise_protocol::error::DaoError::{
     InsufficientProposalDeposit, InvalidEnterpriseCodeId, NotNftOwner,
     UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType,
+    VoteDurationLongerThanUnstaking,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::Receive;
@@ -527,6 +529,51 @@ fn create_proposal_with_invalid_execute_msg_fails() -> DaoResult<()> {
     );
 
     assert_eq!(result, Err(InvalidCosmosMessage));
+
+    Ok(())
+}
+
+#[test]
+fn create_proposal_with_invalid_gov_config_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    env.contract.address = Addr::unchecked("dao_addr");
+    let current_time = Timestamp::from_seconds(12);
+    env.block.time = current_time;
+    let info = mock_info("sender", &[]);
+
+    deps.querier
+        .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
+
+    instantiate_stub_dao(
+        deps.as_mut(),
+        &env,
+        &info,
+        existing_token_dao_membership(CW20_ADDR),
+        Some(DaoGovConfig {
+            vote_duration: 4,
+            ..stub_dao_gov_config()
+        }),
+        None,
+    )?;
+
+    let result = create_proposal(
+        deps.as_mut(),
+        &env,
+        &info,
+        None,
+        None,
+        vec![UpdateGovConfig(UpdateGovConfigMsg {
+            quorum: NoChange,
+            threshold: NoChange,
+            veto_threshold: NoChange,
+            voting_duration: NoChange,
+            unlocking_period: Change(Time(3)),
+            minimum_deposit: NoChange,
+        })],
+    );
+
+    assert_eq!(result, Err(VoteDurationLongerThanUnstaking));
 
     Ok(())
 }
