@@ -101,10 +101,10 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 1;
 
-pub const CODE_VERSION: u64 = 2;
+pub const CODE_VERSION: u8 = 2;
 
-pub const DEFAULT_QUERY_LIMIT: u32 = 50u32;
-pub const MAX_QUERY_LIMIT: u32 = 100u32;
+pub const DEFAULT_QUERY_LIMIT: u8 = 50;
+pub const MAX_QUERY_LIMIT: u8 = 100;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -1691,8 +1691,8 @@ pub fn query_list_multisig_members(
         .range(qctx.deps.storage, start_after, None, Ascending)
         .take(
             msg.limit
-                .unwrap_or(DEFAULT_QUERY_LIMIT)
-                .min(MAX_QUERY_LIMIT) as usize,
+                .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+                .min(MAX_QUERY_LIMIT as u32) as usize,
         )
         .collect::<StdResult<Vec<(Addr, Uint128)>>>()?
         .into_iter()
