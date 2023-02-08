@@ -1591,7 +1591,12 @@ pub fn query_proposal_votes(
             pagination: Pagination {
                 start_after: params.start_after,
                 end_at: None,
-                limit: params.limit.map(|limit| limit as u64),
+                limit: Some(
+                    params
+                        .limit
+                        .map_or(DEFAULT_QUERY_LIMIT as u64, |limit| limit as u64)
+                        .min(MAX_QUERY_LIMIT as u64),
+                ),
                 order_by: None,
             },
         },
