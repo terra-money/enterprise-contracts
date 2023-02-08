@@ -60,6 +60,7 @@ use enterprise_protocol::api::{
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
     NotMultisigMember, ProposalAlreadyExecuted, UnsupportedCouncilProposalAction,
+    ZeroInitialDaoBalance,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -183,6 +184,12 @@ fn instantiate_new_token_dao(
     info: NewTokenMembershipInfo,
     cw20_code_id: u64,
 ) -> DaoResult<Vec<SubMsg>> {
+    if let Some(initial_dao_balance) = info.initial_dao_balance {
+        if initial_dao_balance == Uint128::zero() {
+            return Err(ZeroInitialDaoBalance);
+        }
+    }
+
     for initial_balance in info.initial_token_balances.iter() {
         if initial_balance.amount == Uint128::zero() {
             return Err(ZeroInitialWeightMember);

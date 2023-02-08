@@ -40,6 +40,9 @@ pub enum DaoError {
     #[error("Zero-weighted members are not allowed upon DAO creation")]
     ZeroInitialWeightMember,
 
+    #[error("Zero initial DAO balance is not allowed upon DAO creation")]
+    ZeroInitialDaoBalance,
+
     #[error("Duplicate multisig members are not allowed upon DAO creation")]
     DuplicateMultisigMember,
 

@@ -27,7 +27,7 @@ use enterprise_protocol::api::{
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InvalidExistingMultisigContract, InvalidExistingNftContract,
-    InvalidExistingTokenContract,
+    InvalidExistingTokenContract, ZeroInitialDaoBalance,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::InstantiateMsg;
@@ -405,6 +405,55 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
     );
 
     assert_eq!(result, Err(ZeroInitialWeightMember));
+
+    Ok(())
+}
+
+#[test]
+fn instantiate_new_token_membership_with_zero_initial_dao_balance_fails() -> DaoResult<()> {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    let membership_info = NewToken(Box::new(NewTokenMembershipInfo {
+        token_name: TOKEN_NAME.to_string(),
+        token_symbol: TOKEN_SYMBOL.to_string(),
+        token_decimals: TOKEN_DECIMALS,
+        initial_token_balances: vec![Cw20Coin {
+            address: "my_address".to_string(),
+            amount: 1234u128.into(),
+        }],
+        initial_dao_balance: Some(Uint128::zero()),
+        token_mint: Some(MinterResponse {
+            minter: MINTER.to_string(),
+            cap: Some(123456789u128.into()),
+        }),
+        token_marketing: Some(TokenMarketingInfo {
+            project: Some(TOKEN_PROJECT_NAME.to_string()),
+            description: Some(TOKEN_PROJECT_DESCRIPTION.to_string()),
+            marketing_owner: Some(TOKEN_MARKETING_OWNER.to_string()),
+            logo_url: Some(TOKEN_LOGO_URL.to_string()),
+        }),
+    }));
+    let result = instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            dao_metadata: stub_dao_metadata(),
+            dao_gov_config: stub_dao_gov_config(),
+            dao_council: None,
+            dao_membership_info: New(NewDaoMembershipMsg {
+                membership_contract_code_id: CW20_CODE_ID,
+                membership_info,
+            }),
+            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            asset_whitelist: None,
+            nft_whitelist: None,
+        },
+    );
+
+    assert_eq!(result, Err(ZeroInitialDaoBalance));
 
     Ok(())
 }
