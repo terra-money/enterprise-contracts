@@ -446,6 +446,8 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
     match dao_council {
         None => Err(NoDaoCouncil),
         Some(dao_council) => {
+            validate_proposal_actions(ctx.deps.as_ref(), &msg.proposal_actions)?;
+
             let proposer = ctx.info.sender.clone();
 
             if !dao_council.members.contains(&proposer) {
