@@ -59,7 +59,7 @@ use enterprise_protocol::api::{
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
-    NotMultisigMember, ProposalAlreadyExecuted, UnsupportedCouncilProposalAction,
+    NotMultisigMember, NothingToClaim, ProposalAlreadyExecuted, UnsupportedCouncilProposalAction,
     ZeroInitialDaoBalance,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
@@ -1204,7 +1204,7 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
         .unwrap_or_default();
 
     if claims.is_empty() {
-        return Err(DaoError::NothingToClaim);
+        return Err(NothingToClaim);
     }
 
     let block = ctx.env.block.clone();
@@ -1223,6 +1223,10 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
             }
         })
         .collect_vec();
+
+    if releasable_claims.is_empty() {
+        return Err(NothingToClaim);
+    }
 
     CLAIMS.save(ctx.deps.storage, &ctx.info.sender, &remaining_claims)?;
 
