@@ -1,3 +1,6 @@
+use crate::cw20::{Cw20InstantiateMsg, InstantiateMarketingInfo};
+use crate::cw3::{Cw3ListVoters, Cw3VoterListResponse};
+use crate::cw721::{Cw721InstantiateMsg, Cw721QueryMsg};
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -26,13 +29,11 @@ use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, wasm_instantiate, Addr, Binary,
-    BlockInfo, Coin, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    BlockInfo, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, Storage, SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
-use cw20_base::msg::InstantiateMarketingInfo;
-use cw3::VoterListResponse;
 use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo, AssetInfoBase};
 use cw_storage_plus::Bound;
@@ -281,7 +282,7 @@ fn instantiate_new_token_dao(
         }
     };
 
-    let create_token_msg = cw20_base::msg::InstantiateMsg {
+    let create_token_msg = Cw20InstantiateMsg {
         name: info.token_name.clone(),
         symbol: info.token_symbol,
         decimals: info.token_decimals,
@@ -343,7 +344,7 @@ fn instantiate_new_nft_dao(
         None => ctx.env.contract.address.to_string(),
         Some(minter) => minter,
     };
-    let instantiate_msg = cw721_base::InstantiateMsg {
+    let instantiate_msg = Cw721InstantiateMsg {
         name: info.nft_name,
         symbol: info.nft_symbol,
         minter,
@@ -388,14 +389,14 @@ fn instantiate_existing_membership_dao(
             let mut total_weight = Uint128::zero();
             let mut last_voter: Option<String> = None;
             while {
-                let query_msg = cw3::Cw3QueryMsg::ListVoters {
+                let query_msg = Cw3ListVoters {
                     start_after: last_voter.clone(),
                     limit: None,
                 };
 
                 last_voter = None;
 
-                let voters: VoterListResponse = ctx
+                let voters: Cw3VoterListResponse = ctx
                     .deps
                     .querier
                     .query_wasm_smart(&membership.membership_contract_addr, &query_msg)?;
@@ -2272,7 +2273,7 @@ fn get_owner_tokens(
     owner: &str,
     start_after: Option<&String>,
 ) -> DaoResult<TokensResponse> {
-    let query_owner_tokens: cw721_base::QueryMsg<Empty> = cw721_base::QueryMsg::Tokens {
+    let query_owner_tokens = Cw721QueryMsg::Tokens {
         owner: owner.to_string(),
         start_after: start_after.cloned(),
         limit: Some(u32::MAX),
