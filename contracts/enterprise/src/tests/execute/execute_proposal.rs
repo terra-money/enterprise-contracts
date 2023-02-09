@@ -9,7 +9,8 @@ use crate::tests::helpers::{
     existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
     stake_nfts, stake_tokens, stub_dao_gov_config, stub_dao_metadata,
     stub_enterprise_factory_contract, stub_token_info, unstake_nfts, unstake_tokens,
-    vote_on_proposal, CW20_ADDR, NFT_ADDR, PROPOSAL_DESCRIPTION, PROPOSAL_TITLE,
+    vote_on_proposal, CW20_ADDR, DAO_ADDR, ENTERPRISE_GOVERNANCE_CODE_ID, NFT_ADDR,
+    PROPOSAL_DESCRIPTION, PROPOSAL_TITLE,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
@@ -35,7 +36,7 @@ use enterprise_protocol::api::{
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{ExecuteProposal, Receive};
 use enterprise_protocol::msg::{Cw20HookMsg, InstantiateMsg, MigrateMsg};
-use poll_engine::api::VoteOutcome::{Abstain, No, Veto, Yes};
+use poll_engine_api::api::VoteOutcome::{Abstain, No, Veto, Yes};
 use ProposalAction::{UpdateAssetWhitelist, UpdateGovConfig};
 
 #[test]
@@ -125,7 +126,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
+    env.contract.address = Addr::unchecked(DAO_ADDR);
     env.block.time = Timestamp::from_seconds(12000);
     let dao_gov_config = DaoGovConfig {
         vote_duration: 1000,
@@ -155,6 +156,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: dao_gov_config.clone(),
             dao_council: None,
@@ -234,7 +236,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         response.attributes,
         vec![
             Attribute::new("action", "create_proposal"),
-            Attribute::new("dao_address", "dao_addr"),
+            Attribute::new("dao_address", DAO_ADDR),
             Attribute::new("proposal_id", "1"),
         ]
     );
@@ -260,7 +262,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
                 Asset::native(Addr::unchecked("uluna"), 300u128).transfer_msg("recipient")?
             ),
             SubMsg::new(WasmMsg::Migrate {
-                contract_addr: "dao_addr".to_string(),
+                contract_addr: DAO_ADDR.to_string(),
                 new_code_id: 7,
                 msg: migrate_msg,
             }),
@@ -336,7 +338,6 @@ fn execute_passed_proposal_to_update_multisig_members_changes_membership() -> Da
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
 
     instantiate_stub_dao(
@@ -430,7 +431,6 @@ fn execute_passed_proposal_to_update_multisig_members_does_not_change_votes_on_e
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
 
     instantiate_stub_dao(
@@ -504,7 +504,6 @@ fn execute_passed_proposal_to_update_multisig_members_updates_votes_on_active_pr
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
 
     instantiate_stub_dao(
@@ -582,7 +581,6 @@ fn execute_proposal_with_outcome_yes_refunds_token_deposits() -> DaoResult<()> {
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
     let dao_gov_config = DaoGovConfig {
         vote_duration: 1000,
@@ -650,7 +648,6 @@ fn execute_proposal_with_outcome_no_refunds_token_deposits() -> DaoResult<()> {
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
     let dao_gov_config = DaoGovConfig {
         vote_duration: 1000,
@@ -718,7 +715,6 @@ fn execute_proposal_with_threshold_not_reached_refunds_token_deposits() -> DaoRe
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
     let dao_gov_config = DaoGovConfig {
         vote_duration: 1000,
@@ -786,7 +782,6 @@ fn execute_proposal_with_quorum_not_reached_does_not_refund_token_deposits() -> 
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
     let dao_gov_config = DaoGovConfig {
         vote_duration: 1000,
@@ -847,7 +842,6 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.contract.address = Addr::unchecked("dao_addr");
     env.block.time = Timestamp::from_seconds(12000);
     let dao_gov_config = DaoGovConfig {
         vote_duration: 1000,

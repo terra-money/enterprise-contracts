@@ -3,11 +3,11 @@ use crate::proposals::ProposalType;
 use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     existing_token_dao_membership, stub_dao_gov_config, stub_dao_metadata,
-    stub_enterprise_factory_contract, stub_token_info, CW20_ADDR,
+    stub_enterprise_factory_contract, stub_token_info, CW20_ADDR, ENTERPRISE_GOVERNANCE_CODE_ID,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
-use cosmwasm_std::{to_binary, Addr, Timestamp, Uint128};
+use cosmwasm_std::{to_binary, Timestamp, Uint128};
 use enterprise_protocol::api::ProposalAction::UpgradeDao;
 use enterprise_protocol::api::ProposalActionType::UpdateMetadata;
 use enterprise_protocol::api::{
@@ -21,11 +21,12 @@ use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg};
 use ProposalType::Council;
 
+// TODO: replace instantiates with the function from helpers.rs
+
 #[test]
 fn create_council_proposal_with_no_council_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -38,6 +39,7 @@ fn create_council_proposal_with_no_council_fails() -> DaoResult<()> {
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -69,7 +71,6 @@ fn create_council_proposal_with_no_council_fails() -> DaoResult<()> {
 fn create_council_proposal_by_non_council_member_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -82,6 +83,7 @@ fn create_council_proposal_by_non_council_member_fails() -> DaoResult<()> {
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: Some(DaoCouncilSpec {
@@ -116,7 +118,6 @@ fn create_council_proposal_by_non_council_member_fails() -> DaoResult<()> {
 fn create_council_proposal_allows_upgrade_dao_by_default() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -134,6 +135,7 @@ fn create_council_proposal_allows_upgrade_dao_by_default() -> DaoResult<()> {
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: Some(DaoCouncilSpec {
@@ -169,7 +171,6 @@ fn create_council_proposal_allows_upgrade_dao_by_default() -> DaoResult<()> {
 fn create_council_proposal_with_not_allowed_proposal_action_type_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -187,6 +188,7 @@ fn create_council_proposal_with_not_allowed_proposal_action_type_fails() -> DaoR
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: Some(DaoCouncilSpec {
@@ -229,7 +231,6 @@ fn create_council_proposal_with_not_allowed_proposal_action_type_fails() -> DaoR
 fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -247,6 +248,7 @@ fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: Some(DaoCouncilSpec {

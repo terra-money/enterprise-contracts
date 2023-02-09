@@ -3,7 +3,8 @@ use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     create_proposal, create_stub_proposal, existing_nft_dao_membership,
     existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
-    stake_nfts, stub_dao_gov_config, stub_dao_metadata, stub_token_info, CW20_ADDR, NFT_ADDR,
+    stake_nfts, stub_dao_gov_config, stub_dao_metadata, stub_token_info, CW20_ADDR, DAO_ADDR,
+    ENTERPRISE_GOVERNANCE_CODE_ID, NFT_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
@@ -38,7 +39,7 @@ use ProposalAction::UpdateGovConfig;
 fn create_proposal_token_dao() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
+    env.contract.address = Addr::unchecked(DAO_ADDR);
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -77,7 +78,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
         response.attributes,
         vec![
             Attribute::new("action", "create_proposal"),
-            Attribute::new("dao_address", "dao_addr"),
+            Attribute::new("dao_address", DAO_ADDR),
             Attribute::new("proposal_id", "1"),
         ]
     );
@@ -120,7 +121,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
 fn create_proposal_nft_dao() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
+    env.contract.address = Addr::unchecked(DAO_ADDR);
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -160,7 +161,7 @@ fn create_proposal_nft_dao() -> DaoResult<()> {
         response.attributes,
         vec![
             Attribute::new("action", "create_proposal"),
-            Attribute::new("dao_address", "dao_addr"),
+            Attribute::new("dao_address", DAO_ADDR),
             Attribute::new("proposal_id", "1"),
         ]
     );
@@ -204,7 +205,6 @@ fn create_proposal_with_no_token_deposit_when_minimum_deposit_is_specified_fails
 {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -242,7 +242,6 @@ fn create_proposal_with_no_token_deposit_when_minimum_deposit_is_specified_fails
 fn create_proposal_with_insufficient_token_deposit_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -294,7 +293,6 @@ fn create_proposal_with_insufficient_token_deposit_fails() -> DaoResult<()> {
 fn create_proposal_with_sufficient_token_deposit_succeeds() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -341,7 +339,6 @@ fn create_proposal_with_sufficient_token_deposit_succeeds() -> DaoResult<()> {
 fn create_proposal_with_duplicate_add_whitelist_assets_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -382,7 +379,6 @@ fn create_proposal_with_duplicate_add_whitelist_assets_fails() -> DaoResult<()> 
 fn create_proposal_with_duplicate_remove_whitelist_assets_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -423,7 +419,6 @@ fn create_proposal_with_duplicate_remove_whitelist_assets_fails() -> DaoResult<(
 fn create_proposal_with_duplicate_add_whitelist_nft_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -461,7 +456,6 @@ fn create_proposal_with_duplicate_add_whitelist_nft_fails() -> DaoResult<()> {
 fn create_proposal_with_duplicate_remove_whitelist_nft_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -499,7 +493,6 @@ fn create_proposal_with_duplicate_remove_whitelist_nft_fails() -> DaoResult<()> 
 fn create_proposal_with_invalid_execute_msg_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -582,7 +575,6 @@ fn create_proposal_with_invalid_gov_config_fails() -> DaoResult<()> {
 fn create_proposal_with_invalid_upgrade_dao_version_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);
@@ -600,6 +592,7 @@ fn create_proposal_with_invalid_upgrade_dao_version_fails() -> DaoResult<()> {
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -708,7 +701,6 @@ fn create_modify_multisig_members_proposal_for_nft_dao_fails() -> DaoResult<()> 
 fn create_proposal_by_non_nft_holder_or_staker_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);

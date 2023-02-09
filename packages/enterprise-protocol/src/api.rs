@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::{Asset, AssetInfo};
 use cw_utils::{Duration, Expiration};
-use poll_engine::api::{Vote, VoteOutcome};
+use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -78,12 +78,23 @@ pub struct DaoGovConfig {
     pub unlocking_period: Duration,
     /// Optional minimum amount of DAO's governance unit to be required to create a deposit.
     pub minimum_deposit: Option<Uint128>,
+    /// If set to true, this will allow DAOs to execute proposals that have reached quorum and
+    /// threshold, even before their voting period ends.
+    pub allow_early_proposal_execution: bool,
 }
 
 #[cw_serde]
 pub struct DaoCouncilSpec {
     /// Addresses of council members. Each member has equal voting power.
     pub members: Vec<String>,
+    /// Portion of total available votes cast in a proposal to consider it valid
+    /// e.g. quorum of 30% means that 30% of all available votes have to be cast in the proposal,
+    /// otherwise it fails automatically when it expires
+    pub quorum: Decimal,
+    /// Portion of votes assigned to a single option from all the votes cast in the given proposal
+    /// required to determine the 'winning' option
+    /// e.g. 51% threshold means that an option has to have at least 51% of the cast votes to win
+    pub threshold: Decimal,
     /// Proposal action types allowed in proposals that are voted on by the council.
     /// Effectively defines what types of actions council can propose and vote on.
     /// If None, will default to a predefined set of actions.
@@ -94,6 +105,8 @@ pub struct DaoCouncilSpec {
 pub struct DaoCouncil {
     pub members: Vec<Addr>,
     pub allowed_proposal_action_types: Vec<ProposalActionType>,
+    pub quorum: Decimal,
+    pub threshold: Decimal,
 }
 
 #[cw_serde]
@@ -223,6 +236,7 @@ pub struct UpdateGovConfigMsg {
     pub voting_duration: ModifyValue<Uint64>,
     pub unlocking_period: ModifyValue<Duration>,
     pub minimum_deposit: ModifyValue<Option<Uint128>>,
+    pub allow_early_proposal_execution: ModifyValue<bool>,
 }
 
 #[cw_serde]
@@ -352,6 +366,7 @@ pub struct DaoInfoResponse {
     pub dao_type: DaoType,
     pub dao_membership_contract: Addr,
     pub enterprise_factory_contract: Addr,
+    pub funds_distributor_contract: Addr,
     pub dao_code_version: Uint64,
 }
 

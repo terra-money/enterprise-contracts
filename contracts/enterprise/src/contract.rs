@@ -7,16 +7,16 @@ use crate::nft_staking::{load_all_nft_stakes_for_user, save_nft_stake, NftStake}
 use crate::proposals::ProposalType::{Council, General};
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo, ProposalType,
-    COUNCIL_PROPOSAL_INFOS, PROPOSAL_INFOS, TOTAL_DEPOSITS,
+    PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
 use crate::staking::{
     load_total_staked, load_total_staked_at_height, load_total_staked_at_time, save_total_staked,
     CW20_STAKES,
 };
 use crate::state::{
-    add_claim, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
+    add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
     DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
-    NFT_WHITELIST,
+    ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STATE,
 };
 use crate::validate::{
     apply_gov_config_changes, normalize_asset_whitelist, validate_dao_council,
@@ -61,25 +61,22 @@ use enterprise_protocol::api::{
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
     NotMultisigMember, NothingToClaim, ProposalAlreadyExecuted, UnsupportedCouncilProposalAction,
-    ZeroInitialDaoBalance,
+    WrongProposalType, ZeroInitialDaoBalance,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
+use funds_distributor_api::api::UpdateUserStakeMsg;
 use itertools::Itertools;
 use nft_staking::NFT_STAKES;
-use poll_engine::api::{
-    CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollRejectionReason,
-    PollStatus, PollStatusFilter, PollVoterParams, PollVotersParams, PollsParams, VoteOutcome,
-    VotingScheme,
+use poll_engine_api::api::{
+    CastVoteParams, CreatePollParams, EndPollParams, Poll, PollId, PollParams, PollRejectionReason,
+    PollResponse, PollStatus, PollStatusFilter, PollStatusResponse, PollVoterParams,
+    PollVoterResponse, PollVotersParams, PollVotersResponse, PollsParams, PollsResponse,
+    UpdateVotesParams, VotingScheme,
 };
-use poll_engine::error::PollError::PollInProgress;
-use poll_engine::execute::{create_poll, end_poll, initialize_poll_engine};
-use poll_engine::query::{
-    query_poll, query_poll_status, query_poll_voter, query_poll_voters, query_polls, query_voter,
-};
-use poll_engine::state::Poll;
+use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::ops::{Add, Not, Sub};
 use DaoError::{
@@ -101,6 +98,10 @@ const CONTRACT_NAME: &str = "crates.io:enterprise";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 1;
+pub const ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
+pub const FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
+pub const CREATE_POLL_REPLY_ID: u64 = 4;
+pub const END_POLL_REPLY_ID: u64 = 5;
 
 pub const CODE_VERSION: u8 = 2;
 
@@ -122,6 +123,14 @@ pub fn instantiate(
     )?;
 
     let dao_council = validate_dao_council(deps.as_ref(), msg.dao_council.clone())?;
+
+    STATE.save(
+        deps.storage,
+        &State {
+            proposal_being_created: None,
+            proposal_being_executed: None,
+        },
+    )?;
 
     DAO_CREATION_DATE.save(deps.storage, &env.block.time)?;
 
@@ -145,15 +154,42 @@ pub fn instantiate(
     save_total_staked(deps.storage, &Uint128::zero(), &env.block)?;
     TOTAL_DEPOSITS.save(deps.storage, &Uint128::zero())?;
 
-    let mut ctx = Context { deps, env, info };
-    initialize_poll_engine(&mut ctx)?;
+    // instantiate the governance contract
+    let instantiate_governance_contract_submsg = SubMsg::reply_on_success(
+        CosmosMsg::Wasm(WasmMsg::Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id: msg.enterprise_governance_code_id,
+            msg: to_binary(&enterprise_governance_api::msg::InstantiateMsg {
+                enterprise_contract: env.contract.address.to_string(),
+            })?,
+            funds: vec![],
+            label: "Governance contract".to_string(),
+        }),
+        ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+    );
 
-    let submessages = match msg.dao_membership_info {
+    let instantiate_funds_distributor_contract_submsg = SubMsg::reply_on_success(
+        CosmosMsg::Wasm(WasmMsg::Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id: msg.funds_distributor_code_id,
+            msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
+                enterprise_contract: env.contract.address.to_string(),
+            })?,
+            funds: vec![],
+            label: "Funds distributor contract".to_string(),
+        }),
+        FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
+    );
+
+    let ctx = Context { deps, env, info };
+
+    let mut submessages = match msg.dao_membership_info {
         New(membership) => instantiate_new_membership_dao(ctx, membership)?,
         Existing(membership) => instantiate_existing_membership_dao(ctx, membership)?,
     };
 
-    // TODO: when governance is pulled out, remember to validate membership contract when using existing contracts before passing it to the newly pulled out governance contract
+    submessages.push(instantiate_governance_contract_submsg);
+    submessages.push(instantiate_funds_distributor_contract_submsg);
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -391,24 +427,21 @@ fn create_proposal(
 
     let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
 
-    let base_response = Response::new()
+    let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General)?;
+
+    let response = Response::new()
         .add_attribute("action", "create_proposal")
-        .add_attribute("dao_address", ctx.env.contract.address.to_string());
+        .add_attribute("dao_address", ctx.env.contract.address.to_string())
+        .add_submessage(create_poll_submsg);
 
     match dao_type {
-        Token => {
-            let poll_id = create_poll_engine_proposal(ctx, gov_config, msg, deposit, General)?;
-
-            Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
-        }
+        Token => Ok(response),
         Nft => {
             if !user_has_nfts_staked(ctx)? && !user_holds_nft(ctx)? {
                 return Err(DaoError::NotNftOwner {});
             }
 
-            let poll_id = create_poll_engine_proposal(ctx, gov_config, msg, deposit, General)?;
-
-            Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
+            Ok(response)
         }
         Multisig => {
             let member_weight = MULTISIG_MEMBERS
@@ -418,9 +451,7 @@ fn create_proposal(
                 return Err(NotMultisigMember {});
             }
 
-            let poll_id = create_poll_engine_proposal(ctx, gov_config, msg, deposit, General)?;
-
-            Ok(base_response.add_attribute("proposal_id", poll_id.to_string()))
+            Ok(response)
         }
     }
 }
@@ -481,18 +512,17 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
             let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
 
             let council_gov_config = DaoGovConfig {
-                quorum: Decimal::percent(75u64),
-                threshold: Decimal::percent(50u64),
+                quorum: dao_council.quorum,
+                threshold: dao_council.threshold,
                 ..gov_config
             };
 
-            let proposal_id =
-                create_poll_engine_proposal(ctx, council_gov_config, msg, None, Council)?;
+            let create_poll_submsg = create_poll(ctx, council_gov_config, msg, None, Council)?;
 
             Ok(Response::new()
                 .add_attribute("action", "create_council_proposal")
                 .add_attribute("dao_address", ctx.env.contract.address.to_string())
-                .add_attribute("proposal_id", proposal_id.to_string()))
+                .add_submessage(create_poll_submsg))
         }
     }
 }
@@ -511,57 +541,55 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
     }
 }
 
-fn create_poll_engine_proposal(
+fn create_poll(
     ctx: &mut Context,
     gov_config: DaoGovConfig,
     msg: CreateProposalMsg,
     deposit: Option<ProposalDeposit>,
     proposal_type: ProposalType,
-) -> DaoResult<PollId> {
+) -> DaoResult<SubMsg> {
     let ends_at = ctx.env.block.time.plus_seconds(gov_config.vote_duration);
-    let poll = create_poll(
-        ctx,
-        CreatePollParams {
-            proposer: ctx.info.sender.to_string(),
-            deposit_amount: Uint128::zero(),
-            label: msg.title,
-            description: msg.description.unwrap_or_default(),
-            scheme: VotingScheme::CoinVoting,
-            ends_at,
-            quorum: gov_config.quorum,
-            threshold: gov_config.threshold,
-            veto_threshold: gov_config.veto_threshold,
+
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(ctx.deps.storage)?;
+    let create_poll_submsg = SubMsg::reply_on_success(
+        wasm_execute(
+            governance_contract.to_string(),
+            &enterprise_governance_api::msg::ExecuteMsg::CreatePoll(CreatePollParams {
+                proposer: ctx.info.sender.to_string(),
+                deposit_amount: Uint128::zero(),
+                label: msg.title,
+                description: msg.description.unwrap_or_default(),
+                scheme: VotingScheme::CoinVoting,
+                ends_at,
+                quorum: gov_config.quorum,
+                threshold: gov_config.threshold,
+                veto_threshold: gov_config.veto_threshold,
+            }),
+            vec![],
+        )?,
+        CREATE_POLL_REPLY_ID,
+    );
+
+    let state = STATE.load(ctx.deps.storage)?;
+    if state.proposal_being_created.is_some() {
+        return Err(CustomError {
+            val: "Invalid state - found proposal being created when not expected".to_string(),
+        });
+    }
+    STATE.save(
+        ctx.deps.storage,
+        &State {
+            proposal_being_created: Some(ProposalInfo {
+                proposal_type,
+                executed_at: None,
+                proposal_deposit: deposit,
+                proposal_actions: msg.proposal_actions,
+            }),
+            ..state
         },
     )?;
 
-    match proposal_type {
-        General => PROPOSAL_INFOS.save(
-            ctx.deps.storage,
-            poll.id,
-            &ProposalInfo {
-                executed_at: None,
-                proposal_deposit: deposit.clone(),
-                proposal_actions: msg.proposal_actions,
-            },
-        )?,
-        Council => COUNCIL_PROPOSAL_INFOS.save(
-            ctx.deps.storage,
-            poll.id,
-            &ProposalInfo {
-                executed_at: None,
-                proposal_deposit: deposit.clone(),
-                proposal_actions: msg.proposal_actions,
-            },
-        )?,
-    }
-
-    if let Some(deposit) = deposit {
-        TOTAL_DEPOSITS.update(ctx.deps.storage, |deposits| -> StdResult<Uint128> {
-            Ok(deposits.add(deposit.amount))
-        })?;
-    }
-
-    Ok(poll.id)
+    Ok(create_poll_submsg)
 }
 
 fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
@@ -572,14 +600,26 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
         return Err(Unauthorized);
     }
 
-    poll_engine::execute::cast_vote(
-        ctx,
-        CastVoteParams {
+    let proposal_info = PROPOSAL_INFOS
+        .may_load(ctx.deps.storage, msg.proposal_id)?
+        .ok_or(NoSuchProposal)?;
+
+    if proposal_info.proposal_type != General {
+        return Err(WrongProposalType);
+    }
+
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(ctx.deps.storage)?;
+
+    let cast_vote_submessage = SubMsg::new(wasm_execute(
+        governance_contract.to_string(),
+        &enterprise_governance_api::msg::ExecuteMsg::CastVote(CastVoteParams {
             poll_id: msg.proposal_id.into(),
             outcome: msg.outcome,
+            voter: ctx.info.sender.to_string(),
             amount: user_available_votes,
-        },
-    )?;
+        }),
+        vec![],
+    )?);
 
     Ok(Response::new()
         .add_attribute("action", "cast_vote")
@@ -587,7 +627,8 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
         .add_attribute("proposal_id", msg.proposal_id.to_string())
         .add_attribute("voter", ctx.info.sender.clone().to_string())
         .add_attribute("outcome", msg.outcome.to_string())
-        .add_attribute("amount", user_available_votes.to_string()))
+        .add_attribute("amount", user_available_votes.to_string())
+        .add_submessage(cast_vote_submessage))
 }
 
 fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response> {
@@ -600,19 +641,26 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
                 return Err(Unauthorized);
             }
 
-            // ensure this proposal is actually a council proposal
-            if !COUNCIL_PROPOSAL_INFOS.has(ctx.deps.storage, msg.proposal_id) {
-                return Err(NoSuchProposal);
+            let proposal_info = PROPOSAL_INFOS
+                .may_load(ctx.deps.storage, msg.proposal_id)?
+                .ok_or(NoSuchProposal)?;
+
+            if proposal_info.proposal_type != General {
+                return Err(WrongProposalType);
             }
 
-            poll_engine::execute::cast_vote(
-                ctx,
-                CastVoteParams {
+            let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(ctx.deps.storage)?;
+
+            let cast_vote_submessage = SubMsg::new(wasm_execute(
+                governance_contract.to_string(),
+                &enterprise_governance_api::msg::ExecuteMsg::CastVote(CastVoteParams {
                     poll_id: msg.proposal_id.into(),
                     outcome: msg.outcome,
+                    voter: ctx.info.sender.to_string(),
                     amount: Uint128::one(),
-                },
-            )?;
+                }),
+                vec![],
+            )?);
 
             Ok(Response::new()
                 .add_attribute("action", "cast_vote")
@@ -620,7 +668,8 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
                 .add_attribute("proposal_id", msg.proposal_id.to_string())
                 .add_attribute("voter", ctx.info.sender.clone().to_string())
                 .add_attribute("outcome", msg.outcome.to_string())
-                .add_attribute("amount", 1u8.to_string()))
+                .add_attribute("amount", 1u8.to_string())
+                .add_submessage(cast_vote_submessage))
         }
     }
 }
@@ -630,11 +679,19 @@ fn execute_proposal(
     msg: ExecuteProposalMsg,
     proposal_type: ProposalType,
 ) -> DaoResult<Response> {
-    if is_proposal_executed(ctx.deps.storage, msg.proposal_id, proposal_type.clone())? {
+    let proposal_info = PROPOSAL_INFOS
+        .may_load(ctx.deps.storage, msg.proposal_id)?
+        .ok_or(NoSuchProposal)?;
+
+    if proposal_info.proposal_type != proposal_type {
+        return Err(WrongProposalType);
+    }
+
+    if proposal_info.executed_at.is_some() {
         return Err(ProposalAlreadyExecuted);
     }
 
-    let submsgs = execute_poll_engine_proposal(ctx, &msg, proposal_type)?;
+    let submsgs = end_proposal(ctx, &msg, proposal_type)?;
 
     Ok(Response::new()
         .add_submessages(submsgs)
@@ -644,35 +701,29 @@ fn execute_proposal(
 }
 
 fn return_proposal_deposit_submsgs(
-    ctx: &mut Context,
+    deps: DepsMut,
     proposal_id: ProposalId,
-    proposal_type: ProposalType,
 ) -> DaoResult<Vec<SubMsg>> {
-    match proposal_type {
-        General => {
-            let proposal_info = PROPOSAL_INFOS
-                .may_load(ctx.deps.storage, proposal_id)?
-                .ok_or(NoSuchProposal)?;
+    let proposal_info = PROPOSAL_INFOS
+        .may_load(deps.storage, proposal_id)?
+        .ok_or(NoSuchProposal)?;
 
-            return_deposit_submsgs(ctx, proposal_info.proposal_deposit)
-        }
-        Council => Ok(vec![]),
-    }
+    return_deposit_submsgs(deps, proposal_info.proposal_deposit)
 }
 
 fn return_deposit_submsgs(
-    ctx: &mut Context,
+    deps: DepsMut,
     deposit: Option<ProposalDeposit>,
 ) -> DaoResult<Vec<SubMsg>> {
     match deposit {
         None => Ok(vec![]),
         Some(deposit) => {
-            let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+            let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
             let transfer_msg =
                 Asset::cw20(membership_contract, deposit.amount).transfer_msg(deposit.depositor)?;
 
-            TOTAL_DEPOSITS.update(ctx.deps.storage, |deposits| -> StdResult<Uint128> {
+            TOTAL_DEPOSITS.update(deps.storage, |deposits| -> StdResult<Uint128> {
                 Ok(deposits.sub(deposit.amount))
             })?;
 
@@ -681,18 +732,13 @@ fn return_deposit_submsgs(
     }
 }
 
-fn execute_poll_engine_proposal(
+fn end_proposal(
     ctx: &mut Context,
     msg: &ExecuteProposalMsg,
     proposal_type: ProposalType,
 ) -> DaoResult<Vec<SubMsg>> {
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
-    let poll = query_poll(
-        &qctx,
-        PollParams {
-            poll_id: msg.proposal_id,
-        },
-    )?;
+    let poll = query_poll(&qctx, msg.proposal_id)?;
 
     let total_available_votes = match proposal_type {
         General => {
@@ -729,61 +775,77 @@ fn execute_poll_engine_proposal(
     }
 
     let allow_early_ending = match proposal_type {
-        General => false,
+        General => {
+            let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
+            gov_config.allow_early_proposal_execution
+        }
         Council => true,
     };
 
-    end_poll(
-        ctx,
-        EndPollParams {
-            poll_id: msg.proposal_id.into(),
-            maximum_available_votes: total_available_votes,
-            error_if_already_ended: false,
-            allow_early_ending,
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(ctx.deps.storage)?;
+    let end_poll_submsg = SubMsg::reply_on_success(
+        wasm_execute(
+            governance_contract.to_string(),
+            &enterprise_governance_api::msg::ExecuteMsg::EndPoll(EndPollParams {
+                poll_id: msg.proposal_id.into(),
+                maximum_available_votes: total_available_votes,
+                error_if_already_ended: false,
+                allow_early_ending,
+            }),
+            vec![],
+        )?,
+        END_POLL_REPLY_ID,
+    );
+
+    let state = STATE.load(ctx.deps.storage)?;
+    if state.proposal_being_executed.is_some() {
+        return Err(CustomError {
+            val: "Invalid state: proposal being executed is present when not expected".to_string(),
+        });
+    }
+
+    STATE.save(
+        ctx.deps.storage,
+        &State {
+            proposal_being_executed: Some(msg.proposal_id),
+            ..state
         },
     )?;
 
+    Ok(vec![end_poll_submsg])
+}
+
+fn resolve_ended_proposal(ctx: &mut Context, proposal_id: ProposalId) -> DaoResult<Vec<SubMsg>> {
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
-    let poll_status = query_poll_status(&qctx, msg.proposal_id)?.status;
+    let poll_status = query_poll_status(&qctx, proposal_id)?.status;
 
     let submsgs = match poll_status {
         PollStatus::InProgress { .. } => {
             return Err(PollInProgress {
-                poll_id: msg.proposal_id.into(),
+                poll_id: proposal_id.into(),
             }
             .into())
         }
         PollStatus::Passed { .. } => {
-            set_proposal_executed(
-                ctx.deps.storage,
-                msg.proposal_id,
-                ctx.env.block.clone(),
-                proposal_type.clone(),
-            )?;
-            let mut submsgs =
-                execute_proposal_actions(ctx, msg.proposal_id, proposal_type.clone())?;
+            set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
+            let mut submsgs = execute_proposal_actions(ctx, proposal_id)?;
             let mut return_deposit_submsgs =
-                return_proposal_deposit_submsgs(ctx, msg.proposal_id, proposal_type)?;
+                return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
             submsgs.append(&mut return_deposit_submsgs);
 
             submsgs
         }
         PollStatus::Rejected { reason } => {
-            set_proposal_executed(
-                ctx.deps.storage,
-                msg.proposal_id,
-                ctx.env.block.clone(),
-                proposal_type.clone(),
-            )?;
+            set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
 
-            match proposal_type {
+            let proposal_info = PROPOSAL_INFOS
+                .may_load(ctx.deps.storage, proposal_id)?
+                .ok_or(NoSuchProposal)?;
+
+            match proposal_info.proposal_type {
                 General => match reason {
                     QuorumNotReached | IsVetoOutcome => {
-                        let proposal_deposit = PROPOSAL_INFOS
-                            .may_load(ctx.deps.storage, msg.proposal_id)?
-                            .ok_or(NoSuchProposal)?
-                            .proposal_deposit;
-                        if let Some(deposit) = proposal_deposit {
+                        if let Some(deposit) = proposal_info.proposal_deposit {
                             TOTAL_DEPOSITS.update(
                                 ctx.deps.storage,
                                 |deposits| -> StdResult<Uint128> {
@@ -794,7 +856,7 @@ fn execute_poll_engine_proposal(
                         vec![]
                     }
                     // return deposits only if quorum reached and not vetoed
-                    _ => return_proposal_deposit_submsgs(ctx, msg.proposal_id, General)?,
+                    _ => return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?,
                 },
                 Council => vec![],
             }
@@ -804,27 +866,25 @@ fn execute_poll_engine_proposal(
     Ok(submsgs)
 }
 
-fn execute_proposal_actions(
-    ctx: &mut Context,
-    proposal_id: ProposalId,
-    proposal_type: ProposalType,
-) -> DaoResult<Vec<SubMsg>> {
-    let proposal_actions = get_proposal_actions(ctx.deps.storage, proposal_id, proposal_type)?
-        .ok_or(NoSuchProposal)?;
+fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoResult<Vec<SubMsg>> {
+    let proposal_actions =
+        get_proposal_actions(ctx.deps.storage, proposal_id)?.ok_or(NoSuchProposal)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
 
     for proposal_action in proposal_actions {
         let mut actions = match proposal_action {
-            UpdateMetadata(msg) => update_metadata(ctx, msg)?,
+            UpdateMetadata(msg) => update_metadata(ctx.deps.branch(), msg)?,
             UpdateGovConfig(msg) => update_gov_config(ctx, msg)?,
             UpdateCouncil(msg) => update_council(ctx, msg)?,
             RequestFundingFromDao(msg) => execute_funding_from_dao(msg)?,
-            UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx, msg)?,
-            UpdateNftWhitelist(msg) => update_nft_whitelist(ctx, msg)?,
-            UpgradeDao(msg) => upgrade_dao(ctx, msg)?,
-            ExecuteMsgs(msg) => execute_msgs(ctx, msg)?,
-            ModifyMultisigMembership(msg) => modify_multisig_membership(ctx, msg)?,
+            UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx.deps.branch(), msg)?,
+            UpdateNftWhitelist(msg) => update_nft_whitelist(ctx.deps.branch(), msg)?,
+            UpgradeDao(msg) => upgrade_dao(ctx.env.clone(), msg)?,
+            ExecuteMsgs(msg) => execute_msgs(msg)?,
+            ModifyMultisigMembership(msg) => {
+                modify_multisig_membership(ctx.deps.branch(), ctx.env.clone(), msg)?
+            }
         };
         submsgs.append(&mut actions)
     }
@@ -832,8 +892,8 @@ fn execute_proposal_actions(
     Ok(submsgs)
 }
 
-fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Vec<SubMsg>> {
-    let mut metadata = DAO_METADATA.load(ctx.deps.storage)?;
+fn update_metadata(deps: DepsMut, msg: UpdateMetadataMsg) -> DaoResult<Vec<SubMsg>> {
+    let mut metadata = DAO_METADATA.load(deps.storage)?;
 
     if let Change(name) = msg.name {
         metadata.name = name;
@@ -860,7 +920,7 @@ fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Vec<S
         metadata.socials.telegram_username = telegram;
     }
 
-    DAO_METADATA.save(ctx.deps.storage, &metadata)?;
+    DAO_METADATA.save(deps.storage, &metadata)?;
 
     Ok(vec![])
 }
@@ -901,11 +961,8 @@ fn update_council(ctx: &mut Context, msg: UpdateCouncilMsg) -> DaoResult<Vec<Sub
     Ok(vec![])
 }
 
-fn update_asset_whitelist(
-    ctx: &mut Context,
-    msg: UpdateAssetWhitelistMsg,
-) -> DaoResult<Vec<SubMsg>> {
-    let mut asset_whitelist = ASSET_WHITELIST.load(ctx.deps.storage)?;
+fn update_asset_whitelist(deps: DepsMut, msg: UpdateAssetWhitelistMsg) -> DaoResult<Vec<SubMsg>> {
+    let mut asset_whitelist = ASSET_WHITELIST.load(deps.storage)?;
 
     for add in msg.add {
         asset_whitelist.push(add);
@@ -916,41 +973,33 @@ fn update_asset_whitelist(
         .filter(|asset| !msg.remove.contains(asset))
         .collect_vec();
 
-    let normalized_asset_whitelist =
-        normalize_asset_whitelist(ctx.deps.as_ref(), &asset_whitelist)?;
+    let normalized_asset_whitelist = normalize_asset_whitelist(deps.as_ref(), &asset_whitelist)?;
 
-    ASSET_WHITELIST.save(ctx.deps.storage, &normalized_asset_whitelist)?;
+    ASSET_WHITELIST.save(deps.storage, &normalized_asset_whitelist)?;
 
     Ok(vec![])
 }
 
-fn update_nft_whitelist(ctx: &mut Context, msg: UpdateNftWhitelistMsg) -> DaoResult<Vec<SubMsg>> {
+fn update_nft_whitelist(deps: DepsMut, msg: UpdateNftWhitelistMsg) -> DaoResult<Vec<SubMsg>> {
     for add in msg.add {
-        NFT_WHITELIST.save(
-            ctx.deps.storage,
-            ctx.deps.api.addr_validate(add.as_ref())?,
-            &(),
-        )?;
+        NFT_WHITELIST.save(deps.storage, deps.api.addr_validate(add.as_ref())?, &())?;
     }
     for remove in msg.remove {
-        NFT_WHITELIST.remove(
-            ctx.deps.storage,
-            ctx.deps.api.addr_validate(remove.as_ref())?,
-        );
+        NFT_WHITELIST.remove(deps.storage, deps.api.addr_validate(remove.as_ref())?);
     }
 
     Ok(vec![])
 }
 
-fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Vec<SubMsg>> {
+fn upgrade_dao(env: Env, msg: UpgradeDaoMsg) -> DaoResult<Vec<SubMsg>> {
     Ok(vec![SubMsg::new(WasmMsg::Migrate {
-        contract_addr: ctx.env.contract.address.to_string(),
+        contract_addr: env.contract.address.to_string(),
         new_code_id: msg.new_dao_code_id,
         msg: msg.migrate_msg,
     })])
 }
 
-fn execute_msgs(_ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg>> {
+fn execute_msgs(msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg>> {
     let mut submsgs: Vec<SubMsg> = vec![];
     for msg in msg.msgs {
         submsgs.push(SubMsg::new(
@@ -962,28 +1011,35 @@ fn execute_msgs(_ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg
 }
 
 fn modify_multisig_membership(
-    ctx: &mut Context,
+    deps: DepsMut,
+    env: Env,
     msg: ModifyMultisigMembershipMsg,
 ) -> DaoResult<Vec<SubMsg>> {
-    validate_modify_multisig_membership(ctx.deps.as_ref(), &msg)?;
+    validate_modify_multisig_membership(deps.as_ref(), &msg)?;
 
-    let mut total_weight = load_total_multisig_weight(ctx.deps.storage)?;
+    let mut total_weight = load_total_multisig_weight(deps.storage)?;
+
+    let mut submsgs = vec![];
 
     for edit_member in msg.edit_members {
-        let member_addr = ctx.deps.api.addr_validate(&edit_member.address)?;
+        let member_addr = deps.api.addr_validate(&edit_member.address)?;
 
         let old_member_weight = MULTISIG_MEMBERS
-            .may_load(ctx.deps.storage, member_addr.clone())?
+            .may_load(deps.storage, member_addr.clone())?
             .unwrap_or_default();
 
         if edit_member.weight == Uint128::zero() {
-            MULTISIG_MEMBERS.remove(ctx.deps.storage, member_addr.clone())
+            MULTISIG_MEMBERS.remove(deps.storage, member_addr.clone())
         } else {
-            MULTISIG_MEMBERS.save(ctx.deps.storage, member_addr.clone(), &edit_member.weight)?
+            MULTISIG_MEMBERS.save(deps.storage, member_addr.clone(), &edit_member.weight)?
         }
 
         if old_member_weight != edit_member.weight {
-            update_user_poll_engine_votes(ctx, member_addr)?;
+            submsgs.push(update_user_votes(
+                deps.as_ref(),
+                member_addr,
+                edit_member.weight,
+            )?);
 
             total_weight = if old_member_weight > edit_member.weight {
                 total_weight.sub(old_member_weight.sub(edit_member.weight))
@@ -993,9 +1049,9 @@ fn modify_multisig_membership(
         }
     }
 
-    save_total_multisig_weight(ctx.deps.storage, total_weight, &ctx.env.block)?;
+    save_total_multisig_weight(deps.storage, total_weight, &env.block)?;
 
-    Ok(vec![])
+    Ok(submsgs)
 }
 
 pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Response> {
@@ -1018,12 +1074,17 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
                 .unwrap_or_default();
 
             let new_stake = stake.add(cw20_msg.amount);
-            CW20_STAKES.save(ctx.deps.storage, sender, &new_stake)?;
+            let old_stake = CW20_STAKES.load(ctx.deps.storage, sender.clone())?;
+            CW20_STAKES.save(ctx.deps.storage, sender.clone(), &new_stake)?;
+
+            let update_funds_distributor_submsg =
+                update_funds_distributor(ctx, sender, old_stake, new_total_staked)?;
 
             Ok(Response::new()
                 .add_attribute("action", "stake_cw20")
                 .add_attribute("total_staked", new_total_staked.to_string())
-                .add_attribute("stake", new_stake.to_string()))
+                .add_attribute("stake", new_stake.to_string())
+                .add_submessage(update_funds_distributor_submsg))
         }
         Ok(Cw20HookMsg::CreateProposal(msg)) => {
             let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
@@ -1063,13 +1124,26 @@ pub fn receive_cw721(ctx: &mut Context, cw721_msg: Cw721ReceiveMsg) -> DaoResult
 
             let staker = ctx.deps.api.addr_validate(&cw721_msg.sender)?;
 
-            let nft_stake = NftStake { staker, token_id };
+            let qctx = QueryContext {
+                deps: ctx.deps.as_ref(),
+                env: ctx.env.clone(),
+            };
+            let previous_user_stake = get_user_staked_nfts(qctx, staker.clone())?.amount;
+
+            let nft_stake = NftStake {
+                staker: staker.clone(),
+                token_id,
+            };
 
             save_nft_stake(ctx.deps.storage, &nft_stake)?;
 
+            let update_funds_distributor_submsg =
+                update_funds_distributor(ctx, staker, previous_user_stake, new_total_staked)?;
+
             Ok(Response::new()
                 .add_attribute("action", "stake_cw721")
-                .add_attribute("total_staked", new_total_staked.to_string()))
+                .add_attribute("total_staked", new_total_staked.to_string())
+                .add_submessage(update_funds_distributor_submsg))
         }
         _ => Err(CustomError {
             val: "msg payload not recognized".to_string(),
@@ -1112,17 +1186,29 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 },
             )?;
 
-            update_user_poll_engine_votes(ctx, ctx.info.sender.clone())?;
+            let update_user_votes_submsg =
+                update_user_votes(ctx.deps.as_ref(), ctx.info.sender.clone(), new_stake)?;
+
+            let update_funds_distributor_submsg =
+                update_funds_distributor(ctx, ctx.info.sender.clone(), stake, new_total_staked)?;
 
             Ok(Response::new()
                 .add_attribute("action", "unstake_cw20")
                 .add_attribute("total_staked", new_total_staked.to_string())
-                .add_attribute("stake", new_stake.to_string()))
+                .add_attribute("stake", new_stake.to_string())
+                .add_submessage(update_user_votes_submsg)
+                .add_submessage(update_funds_distributor_submsg))
         }
         UnstakeMsg::Cw721(msg) => {
             if dao_type != Nft {
                 return Err(InvalidStakingAsset);
             }
+
+            let qctx = QueryContext {
+                deps: ctx.deps.as_ref(),
+                env: ctx.env.clone(),
+            };
+            let previous_user_stake = get_user_staked_nfts(qctx, ctx.info.sender.clone())?.amount;
 
             for token in &msg.tokens {
                 // TODO: might be too slow, can we load this in a batch?
@@ -1159,11 +1245,27 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 },
             )?;
 
-            update_user_poll_engine_votes(ctx, ctx.info.sender.clone())?;
+            let qctx = QueryContext {
+                deps: ctx.deps.as_ref(),
+                env: ctx.env.clone(),
+            };
+            let new_user_stake = get_user_staked_nfts(qctx, ctx.info.sender.clone())?.amount;
+
+            let update_user_votes_submsg =
+                update_user_votes(ctx.deps.as_ref(), ctx.info.sender.clone(), new_user_stake)?;
+
+            let update_funds_distributor_submsg = update_funds_distributor(
+                ctx,
+                ctx.info.sender.clone(),
+                previous_user_stake,
+                new_total_staked,
+            )?;
 
             Ok(Response::new()
                 .add_attribute("action", "unstake_cw721")
-                .add_attribute("total_staked", new_total_staked.to_string()))
+                .add_attribute("total_staked", new_total_staked.to_string())
+                .add_submessage(update_user_votes_submsg)
+                .add_submessage(update_funds_distributor_submsg))
         }
     }
 }
@@ -1178,39 +1280,39 @@ fn calculate_release_at(ctx: &mut Context) -> DaoResult<ReleaseAt> {
     Ok(release_at)
 }
 
-pub fn update_user_poll_engine_votes(ctx: &mut Context, user: Addr) -> DaoResult<()> {
-    let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
-    let votes = query_voter(&qctx, &user)?.votes;
+pub fn update_user_votes(deps: Deps, user: Addr, new_amount: Uint128) -> DaoResult<SubMsg> {
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(deps.storage)?;
 
-    let user_available_votes = get_user_available_votes(qctx, user.clone())?;
+    let update_votes_submsg = SubMsg::new(wasm_execute(
+        governance_contract.to_string(),
+        &enterprise_governance_api::msg::ExecuteMsg::UpdateVotes(UpdateVotesParams {
+            voter: user.to_string(),
+            new_amount,
+        }),
+        vec![],
+    )?);
 
-    let cast_vote_ctx = &mut Context {
-        deps: ctx.deps.branch(),
-        env: ctx.env.clone(),
-        info: MessageInfo {
-            sender: user,
-            funds: ctx.info.funds.clone(),
-        },
-    };
+    Ok(update_votes_submsg)
+}
 
-    for vote in votes {
-        let qctx = QueryContext::from(cast_vote_ctx.deps.as_ref(), ctx.env.clone());
-        let status = query_poll_status(&qctx, vote.poll_id)?;
-        if let PollStatus::InProgress { ends_at } = status.status {
-            if ends_at > ctx.env.block.time {
-                poll_engine::execute::cast_vote(
-                    cast_vote_ctx,
-                    CastVoteParams {
-                        poll_id: vote.poll_id.into(),
-                        outcome: VoteOutcome::from(vote.outcome),
-                        amount: user_available_votes,
-                    },
-                )?;
-            }
-        }
-    }
+fn update_funds_distributor(
+    ctx: &mut Context,
+    user: Addr,
+    previous_user_stake: Uint128,
+    new_total_staked: Uint128,
+) -> DaoResult<SubMsg> {
+    let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
 
-    Ok(())
+    let update_submsg = SubMsg::new(wasm_execute(
+        funds_distributor.to_string(),
+        &funds_distributor_api::msg::ExecuteMsg::UpdateUserStake(UpdateUserStakeMsg {
+            user: user.to_string(),
+            old_user_stake: previous_user_stake,
+            new_total_staked,
+        }),
+        vec![],
+    )?);
+    Ok(update_submsg)
 }
 
 pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
@@ -1287,7 +1389,7 @@ fn transfer_nft_submsg(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
     match msg.id {
         DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
@@ -1299,10 +1401,121 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
 
             Ok(Response::new())
         }
+        ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            ENTERPRISE_GOVERNANCE_CONTRACT.save(deps.storage, &addr)?;
+
+            Ok(Response::new().add_attribute("governance_contract", addr.to_string()))
+        }
+        FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            FUNDS_DISTRIBUTOR_CONTRACT.save(deps.storage, &addr)?;
+
+            Ok(Response::new().add_attribute("funds_distributor_contract", addr.to_string()))
+        }
+        CREATE_POLL_REPLY_ID => {
+            let poll_id = parse_poll_id(msg)?;
+
+            let state = STATE.load(deps.storage)?;
+
+            let proposal_info = state.proposal_being_created.ok_or(CustomError {
+                val: "Invalid state - missing proposal info".to_string(),
+            })?;
+
+            STATE.save(
+                deps.storage,
+                &State {
+                    proposal_being_created: None,
+                    ..state
+                },
+            )?;
+
+            PROPOSAL_INFOS.save(deps.storage, poll_id, &proposal_info)?;
+
+            if let Some(deposit) = proposal_info.proposal_deposit {
+                TOTAL_DEPOSITS.update(deps.storage, |deposits| -> StdResult<Uint128> {
+                    Ok(deposits.add(deposit.amount))
+                })?;
+            }
+
+            Ok(Response::new().add_attribute("proposal_id", poll_id.to_string()))
+        }
+        END_POLL_REPLY_ID => {
+            let info = MessageInfo {
+                sender: env.contract.address.clone(),
+                funds: vec![],
+            }; // TODO: avoid this, it's a recipe for disaster
+
+            let ctx = &mut Context { deps, env, info };
+            let state = STATE.load(ctx.deps.storage)?;
+
+            let proposal_id = state.proposal_being_executed.ok_or(CustomError {
+                val: "Invalid state - missing ID of proposal being executed".to_string(),
+            })?;
+
+            STATE.save(
+                ctx.deps.storage,
+                &State {
+                    proposal_being_executed: None,
+                    ..state
+                },
+            )?;
+
+            let execute_submsgs = resolve_ended_proposal(ctx, proposal_id)?;
+
+            Ok(Response::new()
+                .add_attribute("action", "execute_proposal")
+                .add_attribute("dao_address", ctx.env.contract.address.to_string())
+                .add_attribute("proposal_id", proposal_id.to_string())
+                .add_submessages(execute_submsgs))
+        }
         _ => Err(DaoError::Std(StdError::generic_err(
             "No such reply ID found",
         ))),
     }
+}
+
+fn parse_poll_id(msg: Reply) -> DaoResult<PollId> {
+    let events = msg
+        .result
+        .into_result()
+        .map_err(|e| CustomError { val: e })?
+        .events;
+    let event = events
+        .iter()
+        .find(|event| {
+            event
+                .attributes
+                .iter()
+                .any(|attr| attr.key == "action" && attr.value == "create_poll")
+        })
+        .ok_or(CustomError {
+            val: "Reply does not contain create_poll event".to_string(),
+        })?;
+
+    Uint64::try_from(
+        event
+            .attributes
+            .iter()
+            .find(|attr| attr.key == "poll_id")
+            .ok_or(CustomError {
+                val: "create_poll event does not contain poll ID".to_string(),
+            })?
+            .value
+            .as_str(),
+    )
+    .map_err(|_| CustomError {
+        val: "Invalid poll ID in reply".to_string(),
+    })
+    .map(|poll_id| poll_id.u64())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -1317,13 +1530,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::NftWhitelist {} => to_binary(&query_nft_whitelist(qctx)?)?,
         QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params, General)?)?,
         QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params, General)?)?,
-        QueryMsg::ProposalStatus(params) => {
-            to_binary(&query_proposal_status(qctx, params, General)?)?
-        }
+        QueryMsg::ProposalStatus(params) => to_binary(&query_proposal_status(qctx, params)?)?,
         QueryMsg::CouncilProposal(params) => to_binary(&query_proposal(qctx, params, Council)?)?,
         QueryMsg::CouncilProposals(params) => to_binary(&query_proposals(qctx, params, Council)?)?,
         QueryMsg::CouncilProposalStatus(params) => {
-            to_binary(&query_proposal_status(qctx, params, Council)?)?
+            to_binary(&query_proposal_status(qctx, params)?)?
         }
         QueryMsg::MemberVote(params) => to_binary(&query_member_vote(qctx, params)?)?,
         QueryMsg::ProposalVotes(params) => to_binary(&query_proposal_votes(qctx, params)?)?,
@@ -1345,6 +1556,7 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
     let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
     let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
     let enterprise_factory_contract = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
+    let funds_distributor_contract = FUNDS_DISTRIBUTOR_CONTRACT.load(qctx.deps.storage)?;
     let dao_code_version = DAO_CODE_VERSION.load(qctx.deps.storage)?;
 
     Ok(DaoInfoResponse {
@@ -1355,6 +1567,7 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
         dao_type,
         dao_membership_contract,
         enterprise_factory_contract,
+        funds_distributor_contract,
         dao_code_version,
     })
 }
@@ -1381,17 +1594,21 @@ pub fn query_proposal(
     msg: ProposalParams,
     proposal_type: ProposalType,
 ) -> DaoResult<ProposalResponse> {
-    let deps = qctx.deps;
-    let poll = query_poll(
-        &qctx,
-        PollParams {
-            poll_id: msg.proposal_id,
-        },
-    )?;
+    let poll = query_poll(&qctx, msg.proposal_id)?;
 
-    let proposal = poll_to_proposal_response(deps, &qctx.env, &poll.poll, proposal_type)?;
+    let proposal = poll_to_proposal_response(qctx.deps, &qctx.env, &poll.poll, proposal_type)?;
 
     Ok(proposal)
+}
+
+fn query_poll(qctx: &QueryContext, poll_id: PollId) -> DaoResult<PollResponse> {
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(qctx.deps.storage)?;
+
+    let poll: PollResponse = qctx.deps.querier.query_wasm_smart(
+        governance_contract.to_string(),
+        &enterprise_governance_api::msg::QueryMsg::Poll(PollParams { poll_id }),
+    )?;
+    Ok(poll)
 }
 
 pub fn query_proposals(
@@ -1399,10 +1616,11 @@ pub fn query_proposals(
     msg: ProposalsParams,
     proposal_type: ProposalType,
 ) -> DaoResult<ProposalsResponse> {
-    let deps = qctx.deps;
-    let polls = query_polls(
-        &qctx,
-        PollsParams {
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(qctx.deps.storage)?;
+
+    let polls: PollsResponse = qctx.deps.querier.query_wasm_smart(
+        governance_contract.to_string(),
+        &enterprise_governance_api::msg::QueryMsg::Polls(PollsParams {
             filter: msg.filter.map(|filter| match filter {
                 ProposalStatusFilter::InProgress => PollStatusFilter::InProgress,
                 ProposalStatusFilter::Passed => PollStatusFilter::Passed,
@@ -1414,7 +1632,7 @@ pub fn query_proposals(
                 limit: msg.limit.map(|limit| limit as u64),
                 order_by: None,
             },
-        },
+        }),
     )?;
 
     let proposals = polls
@@ -1422,7 +1640,7 @@ pub fn query_proposals(
         .into_iter()
         .filter_map(|poll| {
             let proposal_response =
-                poll_to_proposal_response(deps, &qctx.env, &poll, proposal_type.clone());
+                poll_to_proposal_response(qctx.deps, &qctx.env, &poll, proposal_type.clone());
             // filthy hack: we do not store whether a poll is of type General or Council
             // we listed all polls in poll-engine, but only when we try to add remaining data
             // contained in this contract can we know what their type is and exclude them from
@@ -1441,14 +1659,13 @@ pub fn query_proposals(
 pub fn query_proposal_status(
     qctx: QueryContext,
     msg: ProposalStatusParams,
-    proposal_type: ProposalType,
 ) -> DaoResult<ProposalStatusResponse> {
     let poll_status = query_poll_status(&qctx, msg.proposal_id)?;
 
     let status = match poll_status.status {
         PollStatus::InProgress { .. } => ProposalStatus::InProgress,
         PollStatus::Passed { .. } => {
-            if is_proposal_executed(qctx.deps.storage, msg.proposal_id, proposal_type)? {
+            if is_proposal_executed(qctx.deps.storage, msg.proposal_id)? {
                 ProposalStatus::Executed
             } else {
                 ProposalStatus::Passed
@@ -1464,13 +1681,23 @@ pub fn query_proposal_status(
     })
 }
 
+fn query_poll_status(qctx: &QueryContext, poll_id: PollId) -> DaoResult<PollStatusResponse> {
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(qctx.deps.storage)?;
+    let poll_status_response: PollStatusResponse = qctx.deps.querier.query_wasm_smart(
+        governance_contract.to_string(),
+        &enterprise_governance_api::msg::QueryMsg::PollStatus { poll_id },
+    )?;
+
+    Ok(poll_status_response)
+}
+
 fn poll_to_proposal_response(
     deps: Deps,
     env: &Env,
     poll: &Poll,
     proposal_type: ProposalType,
 ) -> DaoResult<ProposalResponse> {
-    let actions_opt = get_proposal_actions(deps.storage, poll.id, proposal_type.clone())?;
+    let actions_opt = get_proposal_actions(deps.storage, poll.id)?;
 
     let actions = match actions_opt {
         None => return Err(NoSuchProposal),
@@ -1493,10 +1720,7 @@ fn poll_to_proposal_response(
         proposal_actions: actions,
     };
 
-    let info = match proposal_type {
-        General => PROPOSAL_INFOS.load(deps.storage, poll.id)?,
-        Council => COUNCIL_PROPOSAL_INFOS.load(deps.storage, poll.id)?,
-    };
+    let info = PROPOSAL_INFOS.load(deps.storage, poll.id)?;
 
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
@@ -1584,12 +1808,13 @@ pub fn query_member_vote(
     qctx: QueryContext,
     params: MemberVoteParams,
 ) -> DaoResult<MemberVoteResponse> {
-    let vote = query_poll_voter(
-        &qctx,
-        PollVoterParams {
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(qctx.deps.storage)?;
+    let vote: PollVoterResponse = qctx.deps.querier.query_wasm_smart(
+        governance_contract.to_string(),
+        &enterprise_governance_api::msg::QueryMsg::PollVoter(PollVoterParams {
             poll_id: params.proposal_id.into(),
             voter_addr: params.member,
-        },
+        }),
     )?;
 
     Ok(MemberVoteResponse { vote: vote.vote })
@@ -1599,9 +1824,10 @@ pub fn query_proposal_votes(
     qctx: QueryContext,
     params: ProposalVotesParams,
 ) -> DaoResult<ProposalVotesResponse> {
-    let poll_voters = query_poll_voters(
-        &qctx,
-        PollVotersParams {
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(qctx.deps.storage)?;
+    let poll_voters: PollVotersResponse = qctx.deps.querier.query_wasm_smart(
+        governance_contract.to_string(),
+        &enterprise_governance_api::msg::QueryMsg::PollVoters(PollVotersParams {
             poll_id: params.proposal_id,
             pagination: Pagination {
                 start_after: params.start_after,
@@ -1614,7 +1840,7 @@ pub fn query_proposal_votes(
                 ),
                 order_by: None,
             },
-        },
+        }),
     )?;
 
     Ok(ProposalVotesResponse {
@@ -1628,60 +1854,49 @@ pub fn query_member_info(
 ) -> DaoResult<MemberInfoResponse> {
     let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
 
-    let voting_power = match dao_type {
-        Token => calculate_token_member_voting_power(qctx, msg.member_address)?,
-        Nft => calculate_nft_member_voting_power(qctx, msg.member_address)?,
-        Multisig => calculate_multisig_member_voting_power(qctx, msg.member_address)?,
-    };
+    let voting_power = calculate_member_voting_power(qctx, msg.member_address, dao_type)?;
 
     Ok(MemberInfoResponse { voting_power })
 }
 
-fn calculate_token_member_voting_power(qctx: QueryContext, member: String) -> DaoResult<Decimal> {
-    let total_staked = load_total_staked(qctx.deps.storage)?;
-
-    if total_staked == Uint128::zero() {
-        Ok(Decimal::zero())
-    } else {
-        let member = qctx.deps.api.addr_validate(&member)?;
-        let user_staked = CW20_STAKES
-            .may_load(qctx.deps.storage, member)?
-            .unwrap_or_default();
-
-        Ok(Decimal::from_ratio(user_staked, total_staked))
-    }
-}
-
-fn calculate_nft_member_voting_power(qctx: QueryContext, member: String) -> DaoResult<Decimal> {
-    let total_staked = load_total_staked(qctx.deps.storage)?;
-
-    if total_staked == Uint128::zero() {
-        Ok(Decimal::zero())
-    } else {
-        let member = qctx.deps.api.addr_validate(&member)?;
-
-        let user_staked = load_all_nft_stakes_for_user(qctx.deps.storage, member)?;
-
-        Ok(Decimal::from_ratio(user_staked.len() as u128, total_staked))
-    }
-}
-
-fn calculate_multisig_member_voting_power(
+fn calculate_member_voting_power(
     qctx: QueryContext,
     member: String,
+    dao_type: DaoType,
 ) -> DaoResult<Decimal> {
-    let total_weight = load_total_multisig_weight(qctx.deps.storage)?;
+    let total_weight = load_total_weight(qctx.deps, dao_type.clone())?;
 
     if total_weight == Uint128::zero() {
         Ok(Decimal::zero())
     } else {
-        let member_addr = qctx.deps.api.addr_validate(&member)?;
-        let voter_weight = MULTISIG_MEMBERS
-            .may_load(qctx.deps.storage, member_addr)?
-            .unwrap_or_default();
+        let member = qctx.deps.api.addr_validate(&member)?;
+        let member_weight = load_member_weight(qctx.deps, member, dao_type)?;
 
-        Ok(Decimal::from_ratio(voter_weight, total_weight))
+        Ok(Decimal::from_ratio(member_weight, total_weight))
     }
+}
+
+fn load_member_weight(deps: Deps, member: Addr, dao_type: DaoType) -> DaoResult<Uint128> {
+    let member_weight = match dao_type {
+        Token => CW20_STAKES
+            .may_load(deps.storage, member)?
+            .unwrap_or_default(),
+        Nft => (load_all_nft_stakes_for_user(deps.storage, member)?.len() as u128).into(),
+        Multisig => MULTISIG_MEMBERS
+            .may_load(deps.storage, member)?
+            .unwrap_or_default(),
+    };
+
+    Ok(member_weight)
+}
+
+fn load_total_weight(deps: Deps, dao_type: DaoType) -> DaoResult<Uint128> {
+    let total_weight = match dao_type {
+        Token | Nft => load_total_staked(deps.storage)?,
+        Multisig => load_total_multisig_weight(deps.storage)?,
+    };
+
+    Ok(total_weight)
 }
 
 pub fn query_list_multisig_members(

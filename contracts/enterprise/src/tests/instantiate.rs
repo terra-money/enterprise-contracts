@@ -1,17 +1,21 @@
 use crate::contract::{
     instantiate, query_asset_whitelist, query_dao_info, query_nft_whitelist,
     query_total_staked_amount, DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+    ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use crate::tests::helpers::{
     assert_member_voting_power, existing_nft_dao_membership, existing_token_dao_membership,
     instantiate_stub_dao, stub_dao_gov_config, stub_dao_membership_info, stub_dao_metadata,
     stub_enterprise_factory_contract, stub_multisig_dao_membership_info,
     stub_nft_dao_membership_info, stub_token_dao_membership_info, stub_token_info, CW20_ADDR,
-    NFT_ADDR,
+    DAO_ADDR, ENTERPRISE_GOVERNANCE_CODE_ID, NFT_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
-use cosmwasm_std::{wasm_instantiate, Addr, Decimal, SubMsg, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{
+    to_binary, wasm_instantiate, Addr, CosmosMsg, Decimal, StdResult, SubMsg, Timestamp, Uint128,
+    Uint64, WasmMsg,
+};
 use cw20::{Cw20Coin, MinterResponse};
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_asset::AssetInfo;
@@ -95,6 +99,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: metadata.clone(),
             dao_gov_config: dao_gov_config.clone(),
             dao_council: dao_council.clone(),
@@ -201,6 +206,7 @@ fn instantiate_existing_token_membership_with_not_valid_cw20_contract_fails() ->
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata,
             dao_gov_config,
             dao_council: None,
@@ -262,8 +268,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    let dao_addr = "dao_addr";
-    env.contract.address = Addr::unchecked(dao_addr);
+    env.contract.address = Addr::unchecked(DAO_ADDR);
 
     let membership_info = NewToken(Box::new(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
@@ -295,6 +300,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -310,39 +316,42 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
 
     assert_eq!(
         response.messages,
-        vec![SubMsg::reply_on_success(
-            wasm_instantiate(
-                CW20_CODE_ID,
-                &cw20_base::msg::InstantiateMsg {
-                    name: TOKEN_NAME.to_string(),
-                    symbol: TOKEN_SYMBOL.to_string(),
-                    decimals: TOKEN_DECIMALS,
-                    initial_balances: vec![
-                        Cw20Coin {
-                            address: "my_address".to_string(),
-                            amount: 1234u128.into()
-                        },
-                        Cw20Coin {
-                            address: dao_addr.to_string(),
-                            amount: 456u128.into()
-                        },
-                    ],
-                    mint: Some(MinterResponse {
-                        minter: MINTER.to_string(),
-                        cap: Some(123456789u128.into())
-                    }),
-                    marketing: Some(InstantiateMarketingInfo {
-                        project: Some(TOKEN_PROJECT_NAME.to_string()),
-                        description: Some(TOKEN_PROJECT_DESCRIPTION.to_string()),
-                        marketing: Some(TOKEN_MARKETING_OWNER.to_string()),
-                        logo: Some(cw20::Logo::Url(TOKEN_LOGO_URL.to_string())),
-                    }),
-                },
-                vec![],
-                TOKEN_NAME.to_string(),
-            )?,
-            DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
-        )]
+        vec![
+            SubMsg::reply_on_success(
+                wasm_instantiate(
+                    CW20_CODE_ID,
+                    &cw20_base::msg::InstantiateMsg {
+                        name: TOKEN_NAME.to_string(),
+                        symbol: TOKEN_SYMBOL.to_string(),
+                        decimals: TOKEN_DECIMALS,
+                        initial_balances: vec![
+                            Cw20Coin {
+                                address: "my_address".to_string(),
+                                amount: 1234u128.into()
+                            },
+                            Cw20Coin {
+                                address: DAO_ADDR.to_string(),
+                                amount: 456u128.into()
+                            },
+                        ],
+                        mint: Some(MinterResponse {
+                            minter: MINTER.to_string(),
+                            cap: Some(123456789u128.into())
+                        }),
+                        marketing: Some(InstantiateMarketingInfo {
+                            project: Some(TOKEN_PROJECT_NAME.to_string()),
+                            description: Some(TOKEN_PROJECT_DESCRIPTION.to_string()),
+                            marketing: Some(TOKEN_MARKETING_OWNER.to_string()),
+                            logo: Some(cw20::Logo::Url(TOKEN_LOGO_URL.to_string())),
+                        }),
+                    },
+                    vec![],
+                    TOKEN_NAME.to_string(),
+                )?,
+                DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+            ),
+            instantiate_governance_contract_submsg(DAO_ADDR)?
+        ]
     );
 
     let asset_whitelist_response = query_asset_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
@@ -391,6 +400,7 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -462,8 +472,9 @@ fn instantiate_new_token_membership_with_zero_initial_dao_balance_fails() -> Dao
 fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let info = mock_info("sender", &[]);
+
+    env.contract.address = Addr::unchecked(DAO_ADDR);
 
     let membership_info = NewToken(Box::new(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
@@ -488,25 +499,28 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
 
     assert_eq!(
         response.messages,
-        vec![SubMsg::reply_on_success(
-            wasm_instantiate(
-                CW20_CODE_ID,
-                &cw20_base::msg::InstantiateMsg {
-                    name: TOKEN_NAME.to_string(),
-                    symbol: TOKEN_SYMBOL.to_string(),
-                    decimals: TOKEN_DECIMALS,
-                    initial_balances: vec![],
-                    mint: Some(MinterResponse {
-                        minter: "dao_addr".to_string(),
-                        cap: None,
-                    }),
-                    marketing: None,
-                },
-                vec![],
-                TOKEN_NAME.to_string(),
-            )?,
-            DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
-        )]
+        vec![
+            SubMsg::reply_on_success(
+                wasm_instantiate(
+                    CW20_CODE_ID,
+                    &cw20_base::msg::InstantiateMsg {
+                        name: TOKEN_NAME.to_string(),
+                        symbol: TOKEN_SYMBOL.to_string(),
+                        decimals: TOKEN_DECIMALS,
+                        initial_balances: vec![],
+                        mint: Some(MinterResponse {
+                            minter: DAO_ADDR.to_string(),
+                            cap: None,
+                        }),
+                        marketing: None,
+                    },
+                    vec![],
+                    TOKEN_NAME.to_string(),
+                )?,
+                DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+            ),
+            instantiate_governance_contract_submsg(DAO_ADDR)?
+        ]
     );
 
     Ok(())
@@ -515,8 +529,10 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
 #[test]
 fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult<()> {
     let mut deps = mock_dependencies();
-    let env = mock_env();
+    let mut env = mock_env();
     let info = mock_info("sender", &[]);
+
+    env.contract.address = Addr::unchecked(DAO_ADDR);
 
     let membership_info = NewNft(NewNftMembershipInfo {
         nft_name: NFT_NAME.to_string(),
@@ -533,6 +549,7 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -548,19 +565,22 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
 
     assert_eq!(
         response.messages,
-        vec![SubMsg::reply_on_success(
-            wasm_instantiate(
-                CW721_CODE_ID,
-                &cw721_base::msg::InstantiateMsg {
-                    name: NFT_NAME.to_string(),
-                    symbol: NFT_SYMBOL.to_string(),
-                    minter: MINTER.to_string(),
-                },
-                vec![],
-                "DAO NFT".to_string(),
-            )?,
-            DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
-        )]
+        vec![
+            SubMsg::reply_on_success(
+                wasm_instantiate(
+                    CW721_CODE_ID,
+                    &cw721_base::msg::InstantiateMsg {
+                        name: NFT_NAME.to_string(),
+                        symbol: NFT_SYMBOL.to_string(),
+                        minter: MINTER.to_string(),
+                    },
+                    vec![],
+                    "DAO NFT".to_string(),
+                )?,
+                DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+            ),
+            instantiate_governance_contract_submsg(DAO_ADDR)?,
+        ]
     );
 
     let asset_whitelist_response = query_asset_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
@@ -607,6 +627,7 @@ fn instantiate_new_multisig_membership_stores_members_properly() -> DaoResult<()
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata,
             dao_gov_config,
             dao_council: None,
@@ -766,6 +787,7 @@ fn instantiate_dao_with_shorter_unstaking_than_voting_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -797,6 +819,7 @@ fn instantiate_nft_dao_with_minimum_deposit_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -828,6 +851,7 @@ fn instantiate_multisig_dao_with_minimum_deposit_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -866,6 +890,7 @@ fn instantiate_dao_with_quorum_over_one_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -909,6 +934,7 @@ fn instantiate_dao_with_quorum_of_zero_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -952,6 +978,7 @@ fn instantiate_dao_with_threshold_over_one_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -995,6 +1022,7 @@ fn instantiate_dao_with_threshold_of_zero_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -1038,6 +1066,7 @@ fn instantiate_dao_with_veto_threshold_over_one_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -1081,6 +1110,7 @@ fn instantiate_dao_with_veto_threshold_of_zero_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -1099,4 +1129,19 @@ fn instantiate_dao_with_veto_threshold_of_zero_fails() -> DaoResult<()> {
     );
 
     Ok(())
+}
+
+fn instantiate_governance_contract_submsg(dao_address: &str) -> StdResult<SubMsg> {
+    Ok(SubMsg::reply_on_success(
+        CosmosMsg::Wasm(WasmMsg::Instantiate {
+            admin: Some(dao_address.to_string()),
+            code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            msg: to_binary(&enterprise_governance_api::msg::InstantiateMsg {
+                enterprise_contract: dao_address.to_string(),
+            })?,
+            funds: vec![],
+            label: "Governance contract".to_string(),
+        }),
+        ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+    ))
 }

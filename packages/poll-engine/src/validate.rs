@@ -4,10 +4,11 @@ use cosmwasm_std::{Decimal, Timestamp};
 
 use common::cw::Context;
 
-use crate::api::{CreatePollParams, PollStatus};
-use crate::error::PollError::{OutsideVotingPeriod, PollAlreadyEnded, WithinVotingPeriod};
-use crate::error::*;
-use crate::state::Poll;
+use poll_engine_api::api::{CreatePollParams, Poll, PollStatus};
+use poll_engine_api::error::PollError::{
+    OutsideVotingPeriod, PollAlreadyEnded, WithinVotingPeriod,
+};
+use poll_engine_api::error::*;
 
 pub fn validate_create_poll(ctx: &mut Context, params: &CreatePollParams) -> PollResult<()> {
     let now = ctx.env.block.time;

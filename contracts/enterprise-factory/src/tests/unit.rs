@@ -31,9 +31,10 @@ use NewMembershipInfo::{NewNft, NewToken};
 const ENTERPRISE_FACTORY_ADDR: &str = "enterprise_factory_addr";
 
 const ENTERPRISE_CODE_ID: u64 = 201;
-const CW3_FIXED_MULTISIG_CODE_ID: u64 = 202;
-const CW_20_CODE_ID: u64 = 203;
-const CW_721_CODE_ID: u64 = 204;
+const ENTERPRISE_GOVERNANCE_CODE_ID: u64 = 202;
+const CW3_FIXED_MULTISIG_CODE_ID: u64 = 203;
+const CW_20_CODE_ID: u64 = 204;
+const CW_721_CODE_ID: u64 = 205;
 
 const TOKEN_NAME: &str = "some_token";
 const TOKEN_SYMBOL: &str = "SMBL";
@@ -65,6 +66,7 @@ fn instantiate_stores_data() -> DaoResult<()> {
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -79,6 +81,7 @@ fn instantiate_stores_data() -> DaoResult<()> {
         config.config,
         Config {
             enterprise_code_id: ENTERPRISE_CODE_ID,
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
             cw20_code_id: CW_20_CODE_ID,
             cw721_code_id: CW_721_CODE_ID,
@@ -108,6 +111,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -170,6 +174,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
                     dao_council: Some(dao_council),
@@ -213,6 +218,7 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -257,6 +263,7 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
                     dao_council: Some(dao_council),
@@ -292,6 +299,7 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -343,6 +351,7 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
                     dao_council: Some(dao_council),
@@ -378,6 +387,7 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -427,6 +437,7 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     dao_metadata,
                     dao_gov_config: DaoGovConfig {
                         quorum: Decimal::percent(10),
@@ -504,6 +515,7 @@ fn nft_asset(addr: impl Into<String>) -> Addr {
 fn stub_config() -> Config {
     Config {
         enterprise_code_id: ENTERPRISE_CODE_ID,
+        enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
         cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
         cw20_code_id: CW_20_CODE_ID,
         cw721_code_id: CW_721_CODE_ID,

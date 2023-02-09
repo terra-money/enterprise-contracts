@@ -1,6 +1,7 @@
 use crate::api::ProposalActionType;
 use cosmwasm_std::{StdError, Uint128};
-use poll_engine::error::PollError;
+use funds_distributor_api::error::DistributorError;
+use poll_engine_api::error::PollError;
 use thiserror::Error;
 
 pub type DaoResult<T> = Result<T, DaoError>;
@@ -12,6 +13,9 @@ pub enum DaoError {
 
     #[error("{0}")]
     Poll(#[from] PollError),
+
+    #[error("{0}")]
+    FundsDistributor(#[from] DistributorError),
 
     #[error("Unauthorized")]
     Unauthorized,
@@ -57,6 +61,9 @@ pub enum DaoError {
 
     #[error("The given proposal was not found in this DAO")]
     NoSuchProposal,
+
+    #[error("Proposal is of another type")]
+    WrongProposalType,
 
     #[error("The given proposal has already been executed")]
     ProposalAlreadyExecuted,

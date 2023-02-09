@@ -2,14 +2,16 @@ use cosmwasm_std::Uint64;
 
 use common::cw::Context;
 
-use crate::api::{CastVoteParams, CreatePollParams, EndPollParams, Vote, VoteOutcome};
-use crate::error::PollError::PollNotFound;
-use crate::error::*;
-use crate::state::{polls, votes, GovState, Poll, PollStorage, GOV_STATE};
+use crate::state::{poll_from, polls, votes, GovState, PollHelpers, PollStorage, GOV_STATE};
 use crate::validate::{
     validate_create_poll, validate_not_already_ended, validate_voting_period_ended,
     validate_within_voting_period,
 };
+use poll_engine_api::api::{
+    CastVoteParams, CreatePollParams, EndPollParams, Poll, Vote, VoteOutcome,
+};
+use poll_engine_api::error::PollError::PollNotFound;
+use poll_engine_api::error::*;
 
 /// Initializes library state.
 pub fn initialize_poll_engine(ctx: &mut Context) -> PollResult<()> {
@@ -22,7 +24,7 @@ pub fn initialize_poll_engine(ctx: &mut Context) -> PollResult<()> {
 pub fn create_poll(ctx: &mut Context, params: CreatePollParams) -> PollResult<Poll> {
     validate_create_poll(ctx, &params)?;
 
-    let poll = Poll::from(&mut ctx.deps, &ctx.env, params.clone())?;
+    let poll = poll_from(&mut ctx.deps, &ctx.env, params.clone())?;
     polls().save_poll(ctx.deps.storage, poll.clone())?;
 
     Ok(poll)
@@ -34,6 +36,7 @@ pub fn cast_vote(
     CastVoteParams {
         poll_id,
         outcome,
+        voter,
         amount,
     }: CastVoteParams,
 ) -> PollResult<()> {
@@ -44,7 +47,7 @@ pub fn cast_vote(
     }
 
     let poll_key = poll_id.u64();
-    let voter = ctx.info.sender.clone();
+    let voter = ctx.deps.api.addr_validate(&voter)?;
 
     // 1. load existing poll
     let mut poll = polls()
@@ -129,17 +132,17 @@ mod tests {
     use PollRejectionReason::OutcomeDraw;
     use VoteOutcome::{No, Veto};
 
-    use crate::api::VoteOutcome::{Abstain, Yes};
-    use crate::api::{
-        CastVoteParams, CreatePollParams, EndPollParams, PollRejectionReason, PollStatus,
-        PollStatusFilter, VoteOutcome, VotingScheme,
-    };
-    use crate::error::PollError;
-    use crate::error::PollError::{PollAlreadyEnded, WithinVotingPeriod};
     use crate::execute::{cast_vote, create_poll, end_poll, initialize_poll_engine};
     use crate::helpers::mock_poll;
     use crate::query::query_poll_status;
-    use crate::state::{polls, GovState, Poll, GOV_STATE};
+    use crate::state::{polls, GovState, GOV_STATE};
+    use poll_engine_api::api::VoteOutcome::{Abstain, Yes};
+    use poll_engine_api::api::{
+        CastVoteParams, CreatePollParams, EndPollParams, Poll, PollRejectionReason, PollStatus,
+        PollStatusFilter, VoteOutcome, VotingScheme,
+    };
+    use poll_engine_api::error::PollError;
+    use poll_engine_api::error::PollError::{PollAlreadyEnded, WithinVotingPeriod};
 
     #[test]
     fn initialize_sets_default_gov_state() {
@@ -202,6 +205,7 @@ mod tests {
         let params = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(10),
         };
         cast_vote(&mut ctx, params).unwrap();
@@ -232,6 +236,7 @@ mod tests {
         let params = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(4),
         };
         cast_vote(&mut ctx, params).unwrap();
@@ -241,6 +246,7 @@ mod tests {
         let params = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(9),
         };
         cast_vote(&mut ctx, params).unwrap();
@@ -333,6 +339,7 @@ mod tests {
         let params = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(4),
         };
         let result = cast_vote(&mut ctx, params);
@@ -462,21 +469,25 @@ mod tests {
         let params = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: No,
+            voter: "voter1".to_string(),
             amount: Uint128::new(10),
         };
         let params2 = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: No,
+            voter: "voter2".to_string(),
             amount: Uint128::new(121),
         };
         let params3 = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: Abstain,
+            voter: "voter3".to_string(),
             amount: Uint128::new(110),
         };
         let params4 = CastVoteParams {
             poll_id: poll.id.into(),
             outcome: Veto,
+            voter: "voter4".to_string(),
             amount: Uint128::new(10),
         };
 

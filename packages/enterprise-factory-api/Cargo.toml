@@ -14,9 +14,9 @@ cosmwasm-std = "1"
 cosmwasm-storage = "1"
 cosmwasm-schema = "1.1"
 cw-asset = "2.2"
-cw-storage-plus = "0.15"
-cw-utils = "0.15"
-cw2 = "0.15"
+cw-storage-plus = "1.0.1"
+cw-utils = "1.0.1"
+cw2 = "1.0.1"
 itertools = "0.10"
 schemars = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }
@@ -28,4 +28,4 @@ enterprise-protocol = { path = "../enterprise-protocol" }
 
 [dev-dependencies]
 cosmwasm-schema = "1"
-cw-multi-test = "0.15"
+cw-multi-test = "0.16.2"

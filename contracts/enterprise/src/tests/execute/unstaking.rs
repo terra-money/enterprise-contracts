@@ -10,7 +10,7 @@ use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use enterprise_protocol::error::DaoError::{InvalidStakingAsset, NoNftTokenStaked, Unauthorized};
 use enterprise_protocol::error::DaoResult;
-use poll_engine::api::VoteOutcome::{No, Yes};
+use poll_engine_api::api::VoteOutcome::{No, Yes};
 
 #[test]
 fn unstake_token_dao() -> DaoResult<()> {

@@ -25,13 +25,18 @@ use enterprise_protocol::msg::ExecuteMsg::{
 };
 use enterprise_protocol::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 use itertools::Itertools;
-use poll_engine::api::VoteOutcome;
+use poll_engine_api::api::VoteOutcome;
 use std::collections::BTreeMap;
 use ExecuteMsg::{Receive, ReceiveNft, Unstake};
 use NewMembershipInfo::NewMultisig;
 
+pub const ENTERPRISE_GOVERNANCE_CODE_ID: u64 = 301;
+pub const FUNDS_DISTRIBUTOR_CODE_ID: u64 = 301;
+
 pub const CW20_ADDR: &str = "cw20_addr";
 pub const NFT_ADDR: &str = "cw721_addr";
+
+pub const DAO_ADDR: &str = "dao_contract_address";
 
 pub const PROPOSAL_TITLE: &str = "Proposal title";
 pub const PROPOSAL_DESCRIPTION: &str = "Description";
@@ -129,6 +134,7 @@ pub fn instantiate_stub_dao(
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: gov_config.unwrap_or(stub_dao_gov_config()),
             dao_council,

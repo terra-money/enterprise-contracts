@@ -10,8 +10,8 @@ use cosmwasm_std::Addr;
 use enterprise_protocol::api::{DaoCouncilSpec, MemberVoteParams, ProposalVotesParams};
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::DaoResult;
-use poll_engine::api::Vote;
-use poll_engine::api::VoteOutcome::{Abstain, No, Yes};
+use poll_engine_api::api::Vote;
+use poll_engine_api::api::VoteOutcome::{Abstain, No, Yes};
 
 #[test]
 fn vote_on_proposal_in_token_dao_stores_member_vote() -> DaoResult<()> {

@@ -39,17 +39,9 @@ pub fn validate_dao_gov_config(dao_type: &DaoType, dao_gov_config: &DaoGovConfig
         }
     }
 
-    if dao_gov_config.quorum > Decimal::one() || dao_gov_config.quorum == Decimal::zero() {
-        return Err(InvalidArgument {
-            msg: "Invalid quorum, must be 0 < quorum <= 1".to_string(),
-        });
-    }
+    validate_quorum_value(dao_gov_config.quorum)?;
 
-    if dao_gov_config.threshold > Decimal::one() || dao_gov_config.threshold == Decimal::zero() {
-        return Err(InvalidArgument {
-            msg: "Invalid threshold, must be 0 < threshold <= 1".to_string(),
-        });
-    }
+    validate_threshold_value(dao_gov_config.threshold)?;
 
     if let Some(veto_threshold) = dao_gov_config.veto_threshold {
         if veto_threshold > Decimal::one() || veto_threshold == Decimal::zero() {
@@ -61,6 +53,25 @@ pub fn validate_dao_gov_config(dao_type: &DaoType, dao_gov_config: &DaoGovConfig
 
     if dao_gov_config.minimum_deposit.is_some() && (dao_type == &Nft || dao_type == &Multisig) {
         return Err(MinimumDepositNotAllowed {});
+    }
+
+    Ok(())
+}
+
+fn validate_quorum_value(quorum: Decimal) -> DaoResult<()> {
+    if quorum > Decimal::one() || quorum == Decimal::zero() {
+        return Err(InvalidArgument {
+            msg: "Invalid quorum, must be 0 < quorum <= 1".to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn validate_threshold_value(threshold: Decimal) -> DaoResult<()> {
+    if threshold > Decimal::one() || threshold == Decimal::zero() {
+        return Err(InvalidArgument {
+            msg: "Invalid threshold, must be 0 < threshold <= 1".to_string(),
+        });
     }
 
     Ok(())
@@ -184,6 +195,10 @@ pub fn apply_gov_config_changes(
 
     if let Change(minimum_deposit) = msg.minimum_deposit {
         gov_config.minimum_deposit = minimum_deposit;
+    }
+
+    if let Change(allow_early_proposal_execution) = msg.allow_early_proposal_execution {
+        gov_config.allow_early_proposal_execution = allow_early_proposal_execution;
     }
 
     gov_config
@@ -381,11 +396,16 @@ pub fn validate_dao_council(
                 dao_council.allowed_proposal_action_types.clone(),
             )?;
 
+            validate_quorum_value(dao_council.quorum)?;
+            validate_threshold_value(dao_council.threshold)?;
+
             Ok(Some(DaoCouncil {
                 members,
                 allowed_proposal_action_types: dao_council
                     .allowed_proposal_action_types
                     .unwrap_or_else(|| vec![ProposalActionType::UpgradeDao]),
+                quorum: dao_council.quorum,
+                threshold: dao_council.threshold,
             }))
         }
     }

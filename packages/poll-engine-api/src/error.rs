@@ -8,6 +8,9 @@ pub enum PollError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("Unauthorized")]
+    Unauthorized {},
+
     #[error("Poll {poll_id} already exists")]
     PollAlreadyExists { poll_id: Uint64 },
 

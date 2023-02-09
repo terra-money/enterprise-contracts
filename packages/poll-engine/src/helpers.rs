@@ -1,7 +1,7 @@
-use crate::api::{PollStatus, VotingScheme};
 use cosmwasm_std::{Addr, Decimal, Storage, Timestamp};
+use poll_engine_api::api::{Poll, PollStatus, VotingScheme};
 
-use crate::state::{GovStateExt, Poll, GOV_STATE};
+use crate::state::{GovStateExt, GOV_STATE};
 
 pub fn mock_poll(store: &mut dyn Storage) -> Poll {
     mock_poll_with_id(GOV_STATE.increment_poll_id(store).unwrap())

@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::ops::Not;
@@ -6,25 +7,22 @@ use Ordering::{Equal, Greater, Less};
 use cosmwasm_std::{to_binary, Addr, Decimal, DepsMut, Env, Storage, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use itertools::Itertools;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 use common::cw::RangeArgs;
 use PollRejectionReason::{IsVetoOutcome, OutcomeDraw, QuorumNotReached, ThresholdNotReached};
 
-use crate::api::PollRejectionReason::IsRejectingOutcome;
-use crate::api::VoteOutcome::{Abstain, No, Veto, Yes};
-use crate::api::{
-    CreatePollParams, PollId, PollRejectionReason, PollStatus, PollStatusFilter, Vote, VoteOutcome,
-    VotingScheme,
+use poll_engine_api::api::PollRejectionReason::IsRejectingOutcome;
+use poll_engine_api::api::VoteOutcome::{Abstain, No, Veto, Yes};
+use poll_engine_api::api::{
+    CreatePollParams, Poll, PollId, PollRejectionReason, PollStatus, PollStatusFilter, Vote,
+    VoteOutcome, VotingScheme,
 };
-use crate::error::*;
+use poll_engine_api::error::*;
 
 pub const GOV_STATE: Item<GovState> = Item::new("gov_state");
 
-#[serde_as]
-#[derive(Serialize, Deserialize, Default, Clone, Debug, Eq, PartialEq, JsonSchema)]
+#[derive(Default)]
+#[cw_serde]
 pub struct GovState {
     pub poll_count: u64,
 }
@@ -40,46 +38,6 @@ impl GovStateExt for Item<'_, GovState> {
         self.save(store, &state)?;
         Ok(state.poll_count)
     }
-}
-
-#[serde_as]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-/// A poll.
-pub struct Poll {
-    /// Unique identifier for the poll.
-    pub id: PollId,
-    /// Proposer address.
-    pub proposer: Addr,
-    /// Poll deposit amount.
-    pub deposit_amount: u128,
-    /// User-defined label for the poll.
-    pub label: String,
-    /// User-defined description for the poll.
-    pub description: String,
-    /// Voting scheme of the poll, e.g. "CoinVoting".
-    pub scheme: VotingScheme,
-    /// Status of the poll.
-    pub status: PollStatus,
-    /// Start-time of poll.
-    pub started_at: Timestamp,
-    /// End-time of poll.
-    pub ends_at: Timestamp,
-    /// Quorum to be reached for the poll to be valid.
-    /// Calculated as (total votes) / (total available votes).
-    pub quorum: Decimal,
-    /// Threshold ratio for a vote option to be the winning one.
-    /// Calculated as (votes for certain option) / (total available votes - abstaining votes).
-    pub threshold: Decimal,
-    /// Optional separate threshold ratio for a veto option to be the winning one.
-    /// Calculated as (veto votes) / (total available votes - abstaining votes).
-    /// If None, regular threshold will be used for veto option.
-    pub veto_threshold: Option<Decimal>,
-
-    #[schemars(with = "Vec<(u8, Uint128)>")]
-    #[serde_as(as = "Vec<(_, _)>")]
-    /// Total vote-count (value) for each outcome (key).
-    pub results: BTreeMap<u8, u128>,
 }
 
 /// <poll_id, poll>
@@ -121,11 +79,12 @@ pub trait PollStorage {
     ///
     /// ```
     /// # use cosmwasm_std::{Addr, Decimal, testing::mock_dependencies, Timestamp};
-    /// # use poll_engine::error::PollResult;
-    /// # use poll_engine::api::VotingScheme;
-    /// # use poll_engine::state::{GOV_STATE, GovState, Poll, polls, PollStorage};
+    /// # use poll_engine_api::error::PollResult;
+    /// # use poll_engine_api::api::VotingScheme;
+    /// # use poll_engine::state::{GOV_STATE, GovState, polls, PollStorage};
     /// # use cosmwasm_std::Uint128;
     /// # fn main() -> PollResult<()> {
+    /// # use poll_engine::state::{new_poll, PollHelpers};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -133,7 +92,7 @@ pub trait PollStorage {
     /// let quorum = Decimal::from_ratio(3u8, 10u8);
     /// let threshold = Decimal::percent(50);
     /// let veto_threshold = Some(Decimal::percent(33));
-    /// let initial_poll = Poll::new(
+    /// let initial_poll = new_poll(
     ///     &mut deps.as_mut(),
     ///     Addr::unchecked("proposer"),
     ///     10000,
@@ -161,10 +120,10 @@ pub trait PollStorage {
     ///
     /// ```
     /// # use cosmwasm_std::{Addr, Decimal, testing::mock_dependencies, Timestamp};
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::api::VotingScheme;
-    /// # use poll_engine::state::{GOV_STATE, GovState, Poll, polls, PollStorage};
+    /// # use poll_engine_api::api::VotingScheme;
+    /// # use poll_engine::state::{GOV_STATE, GovState, new_poll, PollHelpers, polls, PollStorage};
     /// let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -172,7 +131,7 @@ pub trait PollStorage {
     /// let quorum = Decimal::from_ratio(3u8, 10u8);
     /// let threshold = Decimal::percent(50);
     /// let veto_threshold = Some(Decimal::percent(33));
-    /// let initial_poll = Poll::new(
+    /// let initial_poll = new_poll(
     ///     &mut deps.as_mut(),
     ///     Addr::unchecked("proposer"),
     ///     10000,
@@ -257,11 +216,11 @@ pub trait VoteStorage {
     ///
     /// ```
     /// # use cosmwasm_std::{Addr, testing::mock_dependencies};
-    /// # use poll_engine::error::PollResult;
-    /// # use poll_engine::api::Vote;
+    /// # use poll_engine_api::error::PollResult;
+    /// # use poll_engine_api::api::Vote;
     /// # use poll_engine::state::votes;
     /// # use poll_engine::state::VoteStorage;
-    /// # use poll_engine::api::VoteOutcome::No;
+    /// # use poll_engine_api::api::VoteOutcome::No;
     /// # fn main() -> PollResult<()> {
     /// let mut deps = mock_dependencies();
     /// let vote = Vote::new(123, Addr::unchecked("voter"), No, 9);
@@ -280,10 +239,10 @@ pub trait VoteStorage {
     /// ```
     /// # use cosmwasm_std::{Addr, testing::mock_dependencies};
     /// # use common::cw::*;
-    /// # use poll_engine::error::PollResult;
-    /// # use poll_engine::api::Vote;
+    /// # use poll_engine_api::error::PollResult;
+    /// # use poll_engine_api::api::Vote;
     /// # use poll_engine::state::{votes, VoteStorage};
-    /// # use poll_engine::api::VoteOutcome::{Yes, No};
+    /// # use poll_engine_api::api::VoteOutcome::{Yes, No};
     /// # fn main() -> PollResult<()> {
     /// let mut deps = mock_dependencies();
     /// votes().save_vote(&mut deps.storage, Vote::new(123, Addr::unchecked("voter"), No, 9))?;
@@ -320,12 +279,12 @@ pub trait VoteStorage {
     /// ```
     /// # use cosmwasm_std::{Addr, testing::mock_dependencies};
     /// # use common::cw::*;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll_with_id;
-    /// # use poll_engine::api::VoteOutcome::{Abstain, Yes};
+    /// # use poll_engine_api::api::VoteOutcome::{Abstain, Yes};
     /// # fn main() -> PollResult<()> {
     /// # use common::cw::RangeArgs;
-    /// # use poll_engine::api::{PollStatusFilter, Vote};
+    /// # use poll_engine_api::api::{PollStatusFilter, Vote};
     /// # use poll_engine::state::{polls, PollStorage, votes, VoteStorage};
     /// # let mut deps = mock_dependencies();
     /// # let voter = Addr::unchecked("voter");
@@ -429,130 +388,153 @@ impl VoteStorage for Votes<'_> {
         Ok(max_vote)
     }
 }
+#[allow(clippy::too_many_arguments)]
+pub fn new_poll(
+    deps: &mut DepsMut,
+    proposer: Addr,
+    deposit_amount: u128,
+    label: impl Into<String>,
+    description: impl Into<String>,
+    scheme: VotingScheme,
+    started_at: Timestamp,
+    ends_at: Timestamp,
+    quorum: Decimal,
+    threshold: Decimal,
+    veto_threshold: Option<Decimal>,
+) -> PollResult<Poll> {
+    Ok(Poll {
+        id: GOV_STATE.increment_poll_id(deps.storage)?,
+        proposer,
+        deposit_amount,
+        label: label.into(),
+        description: description.into(),
+        scheme,
+        status: PollStatus::InProgress { ends_at },
+        started_at,
+        ends_at,
+        quorum,
+        threshold,
+        veto_threshold,
+        results: BTreeMap::new(),
+    })
+}
 
-impl Poll {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        deps: &mut DepsMut,
-        proposer: Addr,
-        deposit_amount: u128,
-        label: impl Into<String>,
-        description: impl Into<String>,
-        scheme: VotingScheme,
-        started_at: Timestamp,
-        ends_at: Timestamp,
-        quorum: Decimal,
-        threshold: Decimal,
-        veto_threshold: Option<Decimal>,
-    ) -> PollResult<Self> {
-        Ok(Poll {
-            id: GOV_STATE.increment_poll_id(deps.storage)?,
-            proposer,
-            deposit_amount,
-            label: label.into(),
-            description: description.into(),
-            scheme,
-            status: PollStatus::InProgress { ends_at },
-            started_at,
-            ends_at,
-            quorum,
-            threshold,
-            veto_threshold,
-            results: BTreeMap::new(),
-        })
-    }
+/// Creates a poll from a CreatePollRequest model.
+///
+/// # Example
+///
+/// ```
+/// # use cosmwasm_std::{Decimal, Timestamp, Uint64};
+/// # use cosmwasm_std::{testing::mock_dependencies, Addr, Uint128};
+/// # use poll_engine::state::GOV_STATE;
+/// # use poll_engine_api::error::PollResult;
+/// # use poll_engine_api::api::{CreatePollParams, PollStatus, VotingScheme};
+/// # use poll_engine::state::{GovState};
+/// # fn main() -> PollResult<()> {
+/// # use common::cw::testing::mock_env;
+/// use poll_engine::state::poll_from;
+/// use poll_engine_api::api::Poll;
+/// # use crate::poll_engine::state::PollHelpers;
+/// let mut deps = mock_dependencies();
+/// # let mut env = mock_env();
+/// # let state = GovState::default();
+/// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
+/// # let scheme = VotingScheme::CoinVoting;
+/// # let label = "some_label".to_string();
+/// # let description = "some_description".to_string();
+/// # let poll_id = Uint64::new(1);
+/// # let started_at = Timestamp::from_nanos(2);
+/// # env.block.time = started_at;
+/// # let ends_at = Timestamp::from_nanos(3);
+/// # let quorum = Decimal::from_ratio(3u8, 10u8);
+/// # let threshold = Decimal::percent(50);
+/// # let veto_threshold = Some(Decimal::percent(33));
+/// # let params = CreatePollParams {
+/// #     proposer: "proposer".to_string(),
+/// #     deposit_amount: Uint128::new(1000),
+/// #     label: label.clone(),
+/// #     description: description.clone(),
+/// #     scheme,
+/// #     ends_at: ends_at.clone(),
+/// #     quorum: quorum.clone(),
+/// #     threshold: threshold.clone(),
+/// #     veto_threshold: veto_threshold.clone(),
+/// # };
+/// # let expected = Poll {
+/// #     id: poll_id.into(),
+/// #     proposer: Addr::unchecked("proposer"),
+/// #     label,
+/// #     description,
+/// #     scheme,
+/// #     status: PollStatus::InProgress {
+/// #         ends_at: ends_at.clone()
+/// #     },
+/// #     started_at,
+/// #     ends_at,
+/// #     quorum,
+/// #     threshold,
+/// #     veto_threshold,
+/// #     results: Default::default(),
+/// #     deposit_amount: 1000
+/// # };
+///
+/// # // let params = CreatePollParams { ... }; // in which for example poll_id=1234
+/// # let actual = poll_from(&mut deps.as_mut(), &env, params).unwrap();
+///
+/// # assert_eq!(1, actual.id);
+/// # assert_eq!(expected, actual);
+/// # Ok(())
+/// # }
+/// ```
+pub fn poll_from(deps: &mut DepsMut, env: &Env, params: CreatePollParams) -> PollResult<Poll> {
+    new_poll(
+        deps,
+        deps.api.addr_validate(&params.proposer)?,
+        params.deposit_amount.u128(),
+        params.label,
+        params.description,
+        params.scheme,
+        env.block.time,
+        params.ends_at,
+        params.quorum,
+        params.threshold,
+        params.veto_threshold,
+    )
+}
 
-    /// Creates a poll from a CreatePollRequest model.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use cosmwasm_std::{Decimal, Timestamp, Uint64};
-    /// # use cosmwasm_std::{testing::mock_dependencies, Addr, Uint128};
-    /// # use poll_engine::state::GOV_STATE;
-    /// # use poll_engine::error::PollResult;
-    /// # use poll_engine::api::{CreatePollParams, PollStatus, VotingScheme};
-    /// # use poll_engine::state::{GovState, Poll};
-    /// # fn main() -> PollResult<()> {
-    /// # use common::cw::testing::mock_env;
-    /// let mut deps = mock_dependencies();
-    /// # let mut env = mock_env();
-    /// # let state = GovState::default();
-    /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
-    /// # let scheme = VotingScheme::CoinVoting;
-    /// # let label = "some_label".to_string();
-    /// # let description = "some_description".to_string();
-    /// # let poll_id = Uint64::new(1);
-    /// # let started_at = Timestamp::from_nanos(2);
-    /// # env.block.time = started_at;
-    /// # let ends_at = Timestamp::from_nanos(3);
-    /// # let quorum = Decimal::from_ratio(3u8, 10u8);
-    /// # let threshold = Decimal::percent(50);
-    /// # let veto_threshold = Some(Decimal::percent(33));
-    /// # let params = CreatePollParams {
-    /// #     proposer: "proposer".to_string(),
-    /// #     deposit_amount: Uint128::new(1000),
-    /// #     label: label.clone(),
-    /// #     description: description.clone(),
-    /// #     scheme,
-    /// #     ends_at: ends_at.clone(),
-    /// #     quorum: quorum.clone(),
-    /// #     threshold: threshold.clone(),
-    /// #     veto_threshold: veto_threshold.clone(),
-    /// # };
-    /// # let expected = Poll {
-    /// #     id: poll_id.into(),
-    /// #     proposer: Addr::unchecked("proposer"),
-    /// #     label,
-    /// #     description,
-    /// #     scheme,
-    /// #     status: PollStatus::InProgress {
-    /// #         ends_at: ends_at.clone()
-    /// #     },
-    /// #     started_at,
-    /// #     ends_at,
-    /// #     quorum,
-    /// #     threshold,
-    /// #     veto_threshold,
-    /// #     results: Default::default(),
-    /// #     deposit_amount: 1000
-    /// # };
-    ///
-    /// # // let params = CreatePollParams { ... }; // in which for example poll_id=1234
-    /// # let actual = Poll::from(&mut deps.as_mut(), &env, params).unwrap();
-    ///
-    /// # assert_eq!(1, actual.id);
-    /// # assert_eq!(expected, actual);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn from(deps: &mut DepsMut, env: &Env, params: CreatePollParams) -> PollResult<Self> {
-        Poll::new(
-            deps,
-            deps.api.addr_validate(&params.proposer)?,
-            params.deposit_amount.u128(),
-            params.label,
-            params.description,
-            params.scheme,
-            env.block.time,
-            params.ends_at,
-            params.quorum,
-            params.threshold,
-            params.veto_threshold,
-        )
-    }
+pub trait PollHelpers {
+    fn increase_results(&mut self, outcome: VoteOutcome, count: u128) -> PollResult<Option<u128>>;
 
+    fn decrease_results(&mut self, outcome: VoteOutcome, count: u128) -> Option<u128>;
+
+    fn threshold_reached(&self, outcome: VoteOutcome) -> bool;
+
+    fn ge_threshold(&self, outcome: VoteOutcome, count: u128) -> bool;
+
+    fn quorum_reached(&self, quorum: &Decimal, maximum_available_votes: u128) -> bool;
+
+    fn total_votes(&self) -> u128;
+
+    fn votes_for(&self, outcome: VoteOutcome) -> u128;
+
+    fn most_voted_over_threshold(&self) -> MostVoted<(u8, u128)>;
+
+    fn final_status(&self, maximum_available_votes: Uint128) -> PollResult<PollStatus>;
+}
+
+impl PollHelpers for Poll {
     /// Increases the count for an outcome in the results map.
     ///
     /// # Example
     ///
     /// ```
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::state::{GOV_STATE, GovState};
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// use poll_engine::api::VoteOutcome::{No, Yes};
+    /// use poll_engine::state::PollHelpers;
+    /// use poll_engine_api::api::VoteOutcome::{No, Yes};
     /// let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -567,11 +549,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn increase_results(
-        &mut self,
-        outcome: VoteOutcome,
-        count: u128,
-    ) -> PollResult<Option<u128>> {
+    fn increase_results(&mut self, outcome: VoteOutcome, count: u128) -> PollResult<Option<u128>> {
         match self.results.get_mut(&(outcome as u8)) {
             Some(total_count) => {
                 *total_count += count;
@@ -587,11 +565,11 @@ impl Poll {
     ///
     /// ```
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::api::VoteOutcome::{No, Yes};
-    /// use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine_api::api::VoteOutcome::{No, Yes};
+    /// use poll_engine::state::{GOV_STATE, GovState, PollHelpers};
     /// let mut  deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -609,7 +587,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn decrease_results(&mut self, outcome: VoteOutcome, count: u128) -> Option<u128> {
+    fn decrease_results(&mut self, outcome: VoteOutcome, count: u128) -> Option<u128> {
         match self.results.get_mut(&(outcome as u8)) {
             Some(total_count) => {
                 *total_count -= count;
@@ -626,11 +604,11 @@ impl Poll {
     /// ```
     /// # use std::ops::Not;
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::api::VoteOutcome::{No, Yes};
-    /// use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine_api::api::VoteOutcome::{No, Yes};
+    /// use poll_engine::state::{GOV_STATE, GovState, PollHelpers};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -646,7 +624,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn threshold_reached(&self, outcome: VoteOutcome) -> bool {
+    fn threshold_reached(&self, outcome: VoteOutcome) -> bool {
         self.ge_threshold(outcome, self.votes_for(outcome))
     }
 
@@ -670,11 +648,11 @@ impl Poll {
     /// # use std::ops::Not;
     /// # use cosmwasm_std::Decimal;
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::api::VoteOutcome::No;
-    /// use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine_api::api::VoteOutcome::No;
+    /// use poll_engine::state::{GOV_STATE, GovState, PollHelpers};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -693,7 +671,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn quorum_reached(&self, quorum: &Decimal, maximum_available_votes: u128) -> bool {
+    fn quorum_reached(&self, quorum: &Decimal, maximum_available_votes: u128) -> bool {
         Decimal::checked_from_ratio(self.total_votes(), maximum_available_votes)
             .unwrap_or(Decimal::zero())
             .ge(quorum)
@@ -706,10 +684,10 @@ impl Poll {
     /// ```
     /// # use std::{collections::BTreeMap, ops::Not};
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
-    /// # use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine::state::{GOV_STATE, GovState, PollHelpers};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -721,7 +699,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn total_votes(&self) -> u128 {
+    fn total_votes(&self) -> u128 {
         self.results.iter().fold(0u128, |acc, i| acc + i.1)
     }
 
@@ -732,12 +710,12 @@ impl Poll {
     /// ```
     /// # use std::{collections::BTreeMap, ops::Not};
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
-    /// # use poll_engine::api::VoteOutcome::{Abstain, No, Yes, Veto};
+    /// # use poll_engine_api::api::VoteOutcome::{Abstain, No, Yes, Veto};
     /// # fn main() -> PollResult<()> {
     /// # use cosmwasm_std::Decimal;
-    /// use poll_engine::state::{GOV_STATE, GovState};
+    /// use poll_engine::state::{GOV_STATE, GovState, PollHelpers};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -751,7 +729,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn votes_for(&self, outcome: VoteOutcome) -> u128 {
+    fn votes_for(&self, outcome: VoteOutcome) -> u128 {
         *self.results.get(&(outcome as u8)).unwrap_or(&0u128)
     }
 
@@ -763,11 +741,11 @@ impl Poll {
     /// ```
     /// # use std::{collections::BTreeMap, ops::Not};
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
     /// # use cosmwasm_std::Decimal;
-    /// # use poll_engine::state::{GOV_STATE, GovState, MostVoted};
+    /// # use poll_engine::state::{GOV_STATE, GovState, MostVoted, PollHelpers};
     /// # let mut deps = mock_dependencies();
     /// # let state = GovState::default();
     /// # GOV_STATE.save(&mut deps.storage, &state).unwrap();
@@ -779,7 +757,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn most_voted_over_threshold(&self) -> MostVoted<(u8, u128)> {
+    fn most_voted_over_threshold(&self) -> MostVoted<(u8, u128)> {
         if self.threshold_reached(Veto) {
             // if veto threshold reached, no need to check anything else
             return MostVoted::Some((Veto as u8, self.votes_for(Veto)));
@@ -810,12 +788,12 @@ impl Poll {
     /// # use std::{collections::BTreeMap, ops::Not};
     /// # use cosmwasm_std::Uint128;
     /// # use common::cw::testing::mock_ctx;
-    /// # use poll_engine::error::PollResult;
+    /// # use poll_engine_api::error::PollResult;
     /// # use poll_engine::helpers::mock_poll;
     /// # fn main() -> PollResult<()> {
     /// # use cosmwasm_std::testing::mock_dependencies;
-    /// # use poll_engine::api::{PollRejectionReason, PollStatus};
-    /// # use poll_engine::state::{GOV_STATE, GovState};
+    /// # use poll_engine_api::api::{PollRejectionReason, PollStatus};
+    /// # use poll_engine::state::{GOV_STATE, GovState, PollHelpers};
     /// let mut deps = mock_dependencies();
     /// # let mut ctx = mock_ctx(deps.as_mut());
     /// # let state = GovState::default();
@@ -834,7 +812,7 @@ impl Poll {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn final_status(&self, maximum_available_votes: Uint128) -> PollResult<PollStatus> {
+    fn final_status(&self, maximum_available_votes: Uint128) -> PollResult<PollStatus> {
         let status = if self
             .quorum_reached(&self.quorum, maximum_available_votes.u128())
             .not()
@@ -882,14 +860,14 @@ mod tests {
     use cosmwasm_std::{Decimal, Uint128};
 
     use common::cw::testing::mock_ctx;
-
-    use crate::api::PollRejectionReason::{
+    use poll_engine_api::api::PollRejectionReason::{
         IsVetoOutcome, OutcomeDraw, QuorumNotReached, ThresholdNotReached,
     };
-    use crate::api::VoteOutcome::{Abstain, No, Veto, Yes};
-    use crate::api::{PollRejectionReason, PollStatus};
+    use poll_engine_api::api::VoteOutcome::{Abstain, No, Veto, Yes};
+
     use crate::helpers::mock_poll;
-    use crate::state::{GovState, GOV_STATE};
+    use crate::state::{GovState, PollHelpers, GOV_STATE};
+    use poll_engine_api::api::{PollRejectionReason, PollStatus};
 
     #[test]
     fn final_status_passed() {
