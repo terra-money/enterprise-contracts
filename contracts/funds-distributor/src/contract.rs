@@ -1,8 +1,8 @@
 use crate::claim::claim_rewards;
 use crate::distributing::{distribute_cw20, distribute_native};
 use crate::rewards::query_user_rewards;
-use crate::state::{ENTERPRISE_CONTRACT, TOTAL_STAKED};
-use crate::update_stakes::{update_total_staked, update_user_staked};
+use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
+use crate::update_weights::update_user_weights;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
@@ -30,7 +30,7 @@ pub fn instantiate(
     let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
-    TOTAL_STAKED.save(deps.storage, &Uint128::zero())?;
+    TOTAL_WEIGHT.save(deps.storage, &Uint128::zero())?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
@@ -50,8 +50,7 @@ pub fn execute(
 
     let ctx = &mut Context { deps, env, info };
     match msg {
-        ExecuteMsg::UpdateTotalStaked(msg) => update_total_staked(ctx, msg),
-        ExecuteMsg::UpdateUserStake(msg) => update_user_staked(ctx, msg),
+        ExecuteMsg::UpdateUserWeights(msg) => update_user_weights(ctx, msg),
         ExecuteMsg::DistributeNative {} => distribute_native(ctx),
         ExecuteMsg::ClaimRewards(msg) => claim_rewards(ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),

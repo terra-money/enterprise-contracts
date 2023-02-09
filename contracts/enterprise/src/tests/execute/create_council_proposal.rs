@@ -1,6 +1,4 @@
 use crate::contract::{execute, instantiate, query_proposal, query_proposals};
-use crate::proposals::ProposalType;
-use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     existing_token_dao_membership, stub_dao_gov_config, stub_dao_metadata,
     stub_enterprise_factory_contract, stub_token_info, CW20_ADDR, ENTERPRISE_GOVERNANCE_CODE_ID,
@@ -10,6 +8,9 @@ use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::{to_binary, Timestamp, Uint128};
 use enterprise_protocol::api::ProposalAction::UpgradeDao;
 use enterprise_protocol::api::ProposalActionType::UpdateMetadata;
+use enterprise_protocol::api::ProposalType;
+use enterprise_protocol::api::ProposalType::Council;
+use enterprise_protocol::api::ProposalType::General;
 use enterprise_protocol::api::{
     CreateProposalMsg, DaoCouncilSpec, ProposalActionType, ProposalParams, ProposalsParams,
     UpgradeDaoMsg,
@@ -19,7 +20,8 @@ use enterprise_protocol::error::DaoError::{
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg};
-use ProposalType::Council;
+
+// TODO: replace instantiates with the function from helpers.rs
 
 // TODO: replace instantiates with the function from helpers.rs
 
@@ -284,7 +286,6 @@ fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        Council,
     )?;
 
     assert_eq!(proposal.proposal.id, 1u64);
@@ -297,7 +298,6 @@ fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
             start_after: None,
             limit: None,
         },
-        General,
     )?
     .proposals
     .is_empty());

@@ -2,15 +2,14 @@ use crate::contract::{
     execute, instantiate, query_asset_whitelist, query_dao_info, query_list_multisig_members,
     query_nft_whitelist, query_proposal,
 };
-use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     assert_member_voting_power, assert_proposal_result_amount, assert_proposal_status,
     create_proposal, create_stub_proposal, existing_nft_dao_membership,
     existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
     stake_nfts, stake_tokens, stub_dao_gov_config, stub_dao_metadata,
     stub_enterprise_factory_contract, stub_token_info, unstake_nfts, unstake_tokens,
-    vote_on_proposal, CW20_ADDR, DAO_ADDR, ENTERPRISE_GOVERNANCE_CODE_ID, NFT_ADDR,
-    PROPOSAL_DESCRIPTION, PROPOSAL_TITLE,
+    vote_on_proposal, CW20_ADDR, DAO_ADDR, ENTERPRISE_GOVERNANCE_CODE_ID,
+    FUNDS_DISTRIBUTOR_CODE_ID, NFT_ADDR, PROPOSAL_DESCRIPTION, PROPOSAL_TITLE,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
@@ -26,6 +25,7 @@ use enterprise_protocol::api::ProposalAction::{
     UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_protocol::api::ProposalStatus::{Passed, Rejected};
+use enterprise_protocol::api::ProposalType::General;
 use enterprise_protocol::api::{
     CreateProposalMsg, DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoMetadata, DaoSocialData,
     ExecuteMsgsMsg, ExecuteProposalMsg, ListMultisigMembersMsg, Logo, ModifyMultisigMembershipMsg,
@@ -135,6 +135,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
         veto_threshold: None,
+        allow_early_proposal_execution: false,
     };
 
     let enterprise_factory_contract = stub_enterprise_factory_contract();
@@ -157,6 +158,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         info.clone(),
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: dao_gov_config.clone(),
             dao_council: None,
@@ -171,6 +173,8 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
 
     let new_dao_council = Some(DaoCouncilSpec {
         members: vec!["new_member1".to_string(), "new_member2".to_string()],
+        quorum: Decimal::percent(75),
+        threshold: Decimal::percent(50),
         allowed_proposal_action_types: Some(vec![ProposalActionType::UpdateMetadata]),
     });
 
@@ -182,6 +186,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
             voting_duration: Change(10u64.into()),
             unlocking_period: Change(Duration::Height(10)),
             minimum_deposit: Change(Some(Uint128::one())),
+            allow_early_proposal_execution: Change(true),
         }),
         UpdateAssetWhitelist(UpdateAssetWhitelistMsg {
             // TODO: use this
@@ -301,6 +306,8 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
                 Addr::unchecked("new_member2")
             ],
             allowed_proposal_action_types: vec![ProposalActionType::UpdateMetadata],
+            quorum: Decimal::percent(75),
+            threshold: Decimal::percent(50),
         })
     );
     assert_eq!(
@@ -312,6 +319,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
             vote_duration: 10u64.into(),
             unlocking_period: Duration::Height(10),
             minimum_deposit: Some(Uint128::one()),
+            allow_early_proposal_execution: true,
         }
     );
 
@@ -325,7 +333,6 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        General,
     )?;
     assert_eq!(proposal.proposal.proposal_actions, proposal_actions);
 
@@ -489,9 +496,9 @@ fn execute_passed_proposal_to_update_multisig_members_does_not_change_votes_on_e
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_result_amount(&qctx, 1, General, Yes, 3u128);
+    assert_proposal_result_amount(&qctx, 1, Yes, 3u128);
 
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 1 }, General)?;
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 1 })?;
     assert_eq!(proposal.total_votes_available, Uint128::from(6u8));
 
     Ok(())
@@ -566,10 +573,10 @@ fn execute_passed_proposal_to_update_multisig_members_updates_votes_on_active_pr
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_result_amount(&qctx, 2, General, Yes, 5u128);
-    assert_proposal_result_amount(&qctx, 2, General, No, 2u128);
+    assert_proposal_result_amount(&qctx, 2, Yes, 5u128);
+    assert_proposal_result_amount(&qctx, 2, No, 2u128);
 
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 2 }, General)?;
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id: 2 })?;
     assert_eq!(proposal.total_votes_available, Uint128::from(11u8));
 
     Ok(())
@@ -589,6 +596,7 @@ fn execute_proposal_with_outcome_yes_refunds_token_deposits() -> DaoResult<()> {
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
         veto_threshold: None,
+        allow_early_proposal_execution: false,
     };
 
     deps.querier
@@ -656,6 +664,7 @@ fn execute_proposal_with_outcome_no_refunds_token_deposits() -> DaoResult<()> {
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
         veto_threshold: None,
+        allow_early_proposal_execution: false,
     };
 
     deps.querier
@@ -723,6 +732,7 @@ fn execute_proposal_with_threshold_not_reached_refunds_token_deposits() -> DaoRe
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
         veto_threshold: None,
+        allow_early_proposal_execution: false,
     };
 
     deps.querier
@@ -790,6 +800,7 @@ fn execute_proposal_with_quorum_not_reached_does_not_refund_token_deposits() -> 
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
         veto_threshold: None,
+        allow_early_proposal_execution: false,
     };
 
     deps.querier
@@ -850,6 +861,7 @@ fn execute_proposal_with_outcome_veto_does_not_refund_token_deposits() -> DaoRes
         unlocking_period: Duration::Time(1000),
         minimum_deposit: None,
         veto_threshold: None,
+        allow_early_proposal_execution: false,
     };
 
     deps.querier
@@ -987,7 +999,6 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(190u128));
 
@@ -1002,7 +1013,6 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(195u128));
 
@@ -1022,7 +1032,6 @@ fn proposal_stores_total_votes_available_at_expiration_if_not_executed_before() 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(195u128));
 
@@ -1069,7 +1078,6 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(300u128));
 
@@ -1081,7 +1089,7 @@ fn execute_proposal_uses_total_votes_available_at_expiration() -> DaoResult<()> 
     )?;
 
     // has to be rejected, since at the time of expiration, there were 300 total votes, 100 cast, and quorum is 50%
-    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, General, Rejected);
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, Rejected);
 
     Ok(())
 }
@@ -1142,7 +1150,6 @@ fn execute_proposal_uses_total_votes_available_at_expiration_nft() -> DaoResult<
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(3u128));
 
@@ -1154,7 +1161,7 @@ fn execute_proposal_uses_total_votes_available_at_expiration_nft() -> DaoResult<
     )?;
 
     // has to be passed, since at the time of expiration, there were 3 total available votes, 3 cast for yes, and quorum is 50%
-    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, General, Passed);
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 1, Passed);
 
     Ok(())
 }
@@ -1234,7 +1241,6 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(20u128));
 
@@ -1268,7 +1274,6 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 2 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(36u128));
 
@@ -1282,12 +1287,11 @@ fn execute_proposal_in_multisig_uses_total_votes_available_at_expiration() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 2 },
-        General,
     )?;
     assert_eq!(proposal.total_votes_available, Uint128::from(36u128));
 
     // should not pass, since at the time of expiration there were 36 total votes and 11 cast for 'yes' with 50% quorum
-    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 2, General, Rejected);
+    assert_proposal_status(&mock_query_ctx(deps.as_ref(), &env), 2, Rejected);
 
     Ok(())
 }

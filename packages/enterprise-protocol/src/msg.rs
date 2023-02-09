@@ -1,12 +1,12 @@
 use crate::api::{
-    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo,
-    DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
-    UserStakeResponse,
+    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimRewardsMsg, ClaimsParams,
+    ClaimsResponse, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse,
+    DaoMembershipInfo, DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse,
+    MemberVoteParams, MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse,
+    NftWhitelistResponse, ProposalParams, ProposalResponse, ProposalStatusParams,
+    ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
+    ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg,
+    UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
@@ -37,9 +37,9 @@ pub enum ExecuteMsg {
     CastVote(CastVoteMsg),
     CastCouncilVote(CastVoteMsg),
     ExecuteProposal(ExecuteProposalMsg),
-    ExecuteCouncilProposal(ExecuteProposalMsg),
     Unstake(UnstakeMsg),
     Claim {},
+    ClaimRewards(ClaimRewardsMsg),
     Receive(Cw20ReceiveMsg),
     ReceiveNft(ReceiveNftMsg),
 }
@@ -77,12 +77,6 @@ pub enum QueryMsg {
     Proposals(ProposalsParams),
     #[returns(ProposalStatusResponse)]
     ProposalStatus(ProposalStatusParams),
-    #[returns(ProposalResponse)]
-    CouncilProposal(ProposalParams),
-    #[returns(ProposalsResponse)]
-    CouncilProposals(ProposalsParams),
-    #[returns(ProposalStatusResponse)]
-    CouncilProposalStatus(ProposalStatusParams),
     #[returns(MemberVoteResponse)]
     MemberVote(MemberVoteParams),
     #[returns(ProposalVotesResponse)]

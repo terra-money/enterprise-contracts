@@ -1,5 +1,4 @@
 use crate::contract::{execute, instantiate, query_proposals};
-use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     create_proposal, create_stub_proposal, existing_nft_dao_membership,
     existing_token_dao_membership, instantiate_stub_dao, multisig_dao_membership_info_with_members,
@@ -18,6 +17,7 @@ use enterprise_protocol::api::ProposalAction::{
     ExecuteMsgs, ModifyMultisigMembership, UpdateAssetWhitelist, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_protocol::api::ProposalActionType::UpdateCouncil;
+use enterprise_protocol::api::ProposalType::General;
 use enterprise_protocol::api::{
     CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
     Proposal, ProposalAction, ProposalResponse, ProposalStatus, ProposalsParams,
@@ -90,7 +90,6 @@ fn create_proposal_token_dao() -> DaoResult<()> {
             start_after: None,
             limit: None,
         },
-        General,
     )?;
 
     assert_eq!(
@@ -173,7 +172,6 @@ fn create_proposal_nft_dao() -> DaoResult<()> {
             start_after: None,
             limit: None,
         },
-        General,
     )?;
 
     assert_eq!(

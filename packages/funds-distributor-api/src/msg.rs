@@ -1,7 +1,4 @@
-use crate::api::{
-    ClaimRewardsMsg, UpdateTotalStakedMsg, UpdateUserStakeMsg, UserRewardsParams,
-    UserRewardsResponse,
-};
+use crate::api::{ClaimRewardsMsg, UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
 
@@ -12,8 +9,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateTotalStaked(UpdateTotalStakedMsg),
-    UpdateUserStake(UpdateUserStakeMsg),
+    UpdateUserWeights(UpdateUserWeightsMsg),
     DistributeNative {},
     ClaimRewards(ClaimRewardsMsg),
     Receive(Cw20ReceiveMsg),

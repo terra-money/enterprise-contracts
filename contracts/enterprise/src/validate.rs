@@ -1,24 +1,26 @@
 use crate::state::{DAO_GOV_CONFIG, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT};
 use common::cw::Context;
-use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdResult};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, StdResult};
 use cw20::TokenInfoResponse;
 use cw3::VoterListResponse;
 use cw721::NumTokensResponse;
-use cw_asset::AssetInfo;
+use cw_asset::{AssetInfo, AssetInfoBase};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalAction::{
-    ExecuteMsgs, ModifyMultisigMembership, UpdateCouncil, UpdateGovConfig, UpgradeDao,
+    DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, UpdateCouncil, UpdateGovConfig,
+    UpgradeDao,
 };
 use enterprise_protocol::api::{
-    DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoType, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
-    ProposalAction, ProposalActionType, ProposalDeposit, UpdateGovConfigMsg, UpgradeDaoMsg,
+    DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoType, DistributeFundsMsg, ExecuteMsgsMsg,
+    ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
+    UpdateGovConfigMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
-    MinimumDepositNotAllowed, UnsupportedCouncilProposalAction, ZeroVoteDuration,
+    MinimumDepositNotAllowed, Std, UnsupportedCouncilProposalAction, ZeroVoteDuration,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use std::collections::HashSet;
@@ -26,7 +28,9 @@ use DaoError::{
     InvalidEnterpriseCodeId, InvalidExistingMultisigContract, InvalidExistingNftContract,
     InvalidExistingTokenContract, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
 };
-use ProposalAction::{UpdateAssetWhitelist, UpdateNftWhitelist};
+use ProposalAction::{
+    RequestFundingFromDao, UpdateAssetWhitelist, UpdateMetadata, UpdateNftWhitelist,
+};
 
 pub fn validate_dao_gov_config(dao_type: &DaoType, dao_gov_config: &DaoGovConfig) -> DaoResult<()> {
     if dao_gov_config.vote_duration == 0 {
@@ -149,6 +153,7 @@ pub fn validate_proposal_actions(
             UpdateCouncil(msg) => {
                 validate_dao_council(deps, msg.dao_council.clone())?;
             }
+            DistributeFunds(msg) => validate_distribute_funds(msg)?,
             UpdateGovConfig(msg) => {
                 let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
 
@@ -158,7 +163,7 @@ pub fn validate_proposal_actions(
 
                 validate_dao_gov_config(&dao_type, &updated_gov_config)?;
             }
-            ProposalAction::UpdateMetadata(_) | ProposalAction::RequestFundingFromDao(_) => {
+            UpdateMetadata(_) | RequestFundingFromDao(_) => {
                 // no-op
             }
         }
@@ -411,6 +416,25 @@ pub fn validate_dao_council(
     }
 }
 
+// TODO: tests
+pub fn validate_distribute_funds(msg: &DistributeFundsMsg) -> DaoResult<()> {
+    for asset in &msg.funds {
+        match asset.info {
+            AssetInfoBase::Native(_) | AssetInfoBase::Cw20(_) => {
+                // no action, those assets are supported
+            }
+            AssetInfoBase::Cw1155(_, _) => {
+                return Err(Std(StdError::generic_err(
+                    "cw1155 is not supported at this time",
+                )))
+            }
+            _ => return Err(Std(StdError::generic_err("unknown asset type"))),
+        }
+    }
+
+    Ok(())
+}
+
 pub fn validate_no_duplicate_council_members(
     deps: Deps,
     members: Vec<String>,
@@ -420,7 +444,6 @@ pub fn validate_no_duplicate_council_members(
 
     // keeps members' validated addresses, in order in which we received them
     let mut member_addrs: Vec<Addr> = Vec::with_capacity(members.len());
-
     for member in members {
         let member_addr = deps.api.addr_validate(&member)?;
         if !members_set.insert(member_addr.clone()) {
@@ -446,12 +469,18 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::UpdateCouncil
                     | ProposalActionType::RequestFundingFromDao
                     | ProposalActionType::ExecuteMsgs
-                    | ProposalActionType::ModifyMultisigMembership => {
+                    | ProposalActionType::ModifyMultisigMembership
+                    | ProposalActionType::DistributeFunds => {
                         return Err(UnsupportedCouncilProposalAction {
                             action: action_type,
                         });
                     }
-                    _ => {}
+                    ProposalActionType::UpdateMetadata
+                    | ProposalActionType::UpdateAssetWhitelist
+                    | ProposalActionType::UpdateNftWhitelist
+                    | ProposalActionType::UpgradeDao => {
+                        // allowed proposal action types
+                    }
                 }
             }
             Ok(())

@@ -203,6 +203,7 @@ pub enum ProposalActionType {
     UpgradeDao,
     ExecuteMsgs,
     ModifyMultisigMembership,
+    DistributeFunds,
 }
 
 #[cw_serde]
@@ -216,6 +217,7 @@ pub enum ProposalAction {
     UpgradeDao(UpgradeDaoMsg),
     ExecuteMsgs(ExecuteMsgsMsg),
     ModifyMultisigMembership(ModifyMultisigMembershipMsg),
+    DistributeFunds(DistributeFundsMsg),
 }
 
 #[cw_serde]
@@ -288,6 +290,11 @@ pub struct ModifyMultisigMembershipMsg {
 }
 
 #[cw_serde]
+pub struct DistributeFundsMsg {
+    pub funds: Vec<Asset>,
+}
+
+#[cw_serde]
 pub struct CastVoteMsg {
     pub proposal_id: ProposalId,
     pub outcome: VoteOutcome,
@@ -348,6 +355,15 @@ pub struct Cw721ClaimAsset {
 pub enum ReleaseAt {
     Timestamp(Timestamp),
     Height(Uint64),
+}
+
+#[cw_serde]
+pub struct ClaimRewardsMsg {
+    pub member: String,
+    /// Native denominations for which the rewards are to be claimed
+    pub native_denoms: Vec<String>,
+    /// CW20 token addresses for which the rewards are to be claimed
+    pub cw20_assets: Vec<String>,
 }
 
 #[cw_serde]
@@ -497,8 +513,16 @@ pub struct ProposalVotersParams {
     pub proposal_id: ProposalId,
 }
 
+#[derive(Display)]
+#[cw_serde]
+pub enum ProposalType {
+    General,
+    Council,
+}
+
 #[cw_serde]
 pub struct Proposal {
+    pub proposal_type: ProposalType,
     pub id: ProposalId,
     // TODO: would be good to have this, but cw3 doesn't return it, maybe include as Option?
     // pub proposer: Addr,

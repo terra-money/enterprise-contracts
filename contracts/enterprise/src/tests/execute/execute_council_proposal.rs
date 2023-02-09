@@ -1,5 +1,4 @@
 use crate::contract::{execute, instantiate, query_proposal};
-use crate::proposals::ProposalType::Council;
 use crate::tests::helpers::{
     create_council_proposal, existing_token_dao_membership, instantiate_stub_dao,
     stub_dao_metadata, stub_enterprise_factory_contract, stub_token_info, vote_on_council_proposal,
@@ -10,6 +9,7 @@ use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::{to_binary, Addr, Attribute, Decimal, SubMsg, Timestamp, WasmMsg};
 use cw_utils::Duration;
 use enterprise_protocol::api::ProposalAction::UpgradeDao;
+use enterprise_protocol::api::ProposalType::Council;
 use enterprise_protocol::api::{
     DaoCouncilSpec, DaoGovConfig, ExecuteProposalMsg, ProposalParams, UpgradeDaoMsg,
 };
@@ -114,7 +114,6 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
     let proposal = query_proposal(
         mock_query_ctx(deps.as_ref(), &env),
         ProposalParams { proposal_id: 1 },
-        Council,
     )?;
     assert_eq!(proposal.proposal.proposal_actions, proposal_actions);
 

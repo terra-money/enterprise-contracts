@@ -1,5 +1,4 @@
 use crate::contract::execute;
-use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     assert_proposal_no_votes, assert_proposal_result_amount, assert_proposal_status,
     create_stub_proposal, existing_nft_dao_membership, existing_token_dao_membership,
@@ -9,6 +8,7 @@ use crate::tests::helpers::{
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::{Timestamp, Uint128};
+use enterprise_protocol::api::ProposalType::General;
 use enterprise_protocol::api::{CastVoteMsg, DaoGovConfig, ProposalStatus};
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
@@ -44,8 +44,8 @@ fn cast_vote_token_dao() -> DaoResult<()> {
     create_stub_proposal(deps.as_mut(), &env, &info)?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, General, InProgress);
-    assert_proposal_no_votes(&qctx, 1, General);
+    assert_proposal_status(&qctx, 1, InProgress);
+    assert_proposal_no_votes(&qctx, 1);
 
     execute(
         deps.as_mut(),
@@ -78,10 +78,10 @@ fn cast_vote_token_dao() -> DaoResult<()> {
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, General, InProgress);
-    assert_proposal_result_amount(&qctx, 1, General, Yes, 12);
-    assert_proposal_result_amount(&qctx, 1, General, Abstain, 14);
-    assert_proposal_result_amount(&qctx, 1, General, Veto, 7);
+    assert_proposal_status(&qctx, 1, InProgress);
+    assert_proposal_result_amount(&qctx, 1, Yes, 12);
+    assert_proposal_result_amount(&qctx, 1, Abstain, 14);
+    assert_proposal_result_amount(&qctx, 1, Veto, 7);
 
     Ok(())
 }
@@ -114,8 +114,8 @@ fn cast_vote_nft_dao() -> DaoResult<()> {
     create_stub_proposal(deps.as_mut(), &env, &info)?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, General, InProgress);
-    assert_proposal_no_votes(&qctx, 1, General);
+    assert_proposal_status(&qctx, 1, InProgress);
+    assert_proposal_no_votes(&qctx, 1);
 
     execute(
         deps.as_mut(),
@@ -128,8 +128,8 @@ fn cast_vote_nft_dao() -> DaoResult<()> {
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, General, InProgress);
-    assert_proposal_result_amount(&qctx, 1, General, No, 2);
+    assert_proposal_status(&qctx, 1, InProgress);
+    assert_proposal_result_amount(&qctx, 1, No, 2);
 
     Ok(())
 }
@@ -152,8 +152,8 @@ fn cast_vote_multisig_dao() -> DaoResult<()> {
     create_stub_proposal(deps.as_mut(), &env, &mock_info("member1", &vec![]))?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, General, InProgress);
-    assert_proposal_no_votes(&qctx, 1, General);
+    assert_proposal_status(&qctx, 1, InProgress);
+    assert_proposal_no_votes(&qctx, 1);
 
     execute(
         deps.as_mut(),
@@ -176,9 +176,9 @@ fn cast_vote_multisig_dao() -> DaoResult<()> {
     )?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_status(&qctx, 1, General, InProgress);
-    assert_proposal_result_amount(&qctx, 1, General, No, 1);
-    assert_proposal_result_amount(&qctx, 1, General, Yes, 2);
+    assert_proposal_status(&qctx, 1, InProgress);
+    assert_proposal_result_amount(&qctx, 1, No, 1);
+    assert_proposal_result_amount(&qctx, 1, Yes, 2);
 
     Ok(())
 }
@@ -363,8 +363,8 @@ fn cast_vote_multiple_times_only_records_last_vote() -> DaoResult<()> {
     vote_on_proposal(deps.as_mut(), &env, "sender", 1, No)?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_result_amount(&qctx, 1, General, Yes, 0u128);
-    assert_proposal_result_amount(&qctx, 1, General, No, 10u128);
+    assert_proposal_result_amount(&qctx, 1, Yes, 0u128);
+    assert_proposal_result_amount(&qctx, 1, No, 10u128);
 
     Ok(())
 }
@@ -391,8 +391,8 @@ fn cast_multisig_vote_multiple_times_only_records_last_vote() -> DaoResult<()> {
     vote_on_proposal(deps.as_mut(), &env, "member", 1, No)?;
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);
-    assert_proposal_result_amount(&qctx, 1, General, Yes, 0u128);
-    assert_proposal_result_amount(&qctx, 1, General, No, 100u128);
+    assert_proposal_result_amount(&qctx, 1, Yes, 0u128);
+    assert_proposal_result_amount(&qctx, 1, No, 100u128);
 
     Ok(())
 }

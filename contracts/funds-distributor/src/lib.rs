@@ -7,7 +7,7 @@ mod distributing;
 mod native_distributions;
 mod rewards;
 mod state;
-mod update_stakes;
+mod update_weights;
 
 #[cfg(test)]
 mod tests;

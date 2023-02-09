@@ -2,7 +2,6 @@ use crate::contract::{
     execute, instantiate, query_member_info, query_proposal, query_total_staked_amount,
     query_user_stake,
 };
-use crate::proposals::ProposalType;
 use common::cw::testing::{mock_info, mock_query_ctx};
 use common::cw::QueryContext;
 use cosmwasm_std::{to_binary, Decimal, DepsMut, Env, MessageInfo, Response, Uint128};
@@ -12,6 +11,7 @@ use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use enterprise_protocol::api::DaoMembershipInfo::{Existing, New};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
+use enterprise_protocol::api::ProposalType;
 use enterprise_protocol::api::{
     CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
     DaoSocialData, DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
@@ -382,32 +382,26 @@ pub fn assert_member_voting_power(qctx: &QueryContext, member: &str, voting_powe
 pub fn assert_proposal_status(
     qctx: &QueryContext,
     proposal_id: ProposalId,
-    proposal_type: ProposalType,
     status: ProposalStatus,
 ) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id }, proposal_type).unwrap();
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
     assert_eq!(proposal.proposal.status, status);
 }
 
 pub fn assert_proposal_result_amount(
     qctx: &QueryContext,
     proposal_id: ProposalId,
-    proposal_type: ProposalType,
     result: VoteOutcome,
     amount: u128,
 ) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id }, proposal_type).unwrap();
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
     assert_eq!(proposal.results.get(&(result as u8)), Some(&amount));
 }
 
-pub fn assert_proposal_no_votes(
-    qctx: &QueryContext,
-    proposal_id: ProposalId,
-    proposal_type: ProposalType,
-) {
+pub fn assert_proposal_no_votes(qctx: &QueryContext, proposal_id: ProposalId) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
-    let proposal = query_proposal(qctx, ProposalParams { proposal_id }, proposal_type).unwrap();
+    let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
     assert_eq!(proposal.results, BTreeMap::new());
 }

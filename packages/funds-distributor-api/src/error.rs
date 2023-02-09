@@ -11,8 +11,8 @@ pub enum DistributorError {
     #[error("Unauthorized")]
     Unauthorized,
 
-    #[error("Cannot distribute - there are no stakers currently")]
-    NothingStaked,
+    #[error("Cannot distribute - total weight of all users is 0")]
+    ZeroTotalWeight,
 }
 
 impl DistributorError {

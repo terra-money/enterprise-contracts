@@ -2,23 +2,23 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Uint128;
 
 #[cw_serde]
-pub struct UpdateTotalStakedMsg {
-    pub new_total_staked: Uint128,
+pub struct UpdateUserWeightsMsg {
+    /// Previous weights that the users had, before the change
+    pub old_user_weights: Vec<UserWeight>,
+    /// The new total weight, after accounting for the users' changes
+    pub new_total_weight: Uint128,
 }
 
 #[cw_serde]
-pub struct UpdateUserStakeMsg {
+pub struct UserWeight {
     pub user: String,
-    /// Previous amount that the user had staked, before the change
-    pub old_user_stake: Uint128,
-    /// The new total amount of staked assets, after accounting for the user's change
-    pub new_total_staked: Uint128,
+    pub weight: Uint128,
 }
 
 #[cw_serde]
 pub struct ClaimRewardsMsg {
-    pub user: String,
-    pub user_stake: Uint128,
+    pub member: String, // TODO: rename?
+    pub user_weight: Uint128,
     /// Native denominations to be claimed
     pub native_denoms: Vec<String>,
     /// CW20 asset rewards to be claimed, should be addresses of CW20 tokens
@@ -28,8 +28,8 @@ pub struct ClaimRewardsMsg {
 #[cw_serde]
 pub struct UserRewardsParams {
     pub user: String,
-    /// Current user's stake
-    pub user_stake: Uint128,
+    /// Current user's weight
+    pub user_weight: Uint128,
     /// Native denominations to be queried for rewards
     pub native_denoms: Vec<String>,
     /// Addresses of CW20 tokens to be queried for rewards

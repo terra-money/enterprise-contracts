@@ -1,15 +1,9 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{BlockInfo, StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map};
-use enterprise_protocol::api::{ProposalAction, ProposalDeposit, ProposalId};
+use enterprise_protocol::api::{ProposalAction, ProposalDeposit, ProposalId, ProposalType};
 use enterprise_protocol::error::DaoError::NoSuchProposal;
 use enterprise_protocol::error::DaoResult;
-
-#[cw_serde]
-pub enum ProposalType {
-    General,
-    Council,
-}
 
 pub const PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> = Map::new("proposal_infos");
 

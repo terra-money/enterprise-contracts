@@ -1,4 +1,3 @@
-use crate::proposals::ProposalType::General;
 use crate::tests::helpers::{
     assert_proposal_result_amount, assert_total_stake, assert_user_nft_stake,
     assert_user_token_stake, create_stub_proposal, existing_nft_dao_membership,
@@ -8,6 +7,7 @@ use crate::tests::helpers::{
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
+use enterprise_protocol::api::ProposalType::General;
 use enterprise_protocol::error::DaoError::{InvalidStakingAsset, NoNftTokenStaked, Unauthorized};
 use enterprise_protocol::error::DaoResult;
 use poll_engine_api::api::VoteOutcome::{No, Yes};
@@ -177,13 +177,13 @@ fn unstaking_tokens_reduces_existing_votes() -> DaoResult<()> {
     vote_on_proposal(deps.as_mut(), &env, "user", 1, No)?;
 
     unstake_tokens(deps.as_mut(), &env, "user", 60u8)?;
-    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, No, 40u128);
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, No, 40u128);
 
     unstake_tokens(deps.as_mut(), &env, "user", 30u8)?;
-    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, No, 10u128);
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, No, 10u128);
 
     unstake_tokens(deps.as_mut(), &env, "user", 10u8)?;
-    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, No, 0u128);
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, No, 0u128);
 
     Ok(())
 }
@@ -218,13 +218,13 @@ fn unstaking_nfts_reduces_existing_votes() -> DaoResult<()> {
     vote_on_proposal(deps.as_mut(), &env, "user", 1, Yes)?;
 
     unstake_nfts(deps.as_mut(), &env, "user", vec!["token2"])?;
-    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, Yes, 2u128);
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, Yes, 2u128);
 
     unstake_nfts(deps.as_mut(), &env, "user", vec!["token3"])?;
-    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, Yes, 1u128);
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, Yes, 1u128);
 
     unstake_nfts(deps.as_mut(), &env, "user", vec!["token1"])?;
-    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, General, Yes, 0u128);
+    assert_proposal_result_amount(&mock_query_ctx(deps.as_ref(), &env), 1, Yes, 0u128);
 
     Ok(())
 }

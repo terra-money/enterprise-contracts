@@ -16,7 +16,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
         return Err(Unauthorized);
     }
 
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    let user = ctx.deps.api.addr_validate(&msg.member)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
 
@@ -28,7 +28,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             .unwrap_or_default();
 
         if global_index != Decimal::zero() {
-            let reward = calculate_native_user_reward(global_index, distribution, msg.user_stake);
+            let reward = calculate_native_user_reward(global_index, distribution, msg.user_weight);
 
             let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
             submsgs.push(SubMsg::new(submsg));
@@ -56,7 +56,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             .unwrap_or_default();
 
         if global_index != Decimal::zero() {
-            let reward = calculate_cw20_user_reward(global_index, distribution, msg.user_stake);
+            let reward = calculate_cw20_user_reward(global_index, distribution, msg.user_weight);
 
             let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;
             submsgs.push(SubMsg::new(submsg));

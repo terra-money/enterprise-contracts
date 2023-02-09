@@ -3,12 +3,13 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 
 #[cw_serde]
-// TODO: write a docs-style description for what this represents
+/// State of a single user's specific CW20 rewards.
 pub struct NativeDistribution {
-    // TODO: rename to NativeDistributionInfo?
     pub user: Addr,
     pub denom: String,
+    /// The last global index at which the user's pending rewards were calculated
     pub user_index: Decimal,
+    /// User's unclaimed rewards
     pub pending_rewards: Uint128,
 }
 
@@ -30,7 +31,7 @@ pub fn NATIVE_DISTRIBUTIONS<'a>(
         user: MultiIndex::new(
             |_, native_distribution| native_distribution.user.clone(),
             "native_distributions",
-            "native_distributions__staker",
+            "native_distributions__user",
         ),
     };
     IndexedMap::new("native_distributions", indexes)

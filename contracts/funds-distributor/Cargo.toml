@@ -40,4 +40,5 @@ cw-storage-plus = "1.0.1"
 cw2 = "1.0.1"
 cw20 = "1.0.1"
 cw-asset = "2.4.0"
+itertools = "0.10.5"
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
