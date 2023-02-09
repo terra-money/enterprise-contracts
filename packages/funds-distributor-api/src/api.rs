@@ -17,7 +17,7 @@ pub struct UserWeight {
 
 #[cw_serde]
 pub struct ClaimRewardsMsg {
-    pub member: String, // TODO: rename?
+    pub user: String,
     pub user_weight: Uint128,
     /// Native denominations to be claimed
     pub native_denoms: Vec<String>,

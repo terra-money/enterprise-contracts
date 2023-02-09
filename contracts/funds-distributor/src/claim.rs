@@ -16,7 +16,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
         return Err(Unauthorized);
     }
 
-    let user = ctx.deps.api.addr_validate(&msg.member)?;
+    let user = ctx.deps.api.addr_validate(&msg.user)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
 

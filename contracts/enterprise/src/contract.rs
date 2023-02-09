@@ -1488,7 +1488,7 @@ fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DaoResult<Response>
         funds_distributor.to_string(),
         &funds_distributor_api::msg::ExecuteMsg::ClaimRewards(
             funds_distributor_api::api::ClaimRewardsMsg {
-                member: member.to_string(),
+                user: member.to_string(),
                 user_weight: member_weight,
                 native_denoms: msg.native_denoms,
                 cw20_assets: msg.cw20_assets,
