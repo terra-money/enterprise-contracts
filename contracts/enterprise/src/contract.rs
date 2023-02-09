@@ -1728,7 +1728,11 @@ pub fn query_proposals(qctx: QueryContext, msg: ProposalsParams) -> DaoResult<Pr
             pagination: Pagination {
                 start_after: msg.start_after.map(Uint64::from),
                 end_at: None,
-                limit: msg.limit.map(|limit| limit as u64),
+                limit: Some(
+                    msg.limit
+                        .map_or(DEFAULT_QUERY_LIMIT as u64, |limit| limit as u64)
+                        .min(MAX_QUERY_LIMIT as u64),
+                ),
                 order_by: None,
             },
         }),
