@@ -16,8 +16,8 @@ use enterprise_protocol::api::{
     CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
     DaoSocialData, DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
     NewMembershipInfo, NewMultisigMembershipInfo, NftUserStake, ProposalAction, ProposalId,
-    ProposalParams, ProposalStatus, QueryMemberInfoMsg, TokenUserStake, UnstakeCw20Msg,
-    UnstakeCw721Msg, UnstakeMsg, UserStake, UserStakeParams,
+    ProposalParams, ProposalStatus, QueryMemberInfoMsg, ReceiveNftMsg, TokenUserStake,
+    UnstakeCw20Msg, UnstakeCw721Msg, UnstakeMsg, UserStake, UserStakeParams,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{
@@ -63,6 +63,7 @@ pub fn stub_dao_gov_config() -> DaoGovConfig {
         vote_duration: 1,
         unlocking_period: Duration::Height(100),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     }
 }
 
@@ -135,6 +136,7 @@ pub fn instantiate_stub_dao(
         info.clone(),
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: gov_config.unwrap_or(stub_dao_gov_config()),
             dao_council,
@@ -179,7 +181,8 @@ pub fn stake_nfts(
             deps.branch(),
             env.clone(),
             mock_info(nft_contract, &vec![]),
-            ReceiveNft(Cw721ReceiveMsg {
+            ReceiveNft(ReceiveNftMsg {
+                edition: None,
                 sender: user.to_string(),
                 token_id: token.into(),
                 msg: to_binary(&Cw20HookMsg::Stake {})?,

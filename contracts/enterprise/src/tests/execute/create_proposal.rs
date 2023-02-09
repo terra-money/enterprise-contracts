@@ -530,7 +530,6 @@ fn create_proposal_with_invalid_execute_msg_fails() -> DaoResult<()> {
 fn create_proposal_with_invalid_gov_config_fails() -> DaoResult<()> {
     let mut deps = mock_dependencies();
     let mut env = mock_env();
-    env.contract.address = Addr::unchecked("dao_addr");
     let current_time = Timestamp::from_seconds(12);
     env.block.time = current_time;
     let info = mock_info("sender", &[]);

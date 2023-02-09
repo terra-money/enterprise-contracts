@@ -1,5 +1,6 @@
+use common::nft::TokensResponse;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Decimal, StdError, StdResult, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::{Asset, AssetInfo};
 use cw_utils::{Duration, Expiration};
@@ -314,6 +315,14 @@ pub struct UnstakeCw721Msg {
 }
 
 #[cw_serde]
+pub struct ReceiveNftMsg {
+    pub edition: Option<Uint64>,
+    pub sender: String,
+    pub token_id: String,
+    pub msg: Binary,
+}
+
+#[cw_serde]
 pub struct Claim {
     pub asset: ClaimAsset,
     pub release_at: ReleaseAt,
@@ -561,4 +570,26 @@ pub struct NftTreasuryResponse {
 pub struct NftCollection {
     pub nft_address: Addr,
     pub token_ids: Vec<NftTokenId>,
+}
+
+/// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually
+/// implement it correctly (they return 'ids' instead of 'tokens').
+#[cw_serde]
+pub struct TalisFriendlyTokensResponse {
+    pub tokens: Option<Vec<String>>,
+    pub ids: Option<Vec<String>>,
+}
+
+impl TalisFriendlyTokensResponse {
+    pub fn to_tokens_response(self) -> StdResult<TokensResponse> {
+        match self.tokens {
+            None => match self.ids {
+                None => Err(StdError::generic_err(
+                    "Invalid CW721 TokensResponse, neither 'tokens' nor 'ids' field found",
+                )),
+                Some(ids) => Ok(TokensResponse { tokens: ids }),
+            },
+            Some(tokens) => Ok(TokensResponse { tokens }),
+        }
+    }
 }

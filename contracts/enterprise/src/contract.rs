@@ -34,7 +34,7 @@ use cw2::set_contract_version;
 use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw3::VoterListResponse;
-use cw721::{Cw721ReceiveMsg, TokensResponse};
+use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration, Expiration};
@@ -53,10 +53,10 @@ use enterprise_protocol::api::{
     Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
-    ProposalsResponse, QueryMemberInfoMsg, ReleaseAt, RequestFundingFromDaoMsg, TokenUserStake,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake,
-    UserStakeParams, UserStakeResponse,
+    ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt, RequestFundingFromDaoMsg,
+    TalisFriendlyTokensResponse, TokenUserStake, TotalStakedAmountResponse, UnstakeMsg,
+    UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg,
+    UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
@@ -123,6 +123,14 @@ pub fn instantiate(
     )?;
 
     let dao_council = validate_dao_council(deps.as_ref(), msg.dao_council.clone())?;
+
+    STATE.save(
+        deps.storage,
+        &State {
+            proposal_being_created: None,
+            proposal_being_executed: None,
+        },
+    )?;
 
     STATE.save(
         deps.storage,
@@ -475,12 +483,12 @@ fn user_holds_nft(ctx: &Context) -> StdResult<bool> {
         start_after: None,
         limit: Some(1u32),
     };
-    let tokens: TokensResponse = ctx
+    let tokens: TalisFriendlyTokensResponse = ctx
         .deps
         .querier
         .query_wasm_smart(cw721_contract.to_string(), &query_tokens_msg)?;
 
-    Ok(tokens.tokens.is_empty().not())
+    Ok(tokens.to_tokens_response()?.tokens.is_empty().not())
 }
 
 fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResult<Response> {
@@ -1100,7 +1108,7 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
     }
 }
 
-pub fn receive_cw721(ctx: &mut Context, cw721_msg: Cw721ReceiveMsg) -> DaoResult<Response> {
+pub fn receive_cw721(ctx: &mut Context, cw721_msg: ReceiveNftMsg) -> DaoResult<Response> {
     // only membership CW721 contract can execute this message
     let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
     let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
@@ -2179,10 +2187,13 @@ fn get_owner_tokens(
         start_after: start_after.cloned(),
         limit: Some(u32::MAX),
     };
-    Ok(qctx
+
+    let talis_friendly_tokens_response: TalisFriendlyTokensResponse = qctx
         .deps
         .querier
-        .query_wasm_smart(nft_addr.to_string(), &query_owner_tokens)?)
+        .query_wasm_smart(nft_addr.to_string(), &query_owner_tokens)?;
+
+    Ok(talis_friendly_tokens_response.to_tokens_response()?)
 }
 
 fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {

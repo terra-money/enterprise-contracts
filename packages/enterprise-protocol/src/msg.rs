@@ -5,12 +5,12 @@ use crate::api::{
     MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse, NftWhitelistResponse,
     ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
+    UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use cw20::Cw20ReceiveMsg;
-use cw721::Cw721ReceiveMsg;
 use cw_asset::AssetInfo;
 
 #[cw_serde]
@@ -41,7 +41,7 @@ pub enum ExecuteMsg {
     Unstake(UnstakeMsg),
     Claim {},
     Receive(Cw20ReceiveMsg),
-    ReceiveNft(Cw721ReceiveMsg),
+    ReceiveNft(ReceiveNftMsg),
 }
 
 #[cw_serde]
