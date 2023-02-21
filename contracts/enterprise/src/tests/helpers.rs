@@ -1,17 +1,19 @@
 use crate::contract::{
     execute, instantiate, query_member_info, query_proposal, query_total_staked_amount,
-    query_user_stake,
+    query_user_stake, reply, ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+    FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use common::cw::testing::{mock_info, mock_query_ctx};
 use common::cw::QueryContext;
-use cosmwasm_std::{to_binary, Decimal, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    to_binary, Binary, Decimal, DepsMut, Env, MessageInfo, Reply, Response, SubMsgResponse,
+    SubMsgResult, Uint128,
+};
 use cw20::Cw20ReceiveMsg;
 use cw20_base::state::TokenInfo;
-use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use enterprise_protocol::api::DaoMembershipInfo::{Existing, New};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
-use enterprise_protocol::api::ProposalType;
 use enterprise_protocol::api::{
     CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
     DaoSocialData, DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
@@ -30,8 +32,12 @@ use std::collections::BTreeMap;
 use ExecuteMsg::{Receive, ReceiveNft, Unstake};
 use NewMembershipInfo::NewMultisig;
 
+pub const ENTERPRISE_FACTORY_ADDR: &str = "enterprise_factory_addr";
+pub const ENTERPRISE_GOVERNANCE_ADDR: &str = "enterprise_governance_addr";
+pub const FUNDS_DISTRIBUTOR_ADDR: &str = "funds_distributor_addr";
+
 pub const ENTERPRISE_GOVERNANCE_CODE_ID: u64 = 301;
-pub const FUNDS_DISTRIBUTOR_CODE_ID: u64 = 301;
+pub const FUNDS_DISTRIBUTOR_CODE_ID: u64 = 302;
 
 pub const CW20_ADDR: &str = "cw20_addr";
 pub const NFT_ADDR: &str = "cw721_addr";
@@ -123,15 +129,15 @@ pub fn stub_dao_membership_info(dao_type: DaoType, addr: &str) -> DaoMembershipI
 }
 
 pub fn instantiate_stub_dao(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     env: &Env,
     info: &MessageInfo,
     membership: DaoMembershipInfo,
     gov_config: Option<DaoGovConfig>,
     dao_council: Option<DaoCouncilSpec>,
 ) -> DaoResult<Response> {
-    instantiate(
-        deps,
+    let response = instantiate(
+        deps.branch(),
         env.clone(),
         info.clone(),
         InstantiateMsg {
@@ -141,11 +147,15 @@ pub fn instantiate_stub_dao(
             dao_gov_config: gov_config.unwrap_or(stub_dao_gov_config()),
             dao_council,
             dao_membership_info: membership,
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
             asset_whitelist: None,
             nft_whitelist: None,
         },
-    )
+    )?;
+
+    reply_default_instantiate_data(deps, env.clone())?;
+
+    Ok(response)
 }
 
 pub fn stake_tokens(
@@ -404,4 +414,50 @@ pub fn assert_proposal_no_votes(qctx: &QueryContext, proposal_id: ProposalId) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
     let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
     assert_eq!(proposal.results, BTreeMap::new());
+}
+
+pub fn reply_default_instantiate_data(deps: &mut DepsMut, env: Env) -> DaoResult<()> {
+    reply_with_instantiate_data(
+        deps.branch(),
+        env.clone(),
+        FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
+        FUNDS_DISTRIBUTOR_ADDR,
+    )?;
+    reply_with_instantiate_data(
+        deps.branch(),
+        env.clone(),
+        ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+        ENTERPRISE_GOVERNANCE_ADDR,
+    )?;
+
+    Ok(())
+}
+
+pub fn reply_with_instantiate_data(
+    deps: DepsMut,
+    env: Env,
+    reply_id: u64,
+    addr: &str,
+) -> DaoResult<()> {
+    reply(
+        deps,
+        env.clone(),
+        Reply {
+            id: reply_id,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: Some(instantiate_addr_reply_data(addr)),
+            }),
+        },
+    )?;
+
+    Ok(())
+}
+
+pub fn instantiate_addr_reply_data(addr: &str) -> Binary {
+    let mut binary: Vec<u8> = vec![10, addr.len() as u8];
+
+    addr.chars().for_each(|char| binary.push(char as u8));
+
+    binary.into()
 }

@@ -9,7 +9,7 @@ use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
 use cosmwasm_std::{to_binary, Decimal};
 use cw20::Cw20ReceiveMsg;
-use cw721::Cw721ReceiveMsg;
+use enterprise_protocol::api::ReceiveNftMsg;
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg;
 
@@ -23,7 +23,7 @@ fn stake_token_dao() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -88,7 +88,7 @@ fn stake_nft_dao() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 1000u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
@@ -107,7 +107,8 @@ fn stake_nft_dao() -> DaoResult<()> {
         deps.as_mut(),
         env.clone(),
         info.clone(),
-        ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+        ExecuteMsg::ReceiveNft(ReceiveNftMsg {
+            edition: None,
             sender: "sender".to_string(),
             token_id: "token1".into(),
             msg: to_binary(&1u8)?,
@@ -162,7 +163,7 @@ fn stake_multisig_dao_fails() -> DaoResult<()> {
     let info = mock_info("sender", &[]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         multisig_dao_membership_info_with_members(&[("sender", 10u64)]),

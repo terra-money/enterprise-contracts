@@ -1162,11 +1162,10 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
                 .unwrap_or_default();
 
             let new_stake = stake.add(cw20_msg.amount);
-            let old_stake = CW20_STAKES.load(ctx.deps.storage, sender.clone())?;
             CW20_STAKES.save(ctx.deps.storage, sender.clone(), &new_stake)?;
 
             let update_funds_distributor_submsg =
-                update_funds_distributor(ctx, sender, old_stake, new_total_staked)?;
+                update_funds_distributor(ctx, sender, stake, new_total_staked)?;
 
             Ok(Response::new()
                 .add_attribute("action", "stake_cw20")
@@ -1530,6 +1529,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
+
             let addr = deps.api.addr_validate(&contract_address)?;
 
             FUNDS_DISTRIBUTOR_CONTRACT.save(deps.storage, &addr)?;

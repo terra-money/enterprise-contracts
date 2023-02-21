@@ -2,14 +2,16 @@ use crate::contract::{
     instantiate, query_asset_whitelist, query_dao_info, query_nft_whitelist,
     query_total_staked_amount, DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+    FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use crate::cw721::Cw721InstantiateMsg;
 use crate::tests::helpers::{
     assert_member_voting_power, existing_nft_dao_membership, existing_token_dao_membership,
-    instantiate_stub_dao, stub_dao_gov_config, stub_dao_membership_info, stub_dao_metadata,
-    stub_enterprise_factory_contract, stub_multisig_dao_membership_info,
-    stub_nft_dao_membership_info, stub_token_dao_membership_info, stub_token_info, CW20_ADDR,
-    DAO_ADDR, ENTERPRISE_GOVERNANCE_CODE_ID, NFT_ADDR,
+    instantiate_stub_dao, reply_default_instantiate_data, stub_dao_gov_config,
+    stub_dao_membership_info, stub_dao_metadata, stub_enterprise_factory_contract,
+    stub_multisig_dao_membership_info, stub_nft_dao_membership_info,
+    stub_token_dao_membership_info, stub_token_info, CW20_ADDR, DAO_ADDR,
+    ENTERPRISE_GOVERNANCE_CODE_ID, FUNDS_DISTRIBUTOR_CODE_ID, NFT_ADDR,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
@@ -85,9 +87,12 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         vote_duration: 65,
         unlocking_period: Duration::Height(113),
         minimum_deposit: Some(17u8.into()),
+        allow_early_proposal_execution: false,
     };
     let dao_council = Some(DaoCouncilSpec {
         members: vec!["council_member1".to_string(), "council_member2".to_string()],
+        quorum: Decimal::percent(75),
+        threshold: Decimal::percent(50),
         allowed_proposal_action_types: Some(vec![UpdateAssetWhitelist, UpdateNftWhitelist]),
     });
     let asset_whitelist = vec![
@@ -101,6 +106,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: metadata.clone(),
             dao_gov_config: dao_gov_config.clone(),
             dao_council: dao_council.clone(),
@@ -110,6 +116,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
             nft_whitelist: Some(nft_whitelist.clone()),
         },
     )?;
+    reply_default_instantiate_data(&mut deps.as_mut(), env.clone())?;
 
     let dao_info = query_dao_info(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(dao_info.creation_date, current_time);
@@ -124,7 +131,9 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
                 Addr::unchecked("council_member1"),
                 Addr::unchecked("council_member2")
             ],
-            allowed_proposal_action_types: vec![UpdateAssetWhitelist, UpdateNftWhitelist]
+            allowed_proposal_action_types: vec![UpdateAssetWhitelist, UpdateNftWhitelist],
+            quorum: Decimal::percent(75),
+            threshold: Decimal::percent(50)
         })
     );
     assert_eq!(
@@ -154,7 +163,7 @@ fn instantiate_existing_token_membership_stores_proper_info() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -178,7 +187,7 @@ fn instantiate_existing_nft_membership_stores_proper_info() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 1000u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
@@ -208,6 +217,7 @@ fn instantiate_existing_token_membership_with_not_valid_cw20_contract_fails() ->
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata,
             dao_gov_config,
             dao_council: None,
@@ -230,7 +240,7 @@ fn instantiate_existing_nft_membership_with_not_valid_cw721_contract_fails() -> 
     let info = mock_info("sender", &[]);
 
     let result = instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         stub_dao_membership_info(Nft, "non_cw721_addr"),
@@ -250,7 +260,7 @@ fn instantiate_existing_multisig_membership_with_not_valid_cw3_contract_fails() 
     let info = mock_info("sender", &[]);
 
     let result = instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         stub_dao_membership_info(Multisig, "non_cw3_addr"),
@@ -302,6 +312,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -351,7 +362,8 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_governance_contract_submsg(DAO_ADDR)?
+            instantiate_governance_contract_submsg(DAO_ADDR)?,
+            instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
         ]
     );
 
@@ -402,6 +414,7 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -451,6 +464,8 @@ fn instantiate_new_token_membership_with_zero_initial_dao_balance_fails() -> Dao
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -487,7 +502,7 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
         token_marketing: None,
     }));
     let response = instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         New(NewDaoMembershipMsg {
@@ -520,7 +535,8 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_governance_contract_submsg(DAO_ADDR)?
+            instantiate_governance_contract_submsg(DAO_ADDR)?,
+            instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
         ]
     );
 
@@ -551,6 +567,7 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,
@@ -581,6 +598,7 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
             instantiate_governance_contract_submsg(DAO_ADDR)?,
+            instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
         ]
     );
 
@@ -629,6 +647,7 @@ fn instantiate_new_multisig_membership_stores_members_properly() -> DaoResult<()
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata,
             dao_gov_config,
             dao_council: None,
@@ -679,7 +698,7 @@ fn instantiate_new_multisig_membership_with_zero_weight_member_fails() -> DaoRes
     ];
     let membership_info = NewMultisig(NewMultisigMembershipInfo { multisig_members });
     let result = instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         New(NewDaoMembershipMsg {
@@ -717,7 +736,7 @@ fn instantiate_new_multisig_membership_with_duplicate_member_fails() -> DaoResul
     ];
     let membership_info = NewMultisig(NewMultisigMembershipInfo { multisig_members });
     let result = instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         New(NewDaoMembershipMsg {
@@ -746,6 +765,7 @@ fn instantiate_dao_with_zero_voting_duration_fails() -> DaoResult<()> {
         vote_duration: 0u64,
         unlocking_period: Duration::Time(0u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -753,6 +773,8 @@ fn instantiate_dao_with_zero_voting_duration_fails() -> DaoResult<()> {
         env.clone(),
         info,
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -781,6 +803,7 @@ fn instantiate_dao_with_shorter_unstaking_than_voting_fails() -> DaoResult<()> {
         vote_duration: 10u64,
         unlocking_period: Duration::Time(9u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -789,6 +812,7 @@ fn instantiate_dao_with_shorter_unstaking_than_voting_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -821,6 +845,7 @@ fn instantiate_nft_dao_with_minimum_deposit_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -853,6 +878,7 @@ fn instantiate_multisig_dao_with_minimum_deposit_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -884,6 +910,7 @@ fn instantiate_dao_with_quorum_over_one_fails() -> DaoResult<()> {
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -892,6 +919,7 @@ fn instantiate_dao_with_quorum_over_one_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -928,6 +956,7 @@ fn instantiate_dao_with_quorum_of_zero_fails() -> DaoResult<()> {
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -936,6 +965,7 @@ fn instantiate_dao_with_quorum_of_zero_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -972,6 +1002,7 @@ fn instantiate_dao_with_threshold_over_one_fails() -> DaoResult<()> {
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -980,6 +1011,7 @@ fn instantiate_dao_with_threshold_over_one_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -1016,6 +1048,7 @@ fn instantiate_dao_with_threshold_of_zero_fails() -> DaoResult<()> {
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -1024,6 +1057,7 @@ fn instantiate_dao_with_threshold_of_zero_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -1060,6 +1094,7 @@ fn instantiate_dao_with_veto_threshold_over_one_fails() -> DaoResult<()> {
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -1068,6 +1103,7 @@ fn instantiate_dao_with_veto_threshold_over_one_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -1104,6 +1140,7 @@ fn instantiate_dao_with_veto_threshold_of_zero_fails() -> DaoResult<()> {
         vote_duration: 10u64,
         unlocking_period: Duration::Time(10u64),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     };
 
     let result = instantiate(
@@ -1112,6 +1149,7 @@ fn instantiate_dao_with_veto_threshold_of_zero_fails() -> DaoResult<()> {
         info,
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config,
             dao_council: None,
@@ -1144,5 +1182,20 @@ fn instantiate_governance_contract_submsg(dao_address: &str) -> StdResult<SubMsg
             label: "Governance contract".to_string(),
         }),
         ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+    ))
+}
+
+fn instantiate_funds_distributor_contract_submsg(dao_address: &str) -> StdResult<SubMsg> {
+    Ok(SubMsg::reply_on_success(
+        CosmosMsg::Wasm(WasmMsg::Instantiate {
+            admin: Some(dao_address.to_string()),
+            code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+            msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
+                enterprise_contract: dao_address.to_string(),
+            })?,
+            funds: vec![],
+            label: "Funds distributor contract".to_string(),
+        }),
+        FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
     ))
 }

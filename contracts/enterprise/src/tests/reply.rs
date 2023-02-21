@@ -2,6 +2,7 @@ use crate::contract::{instantiate, reply};
 use crate::tests::helpers::{
     existing_token_dao_membership, stub_dao_gov_config, stub_dao_metadata,
     stub_enterprise_factory_contract, stub_token_info, ENTERPRISE_GOVERNANCE_CODE_ID,
+    FUNDS_DISTRIBUTOR_CODE_ID,
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info};
@@ -24,6 +25,7 @@ fn reply_with_unknown_reply_id_fails() -> DaoResult<()> {
         info.clone(),
         InstantiateMsg {
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: stub_dao_gov_config(),
             dao_council: None,

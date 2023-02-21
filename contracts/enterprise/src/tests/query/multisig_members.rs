@@ -19,7 +19,7 @@ fn query_token_dao_multisig_members_fails() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -54,7 +54,7 @@ fn query_nft_dao_multisig_members_fails() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),

@@ -1,5 +1,6 @@
 use crate::tests::querier::mock_querier::mock_dependencies;
 use crate::validate::validate_dao_council;
+use cosmwasm_std::Decimal;
 use enterprise_protocol::api::DaoCouncilSpec;
 use enterprise_protocol::api::ProposalActionType::{
     ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao, UpdateCouncil, UpdateGovConfig,
@@ -20,6 +21,8 @@ fn dao_council_with_duplicate_members_is_invalid() {
                 "member2".to_string(),
                 "member1".to_string(),
             ],
+            quorum: Decimal::percent(66),
+            threshold: Decimal::percent(33),
             allowed_proposal_action_types: Some(vec![UpgradeDao]),
         }),
     );
@@ -48,6 +51,8 @@ fn dao_council_with_invalid_proposal_action_type_is_invalid() {
             deps.as_ref(),
             Some(DaoCouncilSpec {
                 members: vec!["member".to_string()],
+                quorum: Decimal::percent(50),
+                threshold: Decimal::percent(25),
                 allowed_proposal_action_types: Some(vec![invalid_council_action_type.clone()]),
             }),
         );

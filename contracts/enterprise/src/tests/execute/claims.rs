@@ -29,7 +29,7 @@ fn unstaking_tokens_creates_claims() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -134,7 +134,7 @@ fn unstaking_tokens_releases_claims_when_scheduled() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -236,7 +236,7 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -325,7 +325,7 @@ fn unstaking_nfts_creates_claims() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
@@ -435,7 +435,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
@@ -543,7 +543,7 @@ fn claiming_nft_claims_sends_and_removes_them() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
