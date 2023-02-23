@@ -3,11 +3,11 @@ use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::{calculate_cw20_user_reward, calculate_native_user_reward};
 use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
 use common::cw::Context;
-use cosmwasm_std::{Addr, Order, Response, StdResult, Uint128};
+use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::{Addr, Decimal, Order, Response, StdResult, Uint128};
 use funds_distributor_api::api::UpdateUserWeightsMsg;
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
-use itertools::Itertools;
 
 pub fn update_user_weights(
     ctx: &mut Context,
@@ -20,15 +20,16 @@ pub fn update_user_weights(
     }
 
     for old_user_weight in msg.old_user_weights {
-        if old_user_weight.weight.is_zero() {
-            // we can skip this user, they are not getting any rewards whatsoever
-            continue;
-        }
-
         let user = ctx.deps.api.addr_validate(&old_user_weight.user)?;
 
-        update_user_native_distributions(ctx, user.clone(), old_user_weight.weight)?;
-        update_user_cw20_distributions(ctx, user, old_user_weight.weight)?;
+        if old_user_weight.weight.is_zero() {
+            // we may not have encountered this user, so we need to ensure their distribution
+            // indices are set to current global indices
+            initialize_user_indices(ctx, user.clone())?;
+        } else {
+            update_user_native_distributions(ctx, user.clone(), old_user_weight.weight)?;
+            update_user_cw20_distributions(ctx, user, old_user_weight.weight)?;
+        }
     }
 
     TOTAL_WEIGHT.save(ctx.deps.storage, &msg.new_total_weight)?;
@@ -36,29 +37,68 @@ pub fn update_user_weights(
     Ok(Response::new().add_attribute("action", "update_user_weights"))
 }
 
+fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<()> {
+    let native_global_indices = NATIVE_GLOBAL_INDICES
+        .range(ctx.deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(String, Decimal)>>>()?;
+
+    for (denom, global_index) in native_global_indices {
+        NATIVE_DISTRIBUTIONS().update(
+            ctx.deps.storage,
+            (user.clone(), denom.clone()),
+            |distribution| -> StdResult<NativeDistribution> {
+                match distribution {
+                    None => Ok(NativeDistribution {
+                        user: user.clone(),
+                        denom,
+                        user_index: global_index,
+                        pending_rewards: Uint128::zero(),
+                    }),
+                    Some(distribution) => Ok(distribution),
+                }
+            },
+        )?;
+    }
+
+    let cw20_global_indices = CW20_GLOBAL_INDICES
+        .range(ctx.deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(Addr, Decimal)>>>()?;
+
+    for (asset, global_index) in cw20_global_indices {
+        CW20_DISTRIBUTIONS().update(
+            ctx.deps.storage,
+            (user.clone(), asset.clone()),
+            |distribution| -> StdResult<Cw20Distribution> {
+                match distribution {
+                    None => Ok(Cw20Distribution {
+                        user: user.clone(),
+                        cw20_asset: asset,
+                        user_index: global_index,
+                        pending_rewards: Uint128::zero(),
+                    }),
+                    Some(distribution) => Ok(distribution),
+                }
+            },
+        )?;
+    }
+
+    Ok(())
+}
+
 fn update_user_native_distributions(
     ctx: &mut Context,
     user: Addr,
     old_user_weight: Uint128,
 ) -> DistributorResult<()> {
-    let user_native_distributions = NATIVE_DISTRIBUTIONS()
-        .idx
-        .user
-        .prefix(user.clone())
+    let native_global_indices = NATIVE_GLOBAL_INDICES
         .range(ctx.deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<((Addr, String), NativeDistribution)>>>()?
-        .into_iter()
-        .map(|(_, distribution)| distribution)
-        .collect_vec();
+        .collect::<StdResult<Vec<(String, Decimal)>>>()?;
 
-    for distribution in user_native_distributions {
-        let denom = distribution.denom.clone();
-        let global_index = NATIVE_GLOBAL_INDICES
-            .may_load(ctx.deps.storage, denom.clone())?
-            .unwrap_or_default();
+    for (denom, global_index) in native_global_indices {
+        let distribution =
+            NATIVE_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), denom.clone()))?;
 
-        let reward =
-            calculate_native_user_reward(global_index, Some(distribution), old_user_weight);
+        let reward = calculate_native_user_reward(global_index, distribution, old_user_weight);
 
         NATIVE_DISTRIBUTIONS().save(
             ctx.deps.storage,
@@ -80,23 +120,15 @@ fn update_user_cw20_distributions(
     user: Addr,
     old_user_weight: Uint128,
 ) -> DistributorResult<()> {
-    let user_cw20_distributions = CW20_DISTRIBUTIONS()
-        .idx
-        .user
-        .prefix(user.clone())
-        .range(ctx.deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<((Addr, Addr), Cw20Distribution)>>>()?
-        .into_iter()
-        .map(|(_, distribution)| distribution)
-        .collect_vec();
+    let cw20_global_indices = CW20_GLOBAL_INDICES
+        .range(ctx.deps.storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(Addr, Decimal)>>>()?;
 
-    for distribution in user_cw20_distributions {
-        let cw20_asset = distribution.cw20_asset.clone();
-        let global_index = CW20_GLOBAL_INDICES
-            .may_load(ctx.deps.storage, cw20_asset.clone())?
-            .unwrap_or_default();
+    for (cw20_asset, global_index) in cw20_global_indices {
+        let distribution =
+            CW20_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), cw20_asset.clone()))?;
 
-        let reward = calculate_cw20_user_reward(global_index, Some(distribution), old_user_weight);
+        let reward = calculate_cw20_user_reward(global_index, distribution, old_user_weight);
 
         CW20_DISTRIBUTIONS().save(
             ctx.deps.storage,

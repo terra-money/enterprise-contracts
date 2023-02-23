@@ -12,7 +12,6 @@ use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use DistributorError::Unauthorized;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:funds-distributor";
@@ -42,12 +41,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> DistributorResult<Response> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
-
-    if info.sender != enterprise_contract {
-        return Err(Unauthorized {});
-    }
-
     let ctx = &mut Context { deps, env, info };
     match msg {
         ExecuteMsg::UpdateUserWeights(msg) => update_user_weights(ctx, msg),

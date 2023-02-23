@@ -30,8 +30,10 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
         if global_index != Decimal::zero() {
             let reward = calculate_native_user_reward(global_index, distribution, msg.user_weight);
 
-            let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
-            submsgs.push(SubMsg::new(submsg));
+            if !reward.is_zero() {
+                let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
+                submsgs.push(SubMsg::new(submsg));
+            }
 
             NATIVE_DISTRIBUTIONS().save(
                 ctx.deps.storage,
@@ -58,8 +60,10 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
         if global_index != Decimal::zero() {
             let reward = calculate_cw20_user_reward(global_index, distribution, msg.user_weight);
 
-            let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;
-            submsgs.push(SubMsg::new(submsg));
+            if !reward.is_zero() {
+                let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;
+                submsgs.push(SubMsg::new(submsg));
+            }
 
             CW20_DISTRIBUTIONS().save(
                 ctx.deps.storage,
