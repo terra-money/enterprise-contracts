@@ -5,6 +5,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use enterprise_governance_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use poll_engine::execute::initialize_poll_engine;
 use poll_engine::query::{
     query_poll, query_poll_status, query_poll_voter, query_poll_voters, query_polls, query_voter,
 };
@@ -21,14 +22,18 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    env: Env,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> PollResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
+
+    let mut ctx = Context { deps, env, info };
+
+    initialize_poll_engine(&mut ctx)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
