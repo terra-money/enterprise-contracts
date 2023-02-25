@@ -12,29 +12,29 @@ task(async ({ deployer, signer, refs }) => {
   const enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  deployer.buildContract(ENTERPRISE_GOVERNANCE);
-  deployer.optimizeContract(ENTERPRISE_GOVERNANCE);
+  // deployer.buildContract(ENTERPRISE_GOVERNANCE);
+  // deployer.optimizeContract(ENTERPRISE_GOVERNANCE);
 
   const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  deployer.buildContract(FUNDS_DISTRIBUTOR);
-  deployer.optimizeContract(FUNDS_DISTRIBUTOR);
+  // deployer.buildContract(FUNDS_DISTRIBUTOR);
+  // deployer.optimizeContract(FUNDS_DISTRIBUTOR);
 
   const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  const cw3CodeId = await deployer.storeCode("cw3_fixed_multisig");
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  // const cw3CodeId = await deployer.storeCode("cw3_fixed_multisig");
+  // await new Promise((resolve) => setTimeout(resolve, 3000));
+  //
+  // const cw20CodeId = await deployer.storeCode("cw20_base");
+  // await new Promise((resolve) => setTimeout(resolve, 3000));
+  //
+  // const cw721CodeId = await deployer.storeCode("cw721_base");
+  // await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  const cw20CodeId = await deployer.storeCode("cw20_base");
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  const cw721CodeId = await deployer.storeCode("cw721_base");
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  deployer.buildContract(ENTERPRISE_FACTORY);
-  deployer.optimizeContract(ENTERPRISE_FACTORY);
+  // deployer.buildContract(ENTERPRISE_FACTORY);
+  // deployer.optimizeContract(ENTERPRISE_FACTORY);
 
   await deployer.storeCode(ENTERPRISE_FACTORY);
   await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -44,9 +44,9 @@ task(async ({ deployer, signer, refs }) => {
       enterprise_code_id: parseInt(enterpriseCodeId),
       enterprise_governance_code_id: parseInt(enterpriseGovernanceCodeId),
       funds_distributor_code_id: parseInt(fundsDistributorCodeId),
-      cw3_fixed_multisig_code_id: parseInt(cw3CodeId),
-      cw20_code_id: parseInt(cw20CodeId),
-      cw721_code_id: parseInt(cw721CodeId),
+      cw3_fixed_multisig_code_id: parseInt("5349"),
+      cw20_code_id: parseInt("5350"),
+      cw721_code_id: parseInt("5351"),
     },
     global_asset_whitelist: [
       {

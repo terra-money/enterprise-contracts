@@ -1804,7 +1804,13 @@ fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<Pr
 
     let status = match poll.status {
         PollStatus::InProgress { .. } => ProposalStatus::InProgress,
-        PollStatus::Passed { .. } => ProposalStatus::Passed,
+        PollStatus::Passed { .. } => {
+            if is_proposal_executed(deps.storage, poll.id)? {
+                ProposalStatus::Executed
+            } else {
+                ProposalStatus::Passed
+            }
+        }
         PollStatus::Rejected { .. } => ProposalStatus::Rejected,
     };
 
@@ -1815,7 +1821,7 @@ fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<Pr
         id: poll.id,
         title: poll.label.clone(),
         description: poll.description.clone(),
-        status,
+        status: status.clone(),
         started_at: poll.started_at,
         expires: Expiration::AtTime(poll.ends_at),
         proposal_actions: actions,
@@ -1869,6 +1875,7 @@ fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<Pr
 
     Ok(ProposalResponse {
         proposal,
+        proposal_status: status,
         results: poll.results.clone(),
         total_votes_available,
     })

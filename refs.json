@@ -20,12 +20,12 @@
   },
   "testnet": {
     "enterprise": {
-      "codeId": "7467",
+      "codeId": "7848",
       "address": "terra1rl9fnr4xce4ca5we9rwnqyyv89h422rwe3fpe7ycrpjn0egfulrsp2n4l9"
     },
     "enterprise-factory": {
-      "codeId": "7470",
-      "address": "terra1jn2h09mhvrj2mynsqhc63h4f7unufqrld0s2jl582prtqmv6436sqkjsal"
+      "codeId": "7851",
+      "address": "terra1k0kc6ux9qwgl20st8hvsgp2cqas409wcgj9m8wcus0z548krsjssjp3z9d"
     },
     "cw20_base": {
       "codeId": "5350"
@@ -37,10 +37,10 @@
       "codeId": "5351"
     },
     "enterprise-governance": {
-      "codeId": "7468"
+      "codeId": "7849"
     },
     "funds-distributor": {
-      "codeId": "7469"
+      "codeId": "7850"
     }
   },
   "mainnet": {

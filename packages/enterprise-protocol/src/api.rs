@@ -415,6 +415,8 @@ pub struct MemberInfoResponse {
 pub struct ProposalResponse {
     pub proposal: Proposal,
 
+    pub proposal_status: ProposalStatus,
+
     #[schemars(with = "Vec<(u8, Uint128)>")]
     #[serde_as(as = "Vec<(_, _)>")]
     /// Total vote-count (value) for each outcome (key).

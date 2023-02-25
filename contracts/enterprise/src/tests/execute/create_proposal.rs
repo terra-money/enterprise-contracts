@@ -111,6 +111,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
                 ),
                 proposal_actions
             },
+            proposal_status: ProposalStatus::InProgress,
             results: Default::default(),
             total_votes_available: Default::default(),
         }]
@@ -196,6 +197,7 @@ fn create_proposal_nft_dao() -> DaoResult<()> {
                 ),
                 proposal_actions
             },
+            proposal_status: ProposalStatus::InProgress,
             results: Default::default(),
             total_votes_available: Uint128::one(),
         }]
