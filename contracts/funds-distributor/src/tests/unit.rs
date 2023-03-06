@@ -215,39 +215,6 @@ pub fn rewards_calculated_properly_for_users_coming_after_distribution() -> Dist
 }
 
 #[test]
-pub fn claiming_by_non_enterprise_contract_fails() -> DistributorResult<()> {
-    let mut deps = mock_dependencies();
-    let ctx = &mut mock_ctx(deps.as_mut());
-
-    instantiate_default(ctx)?;
-
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 1u8)],
-        1u8,
-    )?;
-
-    distribute_native(ctx, &coins(30, LUNA))?;
-    distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
-
-    let result = execute(
-        ctx.deps.branch(),
-        ctx.env.clone(),
-        mock_info("non_enterprise", &ctx.info.funds),
-        ExecuteMsg::ClaimRewards(ClaimRewardsMsg {
-            user: "user".to_string(),
-            native_denoms: vec![LUNA.to_string()],
-            cw20_assets: vec![CW20_TOKEN.to_string()],
-        }),
-    );
-
-    assert_eq!(result, Err(Unauthorized));
-
-    Ok(())
-}
-
-#[test]
 pub fn claiming_pending_rewards_sends_messages() -> DistributorResult<()> {
     let mut deps = mock_dependencies();
     let ctx = &mut mock_ctx(deps.as_mut());
@@ -427,7 +394,7 @@ fn claim(
     execute(
         ctx.deps.branch(),
         ctx.env.clone(),
-        mock_info(ENTERPRISE_CONTRACT, &ctx.info.funds),
+        ctx.info.clone(),
         ExecuteMsg::ClaimRewards(ClaimRewardsMsg {
             user: user.to_string(),
             native_denoms: native_denoms

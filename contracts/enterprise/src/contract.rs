@@ -44,8 +44,8 @@ use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
 use enterprise_protocol::api::{
-    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimRewardsMsg,
-    ClaimsParams, ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
+    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
+    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
     DaoInfoResponse, DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg,
     ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
@@ -433,7 +433,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::ReceiveNft(msg) => receive_cw721(&mut ctx, msg),
         ExecuteMsg::Unstake(msg) => unstake(&mut ctx, msg),
         ExecuteMsg::Claim {} => claim(&mut ctx),
-        ExecuteMsg::ClaimRewards(msg) => claim_rewards(&mut ctx, msg),
     }
 }
 
@@ -1475,27 +1474,6 @@ fn transfer_nft_submsg(
         },
         vec![],
     )?))
-}
-
-// TODO: remove the whole action and the msg in enterprise
-fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DaoResult<Response> {
-    let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
-
-    let claim_rewards_submsg = SubMsg::new(wasm_execute(
-        funds_distributor.to_string(),
-        &funds_distributor_api::msg::ExecuteMsg::ClaimRewards(
-            funds_distributor_api::api::ClaimRewardsMsg {
-                user: msg.member,
-                native_denoms: msg.native_denoms,
-                cw20_assets: msg.cw20_assets,
-            },
-        ),
-        vec![],
-    )?);
-
-    Ok(Response::new()
-        .add_attribute("action", "claim_rewards")
-        .add_submessage(claim_rewards_submsg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

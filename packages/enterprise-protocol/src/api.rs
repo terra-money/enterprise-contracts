@@ -358,15 +358,6 @@ pub enum ReleaseAt {
 }
 
 #[cw_serde]
-pub struct ClaimRewardsMsg {
-    pub member: String,
-    /// Native denominations for which the rewards are to be claimed
-    pub native_denoms: Vec<String>,
-    /// CW20 token addresses for which the rewards are to be claimed
-    pub cw20_assets: Vec<String>,
-}
-
-#[cw_serde]
 pub struct QueryMemberInfoMsg {
     pub member_address: String,
 }

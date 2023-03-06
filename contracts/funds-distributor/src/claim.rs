@@ -1,22 +1,15 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::{calculate_cw20_user_reward, calculate_native_user_reward};
-use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES};
+use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
 use crate::user_weights::USER_WEIGHTS;
 use common::cw::Context;
 use cosmwasm_std::{Decimal, Response, SubMsg, Uint128};
 use cw_asset::Asset;
 use funds_distributor_api::api::ClaimRewardsMsg;
-use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
 
 pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResult<Response> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
-
-    if ctx.info.sender != enterprise_contract {
-        return Err(Unauthorized);
-    }
-
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
     let user_weight = USER_WEIGHTS
