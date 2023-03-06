@@ -2,6 +2,7 @@ use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::{calculate_cw20_user_reward, calculate_native_user_reward};
 use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES};
+use crate::user_weights::USER_WEIGHTS;
 use common::cw::Context;
 use cosmwasm_std::{Decimal, Response, SubMsg, Uint128};
 use cw_asset::Asset;
@@ -18,6 +19,10 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
 
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
+    let user_weight = USER_WEIGHTS
+        .may_load(ctx.deps.storage, user.clone())?
+        .unwrap_or_default();
+
     let mut submsgs: Vec<SubMsg> = vec![];
 
     for denom in msg.native_denoms {
@@ -28,7 +33,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             .unwrap_or_default();
 
         if global_index != Decimal::zero() {
-            let reward = calculate_native_user_reward(global_index, distribution, msg.user_weight);
+            let reward = calculate_native_user_reward(global_index, distribution, user_weight);
 
             if !reward.is_zero() {
                 let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
@@ -58,7 +63,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             .unwrap_or_default();
 
         if global_index != Decimal::zero() {
-            let reward = calculate_cw20_user_reward(global_index, distribution, msg.user_weight);
+            let reward = calculate_cw20_user_reward(global_index, distribution, user_weight);
 
             if !reward.is_zero() {
                 let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;

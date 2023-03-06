@@ -4,10 +4,13 @@ use crate::rewards::{calculate_cw20_user_reward, calculate_native_user_reward};
 use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
 use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Decimal, Order, Response, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Response, StdResult, Uint128};
+use cw_storage_plus::Map;
 use funds_distributor_api::api::UpdateUserWeightsMsg;
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
+
+pub const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
 
 pub fn update_user_weights(
     ctx: &mut Context,
@@ -19,17 +22,24 @@ pub fn update_user_weights(
         return Err(Unauthorized);
     }
 
-    for old_user_weight in msg.old_user_weights {
-        let user = ctx.deps.api.addr_validate(&old_user_weight.user)?;
+    for user_weight_change in msg.new_user_weights {
+        let user = ctx.deps.api.addr_validate(&user_weight_change.user)?;
 
-        if old_user_weight.weight.is_zero() {
-            // we may not have encountered this user, so we need to ensure their distribution
-            // indices are set to current global indices
-            initialize_user_indices(ctx, user.clone())?;
-        } else {
-            update_user_native_distributions(ctx, user.clone(), old_user_weight.weight)?;
-            update_user_cw20_distributions(ctx, user, old_user_weight.weight)?;
-        }
+        let old_user_weight = USER_WEIGHTS.may_load(ctx.deps.storage, user.clone())?;
+
+        match old_user_weight {
+            None => {
+                // we have not encountered this user, so we need to ensure their distribution
+                // indices are set to current global indices
+                initialize_user_indices(ctx, user.clone())?;
+            }
+            Some(old_user_weight) => {
+                update_user_native_distributions(ctx, user.clone(), old_user_weight)?;
+                update_user_cw20_distributions(ctx, user.clone(), old_user_weight)?;
+            }
+        };
+
+        USER_WEIGHTS.save(ctx.deps.storage, user, &user_weight_change.weight)?;
     }
 
     TOTAL_WEIGHT.save(ctx.deps.storage, &msg.new_total_weight)?;
@@ -39,7 +49,7 @@ pub fn update_user_weights(
 
 fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<()> {
     let native_global_indices = NATIVE_GLOBAL_INDICES
-        .range(ctx.deps.storage, None, None, Order::Ascending)
+        .range(ctx.deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(String, Decimal)>>>()?;
 
     for (denom, global_index) in native_global_indices {
@@ -61,7 +71,7 @@ fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<(
     }
 
     let cw20_global_indices = CW20_GLOBAL_INDICES
-        .range(ctx.deps.storage, None, None, Order::Ascending)
+        .range(ctx.deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(Addr, Decimal)>>>()?;
 
     for (asset, global_index) in cw20_global_indices {
@@ -91,7 +101,7 @@ fn update_user_native_distributions(
     old_user_weight: Uint128,
 ) -> DistributorResult<()> {
     let native_global_indices = NATIVE_GLOBAL_INDICES
-        .range(ctx.deps.storage, None, None, Order::Ascending)
+        .range(ctx.deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(String, Decimal)>>>()?;
 
     for (denom, global_index) in native_global_indices {

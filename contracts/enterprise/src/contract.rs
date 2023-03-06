@@ -1102,7 +1102,7 @@ fn modify_multisig_membership(
     submsgs.push(SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
         &funds_distributor_api::msg::ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg {
-            old_user_weights,
+            new_user_weights: old_user_weights,
             new_total_weight: total_weight,
         }),
         vec![],
@@ -1393,7 +1393,7 @@ fn update_funds_distributor(
     let update_submsg = SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
         &funds_distributor_api::msg::ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg {
-            old_user_weights: vec![UserWeight {
+            new_user_weights: vec![UserWeight {
                 user: user.to_string(),
                 weight: previous_user_stake,
             }],
@@ -1477,19 +1477,15 @@ fn transfer_nft_submsg(
     )?))
 }
 
+// TODO: remove the whole action and the msg in enterprise
 fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DaoResult<Response> {
-    let member = ctx.deps.api.addr_validate(&msg.member)?;
-    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
-    let member_weight = load_member_weight(ctx.deps.as_ref(), member.clone(), dao_type)?;
-
     let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
 
     let claim_rewards_submsg = SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
         &funds_distributor_api::msg::ExecuteMsg::ClaimRewards(
             funds_distributor_api::api::ClaimRewardsMsg {
-                user: member.to_string(),
-                user_weight: member_weight,
+                user: msg.member,
                 native_denoms: msg.native_denoms,
                 cw20_assets: msg.cw20_assets,
             },

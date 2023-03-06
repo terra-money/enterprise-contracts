@@ -1,6 +1,7 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
+use crate::user_weights::USER_WEIGHTS;
 use common::cw::QueryContext;
 use cosmwasm_std::{Decimal, Uint128};
 use funds_distributor_api::api::{
@@ -49,6 +50,10 @@ pub fn query_user_rewards(
 ) -> DistributorResult<UserRewardsResponse> {
     let user = qctx.deps.api.addr_validate(&params.user)?;
 
+    let user_weight = USER_WEIGHTS
+        .may_load(qctx.deps.storage, user.clone())?
+        .unwrap_or_default();
+
     let mut native_rewards: Vec<NativeReward> = vec![];
 
     for denom in params.native_denoms {
@@ -59,7 +64,7 @@ pub fn query_user_rewards(
         let distribution =
             NATIVE_DISTRIBUTIONS().may_load(qctx.deps.storage, (user.clone(), denom.clone()))?;
 
-        let reward = calculate_native_user_reward(global_index, distribution, params.user_weight);
+        let reward = calculate_native_user_reward(global_index, distribution, user_weight);
 
         native_rewards.push(NativeReward {
             denom,
@@ -79,7 +84,7 @@ pub fn query_user_rewards(
         let distribution =
             CW20_DISTRIBUTIONS().may_load(qctx.deps.storage, (user.clone(), asset.clone()))?;
 
-        let reward = calculate_cw20_user_reward(global_index, distribution, params.user_weight);
+        let reward = calculate_cw20_user_reward(global_index, distribution, user_weight);
 
         cw20_rewards.push(Cw20Reward {
             asset: asset.to_string(),

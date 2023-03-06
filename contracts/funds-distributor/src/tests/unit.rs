@@ -30,7 +30,6 @@ pub fn no_rewards_after_instantiate() -> DistributorResult<()> {
         ctx.to_query(),
         UserRewardsParams {
             user: "user".to_string(),
-            user_weight: Default::default(),
             native_denoms: vec!["uluna".to_string()],
             cw20_assets: vec!["cw20_token".to_string()],
         },
@@ -97,14 +96,13 @@ pub fn update_user_weight_updates_pending_rewards() -> DistributorResult<()> {
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 0u8)],
+        vec![user_weight("user", 1u8)],
         1u8,
     )?;
 
     assert_user_rewards(
         ctx,
         "user",
-        0u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 0u8)],
@@ -117,7 +115,6 @@ pub fn update_user_weight_updates_pending_rewards() -> DistributorResult<()> {
     assert_user_rewards(
         ctx,
         "user",
-        1u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 50u8)],
@@ -137,14 +134,14 @@ pub fn distribute_rewards_distributes_proportional_to_total_weight() -> Distribu
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user1", 0u8)],
+        vec![user_weight("user1", 1u8)],
         1u8,
     )?;
 
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user2", 0u8)],
+        vec![user_weight("user2", 2u8)],
         3u8,
     )?;
 
@@ -154,7 +151,6 @@ pub fn distribute_rewards_distributes_proportional_to_total_weight() -> Distribu
     assert_user_rewards(
         ctx,
         "user1",
-        1u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 10u8)],
@@ -164,7 +160,6 @@ pub fn distribute_rewards_distributes_proportional_to_total_weight() -> Distribu
     assert_user_rewards(
         ctx,
         "user2",
-        2u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 20u8)],
@@ -184,7 +179,7 @@ pub fn rewards_calculated_properly_for_users_coming_after_distribution() -> Dist
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user1", 0u8)],
+        vec![user_weight("user1", 1u8)],
         1u8,
     )?;
 
@@ -194,14 +189,13 @@ pub fn rewards_calculated_properly_for_users_coming_after_distribution() -> Dist
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user2", 0u8)],
+        vec![user_weight("user2", 2u8)],
         3u8,
     )?;
 
     assert_user_rewards(
         ctx,
         "user1",
-        1u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 30u8)],
@@ -211,7 +205,6 @@ pub fn rewards_calculated_properly_for_users_coming_after_distribution() -> Dist
     assert_user_rewards(
         ctx,
         "user2",
-        2u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 0u8)],
@@ -231,7 +224,7 @@ pub fn claiming_by_non_enterprise_contract_fails() -> DistributorResult<()> {
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 0u8)],
+        vec![user_weight("user", 1u8)],
         1u8,
     )?;
 
@@ -244,7 +237,6 @@ pub fn claiming_by_non_enterprise_contract_fails() -> DistributorResult<()> {
         mock_info("non_enterprise", &ctx.info.funds),
         ExecuteMsg::ClaimRewards(ClaimRewardsMsg {
             user: "user".to_string(),
-            user_weight: Uint128::one(),
             native_denoms: vec![LUNA.to_string()],
             cw20_assets: vec![CW20_TOKEN.to_string()],
         }),
@@ -265,14 +257,14 @@ pub fn claiming_pending_rewards_sends_messages() -> DistributorResult<()> {
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 0u8)],
+        vec![user_weight("user", 1u8)],
         1u8,
     )?;
 
     distribute_native(ctx, &coins(30, LUNA))?;
     distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
 
-    let response = claim(ctx, "user", 1u8, vec![LUNA], vec![CW20_TOKEN])?;
+    let response = claim(ctx, "user", vec![LUNA], vec![CW20_TOKEN])?;
 
     assert_eq!(
         response.messages,
@@ -288,7 +280,6 @@ pub fn claiming_pending_rewards_sends_messages() -> DistributorResult<()> {
     assert_user_rewards(
         ctx,
         "user",
-        1u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 0u8)],
@@ -308,7 +299,7 @@ pub fn claiming_pending_rewards_after_weight_change_sends_messages() -> Distribu
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 0u8)],
+        vec![user_weight("user", 1u8)],
         1u8,
     )?;
 
@@ -318,11 +309,11 @@ pub fn claiming_pending_rewards_after_weight_change_sends_messages() -> Distribu
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 1u8)],
+        vec![user_weight("user", 3u8)],
         3u8,
     )?;
 
-    let response = claim(ctx, "user", 3u8, vec![LUNA], vec![CW20_TOKEN])?;
+    let response = claim(ctx, "user", vec![LUNA], vec![CW20_TOKEN])?;
 
     assert_eq!(
         response.messages,
@@ -338,7 +329,6 @@ pub fn claiming_pending_rewards_after_weight_change_sends_messages() -> Distribu
     assert_user_rewards(
         ctx,
         "user",
-        3u8,
         vec![LUNA],
         vec![CW20_TOKEN],
         vec![native_reward(LUNA, 0u8)],
@@ -358,21 +348,14 @@ pub fn claiming_with_no_rewards_sends_no_msgs() -> DistributorResult<()> {
     update_user_weights(
         ctx,
         ENTERPRISE_CONTRACT,
-        vec![user_weight("user1", 0u8)],
+        vec![user_weight("user1", 1u8)],
         1u8,
     )?;
 
     distribute_native(ctx, &coins(30, LUNA))?;
     distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user2", 0u8)],
-        3u8,
-    )?;
-
-    let response = claim(ctx, "user2", 0u8, vec![LUNA], vec![CW20_TOKEN])?;
+    let response = claim(ctx, "user2", vec![LUNA], vec![CW20_TOKEN])?;
 
     assert!(response.messages.is_empty());
 
@@ -438,7 +421,6 @@ fn distribute_cw20(
 fn claim(
     ctx: &mut Context,
     user: &str,
-    user_weight: impl Into<Uint128>,
     native_denoms: Vec<impl Into<String>>,
     cw20_assets: Vec<impl Into<String>>,
 ) -> DistributorResult<Response> {
@@ -448,7 +430,6 @@ fn claim(
         mock_info(ENTERPRISE_CONTRACT, &ctx.info.funds),
         ExecuteMsg::ClaimRewards(ClaimRewardsMsg {
             user: user.to_string(),
-            user_weight: user_weight.into(),
             native_denoms: native_denoms
                 .into_iter()
                 .map(|denom| denom.into())
@@ -471,7 +452,7 @@ fn user_weight(user: impl Into<String>, weight: impl Into<Uint128>) -> UserWeigh
 fn update_user_weights(
     ctx: &mut Context,
     sender: &str,
-    old_user_weights: Vec<UserWeight>,
+    new_user_weights: Vec<UserWeight>,
     new_total_weight: impl Into<Uint128>,
 ) -> DistributorResult<Response> {
     execute(
@@ -479,7 +460,7 @@ fn update_user_weights(
         ctx.env.clone(),
         mock_info(sender, &vec![]),
         ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg {
-            old_user_weights,
+            new_user_weights,
             new_total_weight: new_total_weight.into(),
         }),
     )
@@ -488,7 +469,6 @@ fn update_user_weights(
 fn assert_user_rewards(
     ctx: &mut Context,
     user: &str,
-    user_weight: impl Into<Uint128>,
     native_denoms: Vec<impl Into<String>>,
     cw20_assets: Vec<impl Into<String>>,
     expected_native_rewards: Vec<NativeReward>,
@@ -512,7 +492,6 @@ fn assert_user_rewards(
         qctx,
         UserRewardsParams {
             user: user.to_string(),
-            user_weight: user_weight.into(),
             native_denoms,
             cw20_assets,
         },

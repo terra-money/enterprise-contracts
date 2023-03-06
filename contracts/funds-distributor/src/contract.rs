@@ -2,7 +2,7 @@ use crate::claim::claim_rewards;
 use crate::distributing::{distribute_cw20, distribute_native};
 use crate::rewards::query_user_rewards;
 use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
-use crate::update_weights::update_user_weights;
+use crate::user_weights::update_user_weights;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
