@@ -1021,6 +1021,7 @@ fn modify_multisig_membership(
 
     for member in &msg.edit_members {
         let addr = deps.api.addr_validate(&member.address)?;
+        // TODO: throw if duplicate is found
         if deduped_addr_validated_members.contains_key(&addr) {
             deduped_addr_validated_members.insert(addr, member.weight);
         }
@@ -1078,7 +1079,6 @@ fn modify_multisig_membership(
         funds_distributor.to_string(),
         &funds_distributor_api::msg::ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg {
             new_user_weights,
-            new_total_weight: total_weight,
         }),
         vec![],
     )?));
@@ -1139,8 +1139,7 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
             let new_stake = stake.add(cw20_msg.amount);
             CW20_STAKES.save(ctx.deps.storage, sender.clone(), &new_stake)?;
 
-            let update_funds_distributor_submsg =
-                update_funds_distributor(ctx, sender, new_stake, new_total_staked)?;
+            let update_funds_distributor_submsg = update_funds_distributor(ctx, sender, new_stake)?;
 
             Ok(Response::new()
                 .add_attribute("action", "stake_cw20")
@@ -1201,7 +1200,7 @@ pub fn receive_cw721(ctx: &mut Context, cw721_msg: ReceiveNftMsg) -> DaoResult<R
             let new_user_stake = get_user_staked_nfts(qctx, staker.clone())?.amount;
 
             let update_funds_distributor_submsg =
-                update_funds_distributor(ctx, staker, new_user_stake, new_total_staked)?;
+                update_funds_distributor(ctx, staker, new_user_stake)?;
 
             Ok(Response::new()
                 .add_attribute("action", "stake_cw721")
@@ -1252,12 +1251,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
             let update_user_votes_submsg =
                 update_user_votes(ctx.deps.as_ref(), ctx.info.sender.clone(), new_stake)?;
 
-            let update_funds_distributor_submsg = update_funds_distributor(
-                ctx,
-                ctx.info.sender.clone(),
-                new_stake,
-                new_total_staked,
-            )?;
+            let update_funds_distributor_submsg =
+                update_funds_distributor(ctx, ctx.info.sender.clone(), new_stake)?;
 
             Ok(Response::new()
                 .add_attribute("action", "unstake_cw20")
@@ -1315,12 +1310,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
             let update_user_votes_submsg =
                 update_user_votes(ctx.deps.as_ref(), ctx.info.sender.clone(), new_user_stake)?;
 
-            let update_funds_distributor_submsg = update_funds_distributor(
-                ctx,
-                ctx.info.sender.clone(),
-                new_user_stake,
-                new_total_staked,
-            )?;
+            let update_funds_distributor_submsg =
+                update_funds_distributor(ctx, ctx.info.sender.clone(), new_user_stake)?;
 
             Ok(Response::new()
                 .add_attribute("action", "unstake_cw721")
@@ -1360,7 +1351,6 @@ fn update_funds_distributor(
     ctx: &mut Context,
     user: Addr,
     new_user_stake: Uint128,
-    new_total_staked: Uint128,
 ) -> DaoResult<SubMsg> {
     let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
 
@@ -1371,7 +1361,6 @@ fn update_funds_distributor(
                 user: user.to_string(),
                 weight: new_user_stake,
             }],
-            new_total_weight: new_total_staked,
         }),
         vec![],
     )?);

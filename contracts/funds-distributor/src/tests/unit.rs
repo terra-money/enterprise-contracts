@@ -79,7 +79,7 @@ pub fn update_user_weight_by_non_enterprise_fails() -> DistributorResult<()> {
 
     instantiate_default(ctx)?;
 
-    let result = update_user_weights(ctx, "not_enterprise", vec![user_weight("user", 0u8)], 1u8);
+    let result = update_user_weights(ctx, "not_enterprise", vec![user_weight("user", 0u8)]);
 
     assert_eq!(result, Err(Unauthorized));
 
@@ -93,12 +93,7 @@ pub fn update_user_weight_updates_pending_rewards() -> DistributorResult<()> {
 
     instantiate_default(ctx)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 1u8)],
-        1u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user", 1u8)])?;
 
     assert_user_rewards(
         ctx,
@@ -131,19 +126,9 @@ pub fn distribute_rewards_distributes_proportional_to_total_weight() -> Distribu
 
     instantiate_default(ctx)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user1", 1u8)],
-        1u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user1", 1u8)])?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user2", 2u8)],
-        3u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user2", 2u8)])?;
 
     distribute_native(ctx, &coins(30, LUNA))?;
     distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
@@ -176,22 +161,12 @@ pub fn rewards_calculated_properly_for_users_coming_after_distribution() -> Dist
 
     instantiate_default(ctx)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user1", 1u8)],
-        1u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user1", 1u8)])?;
 
     distribute_native(ctx, &coins(30, LUNA))?;
     distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user2", 2u8)],
-        3u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user2", 2u8)])?;
 
     assert_user_rewards(
         ctx,
@@ -221,12 +196,7 @@ pub fn claiming_pending_rewards_sends_messages() -> DistributorResult<()> {
 
     instantiate_default(ctx)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 1u8)],
-        1u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user", 1u8)])?;
 
     distribute_native(ctx, &coins(30, LUNA))?;
     distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
@@ -263,22 +233,12 @@ pub fn claiming_pending_rewards_after_weight_change_sends_messages() -> Distribu
 
     instantiate_default(ctx)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 1u8)],
-        1u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user", 1u8)])?;
 
     distribute_native(ctx, &coins(30, LUNA))?;
     distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user", 3u8)],
-        3u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user", 3u8)])?;
 
     let response = claim(ctx, "user", vec![LUNA], vec![CW20_TOKEN])?;
 
@@ -312,12 +272,7 @@ pub fn claiming_with_no_rewards_sends_no_msgs() -> DistributorResult<()> {
 
     instantiate_default(ctx)?;
 
-    update_user_weights(
-        ctx,
-        ENTERPRISE_CONTRACT,
-        vec![user_weight("user1", 1u8)],
-        1u8,
-    )?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user1", 1u8)])?;
 
     distribute_native(ctx, &coins(30, LUNA))?;
     distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
@@ -420,16 +375,12 @@ fn update_user_weights(
     ctx: &mut Context,
     sender: &str,
     new_user_weights: Vec<UserWeight>,
-    new_total_weight: impl Into<Uint128>,
 ) -> DistributorResult<Response> {
     execute(
         ctx.deps.branch(),
         ctx.env.clone(),
         mock_info(sender, &vec![]),
-        ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg {
-            new_user_weights,
-            new_total_weight: new_total_weight.into(),
-        }),
+        ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg { new_user_weights }),
     )
 }
 

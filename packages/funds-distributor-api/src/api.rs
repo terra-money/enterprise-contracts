@@ -5,8 +5,6 @@ use cosmwasm_std::Uint128;
 pub struct UpdateUserWeightsMsg {
     /// New weights that the users have, after the change
     pub new_user_weights: Vec<UserWeight>,
-    /// The new total weight, after accounting for the users' changes
-    pub new_total_weight: Uint128,
 }
 
 #[cw_serde]

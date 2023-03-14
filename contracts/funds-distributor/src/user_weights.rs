@@ -22,6 +22,8 @@ pub fn update_user_weights(
         return Err(Unauthorized);
     }
 
+    let mut total_weight = TOTAL_WEIGHT.load(ctx.deps.storage)?;
+
     for user_weight_change in msg.new_user_weights {
         let user = ctx.deps.api.addr_validate(&user_weight_change.user)?;
 
@@ -40,9 +42,17 @@ pub fn update_user_weights(
         };
 
         USER_WEIGHTS.save(ctx.deps.storage, user, &user_weight_change.weight)?;
+
+        let old_user_weight = old_user_weight.unwrap_or_default();
+
+        if old_user_weight > user_weight_change.weight {
+            total_weight = total_weight - old_user_weight + user_weight_change.weight;
+        } else {
+            total_weight += user_weight_change.weight - old_user_weight;
+        }
     }
 
-    TOTAL_WEIGHT.save(ctx.deps.storage, &msg.new_total_weight)?;
+    TOTAL_WEIGHT.save(ctx.deps.storage, &total_weight)?;
 
     Ok(Response::new().add_attribute("action", "update_user_weights"))
 }
