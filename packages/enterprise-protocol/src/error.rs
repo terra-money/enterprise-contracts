@@ -50,6 +50,9 @@ pub enum DaoError {
     #[error("Duplicate multisig members are not allowed upon DAO creation")]
     DuplicateMultisigMember,
 
+    #[error("Attempting to edit a member's weight multiple times")]
+    DuplicateMultisigMemberWeightEdit,
+
     #[error("Zero-duration voting is not allowed")]
     ZeroVoteDuration,
 

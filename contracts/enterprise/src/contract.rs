@@ -1017,16 +1017,6 @@ fn modify_multisig_membership(
 ) -> DaoResult<Vec<SubMsg>> {
     validate_modify_multisig_membership(deps.as_ref(), &msg)?;
 
-    let mut deduped_addr_validated_members: HashMap<Addr, Uint128> = HashMap::new();
-
-    for member in &msg.edit_members {
-        let addr = deps.api.addr_validate(&member.address)?;
-        // TODO: throw if duplicate is found
-        if deduped_addr_validated_members.contains_key(&addr) {
-            deduped_addr_validated_members.insert(addr, member.weight);
-        }
-    }
-
     let mut total_weight = load_total_multisig_weight(deps.storage)?;
 
     let mut submsgs = vec![];

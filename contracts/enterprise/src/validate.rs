@@ -1,7 +1,7 @@
 use crate::cw3::{Cw3ListVoters, Cw3VoterListResponse};
 use crate::state::{DAO_GOV_CONFIG, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT};
 use common::cw::Context;
-use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, StdResult};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, StdResult, Uint128};
 use cw20::TokenInfoResponse;
 use cw721::NumTokensResponse;
 use cw_asset::{AssetInfo, AssetInfoBase};
@@ -23,7 +23,7 @@ use enterprise_protocol::error::DaoError::{
     MinimumDepositNotAllowed, Std, UnsupportedCouncilProposalAction, ZeroVoteDuration,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use DaoError::{
     InvalidEnterpriseCodeId, InvalidExistingMultisigContract, InvalidExistingNftContract,
     InvalidExistingTokenContract, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
@@ -377,7 +377,7 @@ fn validate_execute_msgs(msg: &ExecuteMsgsMsg) -> DaoResult<()> {
 
 pub fn validate_modify_multisig_membership(
     deps: Deps,
-    _msg: &ModifyMultisigMembershipMsg,
+    msg: &ModifyMultisigMembershipMsg,
 ) -> DaoResult<()> {
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
@@ -386,6 +386,20 @@ pub fn validate_modify_multisig_membership(
             dao_type: dao_type.to_string(),
         });
     }
+
+    let mut deduped_addr_validated_members: HashMap<Addr, Uint128> = HashMap::new();
+
+    for member in &msg.edit_members {
+        let addr = deps.api.addr_validate(&member.address)?;
+
+        if deduped_addr_validated_members
+            .insert(addr, member.weight)
+            .is_some()
+        {
+            return Err(DaoError::DuplicateMultisigMemberWeightEdit);
+        }
+    }
+
     Ok(())
 }
 
