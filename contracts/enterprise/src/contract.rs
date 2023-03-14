@@ -138,22 +138,6 @@ pub fn instantiate(
         },
     )?;
 
-    STATE.save(
-        deps.storage,
-        &State {
-            proposal_being_created: None,
-            proposal_being_executed: None,
-        },
-    )?;
-
-    STATE.save(
-        deps.storage,
-        &State {
-            proposal_being_created: None,
-            proposal_being_executed: None,
-        },
-    )?;
-
     DAO_CREATION_DATE.save(deps.storage, &env.block.time)?;
 
     DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
