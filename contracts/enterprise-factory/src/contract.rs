@@ -245,6 +245,8 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
         },
     )?;
 
+    ENTERPRISE_CODE_IDS.save(deps.storage, msg.new_enterprise_code_id, &())?;
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new())

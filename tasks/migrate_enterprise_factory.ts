@@ -13,20 +13,11 @@ task(async ({ deployer, signer, refs, network }) => {
   const enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  deployer.buildContract(ENTERPRISE_GOVERNANCE);
-  deployer.optimizeContract(ENTERPRISE_GOVERNANCE);
-
   const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  deployer.buildContract(FUNDS_DISTRIBUTOR);
-  deployer.optimizeContract(FUNDS_DISTRIBUTOR);
-
   const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
   await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  deployer.buildContract(ENTERPRISE_FACTORY);
-  deployer.optimizeContract(ENTERPRISE_FACTORY);
 
   await deployer.storeCode(ENTERPRISE_FACTORY);
   await new Promise((resolve) => setTimeout(resolve, 3000));
