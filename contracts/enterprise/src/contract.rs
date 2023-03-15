@@ -82,7 +82,6 @@ use poll_engine_api::api::{
 };
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
-use std::collections::HashMap;
 use std::ops::{Add, Not, Sub};
 use DaoError::{
     CustomError, InvalidStakingAsset, NoDaoCouncil, NoNftTokenStaked, NoSuchProposal, Unauthorized,
@@ -1076,12 +1075,15 @@ fn modify_multisig_membership(
 
     let mut submsgs = vec![];
 
-    let mut changed_members_weights: HashMap<Addr, Uint128> = HashMap::new();
+    let mut new_user_weights: Vec<UserWeight> = vec![];
 
     for edit_member in msg.edit_members {
         let member_addr = deps.api.addr_validate(&edit_member.address)?;
 
-        changed_members_weights.insert(member_addr.clone(), edit_member.weight);
+        new_user_weights.push(UserWeight {
+            user: edit_member.address,
+            weight: edit_member.weight,
+        });
 
         let old_member_weight = MULTISIG_MEMBERS
             .may_load(deps.storage, member_addr.clone())?
@@ -1111,14 +1113,6 @@ fn modify_multisig_membership(
     save_total_multisig_weight(deps.storage, total_weight, &env.block)?;
 
     let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(deps.storage)?;
-
-    let new_user_weights = changed_members_weights
-        .into_iter()
-        .map(|(addr, new_weight)| UserWeight {
-            user: addr.to_string(),
-            weight: new_weight,
-        })
-        .collect_vec();
 
     submsgs.push(SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
