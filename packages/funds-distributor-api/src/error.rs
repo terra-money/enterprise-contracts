@@ -13,6 +13,9 @@ pub enum DistributorError {
 
     #[error("Cannot distribute - total weight of all users is 0")]
     ZeroTotalWeight,
+
+    #[error("Duplicate initial user weight found")]
+    DuplicateInitialWeight,
 }
 
 impl DistributorError {

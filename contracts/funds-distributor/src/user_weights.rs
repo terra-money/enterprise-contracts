@@ -6,11 +6,34 @@ use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, Decimal, Response, StdResult, Uint128};
 use cw_storage_plus::Map;
-use funds_distributor_api::api::UpdateUserWeightsMsg;
+use funds_distributor_api::api::{UpdateUserWeightsMsg, UserWeight};
 use funds_distributor_api::error::DistributorError::Unauthorized;
-use funds_distributor_api::error::DistributorResult;
+use funds_distributor_api::error::{DistributorError, DistributorResult};
 
 pub const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
+
+pub fn save_initial_weights(
+    ctx: &mut Context,
+    initial_weights: Vec<UserWeight>,
+) -> DistributorResult<()> {
+    let mut total_weight = Uint128::zero();
+
+    for user_weight in initial_weights {
+        let user = ctx.deps.api.addr_validate(&user_weight.user)?;
+
+        if USER_WEIGHTS.has(ctx.deps.storage, user.clone()) {
+            return Err(DistributorError::DuplicateInitialWeight);
+        }
+
+        USER_WEIGHTS.save(ctx.deps.storage, user, &user_weight.weight)?;
+
+        total_weight += user_weight.weight;
+    }
+
+    TOTAL_WEIGHT.save(ctx.deps.storage, &total_weight)?;
+
+    Ok(())
+}
 
 pub fn update_user_weights(
     ctx: &mut Context,

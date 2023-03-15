@@ -1,10 +1,13 @@
-use crate::api::{ClaimRewardsMsg, UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse};
+use crate::api::{
+    ClaimRewardsMsg, UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse, UserWeight,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub enterprise_contract: String,
+    pub initial_weights: Vec<UserWeight>,
 }
 
 #[cw_serde]

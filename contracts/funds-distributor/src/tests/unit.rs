@@ -295,6 +295,7 @@ fn instantiate_default(ctx: &mut Context) -> DistributorResult<()> {
         ctx.info.clone(),
         InstantiateMsg {
             enterprise_contract: ENTERPRISE_CONTRACT.to_string(),
+            initial_weights: vec![],
         },
     )?;
     Ok(())

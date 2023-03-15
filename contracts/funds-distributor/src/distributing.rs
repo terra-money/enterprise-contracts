@@ -1,4 +1,5 @@
-use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
+use crate::state::TOTAL_WEIGHT;
+use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
 use common::cw::Context;
 use cosmwasm_std::{Decimal, Response, Uint128};
 use cw20::Cw20ReceiveMsg;

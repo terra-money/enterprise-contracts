@@ -362,8 +362,8 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_governance_contract_submsg(DAO_ADDR)?,
             instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
+            instantiate_governance_contract_submsg(DAO_ADDR)?,
         ]
     );
 
@@ -535,8 +535,8 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_governance_contract_submsg(DAO_ADDR)?,
             instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
+            instantiate_governance_contract_submsg(DAO_ADDR)?,
         ]
     );
 
@@ -597,8 +597,8 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_governance_contract_submsg(DAO_ADDR)?,
             instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
+            instantiate_governance_contract_submsg(DAO_ADDR)?,
         ]
     );
 
@@ -1192,6 +1192,7 @@ fn instantiate_funds_distributor_contract_submsg(dao_address: &str) -> StdResult
             code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
                 enterprise_contract: dao_address.to_string(),
+                initial_weights: vec![],
             })?,
             funds: vec![],
             label: "Funds distributor contract".to_string(),

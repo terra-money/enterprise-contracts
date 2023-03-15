@@ -1,12 +1,12 @@
 use crate::claim::claim_rewards;
 use crate::distributing::{distribute_cw20, distribute_native};
 use crate::rewards::query_user_rewards;
-use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
-use crate::user_weights::update_user_weights;
+use crate::state::ENTERPRISE_CONTRACT;
+use crate::user_weights::{save_initial_weights, update_user_weights};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, Uint128,
+    StdError,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -20,8 +20,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    env: Env,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> DistributorResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -29,7 +29,9 @@ pub fn instantiate(
     let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
-    TOTAL_WEIGHT.save(deps.storage, &Uint128::zero())?;
+    let mut ctx = Context { deps, env, info };
+
+    save_initial_weights(&mut ctx, msg.initial_weights)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
