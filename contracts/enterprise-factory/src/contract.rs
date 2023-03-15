@@ -1,4 +1,3 @@
-use crate::migration::migrate_v1_to_v2;
 use crate::state::{
     CONFIG, DAO_ADDRESSES, DAO_ID_COUNTER, ENTERPRISE_CODE_IDS, GLOBAL_ASSET_WHITELIST,
     GLOBAL_NFT_WHITELIST,
@@ -8,7 +7,7 @@ use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, SubMsg, Uint64, WasmMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_factory_api::api::{
@@ -227,12 +226,6 @@ pub fn query_is_enterprise_code_id(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    let contract_version = get_contract_version(deps.storage)?;
-
-    if contract_version.version == "0.1.0" {
-        migrate_v1_to_v2(deps.storage)?;
-    }
-
     let config = CONFIG.load(deps.storage)?;
 
     CONFIG.save(
