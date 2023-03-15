@@ -68,11 +68,7 @@ pub fn update_user_weights(
 
         let old_user_weight = old_user_weight.unwrap_or_default();
 
-        if old_user_weight > user_weight_change.weight {
-            total_weight = total_weight - old_user_weight + user_weight_change.weight;
-        } else {
-            total_weight += user_weight_change.weight - old_user_weight;
-        }
+        total_weight = total_weight - old_user_weight + user_weight_change.weight;
     }
 
     TOTAL_WEIGHT.save(ctx.deps.storage, &total_weight)?;
