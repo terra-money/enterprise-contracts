@@ -16,7 +16,7 @@ pub fn save_initial_weights(
     ctx: &mut Context,
     initial_weights: Vec<UserWeight>,
 ) -> DistributorResult<()> {
-    let mut total_weight = Uint128::zero();
+    let mut total_weight = TOTAL_WEIGHT.may_load(ctx.deps.storage)?.unwrap_or_default();
 
     for user_weight in initial_weights {
         let user = ctx.deps.api.addr_validate(&user_weight.user)?;
