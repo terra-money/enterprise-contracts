@@ -48,13 +48,13 @@
       "codeId": "783"
     },
     "cw3_fixed_multisig": {
-      "codeId": "705"
+      "codeId": "1316"
     },
     "cw20_base": {
-      "codeId": "706"
+      "codeId": "1317"
     },
     "cw721_base": {
-      "codeId": "707"
+      "codeId": "1318"
     },
     "enterprise-factory": {
       "codeId": "784",
