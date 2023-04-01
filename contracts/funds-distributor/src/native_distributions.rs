@@ -36,3 +36,9 @@ pub fn NATIVE_DISTRIBUTIONS<'a>(
     };
     IndexedMap::new("native_distributions", indexes)
 }
+
+impl From<NativeDistribution> for (Decimal, Uint128) {
+    fn from(item: NativeDistribution) -> Self {
+        (item.user_index, item.pending_rewards)
+    }
+}
