@@ -3,6 +3,7 @@ use crate::distributing::{distribute_cw20, distribute_native};
 use crate::eligibility::{
     execute_update_minimum_eligible_weight, query_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT,
 };
+use crate::migration::migrate_v1_to_v2;
 use crate::rewards::query_user_rewards;
 use crate::state::ENTERPRISE_CONTRACT;
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -11,7 +12,7 @@ use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -87,7 +88,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DistributorResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DistributorResult<Response> {
+    let contract_version = get_contract_version(deps.storage)?;
+
+    let mut deps = deps;
+
+    if contract_version.version == "0.1.0" {
+        migrate_v1_to_v2(deps.branch(), msg.minimum_eligible_weight)?;
+    }
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))

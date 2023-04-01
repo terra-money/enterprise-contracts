@@ -38,4 +38,6 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub minimum_eligible_weight: Option<Uint128>,
+}
