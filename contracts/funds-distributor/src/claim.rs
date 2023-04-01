@@ -1,6 +1,6 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
-use crate::rewards::{calculate_cw20_user_reward, calculate_native_user_reward};
+use crate::rewards::calculate_user_reward;
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
 use crate::user_weights::USER_WEIGHTS;
 use common::cw::Context;
@@ -29,7 +29,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             continue;
         }
 
-        let reward = calculate_native_user_reward(global_index, distribution, user_weight);
+        let reward = calculate_user_reward(global_index, distribution, user_weight);
 
         if !reward.is_zero() {
             let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
@@ -61,7 +61,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             continue;
         }
 
-        let reward = calculate_cw20_user_reward(global_index, distribution, user_weight);
+        let reward = calculate_user_reward(global_index, distribution, user_weight);
 
         if !reward.is_zero() {
             let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;

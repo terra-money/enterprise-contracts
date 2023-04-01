@@ -36,3 +36,9 @@ pub fn CW20_DISTRIBUTIONS<'a>(
     };
     IndexedMap::new("cw20_distributions", indexes)
 }
+
+impl From<Cw20Distribution> for (Decimal, Uint128) {
+    fn from(item: Cw20Distribution) -> Self {
+        (item.user_index, item.pending_rewards)
+    }
+}

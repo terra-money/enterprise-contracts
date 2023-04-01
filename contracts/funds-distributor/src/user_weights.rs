@@ -1,6 +1,6 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
-use crate::rewards::{calculate_cw20_user_reward, calculate_native_user_reward};
+use crate::rewards::calculate_user_reward;
 use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
 use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
@@ -137,7 +137,7 @@ fn update_user_native_distributions(
         let distribution =
             NATIVE_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), denom.clone()))?;
 
-        let reward = calculate_native_user_reward(global_index, distribution, old_user_weight);
+        let reward = calculate_user_reward(global_index, distribution, old_user_weight);
 
         NATIVE_DISTRIBUTIONS().save(
             ctx.deps.storage,
@@ -167,7 +167,7 @@ fn update_user_cw20_distributions(
         let distribution =
             CW20_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), cw20_asset.clone()))?;
 
-        let reward = calculate_cw20_user_reward(global_index, distribution, old_user_weight);
+        let reward = calculate_user_reward(global_index, distribution, old_user_weight);
 
         CW20_DISTRIBUTIONS().save(
             ctx.deps.storage,
