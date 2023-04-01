@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 
 #[cw_serde]
-/// State of a single user's specific CW20 rewards.
+/// State of a single user's specific native rewards.
 pub struct NativeDistribution {
     pub user: Addr,
     pub denom: String,
@@ -37,6 +37,7 @@ pub fn NATIVE_DISTRIBUTIONS<'a>(
     IndexedMap::new("native_distributions", indexes)
 }
 
+// convenience trait to unify duplicate code between this and CW20 distributions
 impl From<NativeDistribution> for (Decimal, Uint128) {
     fn from(item: NativeDistribution) -> Self {
         (item.user_index, item.pending_rewards)

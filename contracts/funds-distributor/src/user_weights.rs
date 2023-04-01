@@ -12,6 +12,10 @@ use funds_distributor_api::error::{DistributorError, DistributorResult};
 
 pub const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
 
+/// Saves any initial weights given to the users.
+///
+/// Should only be called when the contract is 'fresh'.
+/// Do *NOT* call after there have already been reward distributions.
 pub fn save_initial_weights(
     ctx: &mut Context,
     initial_weights: Vec<UserWeight>,
@@ -35,6 +39,8 @@ pub fn save_initial_weights(
     Ok(())
 }
 
+/// Updates the users' weights to new ones.
+/// Will calculate any accrued rewards since the last update to their rewards.
 pub fn update_user_weights(
     ctx: &mut Context,
     msg: UpdateUserWeightsMsg,
@@ -59,6 +65,9 @@ pub fn update_user_weights(
                 initialize_user_indices(ctx, user.clone())?;
             }
             Some(old_user_weight) => {
+                // the user already had their weight previously, so we use that weight
+                // to calculate how many rewards for each asset they've accrued since we last
+                // calculated their pending rewards
                 update_user_native_distributions(ctx, user.clone(), old_user_weight)?;
                 update_user_cw20_distributions(ctx, user.clone(), old_user_weight)?;
             }
@@ -76,6 +85,10 @@ pub fn update_user_weights(
     Ok(Response::new().add_attribute("action", "update_user_weights"))
 }
 
+/// Called for users that we did not encounter previously.
+///
+/// Will initialize all their rewards for assets with existing distributions to 0, and set
+/// their rewards indices to current global index for each asset.
 fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<()> {
     let native_global_indices = NATIVE_GLOBAL_INDICES
         .range(ctx.deps.storage, None, None, Ascending)
@@ -124,6 +137,10 @@ fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<(
     Ok(())
 }
 
+/// Updates user's reward indices for all native assets.
+///
+/// Will calculate newly pending rewards since the last update to the user's reward index until now,
+/// using their last weight to calculate the newly accrued rewards.
 fn update_user_native_distributions(
     ctx: &mut Context,
     user: Addr,
@@ -154,6 +171,10 @@ fn update_user_native_distributions(
     Ok(())
 }
 
+/// Updates user's reward indices for all CW20 assets.
+///
+/// Will calculate newly pending rewards since the last update to the user's reward index until now,
+/// using their last weight to calculate the newly accrued rewards.
 fn update_user_cw20_distributions(
     ctx: &mut Context,
     user: Addr,

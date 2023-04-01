@@ -10,6 +10,8 @@ use funds_distributor_api::api::{
 use funds_distributor_api::error::DistributorResult;
 use std::ops::{Add, Mul, Sub};
 
+/// Calculates user's currently available rewards for an asset, given its current global index
+/// and user's weight.
 pub fn calculate_user_reward(
     global_index: Decimal,
     distribution: Option<impl Into<(Decimal, Uint128)>>,
@@ -21,6 +23,8 @@ pub fn calculate_user_reward(
     calculate_new_user_reward(global_index, user_index, user_weight).add(pending_rewards)
 }
 
+/// Calculates reward accrued for the given asset since the last update to the user's reward
+/// index for the given asset.
 pub fn calculate_new_user_reward(
     global_index: Decimal,
     user_index: Decimal,

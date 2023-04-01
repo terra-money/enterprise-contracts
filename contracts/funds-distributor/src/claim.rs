@@ -9,6 +9,11 @@ use cw_asset::Asset;
 use funds_distributor_api::api::ClaimRewardsMsg;
 use funds_distributor_api::error::DistributorResult;
 
+/// Attempt to claim rewards for the given parameters.
+///
+/// Calculates rewards currently available to the user, and marks them as claimed.
+///
+/// Returns a Response containing submessages that will send available rewards to the user.
 pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResult<Response> {
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
@@ -25,6 +30,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             .may_load(ctx.deps.storage, denom.clone())?
             .unwrap_or_default();
 
+        // if no rewards for the given asset, just skip
         if global_index.is_zero() {
             continue;
         }
@@ -57,6 +63,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             .may_load(ctx.deps.storage, asset.clone())?
             .unwrap_or_default();
 
+        // if no rewards for the given asset, just skip
         if global_index.is_zero() {
             continue;
         }
