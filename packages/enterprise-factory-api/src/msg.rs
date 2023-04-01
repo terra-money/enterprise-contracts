@@ -21,7 +21,9 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct MigrateMsg {
-    pub new_enterprise_code_id: Option<u64>,
+    pub new_enterprise_code_id: u64,
+    pub new_enterprise_governance_code_id: u64,
+    pub new_funds_distributor_code_id: u64,
 }
 
 #[cw_serde]

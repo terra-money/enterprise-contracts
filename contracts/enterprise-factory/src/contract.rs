@@ -53,7 +53,6 @@ pub fn instantiate(
 
     ENTERPRISE_CODE_IDS.save(deps.storage, msg.config.enterprise_code_id, &())?;
 
-    // TODO: add more attributes?
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -69,7 +68,6 @@ pub fn execute(
     }
 }
 
-// TODO: tests
 fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -89,8 +87,11 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
     };
 
     let instantiate_enterprise_msg = enterprise_protocol::msg::InstantiateMsg {
+        enterprise_governance_code_id: config.enterprise_governance_code_id,
+        funds_distributor_code_id: config.funds_distributor_code_id,
         dao_metadata: msg.dao_metadata.clone(),
         dao_gov_config: msg.dao_gov_config,
+        dao_council: msg.dao_council,
         dao_membership_info,
         enterprise_factory_contract: env.contract.address.to_string(),
         asset_whitelist: msg.asset_whitelist,
@@ -146,9 +147,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> DaoResult<Binary> {
-    // TODO: use query context
-    // let qctx = QueryContext::from(deps, env);
-
     let response = match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?)?,
         QueryMsg::GlobalAssetWhitelist {} => to_binary(&query_asset_whitelist(deps)?)?,
@@ -178,7 +176,6 @@ pub fn query_nft_whitelist(deps: Deps) -> DaoResult<NftWhitelistResponse> {
     Ok(NftWhitelistResponse { nfts })
 }
 
-// TODO: tests
 pub fn query_all_daos(deps: Deps, msg: QueryAllDaosMsg) -> DaoResult<AllDaosResponse> {
     let start_after = msg.start_after.map(Bound::exclusive);
     let limit = msg
@@ -196,7 +193,6 @@ pub fn query_all_daos(deps: Deps, msg: QueryAllDaosMsg) -> DaoResult<AllDaosResp
     Ok(AllDaosResponse { daos: addresses })
 }
 
-// TODO: tests
 pub fn query_enterprise_code_ids(
     deps: Deps,
     msg: EnterpriseCodeIdsMsg,
@@ -218,7 +214,6 @@ pub fn query_enterprise_code_ids(
     Ok(EnterpriseCodeIdsResponse { code_ids })
 }
 
-// TODO: tests
 pub fn query_is_enterprise_code_id(
     deps: Deps,
     msg: IsEnterpriseCodeIdMsg,
@@ -230,23 +225,22 @@ pub fn query_is_enterprise_code_id(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-// TODO: tests
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    match msg.new_enterprise_code_id {
-        None => {}
-        Some(code_id) => {
-            ENTERPRISE_CODE_IDS.save(deps.storage, code_id, &())?;
+    let config = CONFIG.load(deps.storage)?;
 
-            let config = CONFIG.load(deps.storage)?;
-            CONFIG.save(
-                deps.storage,
-                &Config {
-                    enterprise_code_id: code_id,
-                    ..config
-                },
-            )?;
-        }
-    }
+    CONFIG.save(
+        deps.storage,
+        &Config {
+            enterprise_code_id: msg.new_enterprise_code_id,
+            enterprise_governance_code_id: msg.new_enterprise_governance_code_id,
+            funds_distributor_code_id: msg.new_funds_distributor_code_id,
+            ..config
+        },
+    )?;
 
-    Ok(Response::default())
+    ENTERPRISE_CODE_IDS.save(deps.storage, msg.new_enterprise_code_id, &())?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new())
 }

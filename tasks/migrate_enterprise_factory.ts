@@ -2,7 +2,9 @@ import { MsgMigrateContract } from "@terra-money/terra.js";
 import task, { info } from "terrariums";
 
 const ENTERPRISE = "enterprise";
+const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_FACTORY = "enterprise-factory";
+const FUNDS_DISTRIBUTOR = "funds-distributor";
 
 task(async ({ deployer, signer, refs, network }) => {
   deployer.buildContract(ENTERPRISE);
@@ -11,8 +13,11 @@ task(async ({ deployer, signer, refs, network }) => {
   const enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  deployer.buildContract(ENTERPRISE_FACTORY);
-  deployer.optimizeContract(ENTERPRISE_FACTORY);
+  const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
+  const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
+  await new Promise((resolve) => setTimeout(resolve, 3000));
 
   await deployer.storeCode(ENTERPRISE_FACTORY);
   await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -25,11 +30,15 @@ task(async ({ deployer, signer, refs, network }) => {
     parseInt(contract.codeId!),
     {
       new_enterprise_code_id: parseInt(enterpriseCodeId),
+      new_enterprise_governance_code_id: parseInt(enterpriseGovernanceCodeId),
+      new_funds_distributor_code_id: parseInt(fundsDistributorCodeId),
     }
   );
 
   console.log("enterpriseFactoryCodeId", contract.codeId);
   console.log("enterpriseCodeId", enterpriseCodeId);
+  console.log("enterpriseGovernanceCodeId", enterpriseGovernanceCodeId);
+  console.log("fundsDistributorCodeId", fundsDistributorCodeId);
 
   try {
     let tx = await signer.createAndSignTx({

@@ -4,50 +4,30 @@ use cosmwasm_std::{Decimal, Timestamp};
 
 use common::cw::Context;
 
-use crate::api::{CreatePollParams, PollStatus, PollType};
-use crate::error::PollError::{OutsideVotingPeriod, PollAlreadyEnded, WithinVotingPeriod};
-use crate::error::*;
-use crate::state::Poll;
+use poll_engine_api::api::{CreatePollParams, Poll, PollStatus};
+use poll_engine_api::error::PollError::{
+    OutsideVotingPeriod, PollAlreadyEnded, WithinVotingPeriod,
+};
+use poll_engine_api::error::*;
 
 pub fn validate_create_poll(ctx: &mut Context, params: &CreatePollParams) -> PollResult<()> {
     let now = ctx.env.block.time;
 
+    // if not 0 <= threshold <= 1
+    if !(Decimal::zero().le(&params.threshold) && Decimal::one().ge(&params.threshold)) {
+        return Err(PollError::InvalidArgument {
+            msg: format!(
+                "Invalid threshold {}, must be 0 <= threshold <= 1",
+                params.threshold,
+            ),
+        });
+    }
+
     match params {
         // if now >= ends_at
         CreatePollParams { ends_at, .. } if now.ge(ends_at) => Err(PollError::InvalidArgument {
-            msg: format!("Invalid end time, must be {} < {} (now)", ends_at, now),
+            msg: format!("Invalid end time, must be {} > {} (now)", ends_at, now),
         }),
-
-        // if not 0 <= threshold <= 1
-        CreatePollParams {
-            poll_type: PollType::Multichoice { threshold, .. },
-            ..
-        } if !(Decimal::zero().le(threshold) && Decimal::one().ge(threshold)) => {
-            Err(PollError::InvalidArgument {
-                msg: format!(
-                    "Invalid threshold {}, must be 0 <= threshold <= 1",
-                    threshold
-                ),
-            })
-        }
-
-        CreatePollParams {
-            poll_type:
-                PollType::Multichoice {
-                    rejecting_outcomes,
-                    n_outcomes,
-                    ..
-                },
-            ..
-        } if rejecting_outcomes.len() >= (*n_outcomes) as usize => {
-            Err(PollError::InvalidArgument {
-                msg: format!(
-                    "Invalid rejecting outcomes count {}, must be count < {} (n_outcomes)",
-                    rejecting_outcomes.len(),
-                    n_outcomes,
-                ),
-            })
-        }
 
         _ => Ok(()),
     }

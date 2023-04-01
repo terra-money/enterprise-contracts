@@ -2,15 +2,14 @@ use cosmwasm_std::Order;
 use cw_storage_plus::Bound;
 use itertools::Itertools;
 
-use common::cw::{Pagination, QueryContext, RangeArgs};
+use common::cw::{Pagination, QueryContext};
 
-use crate::api::{
-    MaxVoteParams, MaxVoteResponse, PollId, PollParams, PollResponse, PollStatusResponse,
-    PollVoterParams, PollVoterResponse, PollVotersParams, PollVotersResponse, PollsParams,
-    PollsResponse, VoterResponse,
-};
-use crate::error::*;
 use crate::state::{polls, votes, PollStorage, VoteStorage};
+use poll_engine_api::api::{
+    PollId, PollParams, PollResponse, PollStatusResponse, PollVoterParams, PollVoterResponse,
+    PollVotersParams, PollVotersResponse, PollsParams, PollsResponse, VoterResponse,
+};
+use poll_engine_api::error::*;
 
 // TODO: tests
 pub fn query_poll(
@@ -117,6 +116,9 @@ pub fn query_poll_voters(
         .unwrap_or(Order::Ascending);
 
     let iter = votes()
+        .idx
+        .poll
+        .prefix(poll_id)
         .range(qctx.deps.storage, min, max, order)
         .flatten()
         .map(|(_, vote)| vote);
@@ -143,34 +145,14 @@ pub fn query_voter(qctx: &QueryContext, voter_addr: impl AsRef<str>) -> PollResu
     Ok(VoterResponse { votes })
 }
 
-pub fn query_max_vote(
-    qctx: &QueryContext,
-    MaxVoteParams {
-        voter_addr,
-        poll_status,
-    }: MaxVoteParams,
-) -> PollResult<MaxVoteResponse> {
-    let voter = qctx.deps.api.addr_validate(&voter_addr)?;
-
-    let max_vote = votes().max_vote(
-        qctx.deps.storage,
-        voter,
-        poll_status,
-        RangeArgs::default(),
-        RangeArgs::default(),
-    )?;
-
-    Ok(MaxVoteResponse { max_vote })
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
     use cosmwasm_std::{testing::mock_dependencies, Timestamp};
 
-    use crate::api::{PollStatus, PollStatusResponse};
     use common::cw::testing::mock_ctx;
+    use poll_engine_api::api::{PollStatus, PollStatusResponse};
 
     use crate::helpers::mock_poll;
     use crate::query::query_poll_status;

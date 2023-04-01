@@ -2,14 +2,16 @@ use cosmwasm_std::Uint64;
 
 use common::cw::Context;
 
-use crate::api::{CastVoteParams, CreatePollParams, EndPollParams, Vote};
-use crate::error::PollError::PollNotFound;
-use crate::error::*;
-use crate::state::{polls, votes, GovState, Poll, PollStorage, GOV_STATE};
+use crate::state::{poll_from, polls, votes, GovState, PollHelpers, PollStorage, GOV_STATE};
 use crate::validate::{
     validate_create_poll, validate_not_already_ended, validate_voting_period_ended,
     validate_within_voting_period,
 };
+use poll_engine_api::api::{
+    CastVoteParams, CreatePollParams, EndPollParams, Poll, Vote, VoteOutcome,
+};
+use poll_engine_api::error::PollError::PollNotFound;
+use poll_engine_api::error::*;
 
 /// Initializes library state.
 pub fn initialize_poll_engine(ctx: &mut Context) -> PollResult<()> {
@@ -22,7 +24,7 @@ pub fn initialize_poll_engine(ctx: &mut Context) -> PollResult<()> {
 pub fn create_poll(ctx: &mut Context, params: CreatePollParams) -> PollResult<Poll> {
     validate_create_poll(ctx, &params)?;
 
-    let poll = Poll::from(&mut ctx.deps, &ctx.env, params.clone())?;
+    let poll = poll_from(&mut ctx.deps, &ctx.env, params.clone())?;
     polls().save_poll(ctx.deps.storage, poll.clone())?;
 
     Ok(poll)
@@ -34,6 +36,7 @@ pub fn cast_vote(
     CastVoteParams {
         poll_id,
         outcome,
+        voter,
         amount,
     }: CastVoteParams,
 ) -> PollResult<()> {
@@ -44,7 +47,7 @@ pub fn cast_vote(
     }
 
     let poll_key = poll_id.u64();
-    let voter = ctx.info.sender.clone();
+    let voter = ctx.deps.api.addr_validate(&voter)?;
 
     // 1. load existing poll
     let mut poll = polls()
@@ -55,12 +58,10 @@ pub fn cast_vote(
     validate_not_already_ended(&poll)?;
     validate_within_voting_period(ctx.env.block.time, (poll.started_at, poll.ends_at))?;
 
-    let outcome = outcome.into();
-
     let new = Vote {
         poll_id: poll_id.u64(),
         voter: voter.clone(),
-        outcome,
+        outcome: outcome as u8,
         amount: amount.u128(),
     };
     // 3. load potential old voting data
@@ -69,7 +70,7 @@ pub fn cast_vote(
         .update(ctx.deps.storage, key, |old| match old {
             // 5a. if old voting data for same outcome exists, subtract before adding new one to the results
             Some(old) => {
-                poll.decrease_results(old.outcome, old.amount);
+                poll.decrease_results(VoteOutcome::from(old.outcome), old.amount);
                 poll.increase_results(outcome, new.amount)
                     .map_err(|e| e.std_err())?;
                 // 6. also save vote in the voting storage
@@ -98,6 +99,7 @@ pub fn end_poll(
         poll_id,
         maximum_available_votes,
         error_if_already_ended,
+        allow_early_ending,
     }: EndPollParams,
 ) -> PollResult<()> {
     let now = ctx.env.block.time;
@@ -105,7 +107,10 @@ pub fn end_poll(
         .may_load(ctx.deps.storage, poll_id.into())?
         .ok_or(PollNotFound { poll_id })?;
 
-    validate_voting_period_ended(now, poll.ends_at)?;
+    if !allow_early_ending {
+        validate_voting_period_ended(now, poll.ends_at)?;
+    }
+
     if error_if_already_ended {
         validate_not_already_ended(&poll)?;
     }
@@ -124,17 +129,20 @@ mod tests {
     use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 
     use common::cw::testing::mock_ctx;
+    use PollRejectionReason::OutcomeDraw;
+    use VoteOutcome::{No, Veto};
 
-    use crate::api::{
-        CastVoteParams, CreatePollParams, EndPollParams, PollRejectionReason, PollStatus,
-        PollStatusFilter, PollType, VoteOutcome, VotingScheme,
-    };
-    use crate::error::PollError;
-    use crate::error::PollError::PollAlreadyEnded;
     use crate::execute::{cast_vote, create_poll, end_poll, initialize_poll_engine};
     use crate::helpers::mock_poll;
     use crate::query::query_poll_status;
-    use crate::state::{polls, GovState, Poll, GOV_STATE};
+    use crate::state::{polls, GovState, GOV_STATE};
+    use poll_engine_api::api::VoteOutcome::{Abstain, Yes};
+    use poll_engine_api::api::{
+        CastVoteParams, CreatePollParams, EndPollParams, Poll, PollRejectionReason, PollStatus,
+        PollStatusFilter, VoteOutcome, VotingScheme,
+    };
+    use poll_engine_api::error::PollError;
+    use poll_engine_api::error::PollError::{PollAlreadyEnded, WithinVotingPeriod};
 
     #[test]
     fn initialize_sets_default_gov_state() {
@@ -159,34 +167,26 @@ mod tests {
 
         let ends_at = Timestamp::from_nanos(1015u64);
         let quorum = Decimal::from_ratio(3u8, 10u8);
+        let threshold = Decimal::percent(50);
         let params = CreatePollParams {
             proposer: "proposer".to_string(),
             deposit_amount: Uint128::new(1000000),
             label: "some poll".to_string(),
             description: "some description".to_string(),
-            poll_type: PollType::Multichoice {
-                threshold: Decimal::percent(50),
-                n_outcomes: 2,
-                rejecting_outcomes: vec![1],
-            },
             scheme: VotingScheme::CoinVoting,
             ends_at: ends_at.clone(),
             quorum: quorum.clone(),
+            threshold: threshold.clone(),
+            veto_threshold: None,
         };
 
         create_poll(&mut ctx, params).unwrap();
 
         let poll = polls().load(ctx.deps.storage, 1).unwrap();
-        assert_eq!(
-            PollType::Multichoice {
-                n_outcomes: 2,
-                rejecting_outcomes: vec![1],
-                threshold: Decimal::percent(50),
-            },
-            poll.poll_type
-        );
         assert_eq!(PollStatus::InProgress { ends_at }, poll.status);
         assert_eq!(current_time, poll.started_at);
+        assert_eq!(quorum, poll.quorum);
+        assert_eq!(threshold, poll.threshold);
     }
 
     #[test]
@@ -204,7 +204,8 @@ mod tests {
 
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(10),
         };
         cast_vote(&mut ctx, params).unwrap();
@@ -234,22 +235,24 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(4),
         };
-        let _ = cast_vote(&mut ctx, params).unwrap();
+        cast_vote(&mut ctx, params).unwrap();
 
         // then again
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(9),
         };
-        let _ = cast_vote(&mut ctx, params).unwrap();
+        cast_vote(&mut ctx, params).unwrap();
 
         let poll = polls().load(ctx.deps.storage, poll.id).unwrap();
-        assert_eq!(&9, poll.results.get(&1).unwrap());
+        assert_eq!(&9, poll.results.get(&(No as u8)).unwrap());
     }
 
     #[test]
@@ -268,8 +271,9 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(3);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(10u8),
+            maximum_available_votes: 10u8.into(),
             error_if_already_ended: true,
+            allow_early_ending: false,
         };
         end_poll(&mut ctx, params).unwrap();
 
@@ -295,8 +299,6 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.status = PollStatus::Rejected {
-            outcome: Some(1),
-            count: Some(Uint128::new(20)),
             reason: PollRejectionReason::IsRejectingOutcome,
         };
         poll.results = BTreeMap::from([(0, 10)]);
@@ -305,8 +307,9 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(3);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(1u8),
+            maximum_available_votes: Uint128::one(),
             error_if_already_ended: true,
+            allow_early_ending: false,
         };
         let res = end_poll(&mut ctx, params);
 
@@ -335,7 +338,8 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(4);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
+            voter: "voter".to_string(),
             amount: Uint128::new(4),
         };
         let result = cast_vote(&mut ctx, params);
@@ -361,8 +365,6 @@ mod tests {
             ..mock_poll(ctx.deps.storage)
         };
         poll.status = PollStatus::Rejected {
-            outcome: Some(1),
-            count: Some(Uint128::new(20)),
             reason: PollRejectionReason::IsRejectingOutcome,
         };
         poll.results = BTreeMap::from([(0, 10)]);
@@ -371,12 +373,82 @@ mod tests {
         ctx.env.block.time = Timestamp::from_nanos(3);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::from(1u8),
+            maximum_available_votes: Uint128::one(),
             error_if_already_ended: false,
+            allow_early_ending: false,
         };
         let res = end_poll(&mut ctx, params);
 
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn cannot_end_poll_before_expiration() {
+        let mut deps = mock_dependencies();
+        let mut ctx = mock_ctx(deps.as_mut());
+        GOV_STATE
+            .save(ctx.deps.storage, &GovState::default())
+            .unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.results = BTreeMap::from([(0, 10)]);
+        poll.deposit_amount = 10;
+        poll.ends_at = Timestamp::from_nanos(3);
+        polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
+
+        ctx.env.block.time = Timestamp::from_nanos(2);
+        let params = EndPollParams {
+            poll_id: poll.id.into(),
+            maximum_available_votes: 10u8.into(),
+            error_if_already_ended: true,
+            allow_early_ending: false,
+        };
+        let res = end_poll(&mut ctx, params);
+
+        assert!(res.is_err());
+        assert_eq!(
+            WithinVotingPeriod {
+                now: Timestamp::from_nanos(2),
+                ends_at: Timestamp::from_nanos(3),
+            },
+            res.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn can_end_poll_before_expiration_with_allow_early_ending_flag_set_to_true() {
+        let mut deps = mock_dependencies();
+        let mut ctx = mock_ctx(deps.as_mut());
+        GOV_STATE
+            .save(ctx.deps.storage, &GovState::default())
+            .unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.results = BTreeMap::from([(0, 10)]);
+        poll.deposit_amount = 10;
+        poll.ends_at = Timestamp::from_nanos(3);
+        polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
+
+        ctx.env.block.time = Timestamp::from_nanos(2);
+        let params = EndPollParams {
+            poll_id: poll.id.into(),
+            maximum_available_votes: 10u8.into(),
+            error_if_already_ended: true,
+            allow_early_ending: true,
+        };
+        end_poll(&mut ctx, params).unwrap();
+
+        let res = query_poll_status(&ctx.to_query(), poll.id).unwrap();
+
+        assert_eq!(
+            PollStatus::Passed {
+                outcome: 0,
+                count: Uint128::new(10),
+            },
+            res.status
+        );
+        assert_eq!(poll.results, res.results);
+        assert_eq!(poll.ends_at, res.ends_at);
     }
 
     #[test]
@@ -389,34 +461,34 @@ mod tests {
 
         let mut poll = mock_poll(ctx.deps.storage);
         poll.deposit_amount = 10;
-        poll.poll_type = PollType::Multichoice {
-            threshold: Default::default(),
-            n_outcomes: 4,
-            rejecting_outcomes: vec![1],
-        };
-        poll.results = BTreeMap::from([(0, 10)]);
+        poll.threshold = Decimal::percent(15);
+        poll.results = BTreeMap::from([(0, 131)]);
         polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
 
         ctx.env.block.time = Timestamp::from_nanos(2);
         let params = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
+            voter: "voter1".to_string(),
             amount: Uint128::new(10),
         };
         let params2 = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(1),
+            outcome: No,
+            voter: "voter2".to_string(),
             amount: Uint128::new(121),
         };
         let params3 = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(2),
-            amount: Uint128::new(131),
+            outcome: Abstain,
+            voter: "voter3".to_string(),
+            amount: Uint128::new(110),
         };
         let params4 = CastVoteParams {
             poll_id: poll.id.into(),
-            outcome: VoteOutcome::Multichoice(3),
-            amount: Uint128::new(110),
+            outcome: Veto,
+            voter: "voter4".to_string(),
+            amount: Uint128::new(10),
         };
 
         ctx.info.sender = Addr::unchecked("voter_1");
@@ -430,7 +502,7 @@ mod tests {
         let poll = polls().load(ctx.deps.storage, poll.id).unwrap();
 
         // Expected second vote on choice 1 to override first vote
-        let expected_results = BTreeMap::from([(0, 10), (1, 131), (2, 131), (3, 110)]);
+        let expected_results = BTreeMap::from([(0, 131), (1, 131), (2, 110), (3, 10)]);
         assert_eq!(expected_results, poll.results);
 
         ctx.env.block.time = Timestamp::from_nanos(3);
@@ -438,15 +510,14 @@ mod tests {
             poll_id: poll.id.into(),
             maximum_available_votes: Uint128::from(372u16),
             error_if_already_ended: true,
+            allow_early_ending: false,
         };
         let _ = end_poll(&mut ctx, end_params).unwrap();
         let poll = polls().load(ctx.deps.storage, poll.id).unwrap();
 
         assert_eq!(
             PollStatus::Rejected {
-                outcome: None,
-                count: None,
-                reason: PollRejectionReason::OutcomeDraw(1, 2, Uint128::new(131)),
+                reason: OutcomeDraw(Yes as u8, No as u8, Uint128::new(131)),
             },
             poll.status
         );

@@ -26,6 +26,7 @@ impl<'a> Context<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct QueryContext<'a> {
     pub deps: Deps<'a>,
     pub env: Env,

@@ -2,12 +2,14 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint64};
 use cw_asset::AssetInfo;
 use enterprise_protocol::api::{
-    DaoGovConfig, DaoMetadata, ExistingDaoMembershipMsg, NewMembershipInfo,
+    DaoCouncilSpec, DaoGovConfig, DaoMetadata, ExistingDaoMembershipMsg, NewMembershipInfo,
 };
 
 #[cw_serde]
 pub struct Config {
     pub enterprise_code_id: u64,
+    pub enterprise_governance_code_id: u64,
+    pub funds_distributor_code_id: u64,
     pub cw3_fixed_multisig_code_id: u64,
     pub cw20_code_id: u64,
     pub cw721_code_id: u64,
@@ -22,6 +24,8 @@ pub struct ConfigResponse {
 pub struct CreateDaoMsg {
     pub dao_metadata: DaoMetadata,
     pub dao_gov_config: DaoGovConfig,
+    /// Optional council structure that can manage certain aspects of the DAO
+    pub dao_council: Option<DaoCouncilSpec>,
     pub dao_membership: CreateDaoMembershipMsg,
     /// assets that are allowed to show in DAO's treasury
     pub asset_whitelist: Option<Vec<AssetInfo>>,

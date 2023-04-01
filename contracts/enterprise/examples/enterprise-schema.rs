@@ -11,7 +11,9 @@ use enterprise_protocol::api::{
 use enterprise_protocol::msg::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use poll_engine::api::{PollStatusResponse, PollVoterResponse, PollVotersResponse, PollsResponse};
+use poll_engine_api::api::{
+    PollStatusResponse, PollVoterResponse, PollVotersResponse, PollsResponse,
+};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

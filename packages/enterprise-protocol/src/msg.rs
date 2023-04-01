@@ -1,22 +1,26 @@
 use crate::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    CreateProposalMsg, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo, DaoMetadata,
-    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo,
+    DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse, NftWhitelistResponse,
     ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
+    UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use cw20::Cw20ReceiveMsg;
-use cw721::Cw721ReceiveMsg;
 use cw_asset::AssetInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    pub enterprise_governance_code_id: u64,
+    pub funds_distributor_code_id: u64,
     pub dao_metadata: DaoMetadata,
     pub dao_gov_config: DaoGovConfig,
+    /// Optional council structure that can manage certain aspects of the DAO
+    pub dao_council: Option<DaoCouncilSpec>,
     pub dao_membership_info: DaoMembershipInfo,
     /// Address of enterprise-factory contract that is creating this DAO
     pub enterprise_factory_contract: String,
@@ -29,12 +33,14 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     CreateProposal(CreateProposalMsg),
+    CreateCouncilProposal(CreateProposalMsg),
     CastVote(CastVoteMsg),
+    CastCouncilVote(CastVoteMsg),
     ExecuteProposal(ExecuteProposalMsg),
     Unstake(UnstakeMsg),
     Claim {},
     Receive(Cw20ReceiveMsg),
-    ReceiveNft(Cw721ReceiveMsg),
+    ReceiveNft(ReceiveNftMsg),
 }
 
 #[cw_serde]
@@ -83,7 +89,7 @@ pub enum QueryMsg {
     #[returns(ClaimsResponse)]
     ReleasableClaims(ClaimsParams),
     #[returns(AssetTreasuryResponse)]
-    Cw20Treasury {}, // TODO: allow pagination? but how?
+    Cw20Treasury {},
     #[returns(NftTreasuryResponse)]
-    NftTreasury {}, // TODO: allow pagination? but how?
+    NftTreasury {},
 }

@@ -8,6 +8,9 @@ pub enum PollError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("Unauthorized")]
+    Unauthorized {},
+
     #[error("Poll {poll_id} already exists")]
     PollAlreadyExists { poll_id: Uint64 },
 
@@ -19,9 +22,6 @@ pub enum PollError {
 
     #[error("Poll {poll_id} already ended with status: {status}")]
     PollAlreadyEnded { poll_id: Uint64, status: String },
-
-    #[error("Outcome {outcome} is out of bound (n_outcomes = {n_outcomes})")]
-    OutcomeOutOfBound { outcome: u8, n_outcomes: u8 },
 
     #[error("Outside voting period: {}/{}, must be start < {now} (now) < end", voting_period.0, voting_period.1)]
     OutsideVotingPeriod {

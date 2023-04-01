@@ -1,30 +1,35 @@
 import task from "terrariums";
 
-task(async ({ deployer, signer, refs }) => {
-  deployer.buildContract("enterprise");
-  deployer.optimizeContract("enterprise");
+const ENTERPRISE = "enterprise";
+const ENTERPRISE_GOVERNANCE = "enterprise-governance";
+const ENTERPRISE_FACTORY = "enterprise-factory";
+const FUNDS_DISTRIBUTOR = "funds-distributor";
 
-  const enterpriseCodeId = await deployer.storeCode("enterprise");
+task(async ({ network, deployer, signer, refs }) => {
+  deployer.buildContract(ENTERPRISE);
+  deployer.optimizeContract(ENTERPRISE);
+
+  const enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  const cw3CodeId = await deployer.storeCode("cw3_fixed_multisig");
+  const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  const cw20CodeId = await deployer.storeCode("cw20_base");
+  const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  const cw721CodeId = await deployer.storeCode("cw721_base");
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const cw3CodeId = refs.getContract(network, "cw3_fixed_multisig").codeId;
+  const cw20CodeId = refs.getContract(network, "cw20_base").codeId;
+  const cw721CodeId = refs.getContract(network, "cw721_base").codeId;
 
-  deployer.buildContract("enterprise-factory");
-  deployer.optimizeContract("enterprise-factory");
-
-  await deployer.storeCode("enterprise-factory");
+  await deployer.storeCode(ENTERPRISE_FACTORY);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
   const instantiateMsg = {
     config: {
       enterprise_code_id: parseInt(enterpriseCodeId),
+      enterprise_governance_code_id: parseInt(enterpriseGovernanceCodeId),
+      funds_distributor_code_id: parseInt(fundsDistributorCodeId),
       cw3_fixed_multisig_code_id: parseInt(cw3CodeId),
       cw20_code_id: parseInt(cw20CodeId),
       cw721_code_id: parseInt(cw721CodeId),

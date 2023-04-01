@@ -1,5 +1,7 @@
+use crate::api::ProposalActionType;
 use cosmwasm_std::{StdError, Uint128};
-use poll_engine::error::PollError;
+use funds_distributor_api::error::DistributorError;
+use poll_engine_api::error::PollError;
 use thiserror::Error;
 
 pub type DaoResult<T> = Result<T, DaoError>;
@@ -12,8 +14,20 @@ pub enum DaoError {
     #[error("{0}")]
     Poll(#[from] PollError),
 
+    #[error("{0}")]
+    FundsDistributor(#[from] DistributorError),
+
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("The DAO does not have a council specified")]
+    NoDaoCouncil,
+
+    #[error("Proposal action {action} is not supported in council proposals")]
+    UnsupportedCouncilProposalAction { action: ProposalActionType },
+
+    #[error("Council members must be unique, however {member} was duplicated")]
+    DuplicateCouncilMember { member: String },
 
     #[error("{code_id} is not a valid Enterprise code ID")]
     InvalidEnterpriseCodeId { code_id: u64 },
@@ -30,6 +44,18 @@ pub enum DaoError {
     #[error("Zero-weighted members are not allowed upon DAO creation")]
     ZeroInitialWeightMember,
 
+    #[error("Zero initial DAO balance is not allowed upon DAO creation")]
+    ZeroInitialDaoBalance,
+
+    #[error("Duplicate multisig members are not allowed upon DAO creation")]
+    DuplicateMultisigMember,
+
+    #[error("Attempting to edit a member's weight multiple times")]
+    DuplicateMultisigMemberWeightEdit,
+
+    #[error("Zero-duration voting is not allowed")]
+    ZeroVoteDuration,
+
     #[error("Proposal voting duration cannot be longer than unstaking duration")]
     VoteDurationLongerThanUnstaking,
 
@@ -39,11 +65,14 @@ pub enum DaoError {
     #[error("The given proposal was not found in this DAO")]
     NoSuchProposal,
 
+    #[error("Proposal is of another type")]
+    WrongProposalType,
+
     #[error("The given proposal has already been executed")]
     ProposalAlreadyExecuted,
 
-    #[error("No assets have been staked")]
-    NoAssetsStaked,
+    #[error("No votes are available")]
+    NoVotesAvailable,
 
     #[error("Asset cannot be staked or unstaked - does not match DAO's governance asset")]
     InvalidStakingAsset,

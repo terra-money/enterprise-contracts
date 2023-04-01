@@ -15,10 +15,13 @@ use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg};
 use enterprise_protocol::api::DaoMembershipInfo::Existing;
 use enterprise_protocol::api::DaoType::Token;
 use enterprise_protocol::api::NewMembershipInfo::NewMultisig;
+use enterprise_protocol::api::ProposalActionType::{
+    RequestFundingFromDao, UpdateMetadata, UpgradeDao,
+};
 use enterprise_protocol::api::{
-    DaoGovConfig, DaoMembershipInfo, DaoMetadata, DaoSocialData, ExistingDaoMembershipMsg, Logo,
-    MultisigMember, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, TokenMarketingInfo,
+    DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata, DaoSocialData,
+    ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg, NewMembershipInfo,
+    NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo, TokenMarketingInfo,
 };
 use enterprise_protocol::error::DaoResult;
 use CreateDaoMembershipMsg::{ExistingMembership, NewMembership};
@@ -28,9 +31,11 @@ use NewMembershipInfo::{NewNft, NewToken};
 const ENTERPRISE_FACTORY_ADDR: &str = "enterprise_factory_addr";
 
 const ENTERPRISE_CODE_ID: u64 = 201;
-const CW3_FIXED_MULTISIG_CODE_ID: u64 = 202;
-const CW_20_CODE_ID: u64 = 203;
-const CW_721_CODE_ID: u64 = 204;
+const ENTERPRISE_GOVERNANCE_CODE_ID: u64 = 202;
+const FUNDS_DISTRIBUTOR_CODE_ID: u64 = 203;
+const CW3_FIXED_MULTISIG_CODE_ID: u64 = 204;
+const CW_20_CODE_ID: u64 = 205;
+const CW_721_CODE_ID: u64 = 206;
 
 const TOKEN_NAME: &str = "some_token";
 const TOKEN_SYMBOL: &str = "SMBL";
@@ -62,6 +67,8 @@ fn instantiate_stores_data() -> DaoResult<()> {
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -76,6 +83,8 @@ fn instantiate_stores_data() -> DaoResult<()> {
         config.config,
         Config {
             enterprise_code_id: ENTERPRISE_CODE_ID,
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
             cw20_code_id: CW_20_CODE_ID,
             cw721_code_id: CW_721_CODE_ID,
@@ -105,6 +114,8 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -128,16 +139,18 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         marketing_owner: Some(TOKEN_MARKETING_OWNER.to_string()),
         logo_url: Some(TOKEN_LOGO_URL.to_string()),
     };
-    let membership_info = NewMembership(NewToken(NewTokenMembershipInfo {
+    let membership_info = NewMembership(NewToken(Box::new(NewTokenMembershipInfo {
         token_name: TOKEN_NAME.to_string(),
         token_symbol: TOKEN_SYMBOL.to_string(),
         token_decimals: TOKEN_DECIMALS,
         initial_token_balances: initial_token_balances.clone(),
+        initial_dao_balance: Some(456u128.into()),
         token_mint: token_mint.clone(),
         token_marketing: Some(token_marketing_info.clone()),
-    }));
+    })));
     let dao_metadata = anonymous_dao_metadata();
     let dao_gov_config = anonymous_dao_gov_config();
+    let dao_council = anonymous_dao_council();
     let asset_whitelist = vec![
         native_asset("uluna"),
         cw20_asset("token1"),
@@ -151,6 +164,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         ExecuteMsg::CreateDao(CreateDaoMsg {
             dao_metadata: dao_metadata.clone(),
             dao_gov_config: dao_gov_config.clone(),
+            dao_council: Some(dao_council.clone()),
             dao_membership: membership_info,
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
@@ -164,18 +178,22 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                    funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
+                    dao_council: Some(dao_council),
                     dao_membership_info: New(NewDaoMembershipMsg {
                         membership_contract_code_id: CW_20_CODE_ID,
-                        membership_info: NewToken(NewTokenMembershipInfo {
+                        membership_info: NewToken(Box::new(NewTokenMembershipInfo {
                             token_name: TOKEN_NAME.to_string(),
                             token_symbol: TOKEN_SYMBOL.to_string(),
                             token_decimals: TOKEN_DECIMALS,
                             initial_token_balances,
+                            initial_dao_balance: Some(456u128.into()),
                             token_mint,
                             token_marketing: Some(token_marketing_info),
-                        }),
+                        })),
                     }),
                     enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
                     asset_whitelist: Some(asset_whitelist),
@@ -187,8 +205,6 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
             ENTERPRISE_INSTANTIATE_ID,
         )]
     );
-
-    // TODO: add reply() and verify that the address has been stored properly
 
     Ok(())
 }
@@ -207,6 +223,8 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -218,6 +236,7 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
 
     let dao_metadata = anonymous_dao_metadata();
     let dao_gov_config = anonymous_dao_gov_config();
+    let dao_council = anonymous_dao_council();
     let membership_info = NewNft(NewNftMembershipInfo {
         nft_name: NFT_NAME.to_string(),
         nft_symbol: NFT_SYMBOL.to_string(),
@@ -236,6 +255,7 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
         ExecuteMsg::CreateDao(CreateDaoMsg {
             dao_metadata: dao_metadata.clone(),
             dao_gov_config: dao_gov_config.clone(),
+            dao_council: Some(dao_council.clone()),
             dao_membership: NewMembership(membership_info.clone()),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
@@ -249,8 +269,11 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                    funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
+                    dao_council: Some(dao_council),
                     dao_membership_info: New(NewDaoMembershipMsg {
                         membership_contract_code_id: CW_721_CODE_ID,
                         membership_info,
@@ -265,8 +288,6 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
             ENTERPRISE_INSTANTIATE_ID,
         )]
     );
-
-    // TODO: add reply() and verify that the address has been stored properly
 
     Ok(())
 }
@@ -285,6 +306,8 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -296,6 +319,7 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
 
     let dao_metadata = anonymous_dao_metadata();
     let dao_gov_config = anonymous_dao_gov_config();
+    let dao_council = anonymous_dao_council();
     let membership_info = NewMultisig(NewMultisigMembershipInfo {
         multisig_members: vec![
             MultisigMember {
@@ -321,6 +345,7 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
         ExecuteMsg::CreateDao(CreateDaoMsg {
             dao_metadata: dao_metadata.clone(),
             dao_gov_config: dao_gov_config.clone(),
+            dao_council: Some(dao_council.clone()),
             dao_membership: NewMembership(membership_info.clone()),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
@@ -334,8 +359,11 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                    funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
+                    dao_council: Some(dao_council),
                     dao_membership_info: New(NewDaoMembershipMsg {
                         membership_contract_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                         membership_info,
@@ -350,8 +378,6 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
             ENTERPRISE_INSTANTIATE_ID,
         )]
     );
-
-    // TODO: add reply() and verify that the address has been stored properly
 
     Ok(())
 }
@@ -370,6 +396,8 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
         InstantiateMsg {
             config: Config {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
+                enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -380,6 +408,7 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
     )?;
 
     let dao_metadata = anonymous_dao_metadata();
+    let dao_council = anonymous_dao_council();
     let membership_info = ExistingMembership(ExistingDaoMembershipMsg {
         dao_type: Token,
         membership_contract_addr: "membership_addr".to_string(),
@@ -397,12 +426,15 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
         ExecuteMsg::CreateDao(CreateDaoMsg {
             dao_metadata: dao_metadata.clone(),
             dao_gov_config: DaoGovConfig {
-                quorum: Decimal::from_ratio(1u8, 10u8),
-                threshold: Decimal::from_ratio(2u8, 10u8),
+                quorum: Decimal::percent(10),
+                threshold: Decimal::percent(20),
+                veto_threshold: Some(Decimal::percent(33)),
                 vote_duration: 1000,
                 unlocking_period: Duration::Height(10),
                 minimum_deposit: Some(713u128.into()),
+                allow_early_proposal_execution: false,
             },
+            dao_council: Some(dao_council.clone()),
             dao_membership: membership_info,
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
@@ -416,14 +448,19 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
                 admin: Some(ENTERPRISE_FACTORY_ADDR.to_string()),
                 code_id: ENTERPRISE_CODE_ID,
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+                    enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+                    funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
                     dao_metadata,
                     dao_gov_config: DaoGovConfig {
-                        quorum: Decimal::from_ratio(1u8, 10u8),
-                        threshold: Decimal::from_ratio(2u8, 10u8),
+                        quorum: Decimal::percent(10),
+                        threshold: Decimal::percent(20),
+                        veto_threshold: Some(Decimal::percent(33)),
                         vote_duration: 1000,
                         unlocking_period: Duration::Height(10),
                         minimum_deposit: Some(713u128.into()),
+                        allow_early_proposal_execution: false
                     },
+                    dao_council: Some(dao_council),
                     dao_membership_info: Existing(ExistingDaoMembershipMsg {
                         dao_type: Token,
                         membership_contract_addr: "membership_addr".to_string(),
@@ -438,8 +475,6 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
             ENTERPRISE_INSTANTIATE_ID,
         )]
     );
-
-    // TODO: add reply() and verify that the address has been stored properly
 
     Ok(())
 }
@@ -493,6 +528,8 @@ fn nft_asset(addr: impl Into<String>) -> Addr {
 fn stub_config() -> Config {
     Config {
         enterprise_code_id: ENTERPRISE_CODE_ID,
+        enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+        funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
         cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
         cw20_code_id: CW_20_CODE_ID,
         cw721_code_id: CW_721_CODE_ID,
@@ -502,6 +539,7 @@ fn stub_config() -> Config {
 fn anonymous_dao_metadata() -> DaoMetadata {
     DaoMetadata {
         name: "DAO name".to_string(),
+        description: Some("DAO description".to_string()),
         logo: Logo::Url("logo_url".to_string()),
         socials: DaoSocialData {
             github_username: Some("github_url".to_string()),
@@ -514,10 +552,25 @@ fn anonymous_dao_metadata() -> DaoMetadata {
 
 fn anonymous_dao_gov_config() -> DaoGovConfig {
     DaoGovConfig {
-        quorum: Decimal::from_ratio(7u8, 10u8),
-        threshold: Decimal::from_ratio(3u8, 10u8),
+        quorum: Decimal::percent(70),
+        threshold: Decimal::percent(30),
+        veto_threshold: Some(Decimal::percent(33)),
         vote_duration: 1000,
         unlocking_period: Duration::Height(10),
         minimum_deposit: Some(713u128.into()),
+        allow_early_proposal_execution: false,
+    }
+}
+
+fn anonymous_dao_council() -> DaoCouncilSpec {
+    DaoCouncilSpec {
+        members: vec![],
+        quorum: Decimal::percent(75),
+        threshold: Decimal::percent(50),
+        allowed_proposal_action_types: Some(vec![
+            UpdateMetadata,
+            RequestFundingFromDao,
+            UpgradeDao,
+        ]),
     }
 }

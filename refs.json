@@ -20,12 +20,12 @@
   },
   "testnet": {
     "enterprise": {
-      "codeId": "5877",
+      "codeId": "7867",
       "address": "terra1rl9fnr4xce4ca5we9rwnqyyv89h422rwe3fpe7ycrpjn0egfulrsp2n4l9"
     },
     "enterprise-factory": {
-      "codeId": "5878",
-      "address": "terra1jn2h09mhvrj2mynsqhc63h4f7unufqrld0s2jl582prtqmv6436sqkjsal"
+      "codeId": "7870",
+      "address": "terra1k0kc6ux9qwgl20st8hvsgp2cqas409wcgj9m8wcus0z548krsjssjp3z9d"
     },
     "cw20_base": {
       "codeId": "5350"
@@ -35,24 +35,36 @@
     },
     "cw721_base": {
       "codeId": "5351"
+    },
+    "enterprise-governance": {
+      "codeId": "7868"
+    },
+    "funds-distributor": {
+      "codeId": "7869"
     }
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "783"
+      "codeId": "1327"
     },
     "cw3_fixed_multisig": {
-      "codeId": "705"
+      "codeId": "1316"
     },
     "cw20_base": {
-      "codeId": "706"
+      "codeId": "1317"
     },
     "cw721_base": {
-      "codeId": "707"
+      "codeId": "1318"
     },
     "enterprise-factory": {
-      "codeId": "784",
-      "address": "terra1sxer9xsgp6mcz55w3k6lxqxhjjw6je05f3yzsvcgux6e78uhs26qcgde8j"
+      "codeId": "1330",
+      "address": "terra1y2dwydnnnctdwwmvs23ct60fj626t66qk53cae2gc55k3ce92jmqldj0sf"
+    },
+    "enterprise-governance": {
+      "codeId": "1328"
+    },
+    "funds-distributor": {
+      "codeId": "1329"
     }
   }
 }

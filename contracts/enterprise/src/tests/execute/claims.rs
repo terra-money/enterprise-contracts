@@ -29,7 +29,7 @@ fn unstaking_tokens_creates_claims() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -38,6 +38,7 @@ fn unstaking_tokens_creates_claims() -> DaoResult<()> {
             vote_duration: 10,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "sender", 50u8)?;
@@ -133,7 +134,7 @@ fn unstaking_tokens_releases_claims_when_scheduled() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -141,6 +142,7 @@ fn unstaking_tokens_releases_claims_when_scheduled() -> DaoResult<()> {
             unlocking_period: Duration::Height(50),
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "sender", 50u8)?;
@@ -234,7 +236,7 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
         .with_token_infos(&[(CW20_ADDR, &stub_token_info())]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_token_dao_membership(CW20_ADDR),
@@ -243,6 +245,7 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
             vote_duration: 50,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_tokens(deps.as_mut(), &env, CW20_ADDR, "sender", 50u8)?;
@@ -259,6 +262,8 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
     unstake_tokens(deps.as_mut(), &env, "sender", 15u8)?;
 
     env.block.time = env.block.time.plus_seconds(50);
+
+    unstake_tokens(deps.as_mut(), &env, "sender", 1u8)?;
 
     // users with no releasable claims cannot claim
     let result = execute(
@@ -290,7 +295,13 @@ fn claiming_token_claims_sends_and_removes_them() -> DaoResult<()> {
             owner: "sender".to_string(),
         },
     )?;
-    assert!(claims.claims.is_empty());
+    assert_eq!(
+        claims.claims,
+        vec![Claim {
+            asset: ClaimAsset::Cw20(Cw20ClaimAsset { amount: 1u8.into() }),
+            release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(200u64)),
+        },]
+    );
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
@@ -314,7 +325,7 @@ fn unstaking_nfts_creates_claims() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
@@ -323,6 +334,7 @@ fn unstaking_nfts_creates_claims() -> DaoResult<()> {
             vote_duration: 10,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_nfts(
@@ -418,20 +430,21 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
     let mut env = mock_env();
     let info = mock_info("sender", &[]);
 
-    env.block.time = Timestamp::from_seconds(100u64);
+    env.block.height = 100u64;
 
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
         Some(DaoGovConfig {
-            unlocking_period: Duration::Time(50),
+            unlocking_period: Duration::Height(50),
             vote_duration: 40,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_nfts(
@@ -460,7 +473,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
     )?;
     assert!(releasable_claims.claims.is_empty());
 
-    env.block.time = env.block.time.plus_seconds(49);
+    env.block.height += 49;
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
@@ -472,7 +485,7 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
 
     unstake_nfts(deps.as_mut(), &env, "sender", vec!["token2"])?;
 
-    env.block.time = env.block.time.plus_seconds(1);
+    env.block.height += 1;
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
@@ -486,11 +499,11 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
             asset: ClaimAsset::Cw721(Cw721ClaimAsset {
                 tokens: vec!["token1".to_string()],
             }),
-            release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(150u64))
+            release_at: Height(150u64.into()),
         },]
     );
 
-    env.block.time = env.block.time.plus_seconds(49);
+    env.block.height += 49;
 
     let releasable_claims = query_releasable_claims(
         mock_query_ctx(deps.as_ref(), &env),
@@ -505,13 +518,13 @@ fn unstaking_nfts_releases_claims_when_scheduled() -> DaoResult<()> {
                 asset: ClaimAsset::Cw721(Cw721ClaimAsset {
                     tokens: vec!["token1".to_string()],
                 }),
-                release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(150u64))
+                release_at: Height(150u64.into()),
             },
             Claim {
                 asset: ClaimAsset::Cw721(Cw721ClaimAsset {
                     tokens: vec!["token2".to_string()],
                 }),
-                release_at: ReleaseAt::Timestamp(Timestamp::from_seconds(199u64))
+                release_at: Height(199u64.into()),
             },
         ]
     );
@@ -530,7 +543,7 @@ fn claiming_nft_claims_sends_and_removes_them() -> DaoResult<()> {
     deps.querier.with_num_tokens(&[(NFT_ADDR, 100u64)]);
 
     instantiate_stub_dao(
-        deps.as_mut(),
+        &mut deps.as_mut(),
         &env,
         &info,
         existing_nft_dao_membership(NFT_ADDR),
@@ -539,6 +552,7 @@ fn claiming_nft_claims_sends_and_removes_them() -> DaoResult<()> {
             vote_duration: 50,
             ..stub_dao_gov_config()
         }),
+        None,
     )?;
 
     stake_nfts(

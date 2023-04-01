@@ -1,34 +1,48 @@
 use crate::contract::{
     execute, instantiate, query_member_info, query_proposal, query_total_staked_amount,
-    query_user_stake,
+    query_user_stake, reply, ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+    FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use common::cw::testing::{mock_info, mock_query_ctx};
 use common::cw::QueryContext;
-use cosmwasm_std::{to_binary, Decimal, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    to_binary, Binary, Decimal, DepsMut, Env, MessageInfo, Reply, Response, SubMsgResponse,
+    SubMsgResult, Uint128,
+};
 use cw20::Cw20ReceiveMsg;
 use cw20_base::state::TokenInfo;
-use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use enterprise_protocol::api::DaoMembershipInfo::{Existing, New};
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
 use enterprise_protocol::api::{
-    CastVoteMsg, CreateProposalMsg, DaoGovConfig, DaoMembershipInfo, DaoMetadata, DaoSocialData,
-    DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
+    CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
+    DaoSocialData, DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
     NewMembershipInfo, NewMultisigMembershipInfo, NftUserStake, ProposalAction, ProposalId,
-    ProposalParams, ProposalStatus, QueryMemberInfoMsg, TokenUserStake, UnstakeCw20Msg,
-    UnstakeCw721Msg, UnstakeMsg, UserStake, UserStakeParams,
+    ProposalParams, ProposalStatus, QueryMemberInfoMsg, ReceiveNftMsg, TokenUserStake,
+    UnstakeCw20Msg, UnstakeCw721Msg, UnstakeMsg, UserStake, UserStakeParams,
 };
 use enterprise_protocol::error::DaoResult;
-use enterprise_protocol::msg::ExecuteMsg::{CastVote, CreateProposal};
+use enterprise_protocol::msg::ExecuteMsg::{
+    CastCouncilVote, CastVote, CreateCouncilProposal, CreateProposal,
+};
 use enterprise_protocol::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 use itertools::Itertools;
-use poll_engine::api::DefaultVoteOption;
+use poll_engine_api::api::VoteOutcome;
 use std::collections::BTreeMap;
 use ExecuteMsg::{Receive, ReceiveNft, Unstake};
 use NewMembershipInfo::NewMultisig;
 
+pub const ENTERPRISE_FACTORY_ADDR: &str = "enterprise_factory_addr";
+pub const ENTERPRISE_GOVERNANCE_ADDR: &str = "enterprise_governance_addr";
+pub const FUNDS_DISTRIBUTOR_ADDR: &str = "funds_distributor_addr";
+
+pub const ENTERPRISE_GOVERNANCE_CODE_ID: u64 = 301;
+pub const FUNDS_DISTRIBUTOR_CODE_ID: u64 = 302;
+
 pub const CW20_ADDR: &str = "cw20_addr";
 pub const NFT_ADDR: &str = "cw721_addr";
+
+pub const DAO_ADDR: &str = "dao_contract_address";
 
 pub const PROPOSAL_TITLE: &str = "Proposal title";
 pub const PROPOSAL_DESCRIPTION: &str = "Description";
@@ -36,6 +50,7 @@ pub const PROPOSAL_DESCRIPTION: &str = "Description";
 pub fn stub_dao_metadata() -> DaoMetadata {
     DaoMetadata {
         name: "Stub DAO".to_string(),
+        description: None,
         logo: Logo::None,
         socials: DaoSocialData {
             github_username: None,
@@ -50,9 +65,11 @@ pub fn stub_dao_gov_config() -> DaoGovConfig {
     DaoGovConfig {
         quorum: Decimal::from_ratio(1u8, 10u8),
         threshold: Decimal::from_ratio(3u8, 10u8),
+        veto_threshold: None,
         vote_duration: 1,
         unlocking_period: Duration::Height(100),
         minimum_deposit: None,
+        allow_early_proposal_execution: false,
     }
 }
 
@@ -112,25 +129,33 @@ pub fn stub_dao_membership_info(dao_type: DaoType, addr: &str) -> DaoMembershipI
 }
 
 pub fn instantiate_stub_dao(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     env: &Env,
     info: &MessageInfo,
     membership: DaoMembershipInfo,
     gov_config: Option<DaoGovConfig>,
+    dao_council: Option<DaoCouncilSpec>,
 ) -> DaoResult<Response> {
-    instantiate(
-        deps,
+    let response = instantiate(
+        deps.branch(),
         env.clone(),
         info.clone(),
         InstantiateMsg {
+            enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
+            funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
             dao_metadata: stub_dao_metadata(),
             dao_gov_config: gov_config.unwrap_or(stub_dao_gov_config()),
+            dao_council,
             dao_membership_info: membership,
-            enterprise_factory_contract: stub_enterprise_factory_contract(),
+            enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
             asset_whitelist: None,
             nft_whitelist: None,
         },
-    )
+    )?;
+
+    reply_default_instantiate_data(deps, env.clone())?;
+
+    Ok(response)
 }
 
 pub fn stake_tokens(
@@ -166,7 +191,8 @@ pub fn stake_nfts(
             deps.branch(),
             env.clone(),
             mock_info(nft_contract, &vec![]),
-            ReceiveNft(Cw721ReceiveMsg {
+            ReceiveNft(ReceiveNftMsg {
+                edition: None,
                 sender: user.to_string(),
                 token_id: token.into(),
                 msg: to_binary(&Cw20HookMsg::Stake {})?,
@@ -245,18 +271,56 @@ pub fn create_proposal(
     )
 }
 
+pub fn create_council_proposal(
+    deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    title: Option<&str>,
+    description: Option<&str>,
+    proposal_actions: Vec<ProposalAction>,
+) -> DaoResult<Response> {
+    execute(
+        deps,
+        env.clone(),
+        info.clone(),
+        CreateCouncilProposal(CreateProposalMsg {
+            title: title.unwrap_or(PROPOSAL_TITLE).to_string(),
+            description: description.map(|desc| desc.to_string()),
+            proposal_actions,
+        }),
+    )
+}
+
 pub fn vote_on_proposal(
     deps: DepsMut,
     env: &Env,
     voter: &str,
     proposal_id: ProposalId,
-    outcome: DefaultVoteOption,
+    outcome: VoteOutcome,
 ) -> DaoResult<Response> {
     execute(
         deps,
         env.clone(),
         mock_info(voter, &vec![]),
         CastVote(CastVoteMsg {
+            proposal_id,
+            outcome,
+        }),
+    )
+}
+
+pub fn vote_on_council_proposal(
+    deps: DepsMut,
+    env: &Env,
+    voter: &str,
+    proposal_id: ProposalId,
+    outcome: VoteOutcome,
+) -> DaoResult<Response> {
+    execute(
+        deps,
+        env.clone(),
+        mock_info(voter, &vec![]),
+        CastCouncilVote(CastVoteMsg {
             proposal_id,
             outcome,
         }),
@@ -338,7 +402,7 @@ pub fn assert_proposal_status(
 pub fn assert_proposal_result_amount(
     qctx: &QueryContext,
     proposal_id: ProposalId,
-    result: DefaultVoteOption,
+    result: VoteOutcome,
     amount: u128,
 ) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
@@ -350,4 +414,50 @@ pub fn assert_proposal_no_votes(qctx: &QueryContext, proposal_id: ProposalId) {
     let qctx = QueryContext::from(qctx.deps, qctx.env.clone());
     let proposal = query_proposal(qctx, ProposalParams { proposal_id }).unwrap();
     assert_eq!(proposal.results, BTreeMap::new());
+}
+
+pub fn reply_default_instantiate_data(deps: &mut DepsMut, env: Env) -> DaoResult<()> {
+    reply_with_instantiate_data(
+        deps.branch(),
+        env.clone(),
+        FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
+        FUNDS_DISTRIBUTOR_ADDR,
+    )?;
+    reply_with_instantiate_data(
+        deps.branch(),
+        env.clone(),
+        ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
+        ENTERPRISE_GOVERNANCE_ADDR,
+    )?;
+
+    Ok(())
+}
+
+pub fn reply_with_instantiate_data(
+    deps: DepsMut,
+    env: Env,
+    reply_id: u64,
+    addr: &str,
+) -> DaoResult<()> {
+    reply(
+        deps,
+        env.clone(),
+        Reply {
+            id: reply_id,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: Some(instantiate_addr_reply_data(addr)),
+            }),
+        },
+    )?;
+
+    Ok(())
+}
+
+pub fn instantiate_addr_reply_data(addr: &str) -> Binary {
+    let mut binary: Vec<u8> = vec![10, addr.len() as u8];
+
+    addr.chars().for_each(|char| binary.push(char as u8));
+
+    binary.into()
 }

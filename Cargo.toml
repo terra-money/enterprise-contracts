@@ -1,13 +1,13 @@
 [workspace]
 members = [
-    "contracts/enterprise*",
-    "packages/enterprise-*",
+    "contracts/*",
+    "packages/*",
 ]
 exclude = [
 ]
 
 [profile.dev]
-overflow-checks = true
+overflow-checks = false
 
 [profile.release]
 opt-level = 3
@@ -18,4 +18,4 @@ debug-assertions = false
 codegen-units = 1
 panic = 'abort'
 incremental = false
-overflow-checks = true
+overflow-checks = false

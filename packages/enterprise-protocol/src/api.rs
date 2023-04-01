@@ -1,9 +1,10 @@
+use common::nft::TokensResponse;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Decimal, StdError, StdResult, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::{Asset, AssetInfo};
 use cw_utils::{Duration, Expiration};
-use poll_engine::api::{DefaultVoteOption, Vote};
+use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -29,6 +30,7 @@ pub enum DaoType {
 #[cw_serde]
 pub struct DaoMetadata {
     pub name: String,
+    pub description: Option<String>,
     pub logo: Logo,
     pub socials: DaoSocialData,
 }
@@ -67,16 +69,48 @@ pub struct DaoGovConfig {
     /// required to determine the 'winning' option
     /// e.g. 51% threshold means that an option has to have at least 51% of the cast votes to win
     pub threshold: Decimal,
+    /// Portion of votes assigned to veto option from all the votes cast in the given proposal
+    /// required to veto the proposal.
+    /// If None, will default to the threshold set for all proposal options.
+    pub veto_threshold: Option<Decimal>,
     /// Duration of proposals before they end, expressed in seconds
     pub vote_duration: u64, // TODO: change from u64 to Duration
     /// Duration that has to pass for unstaked membership tokens to be claimable
     pub unlocking_period: Duration,
     /// Optional minimum amount of DAO's governance unit to be required to create a deposit.
     pub minimum_deposit: Option<Uint128>,
+    /// If set to true, this will allow DAOs to execute proposals that have reached quorum and
+    /// threshold, even before their voting period ends.
+    pub allow_early_proposal_execution: bool,
 }
 
 #[cw_serde]
-#[allow(clippy::large_enum_variant)]
+pub struct DaoCouncilSpec {
+    /// Addresses of council members. Each member has equal voting power.
+    pub members: Vec<String>,
+    /// Portion of total available votes cast in a proposal to consider it valid
+    /// e.g. quorum of 30% means that 30% of all available votes have to be cast in the proposal,
+    /// otherwise it fails automatically when it expires
+    pub quorum: Decimal,
+    /// Portion of votes assigned to a single option from all the votes cast in the given proposal
+    /// required to determine the 'winning' option
+    /// e.g. 51% threshold means that an option has to have at least 51% of the cast votes to win
+    pub threshold: Decimal,
+    /// Proposal action types allowed in proposals that are voted on by the council.
+    /// Effectively defines what types of actions council can propose and vote on.
+    /// If None, will default to a predefined set of actions.
+    pub allowed_proposal_action_types: Option<Vec<ProposalActionType>>,
+}
+
+#[cw_serde]
+pub struct DaoCouncil {
+    pub members: Vec<Addr>,
+    pub allowed_proposal_action_types: Vec<ProposalActionType>,
+    pub quorum: Decimal,
+    pub threshold: Decimal,
+}
+
+#[cw_serde]
 pub enum DaoMembershipInfo {
     New(NewDaoMembershipMsg),
     Existing(ExistingDaoMembershipMsg),
@@ -90,7 +124,7 @@ pub struct NewDaoMembershipMsg {
 
 #[cw_serde]
 pub enum NewMembershipInfo {
-    NewToken(NewTokenMembershipInfo),
+    NewToken(Box<NewTokenMembershipInfo>),
     NewNft(NewNftMembershipInfo),
     NewMultisig(NewMultisigMembershipInfo),
 }
@@ -107,6 +141,8 @@ pub struct NewTokenMembershipInfo {
     pub token_symbol: String,
     pub token_decimals: u8,
     pub initial_token_balances: Vec<Cw20Coin>,
+    /// Optional amount of tokens to be minted to the DAO's address
+    pub initial_dao_balance: Option<Uint128>,
     pub token_mint: Option<MinterResponse>,
     pub token_marketing: Option<TokenMarketingInfo>,
 }
@@ -154,21 +190,40 @@ pub struct ProposalDeposit {
     pub amount: Uint128,
 }
 
+// TODO: try to find a (Rust) language construct allowing us to merge this with ProposalAction
+#[cw_serde]
+#[derive(Display)]
+pub enum ProposalActionType {
+    UpdateMetadata,
+    UpdateGovConfig,
+    UpdateCouncil,
+    UpdateAssetWhitelist,
+    UpdateNftWhitelist,
+    RequestFundingFromDao,
+    UpgradeDao,
+    ExecuteMsgs,
+    ModifyMultisigMembership,
+    DistributeFunds,
+}
+
 #[cw_serde]
 pub enum ProposalAction {
     UpdateMetadata(UpdateMetadataMsg),
     UpdateGovConfig(UpdateGovConfigMsg),
+    UpdateCouncil(UpdateCouncilMsg),
     UpdateAssetWhitelist(UpdateAssetWhitelistMsg),
     UpdateNftWhitelist(UpdateNftWhitelistMsg),
     RequestFundingFromDao(RequestFundingFromDaoMsg),
     UpgradeDao(UpgradeDaoMsg),
     ExecuteMsgs(ExecuteMsgsMsg),
     ModifyMultisigMembership(ModifyMultisigMembershipMsg),
+    DistributeFunds(DistributeFundsMsg),
 }
 
 #[cw_serde]
 pub struct UpdateMetadataMsg {
     pub name: ModifyValue<String>,
+    pub description: ModifyValue<Option<String>>,
     pub logo: ModifyValue<Logo>,
     pub github_username: ModifyValue<Option<String>>,
     pub discord_username: ModifyValue<Option<String>>,
@@ -180,9 +235,16 @@ pub struct UpdateMetadataMsg {
 pub struct UpdateGovConfigMsg {
     pub quorum: ModifyValue<Decimal>,
     pub threshold: ModifyValue<Decimal>,
+    pub veto_threshold: ModifyValue<Option<Decimal>>,
     pub voting_duration: ModifyValue<Uint64>,
     pub unlocking_period: ModifyValue<Duration>,
     pub minimum_deposit: ModifyValue<Option<Uint128>>,
+    pub allow_early_proposal_execution: ModifyValue<bool>,
+}
+
+#[cw_serde]
+pub struct UpdateCouncilMsg {
+    pub dao_council: Option<DaoCouncilSpec>,
 }
 
 #[cw_serde]
@@ -215,6 +277,7 @@ pub struct UpgradeDaoMsg {
 
 #[cw_serde]
 pub struct ExecuteMsgsMsg {
+    pub action_type: String,
     pub msgs: Vec<String>,
 }
 
@@ -227,9 +290,14 @@ pub struct ModifyMultisigMembershipMsg {
 }
 
 #[cw_serde]
+pub struct DistributeFundsMsg {
+    pub funds: Vec<Asset>,
+}
+
+#[cw_serde]
 pub struct CastVoteMsg {
     pub proposal_id: ProposalId,
-    pub outcome: DefaultVoteOption,
+    pub outcome: VoteOutcome,
 }
 
 #[cw_serde]
@@ -251,6 +319,14 @@ pub struct UnstakeCw20Msg {
 #[cw_serde]
 pub struct UnstakeCw721Msg {
     pub tokens: Vec<NftTokenId>,
+}
+
+#[cw_serde]
+pub struct ReceiveNftMsg {
+    pub edition: Option<Uint64>,
+    pub sender: String,
+    pub token_id: String,
+    pub msg: Binary,
 }
 
 #[cw_serde]
@@ -302,9 +378,11 @@ pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
     pub gov_config: DaoGovConfig,
+    pub dao_council: Option<DaoCouncil>,
     pub dao_type: DaoType,
     pub dao_membership_contract: Addr,
     pub enterprise_factory_contract: Addr,
+    pub funds_distributor_contract: Addr,
     pub dao_code_version: Uint64,
 }
 
@@ -327,6 +405,8 @@ pub struct MemberInfoResponse {
 #[cw_serde]
 pub struct ProposalResponse {
     pub proposal: Proposal,
+
+    pub proposal_status: ProposalStatus,
 
     #[schemars(with = "Vec<(u8, Uint128)>")]
     #[serde_as(as = "Vec<(_, _)>")]
@@ -426,8 +506,16 @@ pub struct ProposalVotersParams {
     pub proposal_id: ProposalId,
 }
 
+#[derive(Display)]
+#[cw_serde]
+pub enum ProposalType {
+    General,
+    Council,
+}
+
 #[cw_serde]
 pub struct Proposal {
+    pub proposal_type: ProposalType,
     pub id: ProposalId,
     // TODO: would be good to have this, but cw3 doesn't return it, maybe include as Option?
     // pub proposer: Addr,
@@ -499,4 +587,26 @@ pub struct NftTreasuryResponse {
 pub struct NftCollection {
     pub nft_address: Addr,
     pub token_ids: Vec<NftTokenId>,
+}
+
+/// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually
+/// implement it correctly (they return 'ids' instead of 'tokens').
+#[cw_serde]
+pub struct TalisFriendlyTokensResponse {
+    pub tokens: Option<Vec<String>>,
+    pub ids: Option<Vec<String>>,
+}
+
+impl TalisFriendlyTokensResponse {
+    pub fn to_tokens_response(self) -> StdResult<TokensResponse> {
+        match self.tokens {
+            None => match self.ids {
+                None => Err(StdError::generic_err(
+                    "Invalid CW721 TokensResponse, neither 'tokens' nor 'ids' field found",
+                )),
+                Some(ids) => Ok(TokensResponse { tokens: ids }),
+            },
+            Some(tokens) => Ok(TokensResponse { tokens }),
+        }
+    }
 }
