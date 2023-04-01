@@ -1,6 +1,6 @@
 use crate::api::{
-    ClaimRewardsMsg, UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg, UserRewardsParams,
-    UserRewardsResponse, UserWeight,
+    ClaimRewardsMsg, MinimumEligibleWeightResponse, UpdateMinimumEligibleWeightMsg,
+    UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse, UserWeight,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -33,6 +33,8 @@ pub enum Cw20HookMsg {
 pub enum QueryMsg {
     #[returns(UserRewardsResponse)]
     UserRewards(UserRewardsParams),
+    #[returns(MinimumEligibleWeightResponse)]
+    MinimumEligibleWeight {},
 }
 
 #[cw_serde]

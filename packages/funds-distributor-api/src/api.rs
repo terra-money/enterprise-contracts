@@ -10,7 +10,7 @@ pub struct UpdateUserWeightsMsg {
 #[cw_serde]
 pub struct UpdateMinimumEligibleWeightMsg {
     /// New minimum weight that the user must have to be eligible for rewards distributions
-    pub minimum_eligible_weight: Option<Uint128>,
+    pub minimum_eligible_weight: Uint128,
 }
 
 #[cw_serde]
@@ -41,6 +41,11 @@ pub struct UserRewardsParams {
 pub struct UserRewardsResponse {
     pub native_rewards: Vec<NativeReward>,
     pub cw20_rewards: Vec<Cw20Reward>,
+}
+
+#[cw_serde]
+pub struct MinimumEligibleWeightResponse {
+    pub minimum_eligible_weight: Uint128,
 }
 
 #[cw_serde]

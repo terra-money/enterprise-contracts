@@ -1,9 +1,9 @@
 use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
-use common::cw::Context;
+use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, Order, Response, StdResult, Uint128};
 use cw_storage_plus::Item;
-use funds_distributor_api::api::UpdateMinimumEligibleWeightMsg;
+use funds_distributor_api::api::{MinimumEligibleWeightResponse, UpdateMinimumEligibleWeightMsg};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
 use itertools::Itertools;
@@ -23,7 +23,7 @@ pub fn execute_update_minimum_eligible_weight(
     }
 
     let old_minimum_weight = MINIMUM_ELIGIBLE_WEIGHT.load(ctx.deps.storage)?;
-    let new_minimum_weight = msg.minimum_eligible_weight.unwrap_or_default();
+    let new_minimum_weight = msg.minimum_eligible_weight;
 
     update_minimum_eligible_weight(ctx, old_minimum_weight, new_minimum_weight)?;
 
@@ -102,4 +102,14 @@ pub fn update_minimum_eligible_weight(
     TOTAL_WEIGHT.save(ctx.deps.storage, &total_weight)?;
 
     Ok(())
+}
+
+pub fn query_minimum_eligible_weight(
+    qctx: QueryContext,
+) -> DistributorResult<MinimumEligibleWeightResponse> {
+    let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(qctx.deps.storage)?;
+
+    Ok(MinimumEligibleWeightResponse {
+        minimum_eligible_weight,
+    })
 }

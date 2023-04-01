@@ -1,6 +1,8 @@
 use crate::claim::claim_rewards;
 use crate::distributing::{distribute_cw20, distribute_native};
-use crate::eligibility::{execute_update_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT};
+use crate::eligibility::{
+    execute_update_minimum_eligible_weight, query_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT,
+};
 use crate::rewards::query_user_rewards;
 use crate::state::ENTERPRISE_CONTRACT;
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -79,6 +81,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
 
     let response = match msg {
         QueryMsg::UserRewards(params) => to_binary(&query_user_rewards(qctx, params)?)?,
+        QueryMsg::MinimumEligibleWeight {} => to_binary(&query_minimum_eligible_weight(qctx)?)?,
     };
     Ok(response)
 }
