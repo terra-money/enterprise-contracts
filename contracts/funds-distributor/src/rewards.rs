@@ -3,11 +3,12 @@ use crate::native_distributions::NATIVE_DISTRIBUTIONS;
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
 use crate::user_weights::USER_WEIGHTS;
 use common::cw::QueryContext;
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128};
 use funds_distributor_api::api::{
     Cw20Reward, NativeReward, UserRewardsParams, UserRewardsResponse,
 };
 use funds_distributor_api::error::DistributorResult;
+use std::collections::HashSet;
 use std::ops::{Add, Mul, Sub};
 
 /// Calculates user's currently available rewards for an asset, given its current global index
@@ -45,7 +46,9 @@ pub fn query_user_rewards(
 
     let mut native_rewards: Vec<NativeReward> = vec![];
 
-    for denom in params.native_denoms {
+    let denoms = dedup_native_denoms(params.native_denoms);
+
+    for denom in denoms {
         let global_index = NATIVE_GLOBAL_INDICES
             .may_load(qctx.deps.storage, denom.clone())?
             .unwrap_or_default();
@@ -63,9 +66,9 @@ pub fn query_user_rewards(
 
     let mut cw20_rewards: Vec<Cw20Reward> = vec![];
 
-    for asset in params.cw20_assets {
-        let asset = qctx.deps.api.addr_validate(&asset)?;
+    let cw20_assets = dedup_cw20_assets(&qctx.deps, params.cw20_assets)?;
 
+    for asset in cw20_assets {
         let global_index = CW20_GLOBAL_INDICES
             .may_load(qctx.deps.storage, asset.clone())?
             .unwrap_or_default();
@@ -85,4 +88,38 @@ pub fn query_user_rewards(
         native_rewards,
         cw20_rewards,
     })
+}
+
+/// Takes a vector of native denoms and returns a vector with all duplicates removed.
+fn dedup_native_denoms(assets: Vec<String>) -> Vec<String> {
+    let mut asset_set: HashSet<String> = HashSet::new();
+
+    let mut deduped_assets: Vec<String> = vec![];
+
+    for asset in assets {
+        if !asset_set.contains(&asset) {
+            asset_set.insert(asset.clone());
+            deduped_assets.push(asset);
+        }
+    }
+
+    deduped_assets
+}
+
+/// Takes a vector of CW20 asset addresses and returns a vector with all duplicates removed.
+fn dedup_cw20_assets(deps: &Deps, assets: Vec<String>) -> StdResult<Vec<Addr>> {
+    let mut asset_set: HashSet<Addr> = HashSet::new();
+
+    let mut deduped_assets: Vec<Addr> = vec![];
+
+    for asset in assets {
+        let asset = deps.api.addr_validate(&asset)?;
+
+        if !asset_set.contains(&asset) {
+            asset_set.insert(asset.clone());
+            deduped_assets.push(asset);
+        }
+    }
+
+    Ok(deduped_assets)
 }
