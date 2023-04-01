@@ -57,8 +57,8 @@ use enterprise_protocol::api::{
     ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
     ReleaseAt, RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
     TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake,
-    UserStakeParams, UserStakeResponse,
+    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
+    UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
@@ -69,7 +69,9 @@ use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use funds_distributor_api::api::{UpdateUserWeightsMsg, UserWeight};
+use funds_distributor_api::api::{
+    UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg, UserWeight,
+};
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
 use itertools::Itertools;
@@ -94,8 +96,8 @@ use NewMembershipInfo::{NewMultisig, NewNft, NewToken};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
 use ProposalAction::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
-    UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata, UpdateNftWhitelist,
-    UpgradeDao,
+    UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
+    UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 
 // version info for migration info
@@ -630,6 +632,7 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         ExecuteMsgs(_) => ProposalActionType::ExecuteMsgs,
         ModifyMultisigMembership(_) => ProposalActionType::ModifyMultisigMembership,
         DistributeFunds(_) => ProposalActionType::DistributeFunds,
+        UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
     }
 }
 
@@ -971,6 +974,7 @@ fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoRe
                 modify_multisig_membership(ctx.deps.branch(), ctx.env.clone(), msg)?
             }
             DistributeFunds(msg) => distribute_funds(ctx, msg)?,
+            UpdateMinimumWeightForRewards(msg) => update_minimum_weight_for_rewards(ctx, msg)?,
         };
         submsgs.append(&mut actions)
     }
@@ -1186,6 +1190,25 @@ fn distribute_funds(ctx: &mut Context, msg: DistributeFundsMsg) -> DaoResult<Vec
     )?));
 
     Ok(submsgs)
+}
+
+fn update_minimum_weight_for_rewards(
+    ctx: &mut Context,
+    msg: UpdateMinimumWeightForRewardsMsg,
+) -> DaoResult<Vec<SubMsg>> {
+    let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
+
+    let submsg = SubMsg::new(wasm_execute(
+        funds_distributor.to_string(),
+        &funds_distributor_api::msg::ExecuteMsg::UpdateMinimumEligibleWeight(
+            UpdateMinimumEligibleWeightMsg {
+                minimum_eligible_weight: msg.minimum_weight_for_rewards,
+            },
+        ),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
 }
 
 pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Response> {

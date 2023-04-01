@@ -29,7 +29,8 @@ use DaoError::{
     InvalidExistingTokenContract, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
 };
 use ProposalAction::{
-    RequestFundingFromDao, UpdateAssetWhitelist, UpdateMetadata, UpdateNftWhitelist,
+    RequestFundingFromDao, UpdateAssetWhitelist, UpdateMetadata, UpdateMinimumWeightForRewards,
+    UpdateNftWhitelist,
 };
 
 pub fn validate_dao_gov_config(dao_type: &DaoType, dao_gov_config: &DaoGovConfig) -> DaoResult<()> {
@@ -163,7 +164,7 @@ pub fn validate_proposal_actions(
 
                 validate_dao_gov_config(&dao_type, &updated_gov_config)?;
             }
-            UpdateMetadata(_) | RequestFundingFromDao(_) => {
+            UpdateMetadata(_) | RequestFundingFromDao(_) | UpdateMinimumWeightForRewards(_) => {
                 // no-op
             }
         }
@@ -484,7 +485,8 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::RequestFundingFromDao
                     | ProposalActionType::ExecuteMsgs
                     | ProposalActionType::ModifyMultisigMembership
-                    | ProposalActionType::DistributeFunds => {
+                    | ProposalActionType::DistributeFunds
+                    | ProposalActionType::UpdateMinimumWeightForRewards => {
                         return Err(UnsupportedCouncilProposalAction {
                             action: action_type,
                         });

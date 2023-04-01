@@ -204,6 +204,7 @@ pub enum ProposalActionType {
     ExecuteMsgs,
     ModifyMultisigMembership,
     DistributeFunds,
+    UpdateMinimumWeightForRewards,
 }
 
 #[cw_serde]
@@ -218,6 +219,7 @@ pub enum ProposalAction {
     ExecuteMsgs(ExecuteMsgsMsg),
     ModifyMultisigMembership(ModifyMultisigMembershipMsg),
     DistributeFunds(DistributeFundsMsg),
+    UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
 }
 
 #[cw_serde]
@@ -292,6 +294,11 @@ pub struct ModifyMultisigMembershipMsg {
 #[cw_serde]
 pub struct DistributeFundsMsg {
     pub funds: Vec<Asset>,
+}
+
+#[cw_serde]
+pub struct UpdateMinimumWeightForRewardsMsg {
+    pub minimum_weight_for_rewards: Uint128,
 }
 
 #[cw_serde]
