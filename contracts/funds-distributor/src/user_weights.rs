@@ -12,7 +12,7 @@ use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use DistributorError::DuplicateInitialWeight;
 
-const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
+pub const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
 
 // TODO: explain why we need this and how it differs from USER_WEIGHTS
 // TODO: initialize for all users present in USER_WEIGHTS in the migration script

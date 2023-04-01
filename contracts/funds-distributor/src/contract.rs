@@ -1,6 +1,6 @@
 use crate::claim::claim_rewards;
 use crate::distributing::{distribute_cw20, distribute_native};
-use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
+use crate::eligibility::{execute_update_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT};
 use crate::rewards::query_user_rewards;
 use crate::state::ENTERPRISE_CONTRACT;
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -50,6 +50,9 @@ pub fn execute(
     let ctx = &mut Context { deps, env, info };
     match msg {
         ExecuteMsg::UpdateUserWeights(msg) => update_user_weights(ctx, msg),
+        ExecuteMsg::UpdateMinimumEligibleWeight(msg) => {
+            execute_update_minimum_eligible_weight(ctx, msg)
+        }
         ExecuteMsg::DistributeNative {} => distribute_native(ctx),
         ExecuteMsg::ClaimRewards(msg) => claim_rewards(ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),

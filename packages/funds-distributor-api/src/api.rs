@@ -8,6 +8,12 @@ pub struct UpdateUserWeightsMsg {
 }
 
 #[cw_serde]
+pub struct UpdateMinimumEligibleWeightMsg {
+    /// New minimum weight that the user must have to be eligible for rewards distributions
+    pub minimum_eligible_weight: Option<Uint128>,
+}
+
+#[cw_serde]
 pub struct UserWeight {
     pub user: String,
     pub weight: Uint128,
