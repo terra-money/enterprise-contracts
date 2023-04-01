@@ -9,7 +9,7 @@ use crate::api::{
     UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 
@@ -28,6 +28,10 @@ pub struct InstantiateMsg {
     pub asset_whitelist: Option<Vec<AssetInfo>>,
     /// NFTs (CW721) that are allowed to show in DAO's treasury
     pub nft_whitelist: Option<Vec<Addr>>,
+    /// Minimum weight that a user should have in order to qualify for rewards.
+    /// E.g. a value of 3 here means that a user in token or NFT DAO needs at least 3 staked
+    /// DAO assets, or a weight of 3 in multisig DAO, to be eligible for rewards.
+    pub minimum_weight_for_rewards: Option<Uint128>,
 }
 
 #[cw_serde]

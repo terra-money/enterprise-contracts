@@ -176,12 +176,18 @@ pub fn instantiate(
     let ctx = Context { deps, env, info };
 
     let mut submessages = match msg.dao_membership_info {
-        New(membership) => {
-            instantiate_new_membership_dao(ctx, membership, msg.funds_distributor_code_id)?
-        }
-        Existing(membership) => {
-            instantiate_existing_membership_dao(ctx, membership, msg.funds_distributor_code_id)?
-        }
+        New(membership) => instantiate_new_membership_dao(
+            ctx,
+            membership,
+            msg.funds_distributor_code_id,
+            msg.minimum_weight_for_rewards,
+        )?,
+        Existing(membership) => instantiate_existing_membership_dao(
+            ctx,
+            membership,
+            msg.funds_distributor_code_id,
+            msg.minimum_weight_for_rewards,
+        )?,
     };
 
     submessages.push(instantiate_governance_contract_submsg);
@@ -194,6 +200,7 @@ pub fn instantiate(
 fn instantiate_funds_distributor_submsg(
     ctx: &Context,
     funds_distributor_code_id: u64,
+    minimum_weight_for_rewards: Option<Uint128>,
     initial_weights: Vec<UserWeight>,
 ) -> DaoResult<SubMsg> {
     let instantiate_funds_distributor_contract_submsg = SubMsg::reply_on_success(
@@ -203,6 +210,7 @@ fn instantiate_funds_distributor_submsg(
             msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
                 enterprise_contract: ctx.env.contract.address.to_string(),
                 initial_weights,
+                minimum_eligible_weight: minimum_weight_for_rewards,
             })?,
             funds: vec![],
             label: "Funds distributor contract".to_string(),
@@ -228,6 +236,7 @@ fn instantiate_new_membership_dao(
     ctx: Context,
     membership: NewDaoMembershipMsg,
     funds_distributor_code_id: u64,
+    minimum_weight_for_rewards: Option<Uint128>,
 ) -> DaoResult<Vec<SubMsg>> {
     match membership.membership_info {
         NewToken(info) => instantiate_new_token_dao(
@@ -235,14 +244,21 @@ fn instantiate_new_membership_dao(
             *info,
             membership.membership_contract_code_id,
             funds_distributor_code_id,
+            minimum_weight_for_rewards,
         ),
         NewNft(info) => instantiate_new_nft_dao(
             ctx,
             info,
             membership.membership_contract_code_id,
             funds_distributor_code_id,
+            minimum_weight_for_rewards,
         ),
-        NewMultisig(info) => instantiate_new_multisig_dao(ctx, info, funds_distributor_code_id),
+        NewMultisig(info) => instantiate_new_multisig_dao(
+            ctx,
+            info,
+            funds_distributor_code_id,
+            minimum_weight_for_rewards,
+        ),
     }
 }
 
@@ -251,6 +267,7 @@ fn instantiate_new_token_dao(
     info: NewTokenMembershipInfo,
     cw20_code_id: u64,
     funds_distributor_code_id: u64,
+    minimum_weight_for_rewards: Option<Uint128>,
 ) -> DaoResult<Vec<SubMsg>> {
     if let Some(initial_dao_balance) = info.initial_dao_balance {
         if initial_dao_balance == Uint128::zero() {
@@ -308,7 +325,12 @@ fn instantiate_new_token_dao(
 
     Ok(vec![
         instantiate_dao_token_submsg,
-        instantiate_funds_distributor_submsg(&ctx, funds_distributor_code_id, vec![])?,
+        instantiate_funds_distributor_submsg(
+            &ctx,
+            funds_distributor_code_id,
+            minimum_weight_for_rewards,
+            vec![],
+        )?,
     ])
 }
 
@@ -316,6 +338,7 @@ fn instantiate_new_multisig_dao(
     ctx: Context,
     info: NewMultisigMembershipInfo,
     funds_distributor_code_id: u64,
+    minimum_weight_for_rewards: Option<Uint128>,
 ) -> DaoResult<Vec<SubMsg>> {
     DAO_TYPE.save(ctx.deps.storage, &Multisig)?;
 
@@ -351,6 +374,7 @@ fn instantiate_new_multisig_dao(
     Ok(vec![instantiate_funds_distributor_submsg(
         &ctx,
         funds_distributor_code_id,
+        minimum_weight_for_rewards,
         initial_weights,
     )?])
 }
@@ -360,6 +384,7 @@ fn instantiate_new_nft_dao(
     info: NewNftMembershipInfo,
     cw721_code_id: u64,
     funds_distributor_code_id: u64,
+    minimum_weight_for_rewards: Option<Uint128>,
 ) -> DaoResult<Vec<SubMsg>> {
     DAO_TYPE.save(ctx.deps.storage, &Nft)?;
 
@@ -383,7 +408,12 @@ fn instantiate_new_nft_dao(
     );
     Ok(vec![
         submsg,
-        instantiate_funds_distributor_submsg(&ctx, funds_distributor_code_id, vec![])?,
+        instantiate_funds_distributor_submsg(
+            &ctx,
+            funds_distributor_code_id,
+            minimum_weight_for_rewards,
+            vec![],
+        )?,
     ])
 }
 
@@ -391,6 +421,7 @@ fn instantiate_existing_membership_dao(
     ctx: Context,
     membership: ExistingDaoMembershipMsg,
     funds_distributor_code_id: u64,
+    minimum_weight_for_rewards: Option<Uint128>,
 ) -> DaoResult<Vec<SubMsg>> {
     let membership_addr = ctx
         .deps
@@ -454,6 +485,7 @@ fn instantiate_existing_membership_dao(
     Ok(vec![instantiate_funds_distributor_submsg(
         &ctx,
         funds_distributor_code_id,
+        minimum_weight_for_rewards,
         initial_weights,
     )?])
 }

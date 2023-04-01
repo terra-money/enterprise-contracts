@@ -169,6 +169,7 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
             enterprise_factory_contract,
             asset_whitelist: Some(vec![token1.clone(), token2.clone()]),
             nft_whitelist: Some(vec![nft1.clone(), nft2.clone()]),
+            minimum_weight_for_rewards: None,
         },
     )?;
 

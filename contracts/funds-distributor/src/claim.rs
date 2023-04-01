@@ -2,7 +2,7 @@ use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::calculate_user_reward;
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
-use crate::user_weights::USER_WEIGHTS;
+use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
 use common::cw::Context;
 use cosmwasm_std::{Response, SubMsg, Uint128};
 use cw_asset::Asset;
@@ -17,7 +17,7 @@ use funds_distributor_api::error::DistributorResult;
 pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResult<Response> {
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
-    let user_weight = USER_WEIGHTS
+    let user_weight = EFFECTIVE_USER_WEIGHTS
         .may_load(ctx.deps.storage, user.clone())?
         .unwrap_or_default();
 

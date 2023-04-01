@@ -4,6 +4,7 @@ mod claim;
 pub mod contract;
 mod cw20_distributions;
 mod distributing;
+mod eligibility;
 mod native_distributions;
 mod rewards;
 mod state;

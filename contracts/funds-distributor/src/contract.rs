@@ -1,5 +1,6 @@
 use crate::claim::claim_rewards;
 use crate::distributing::{distribute_cw20, distribute_native};
+use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::rewards::query_user_rewards;
 use crate::state::ENTERPRISE_CONTRACT;
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -29,9 +30,12 @@ pub fn instantiate(
     let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
+    let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
+    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
+
     let mut ctx = Context { deps, env, info };
 
-    save_initial_weights(&mut ctx, msg.initial_weights)?;
+    save_initial_weights(&mut ctx, msg.initial_weights, minimum_eligible_weight)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }

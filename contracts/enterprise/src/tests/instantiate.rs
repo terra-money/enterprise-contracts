@@ -114,6 +114,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
             enterprise_factory_contract: "enterprise_factory_addr".to_string(),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: None,
         },
     )?;
     reply_default_instantiate_data(&mut deps.as_mut(), env.clone())?;
@@ -225,6 +226,7 @@ fn instantiate_existing_token_membership_with_not_valid_cw20_contract_fails() ->
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -323,6 +325,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: Some(Uint128::from(4u8)),
         },
     )?;
 
@@ -362,7 +365,7 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
+            instantiate_funds_distributor_contract_submsg(DAO_ADDR, Some(4u8))?,
             instantiate_governance_contract_submsg(DAO_ADDR)?,
         ]
     );
@@ -425,6 +428,7 @@ fn instantiate_new_token_membership_with_zero_initial_balance_fails() -> DaoResu
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -476,6 +480,7 @@ fn instantiate_new_token_membership_with_zero_initial_dao_balance_fails() -> Dao
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -535,7 +540,7 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
+            instantiate_stub_funds_distributor_contract_submsg(DAO_ADDR)?,
             instantiate_governance_contract_submsg(DAO_ADDR)?,
         ]
     );
@@ -578,6 +583,7 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: Some(Uint128::from(3u8)),
         },
     )?;
 
@@ -597,7 +603,7 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
                 )?,
                 DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             ),
-            instantiate_funds_distributor_contract_submsg(DAO_ADDR)?,
+            instantiate_funds_distributor_contract_submsg(DAO_ADDR, Some(3u8))?,
             instantiate_governance_contract_submsg(DAO_ADDR)?,
         ]
     );
@@ -658,6 +664,7 @@ fn instantiate_new_multisig_membership_stores_members_properly() -> DaoResult<()
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: None,
         },
     )?;
 
@@ -782,6 +789,7 @@ fn instantiate_dao_with_zero_voting_duration_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -820,6 +828,7 @@ fn instantiate_dao_with_shorter_unstaking_than_voting_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -853,6 +862,7 @@ fn instantiate_nft_dao_with_minimum_deposit_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -886,6 +896,7 @@ fn instantiate_multisig_dao_with_minimum_deposit_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -927,6 +938,7 @@ fn instantiate_dao_with_quorum_over_one_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -973,6 +985,7 @@ fn instantiate_dao_with_quorum_of_zero_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -1019,6 +1032,7 @@ fn instantiate_dao_with_threshold_over_one_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -1065,6 +1079,7 @@ fn instantiate_dao_with_threshold_of_zero_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -1111,6 +1126,7 @@ fn instantiate_dao_with_veto_threshold_over_one_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -1157,6 +1173,7 @@ fn instantiate_dao_with_veto_threshold_of_zero_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     );
 
@@ -1185,7 +1202,14 @@ fn instantiate_governance_contract_submsg(dao_address: &str) -> StdResult<SubMsg
     ))
 }
 
-fn instantiate_funds_distributor_contract_submsg(dao_address: &str) -> StdResult<SubMsg> {
+fn instantiate_stub_funds_distributor_contract_submsg(dao_address: &str) -> StdResult<SubMsg> {
+    instantiate_funds_distributor_contract_submsg(dao_address, None)
+}
+
+fn instantiate_funds_distributor_contract_submsg(
+    dao_address: &str,
+    minimum_weight_for_rewards: Option<u8>,
+) -> StdResult<SubMsg> {
     Ok(SubMsg::reply_on_success(
         CosmosMsg::Wasm(WasmMsg::Instantiate {
             admin: Some(dao_address.to_string()),
@@ -1193,6 +1217,8 @@ fn instantiate_funds_distributor_contract_submsg(dao_address: &str) -> StdResult
             msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
                 enterprise_contract: dao_address.to_string(),
                 initial_weights: vec![],
+                minimum_eligible_weight: minimum_weight_for_rewards
+                    .map(|weight| Uint128::from(weight)),
             })?,
             funds: vec![],
             label: "Funds distributor contract".to_string(),

@@ -1,7 +1,7 @@
 use crate::cw20_distributions::CW20_DISTRIBUTIONS;
 use crate::native_distributions::NATIVE_DISTRIBUTIONS;
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
-use crate::user_weights::USER_WEIGHTS;
+use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
 use common::cw::QueryContext;
 use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128};
 use funds_distributor_api::api::{
@@ -40,7 +40,7 @@ pub fn query_user_rewards(
 ) -> DistributorResult<UserRewardsResponse> {
     let user = qctx.deps.api.addr_validate(&params.user)?;
 
-    let user_weight = USER_WEIGHTS
+    let user_weight = EFFECTIVE_USER_WEIGHTS
         .may_load(qctx.deps.storage, user.clone())?
         .unwrap_or_default();
 

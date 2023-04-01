@@ -150,6 +150,7 @@ pub fn instantiate_stub_dao(
             enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     )?;
 

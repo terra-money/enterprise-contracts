@@ -96,6 +96,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         enterprise_factory_contract: env.contract.address.to_string(),
         asset_whitelist: msg.asset_whitelist,
         nft_whitelist: msg.nft_whitelist,
+        minimum_weight_for_rewards: msg.minimum_weight_for_rewards,
     };
     let create_dao_submsg = SubMsg::reply_on_success(
         WasmMsg::Instantiate {

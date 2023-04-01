@@ -609,6 +609,7 @@ fn create_proposal_with_invalid_upgrade_dao_version_fails() -> DaoResult<()> {
             enterprise_factory_contract: enterprise_factory_contract.to_string(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     )?;
 
