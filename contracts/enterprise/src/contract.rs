@@ -32,7 +32,7 @@ use cosmwasm_std::{
     BlockInfo, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, Storage, SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
 use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo, AssetInfoBase};
@@ -110,7 +110,7 @@ pub const FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const CREATE_POLL_REPLY_ID: u64 = 4;
 pub const END_POLL_REPLY_ID: u64 = 5;
 
-pub const CODE_VERSION: u8 = 2;
+pub const CODE_VERSION: u8 = 4;
 
 pub const DEFAULT_QUERY_LIMIT: u8 = 50;
 pub const MAX_QUERY_LIMIT: u8 = 100;
@@ -2335,9 +2335,27 @@ fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
+    let contract_version = get_contract_version(deps.storage)?;
+
+    let mut submsgs: Vec<SubMsg> = vec![];
+
+    if contract_version.version == "0.3.0" {
+        let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(deps.storage)?;
+
+        submsgs.push(SubMsg::new(WasmMsg::Migrate {
+            contract_addr: funds_distributor.to_string(),
+            new_code_id: msg.funds_distributor_code_id,
+            msg: to_binary(&funds_distributor_api::msg::MigrateMsg {
+                minimum_eligible_weight: msg.minimum_eligible_weight,
+            })?,
+        }));
+    }
+
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_submessages(submsgs))
 }

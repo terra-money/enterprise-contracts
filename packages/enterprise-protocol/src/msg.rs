@@ -59,7 +59,10 @@ pub enum Cw721HookMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub funds_distributor_code_id: u64,
+    pub minimum_eligible_weight: Option<Uint128>,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
