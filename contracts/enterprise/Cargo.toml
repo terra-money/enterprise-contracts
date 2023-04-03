@@ -47,7 +47,6 @@ enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 enterprise-governance-api = { path = "../../packages/enterprise-governance-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 poll-engine-api = { path = "../../packages/poll-engine-api" }
-itertools = "0.10"
 serde-json-wasm = "0.5.0"
 
 [dev-dependencies]

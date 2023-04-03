@@ -50,15 +50,16 @@ use enterprise_protocol::api::{
     ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
     MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, NftCollection, NftTreasuryResponse, NftUserStake,
-    NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
-    ProposalId, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
-    ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
-    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
-    ReleaseAt, RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
-    UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
+    NewNftMembershipInfo, NewTokenMembershipInfo, NftCollection, NftTokenId, NftTreasuryResponse,
+    NftUserStake, NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType,
+    ProposalDeposit, ProposalId, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt, RequestFundingFromDaoMsg,
+    TalisFriendlyTokensResponse, TokenUserStake, TotalStakedAmountResponse, UnstakeMsg,
+    UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg,
+    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake,
+    UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
@@ -74,7 +75,6 @@ use funds_distributor_api::api::{
 };
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
-use itertools::Itertools;
 use nft_staking::NFT_STAKES;
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, Poll, PollId, PollParams, PollRejectionReason,
@@ -1024,7 +1024,7 @@ fn execute_funding_from_dao(msg: RequestFundingFromDaoMsg) -> DaoResult<Vec<SubM
         .collect::<StdResult<Vec<CosmosMsg>>>()?
         .into_iter()
         .map(SubMsg::new)
-        .collect_vec();
+        .collect();
 
     Ok(submsgs)
 }
@@ -1061,7 +1061,7 @@ fn update_asset_whitelist(deps: DepsMut, msg: UpdateAssetWhitelistMsg) -> DaoRes
     asset_whitelist = asset_whitelist
         .into_iter()
         .filter(|asset| !msg.remove.contains(asset))
-        .collect_vec();
+        .collect();
 
     let normalized_asset_whitelist = normalize_asset_whitelist(deps.as_ref(), &asset_whitelist)?;
 
@@ -1485,7 +1485,7 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
                 Some(claim)
             }
         })
-        .collect_vec();
+        .collect();
 
     if releasable_claims.is_empty() {
         return Err(NothingToClaim);
@@ -1724,7 +1724,7 @@ pub fn query_nft_whitelist(qctx: QueryContext) -> DaoResult<NftWhitelistResponse
         .collect::<StdResult<Vec<(Addr, ())>>>()?
         .into_iter()
         .map(|(addr, _)| addr)
-        .collect_vec();
+        .collect();
 
     Ok(NftWhitelistResponse { nfts })
 }
@@ -2069,7 +2069,7 @@ pub fn query_list_multisig_members(
             address: addr.to_string(),
             weight,
         })
-        .collect_vec();
+        .collect();
 
     Ok(MultisigMembersResponse { members })
 }
@@ -2115,10 +2115,10 @@ fn get_user_staked_tokens(qctx: QueryContext, user: Addr) -> DaoResult<TokenUser
 }
 
 fn get_user_staked_nfts(qctx: QueryContext, user: Addr) -> DaoResult<NftUserStake> {
-    let staked_tokens = load_all_nft_stakes_for_user(qctx.deps.storage, user)?
+    let staked_tokens: Vec<NftTokenId> = load_all_nft_stakes_for_user(qctx.deps.storage, user)?
         .into_iter()
         .map(|stake| stake.token_id)
-        .collect_vec();
+        .collect();
     let amount = staked_tokens.len() as u128;
 
     Ok(NftUserStake {
@@ -2157,7 +2157,7 @@ pub fn query_releasable_claims(
         .claims
         .into_iter()
         .filter(|claim| is_releasable(claim, &block))
-        .collect_vec();
+        .collect();
 
     Ok(ClaimsResponse {
         claims: releasable_claims,
@@ -2242,16 +2242,12 @@ fn query_nft_treasury(qctx: QueryContext) -> DaoResult<NftTreasuryResponse> {
 
     let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
 
-    // if the DAO has an NFT membership, remove it from the whitelist, as it is handled separately
-    let nft_whitelist = nft_whitelist
-        .into_iter()
-        .filter(|nft| nft != &dao_membership_contract)
-        .collect_vec();
-
     let dao_address = qctx.env.contract.address.as_ref();
 
     let mut nfts = nft_whitelist
         .into_iter()
+        // if the DAO has an NFT membership, remove it from the whitelist, as it is handled separately
+        .filter(|nft| nft != &dao_membership_contract)
         .map(|nft| {
             get_all_owner_tokens(&qctx, nft.as_ref(), dao_address).map(|all_tokens| NftCollection {
                 nft_address: nft,
@@ -2270,7 +2266,7 @@ fn query_nft_treasury(qctx: QueryContext) -> DaoResult<NftTreasuryResponse> {
         let dao_owned_tokens = all_tokens
             .into_iter()
             .filter(|token| !NFT_STAKES().has(qctx.deps.storage, token.to_string()))
-            .collect_vec();
+            .collect();
 
         let dao_nft_collection = NftCollection {
             nft_address: dao_membership_contract,
