@@ -705,7 +705,7 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> DaoResult<Response>
                 .may_load(ctx.deps.storage, msg.proposal_id)?
                 .ok_or(NoSuchProposal)?;
 
-            if proposal_info.proposal_type != General {
+            if proposal_info.proposal_type != Council {
                 return Err(WrongProposalType);
             }
 
