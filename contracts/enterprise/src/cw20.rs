@@ -1,7 +1,7 @@
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::serde::{Deserialize, Serialize};
 use cw20::{Cw20Coin, Logo, MinterResponse};
 
-#[cw_serde]
+#[derive(Serialize, Deserialize)]
 pub struct Cw20InstantiateMsg {
     pub name: String,
     pub symbol: String,
@@ -11,7 +11,7 @@ pub struct Cw20InstantiateMsg {
     pub marketing: Option<InstantiateMarketingInfo>,
 }
 
-#[cw_serde]
+#[derive(Serialize, Deserialize)]
 pub struct InstantiateMarketingInfo {
     pub project: Option<String>,
     pub description: Option<String>,

@@ -1,6 +1,6 @@
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::serde::{Deserialize, Serialize};
 
-#[cw_serde]
+#[derive(Serialize, Deserialize)]
 pub enum Cw721QueryMsg {
     Tokens {
         owner: String,
@@ -9,7 +9,7 @@ pub enum Cw721QueryMsg {
     },
 }
 
-#[cw_serde]
+#[derive(Serialize, Deserialize)]
 pub struct Cw721InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,

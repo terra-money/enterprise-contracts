@@ -35,7 +35,8 @@ optimize = """docker run --rm -v "${process.cwd()}":/code \
 [dependencies]
 common = { path = "../../packages/common" }
 cosmwasm-std = "1"
-cosmwasm-schema = "1"
+cosmwasm-schema = "1.1.9"
+serde = { version = "1", default-features = false, features = ["derive"] }
 cw-asset = "2.2"
 cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
