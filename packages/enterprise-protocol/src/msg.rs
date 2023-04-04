@@ -2,11 +2,10 @@ use crate::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
     CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo,
     DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
-    UserStakeResponse,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalParams,
+    ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
+    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
@@ -97,6 +96,4 @@ pub enum QueryMsg {
     ReleasableClaims(ClaimsParams),
     #[returns(AssetTreasuryResponse)]
     Cw20Treasury {},
-    #[returns(NftTreasuryResponse)]
-    NftTreasury {},
 }

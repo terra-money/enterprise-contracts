@@ -4,9 +4,9 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use enterprise_protocol::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, ClaimsResponse, DaoInfoResponse,
-    MemberInfoResponse, MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse,
-    NftWhitelistResponse, ProposalResponse, ProposalStatusResponse, ProposalVotesResponse,
-    ProposalsResponse, TotalStakedAmountResponse, UserStakeResponse,
+    MemberInfoResponse, MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse,
+    ProposalResponse, ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse,
+    TotalStakedAmountResponse, UserStakeResponse,
 };
 use enterprise_protocol::msg::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
@@ -43,7 +43,6 @@ fn main() {
     export_schema(&schema_for!(TotalStakedAmountResponse), &out_dir);
     export_schema(&schema_for!(ClaimsResponse), &out_dir);
     export_schema(&schema_for!(AssetTreasuryResponse), &out_dir);
-    export_schema(&schema_for!(NftTreasuryResponse), &out_dir);
     export_schema(&schema_for!(MemberVoteResponse), &out_dir);
     export_schema(&schema_for!(ProposalVotesResponse), &out_dir);
 }

@@ -1,6 +1,6 @@
 use crate::cw20::{Cw20InstantiateMsg, InstantiateMarketingInfo};
 use crate::cw3::{Cw3ListVoters, Cw3VoterListResponse};
-use crate::cw721::{Cw721InstantiateMsg, Cw721QueryMsg};
+use crate::cw721::Cw721InstantiateMsg;
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -34,11 +34,10 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
-use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo, AssetInfoBase};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration, Expiration};
-use enterprise_factory_api::msg::QueryMsg::{GlobalAssetWhitelist, GlobalNftWhitelist};
+use enterprise_factory_api::msg::QueryMsg::GlobalAssetWhitelist;
 use enterprise_protocol::api::ClaimAsset::{Cw20, Cw721};
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
@@ -50,16 +49,15 @@ use enterprise_protocol::api::{
     ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
     MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, NftCollection, NftTokenId, NftTreasuryResponse,
-    NftUserStake, NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType,
-    ProposalDeposit, ProposalId, ProposalParams, ProposalResponse, ProposalStatus,
-    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt, RequestFundingFromDaoMsg,
-    TalisFriendlyTokensResponse, TokenUserStake, TotalStakedAmountResponse, UnstakeMsg,
-    UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg,
-    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake,
-    UserStakeParams, UserStakeResponse,
+    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse,
+    Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
+    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt,
+    RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
+    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
+    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
+    UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
@@ -1683,7 +1681,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::Claims(params) => to_binary(&query_claims(qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(qctx, params)?)?,
         QueryMsg::Cw20Treasury {} => to_binary(&query_cw20_treasury(qctx)?)?,
-        QueryMsg::NftTreasury {} => to_binary(&query_nft_treasury(qctx)?)?,
     };
     Ok(response)
 }
@@ -2222,105 +2219,6 @@ pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryRespons
         .collect::<StdResult<Vec<Asset>>>()?;
 
     Ok(AssetTreasuryResponse { assets })
-}
-
-fn query_nft_treasury(qctx: QueryContext) -> DaoResult<NftTreasuryResponse> {
-    let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
-    let global_nft_whitelist: NftWhitelistResponse = qctx
-        .deps
-        .querier
-        .query_wasm_smart(enterprise_factory, &GlobalNftWhitelist {})?;
-
-    let mut nft_whitelist = query_nft_whitelist(qctx.clone())?.nfts;
-
-    for nft in global_nft_whitelist.nfts {
-        // TODO: suboptimal, use maps or sth
-        if !nft_whitelist.contains(&nft) {
-            nft_whitelist.push(nft);
-        }
-    }
-
-    let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
-
-    let dao_address = qctx.env.contract.address.as_ref();
-
-    let mut nfts = nft_whitelist
-        .into_iter()
-        // if the DAO has an NFT membership, remove it from the whitelist, as it is handled separately
-        .filter(|nft| nft != &dao_membership_contract)
-        .map(|nft| {
-            get_all_owner_tokens(&qctx, nft.as_ref(), dao_address).map(|all_tokens| NftCollection {
-                nft_address: nft,
-                token_ids: all_tokens,
-            })
-        })
-        .collect::<DaoResult<Vec<NftCollection>>>()?;
-
-    // if DAO is of Nft type, add its own NFT to the NFT whitelist, if not already present
-    let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
-    if dao_type == Nft {
-        let all_tokens =
-            get_all_owner_tokens(&qctx, dao_membership_contract.as_str(), dao_address)?;
-
-        // filter out tokens staked by users
-        let dao_owned_tokens = all_tokens
-            .into_iter()
-            .filter(|token| !NFT_STAKES().has(qctx.deps.storage, token.to_string()))
-            .collect();
-
-        let dao_nft_collection = NftCollection {
-            nft_address: dao_membership_contract,
-            token_ids: dao_owned_tokens,
-        };
-
-        // add DAO NFTs to the front
-        nfts.insert(0, dao_nft_collection);
-    }
-
-    Ok(NftTreasuryResponse { nfts })
-}
-
-fn get_all_owner_tokens(
-    qctx: &QueryContext,
-    nft_addr: &str,
-    owner: &str,
-) -> DaoResult<Vec<String>> {
-    let mut tokens_response = get_owner_tokens(qctx, nft_addr, owner, None)?;
-
-    // TODO: try to avoid this double assignment by using do-while
-    let mut tokens = tokens_response.tokens;
-    let mut owner_tokens = tokens.clone();
-    let mut last_token = tokens.last();
-    while !tokens.is_empty() && last_token.is_some() {
-        tokens_response = get_owner_tokens(qctx, nft_addr, owner, last_token)?;
-        tokens = tokens_response.tokens;
-        tokens
-            .iter()
-            .for_each(|token| owner_tokens.push(token.to_string()));
-        last_token = tokens.last();
-    }
-
-    Ok(owner_tokens)
-}
-
-fn get_owner_tokens(
-    qctx: &QueryContext,
-    nft_addr: &str,
-    owner: &str,
-    start_after: Option<&String>,
-) -> DaoResult<TokensResponse> {
-    let query_owner_tokens = Cw721QueryMsg::Tokens {
-        owner: owner.to_string(),
-        start_after: start_after.cloned(),
-        limit: Some(u32::MAX),
-    };
-
-    let talis_friendly_tokens_response: TalisFriendlyTokensResponse = qctx
-        .deps
-        .querier
-        .query_wasm_smart(nft_addr.to_string(), &query_owner_tokens)?;
-
-    Ok(talis_friendly_tokens_response.to_tokens_response()?)
 }
 
 fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {

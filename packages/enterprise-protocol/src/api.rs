@@ -584,17 +584,6 @@ pub struct AssetTreasuryResponse {
     pub assets: Vec<Asset>,
 }
 
-#[cw_serde]
-pub struct NftTreasuryResponse {
-    pub nfts: Vec<NftCollection>,
-}
-
-#[cw_serde]
-pub struct NftCollection {
-    pub nft_address: Addr,
-    pub token_ids: Vec<NftTokenId>,
-}
-
 /// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually
 /// implement it correctly (they return 'ids' instead of 'tokens').
 #[cw_serde]
