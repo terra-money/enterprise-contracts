@@ -1,6 +1,6 @@
-use cosmwasm_schema::serde::{Deserialize, Serialize};
+use cosmwasm_schema::cw_serde;
 
-#[derive(Serialize, Deserialize)]
+#[cw_serde]
 pub struct Cw721InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,

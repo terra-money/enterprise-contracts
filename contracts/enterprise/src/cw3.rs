@@ -1,17 +1,17 @@
-use cosmwasm_schema::serde::{Deserialize, Serialize};
+use cosmwasm_schema::cw_serde;
 
-#[derive(Serialize, Deserialize)]
+#[cw_serde]
 pub struct Cw3ListVoters {
     pub start_after: Option<String>,
     pub limit: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[cw_serde]
 pub struct Cw3VoterListResponse {
     pub voters: Vec<Cw3VoterDetail>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[cw_serde]
 pub struct Cw3VoterDetail {
     pub addr: String,
     pub weight: u64,
