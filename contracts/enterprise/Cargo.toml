@@ -43,8 +43,8 @@ cw2 = "1.0.1"
 cw3 = "1.0.1"
 cw20 = "1.0.1"
 cw20-base = { version = "1.0.1", features = ["library"] }
-cw721 = "0.17.0"
-cw721-base = { version = "0.17.0", features = ["library"] }
+cw721 = "0.16.0"
+cw721-base = { version = "0.16.0", features = ["library"] }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 enterprise-governance-api = { path = "../../packages/enterprise-governance-api" }
