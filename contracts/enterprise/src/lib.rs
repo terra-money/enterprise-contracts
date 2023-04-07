@@ -1,7 +1,6 @@
 extern crate core;
 
 pub mod contract;
-mod cw3;
 pub mod multisig;
 pub mod nft_staking;
 pub mod proposals;

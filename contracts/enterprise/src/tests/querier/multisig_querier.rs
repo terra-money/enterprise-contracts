@@ -1,4 +1,3 @@
-use crate::cw3;
 use crate::cw3::{Cw3VoterDetail, Cw3VoterListResponse};
 use crate::tests::querier::custom_querier::CustomQuerier;
 use cosmwasm_std::{
@@ -30,7 +29,7 @@ pub(crate) fn _members_to_map(
 impl CustomQuerier for MultisigQuerier {
     fn query(&self, contract_addr: &str, msg: &Binary) -> Option<QuerierResult> {
         match from_binary(msg) {
-            Ok(cw3::Cw3ListVoters { .. }) => {
+            Ok(cw3::Cw3QueryMsg::ListVoters { .. }) => {
                 let members: &HashMap<String, u64> = match self.members.get(contract_addr) {
                     Some(members) => members,
                     None => {
@@ -46,14 +45,14 @@ impl CustomQuerier for MultisigQuerier {
 
                 let voters = members
                     .into_iter()
-                    .map(|(addr, weight)| Cw3VoterDetail {
+                    .map(|(addr, weight)| cw3::VoterDetail {
                         addr: addr.to_string(),
                         weight: *weight,
                     })
                     .collect_vec();
 
                 Some(SystemResult::Ok(ContractResult::Ok(
-                    to_binary(&Cw3VoterListResponse { voters }).unwrap(),
+                    to_binary(&cw3::VoterListResponse { voters }).unwrap(),
                 )))
             }
             _ => None,

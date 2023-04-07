@@ -1,4 +1,3 @@
-use crate::cw3::{Cw3ListVoters, Cw3VoterListResponse};
 use crate::state::{DAO_GOV_CONFIG, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT};
 use common::cw::Context;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, StdResult, Uint128};
@@ -124,11 +123,11 @@ pub fn validate_existing_dao_contract(
             result.map_err(|_| InvalidExistingNftContract)?;
         }
         Multisig => {
-            let query = Cw3ListVoters {
+            let query = cw3::Cw3QueryMsg::ListVoters {
                 start_after: None,
                 limit: Some(10u32),
             };
-            let result: StdResult<Cw3VoterListResponse> =
+            let result: StdResult<cw3::VoterListResponse> =
                 ctx.deps.querier.query_wasm_smart(contract, &query);
 
             result.map_err(|_| InvalidExistingMultisigContract)?;

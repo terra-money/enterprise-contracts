@@ -40,6 +40,7 @@ cw-asset = "2.2"
 cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
 cw2 = "1.0.1"
+cw3 = "1.0.1"
 cw20 = "1.0.1"
 cw20-base = { version = "1.0.1", features = ["library"] }
 cw721 = "0.17.0"

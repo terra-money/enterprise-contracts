@@ -1,4 +1,3 @@
-use crate::cw3::{Cw3ListVoters, Cw3VoterListResponse};
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -447,14 +446,14 @@ fn instantiate_existing_membership_dao(
             let mut total_weight = Uint128::zero();
             let mut last_voter: Option<String> = None;
             while {
-                let query_msg = Cw3ListVoters {
+                let query_msg = cw3::Cw3QueryMsg::ListVoters {
                     start_after: last_voter.clone(),
                     limit: None,
                 };
 
                 last_voter = None;
 
-                let voters: Cw3VoterListResponse = ctx
+                let voters: cw3::VoterListResponse = ctx
                     .deps
                     .querier
                     .query_wasm_smart(&membership.membership_contract_addr, &query_msg)?;
