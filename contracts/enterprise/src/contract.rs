@@ -1,6 +1,4 @@
-use crate::cw20::{Cw20InstantiateMsg, InstantiateMarketingInfo};
 use crate::cw3::{Cw3ListVoters, Cw3VoterListResponse};
-use crate::cw721::Cw721InstantiateMsg;
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -283,14 +281,14 @@ fn instantiate_new_token_dao(
 
     DAO_TYPE.save(ctx.deps.storage, &Token)?;
 
-    let marketing = info
-        .token_marketing
-        .map(|marketing| InstantiateMarketingInfo {
-            project: marketing.project,
-            description: marketing.description,
-            marketing: marketing.marketing_owner,
-            logo: marketing.logo_url.map(Logo::Url),
-        });
+    let marketing =
+        info.token_marketing
+            .map(|marketing| cw20_base::msg::InstantiateMarketingInfo {
+                project: marketing.project,
+                description: marketing.description,
+                marketing: marketing.marketing_owner,
+                logo: marketing.logo_url.map(Logo::Url),
+            });
 
     let initial_balances = match info.initial_dao_balance {
         None => info.initial_token_balances,
@@ -304,7 +302,7 @@ fn instantiate_new_token_dao(
         }
     };
 
-    let create_token_msg = Cw20InstantiateMsg {
+    let create_token_msg = cw20_base::msg::InstantiateMsg {
         name: info.token_name.clone(),
         symbol: info.token_symbol,
         decimals: info.token_decimals,
@@ -392,7 +390,7 @@ fn instantiate_new_nft_dao(
         None => ctx.env.contract.address.to_string(),
         Some(minter) => minter,
     };
-    let instantiate_msg = Cw721InstantiateMsg {
+    let instantiate_msg = cw721_base::msg::InstantiateMsg {
         name: info.nft_name,
         symbol: info.nft_symbol,
         minter,
@@ -1056,10 +1054,7 @@ fn update_asset_whitelist(deps: DepsMut, msg: UpdateAssetWhitelistMsg) -> DaoRes
         asset_whitelist.push(add);
     }
 
-    asset_whitelist = asset_whitelist
-        .into_iter()
-        .filter(|asset| !msg.remove.contains(asset))
-        .collect();
+    asset_whitelist.retain(|asset| !msg.remove.contains(asset));
 
     let normalized_asset_whitelist = normalize_asset_whitelist(deps.as_ref(), &asset_whitelist)?;
 

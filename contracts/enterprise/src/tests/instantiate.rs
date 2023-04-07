@@ -4,7 +4,6 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID,
     FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
 };
-use crate::cw721::Cw721InstantiateMsg;
 use crate::tests::helpers::{
     assert_member_voting_power, existing_nft_dao_membership, existing_token_dao_membership,
     instantiate_stub_dao, reply_default_instantiate_data, stub_dao_gov_config,
@@ -593,7 +592,7 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
             SubMsg::reply_on_success(
                 wasm_instantiate(
                     CW721_CODE_ID,
-                    &Cw721InstantiateMsg {
+                    &cw721_base::msg::InstantiateMsg {
                         name: NFT_NAME.to_string(),
                         symbol: NFT_SYMBOL.to_string(),
                         minter: MINTER.to_string(),
