@@ -517,8 +517,7 @@ pub enum ProposalType {
 pub struct Proposal {
     pub proposal_type: ProposalType,
     pub id: ProposalId,
-    // TODO: would be good to have this, but cw3 doesn't return it, maybe include as Option?
-    // pub proposer: Addr,
+    pub proposer: Addr,
     pub title: String,
     pub description: String,
     pub status: ProposalStatus,

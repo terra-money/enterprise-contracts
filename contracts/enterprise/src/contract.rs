@@ -1796,6 +1796,7 @@ fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<Pr
     let proposal = Proposal {
         proposal_type: info.proposal_type.clone(),
         id: poll.id,
+        proposer: poll.proposer.clone(),
         title: poll.label.clone(),
         description: poll.description.clone(),
         status: status.clone(),
