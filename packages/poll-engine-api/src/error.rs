@@ -32,6 +32,12 @@ pub enum PollError {
     #[error("Still within voting period; must be {now} (now) >= {ends_at} (ends_at)")]
     WithinVotingPeriod { now: Timestamp, ends_at: Timestamp },
 
+    #[error("Quorum not reached, unable to end the poll early")]
+    EndingEarlyQuorumNotReached {},
+
+    #[error("Threshold not reached, unable to end the poll early")]
+    EndingEarlyThresholdNotReached {},
+
     #[error("Invalid argument: {msg}")]
     InvalidArgument { msg: String },
 }
