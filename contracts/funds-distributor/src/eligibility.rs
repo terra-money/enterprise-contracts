@@ -1,11 +1,9 @@
-use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
-use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
-use crate::rewards::calculate_user_reward;
-use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
+use crate::cw20_distributions::update_user_cw20_distributions;
+use crate::native_distributions::update_user_native_distributions;
+use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use common::cw::{Context, QueryContext};
-use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Decimal, DepsMut, Order, Response, StdResult, Uint128};
+use cosmwasm_std::{Addr, DepsMut, Order, Response, StdResult, Uint128};
 use cw_storage_plus::Item;
 use funds_distributor_api::api::{MinimumEligibleWeightResponse, UpdateMinimumEligibleWeightMsg};
 use funds_distributor_api::error::DistributorError::Unauthorized;
@@ -90,7 +88,10 @@ pub fn update_minimum_eligible_weight(
             .may_load(deps.storage, user.clone())?
             .unwrap_or_default();
 
-        update_user_distributions(deps.branch(), user.clone(), old_effective_weight)?;
+        // update the state of user's rewards distributions to current global indices, placing any
+        // newly accrued rewards since last updates into their pending rewards
+        update_user_native_distributions(deps.branch(), user.clone(), old_effective_weight)?;
+        update_user_cw20_distributions(deps.branch(), user.clone(), old_effective_weight)?;
 
         let new_effective_weight = if use_actual_weights {
             user_weight
@@ -106,60 +107,6 @@ pub fn update_minimum_eligible_weight(
     }
 
     TOTAL_WEIGHT.save(deps.storage, &total_weight)?;
-
-    Ok(())
-}
-
-/// Update the state of user's rewards distributions to current global indices, placing any
-/// newly accrued rewards since last updates into their pending rewards.
-fn update_user_distributions(
-    deps: DepsMut,
-    user: Addr,
-    user_weight: Uint128,
-) -> DistributorResult<()> {
-    CW20_GLOBAL_INDICES
-        .range(deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(Addr, Decimal)>>>()?
-        .into_iter()
-        .try_for_each(|(asset, global_index)| {
-            let distribution =
-                CW20_DISTRIBUTIONS().may_load(deps.storage, (user.clone(), asset.clone()))?;
-
-            let rewards = calculate_user_reward(global_index, distribution, user_weight);
-
-            CW20_DISTRIBUTIONS().save(
-                deps.storage,
-                (user.clone(), asset.clone()),
-                &Cw20Distribution {
-                    user: user.clone(),
-                    cw20_asset: asset,
-                    user_index: global_index,
-                    pending_rewards: rewards,
-                },
-            )
-        })?;
-
-    NATIVE_GLOBAL_INDICES
-        .range(deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(String, Decimal)>>>()?
-        .into_iter()
-        .try_for_each(|(denom, global_index)| {
-            let distribution =
-                NATIVE_DISTRIBUTIONS().may_load(deps.storage, (user.clone(), denom.clone()))?;
-
-            let rewards = calculate_user_reward(global_index, distribution, user_weight);
-
-            NATIVE_DISTRIBUTIONS().save(
-                deps.storage,
-                (user.clone(), denom.clone()),
-                &NativeDistribution {
-                    user: user.clone(),
-                    denom,
-                    user_index: global_index,
-                    pending_rewards: rewards,
-                },
-            )
-        })?;
 
     Ok(())
 }

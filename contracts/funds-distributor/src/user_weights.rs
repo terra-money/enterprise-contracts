@@ -1,15 +1,17 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
-use crate::rewards::calculate_user_reward;
 use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
+use crate::{cw20_distributions, native_distributions};
 use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, Decimal, Response, StdResult, Uint128};
+use cw20_distributions::update_user_cw20_distributions;
 use cw_storage_plus::Map;
 use funds_distributor_api::api::{UpdateUserWeightsMsg, UserWeight};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
+use native_distributions::update_user_native_distributions;
 use DistributorError::DuplicateInitialWeight;
 
 pub const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
@@ -84,8 +86,16 @@ pub fn update_user_weights(
                 // the user already had their weight previously, so we use that weight
                 // to calculate how many rewards for each asset they've accrued since we last
                 // calculated their pending rewards
-                update_user_native_distributions(ctx, user.clone(), old_user_effective_weight)?;
-                update_user_cw20_distributions(ctx, user.clone(), old_user_effective_weight)?;
+                update_user_native_distributions(
+                    ctx.deps.branch(),
+                    user.clone(),
+                    old_user_effective_weight,
+                )?;
+                update_user_cw20_distributions(
+                    ctx.deps.branch(),
+                    user.clone(),
+                    old_user_effective_weight,
+                )?;
             }
         };
 
@@ -160,74 +170,6 @@ fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<(
                     }),
                     Some(distribution) => Ok(distribution),
                 }
-            },
-        )?;
-    }
-
-    Ok(())
-}
-
-/// Updates user's reward indices for all native assets.
-///
-/// Will calculate newly pending rewards since the last update to the user's reward index until now,
-/// using their last weight to calculate the newly accrued rewards.
-fn update_user_native_distributions(
-    ctx: &mut Context,
-    user: Addr,
-    old_user_weight: Uint128,
-) -> DistributorResult<()> {
-    let native_global_indices = NATIVE_GLOBAL_INDICES
-        .range(ctx.deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(String, Decimal)>>>()?;
-
-    for (denom, global_index) in native_global_indices {
-        let distribution =
-            NATIVE_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), denom.clone()))?;
-
-        let reward = calculate_user_reward(global_index, distribution, old_user_weight);
-
-        NATIVE_DISTRIBUTIONS().save(
-            ctx.deps.storage,
-            (user.clone(), denom.clone()),
-            &NativeDistribution {
-                user: user.clone(),
-                denom,
-                user_index: global_index,
-                pending_rewards: reward,
-            },
-        )?;
-    }
-
-    Ok(())
-}
-
-/// Updates user's reward indices for all CW20 assets.
-///
-/// Will calculate newly pending rewards since the last update to the user's reward index until now,
-/// using their last weight to calculate the newly accrued rewards.
-fn update_user_cw20_distributions(
-    ctx: &mut Context,
-    user: Addr,
-    old_user_weight: Uint128,
-) -> DistributorResult<()> {
-    let cw20_global_indices = CW20_GLOBAL_INDICES
-        .range(ctx.deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(Addr, Decimal)>>>()?;
-
-    for (cw20_asset, global_index) in cw20_global_indices {
-        let distribution =
-            CW20_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), cw20_asset.clone()))?;
-
-        let reward = calculate_user_reward(global_index, distribution, old_user_weight);
-
-        CW20_DISTRIBUTIONS().save(
-            ctx.deps.storage,
-            (user.clone(), cw20_asset.clone()),
-            &Cw20Distribution {
-                user: user.clone(),
-                cw20_asset,
-                user_index: global_index,
-                pending_rewards: reward,
             },
         )?;
     }

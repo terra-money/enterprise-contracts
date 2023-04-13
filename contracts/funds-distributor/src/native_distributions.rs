@@ -1,6 +1,10 @@
+use crate::rewards::calculate_user_reward;
+use crate::state::NATIVE_GLOBAL_INDICES;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, Uint128};
+use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::{Addr, Decimal, DepsMut, StdResult, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
+use funds_distributor_api::error::DistributorResult;
 
 #[cw_serde]
 /// State of a single user's specific native rewards.
@@ -42,4 +46,38 @@ impl From<NativeDistribution> for (Decimal, Uint128) {
     fn from(item: NativeDistribution) -> Self {
         (item.user_index, item.pending_rewards)
     }
+}
+
+/// Updates user's reward indices for all native assets.
+///
+/// Will calculate newly pending rewards since the last update to the user's reward index until now,
+/// using their last weight to calculate the newly accrued rewards.
+pub fn update_user_native_distributions(
+    deps: DepsMut,
+    user: Addr,
+    old_user_weight: Uint128,
+) -> DistributorResult<()> {
+    let native_global_indices = NATIVE_GLOBAL_INDICES
+        .range(deps.storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(String, Decimal)>>>()?;
+
+    for (denom, global_index) in native_global_indices {
+        let distribution =
+            NATIVE_DISTRIBUTIONS().may_load(deps.storage, (user.clone(), denom.clone()))?;
+
+        let reward = calculate_user_reward(global_index, distribution, old_user_weight);
+
+        NATIVE_DISTRIBUTIONS().save(
+            deps.storage,
+            (user.clone(), denom.clone()),
+            &NativeDistribution {
+                user: user.clone(),
+                denom,
+                user_index: global_index,
+                pending_rewards: reward,
+            },
+        )?;
+    }
+
+    Ok(())
 }
