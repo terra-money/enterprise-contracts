@@ -2238,6 +2238,14 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
                 minimum_eligible_weight: msg.minimum_eligible_weight,
             })?,
         }));
+
+        let enterprise_governance = ENTERPRISE_GOVERNANCE_CONTRACT.load(deps.storage)?;
+
+        submsgs.push(SubMsg::new(WasmMsg::Migrate {
+            contract_addr: enterprise_governance.to_string(),
+            new_code_id: msg.enterprise_governance_code_id,
+            msg: to_binary(&enterprise_governance_api::msg::MigrateMsg {})?,
+        }));
     }
 
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
