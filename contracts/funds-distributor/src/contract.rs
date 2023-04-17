@@ -88,10 +88,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DistributorResult<Response> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DistributorResult<Response> {
     let contract_version = get_contract_version(deps.storage)?;
-
-    let mut deps = deps;
 
     if contract_version.version == "0.1.0" {
         migrate_v1_to_v2(deps.branch(), msg.minimum_eligible_weight)?;

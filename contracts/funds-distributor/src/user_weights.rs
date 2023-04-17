@@ -16,8 +16,10 @@ use DistributorError::DuplicateInitialWeight;
 
 pub const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
 
-// TODO: explain why we need this and how it differs from USER_WEIGHTS
-// TODO: initialize for all users present in USER_WEIGHTS in the migration script
+/// Effective user weights are their weights when taking into account minimum eligible weight
+/// for rewards.
+/// This weight will be the same as user's real weight if they're over the minimum eligible weight,
+/// or 0 if they are under the minimum.
 pub const EFFECTIVE_USER_WEIGHTS: Map<Addr, Uint128> = Map::new("effective_user_weights");
 
 /// Saves any initial weights given to the users.
