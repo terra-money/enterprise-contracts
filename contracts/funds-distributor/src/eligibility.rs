@@ -106,6 +106,8 @@ pub fn update_minimum_eligible_weight(
         total_weight = total_weight - old_effective_weight + new_effective_weight;
     }
 
+    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &new_minimum_weight)?;
+
     TOTAL_WEIGHT.save(deps.storage, &total_weight)?;
 
     Ok(())
