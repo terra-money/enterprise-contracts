@@ -2228,7 +2228,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
 
     let mut submsgs: Vec<SubMsg> = vec![];
 
-    if contract_version.version == "0.3.0" {
+    if vec!["0.1.0", "0.2.0", "0.3.0"].contains(contract_version.version.as_ref()) {
         let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(deps.storage)?;
 
         submsgs.push(SubMsg::new(WasmMsg::Migrate {
