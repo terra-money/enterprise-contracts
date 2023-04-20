@@ -1,4 +1,3 @@
-use crate::cw3::{Cw3VoterDetail, Cw3VoterListResponse};
 use crate::tests::querier::custom_querier::CustomQuerier;
 use cosmwasm_std::{
     from_binary, to_binary, Binary, ContractResult, QuerierResult, SystemError, SystemResult,

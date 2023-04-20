@@ -173,7 +173,9 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         },
     )?;
 
-    let migrate_msg = to_binary(&MigrateMsg {})?;
+    let migrate_msg = to_binary(&MigrateMsg {
+        minimum_eligible_weight: None,
+    })?;
 
     let new_dao_council = Some(DaoCouncilSpec {
         members: vec!["new_member1".to_string(), "new_member2".to_string()],
