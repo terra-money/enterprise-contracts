@@ -2233,7 +2233,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
 
         submsgs.push(SubMsg::new(WasmMsg::Migrate {
             contract_addr: funds_distributor.to_string(),
-            new_code_id: msg.funds_distributor_code_id,
+            new_code_id: 1394,
             msg: to_binary(&funds_distributor_api::msg::MigrateMsg {
                 minimum_eligible_weight: msg.minimum_eligible_weight,
             })?,
@@ -2243,7 +2243,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
 
         submsgs.push(SubMsg::new(WasmMsg::Migrate {
             contract_addr: enterprise_governance.to_string(),
-            new_code_id: msg.enterprise_governance_code_id,
+            new_code_id: 1393,
             msg: to_binary(&enterprise_governance_api::msg::MigrateMsg {})?,
         }));
     }
