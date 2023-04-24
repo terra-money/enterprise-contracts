@@ -2,14 +2,13 @@ use crate::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
     CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo,
     DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftTreasuryResponse, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
-    UserStakeResponse,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalParams,
+    ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
+    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 
@@ -28,6 +27,10 @@ pub struct InstantiateMsg {
     pub asset_whitelist: Option<Vec<AssetInfo>>,
     /// NFTs (CW721) that are allowed to show in DAO's treasury
     pub nft_whitelist: Option<Vec<Addr>>,
+    /// Minimum weight that a user should have in order to qualify for rewards.
+    /// E.g. a value of 3 here means that a user in token or NFT DAO needs at least 3 staked
+    /// DAO assets, or a weight of 3 in multisig DAO, to be eligible for rewards.
+    pub minimum_weight_for_rewards: Option<Uint128>,
 }
 
 #[cw_serde]
@@ -55,7 +58,9 @@ pub enum Cw721HookMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub minimum_eligible_weight: Option<Uint128>,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -90,6 +95,4 @@ pub enum QueryMsg {
     ReleasableClaims(ClaimsParams),
     #[returns(AssetTreasuryResponse)]
     Cw20Treasury {},
-    #[returns(NftTreasuryResponse)]
-    NftTreasury {},
 }

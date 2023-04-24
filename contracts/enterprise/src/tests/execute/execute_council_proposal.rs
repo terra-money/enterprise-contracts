@@ -56,7 +56,9 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         }),
     )?;
 
-    let migrate_msg = to_binary(&MigrateMsg {})?;
+    let migrate_msg = to_binary(&MigrateMsg {
+        minimum_eligible_weight: None,
+    })?;
 
     let proposal_actions = vec![UpgradeDao(UpgradeDaoMsg {
         new_dao_code_id: 7,

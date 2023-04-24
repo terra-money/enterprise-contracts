@@ -3,7 +3,6 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use enterprise_protocol::api::NftTokenId;
-use itertools::Itertools;
 
 #[cw_serde]
 pub struct NftStake {
@@ -47,6 +46,6 @@ pub fn load_all_nft_stakes_for_user(store: &dyn Storage, user: Addr) -> StdResul
         .collect::<StdResult<Vec<_>>>()?
         .into_iter()
         .map(|(_, stake)| stake)
-        .collect_vec();
+        .collect();
     Ok(nft_stakes)
 }

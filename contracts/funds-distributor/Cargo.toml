@@ -1,6 +1,6 @@
 [package]
 name = "funds-distributor"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 

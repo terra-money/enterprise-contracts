@@ -7,7 +7,8 @@ use cosmwasm_std::{coins, to_binary, Addr, Coin, Response, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::Asset;
 use funds_distributor_api::api::{
-    ClaimRewardsMsg, Cw20Reward, NativeReward, UpdateUserWeightsMsg, UserRewardsParams, UserWeight,
+    ClaimRewardsMsg, Cw20Reward, NativeReward, UpdateMinimumEligibleWeightMsg,
+    UpdateUserWeightsMsg, UserRewardsParams, UserWeight,
 };
 use funds_distributor_api::error::DistributorError::{Unauthorized, ZeroTotalWeight};
 use funds_distributor_api::error::DistributorResult;
@@ -284,6 +285,149 @@ pub fn claiming_with_no_rewards_sends_no_msgs() -> DistributorResult<()> {
     Ok(())
 }
 
+#[test]
+pub fn users_under_minimum_eligible_weight_receive_no_rewards() -> DistributorResult<()> {
+    let mut deps = mock_dependencies();
+    let ctx = &mut mock_ctx(deps.as_mut());
+
+    instantiate(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        ctx.info.clone(),
+        InstantiateMsg {
+            enterprise_contract: ENTERPRISE_CONTRACT.to_string(),
+            initial_weights: vec![],
+            minimum_eligible_weight: Some(4u8.into()),
+        },
+    )?;
+
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user1", 3u8)])?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user2", 4u8)])?;
+
+    distribute_native(ctx, &coins(30, LUNA))?;
+    distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
+
+    assert_user_rewards(
+        ctx,
+        "user1",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 0u8)],
+        vec![cw20_reward(CW20_TOKEN, 0u8)],
+    )?;
+    assert_user_rewards(
+        ctx,
+        "user2",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 30u8)],
+        vec![cw20_reward(CW20_TOKEN, 60u8)],
+    )?;
+
+    Ok(())
+}
+
+#[test]
+pub fn minimum_eligible_weight_increase_calculates_existing_rewards_properly(
+) -> DistributorResult<()> {
+    let mut deps = mock_dependencies();
+    let ctx = &mut mock_ctx(deps.as_mut());
+    instantiate_default(ctx)?;
+
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user1", 4u8)])?;
+    update_user_weights(ctx, ENTERPRISE_CONTRACT, vec![user_weight("user2", 6u8)])?;
+
+    distribute_native(ctx, &coins(30, LUNA))?;
+    distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
+
+    update_minimum_eligible_weight(ctx, ENTERPRISE_CONTRACT, 5u8)?;
+
+    distribute_native(ctx, &coins(30, LUNA))?;
+    distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
+
+    assert_user_rewards(
+        ctx,
+        "user1",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 12u8)],
+        vec![cw20_reward(CW20_TOKEN, 24u8)],
+    )?;
+    assert_user_rewards(
+        ctx,
+        "user2",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 48u8)],
+        vec![cw20_reward(CW20_TOKEN, 96u8)],
+    )?;
+
+    Ok(())
+}
+
+#[test]
+pub fn minimum_eligible_weight_decrease_calculates_existing_rewards_properly(
+) -> DistributorResult<()> {
+    let mut deps = mock_dependencies();
+    let ctx = &mut mock_ctx(deps.as_mut());
+    instantiate_default(ctx)?;
+
+    instantiate(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        ctx.info.clone(),
+        InstantiateMsg {
+            enterprise_contract: ENTERPRISE_CONTRACT.to_string(),
+            initial_weights: vec![user_weight("user1", 4u8), user_weight("user2", 6u8)],
+            minimum_eligible_weight: Some(5u8.into()),
+        },
+    )?;
+
+    distribute_native(ctx, &coins(30, LUNA))?;
+    distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
+
+    update_minimum_eligible_weight(ctx, ENTERPRISE_CONTRACT, 3u8)?;
+
+    assert_user_rewards(
+        ctx,
+        "user1",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 0u8)],
+        vec![cw20_reward(CW20_TOKEN, 0u8)],
+    )?;
+    assert_user_rewards(
+        ctx,
+        "user2",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 30u8)],
+        vec![cw20_reward(CW20_TOKEN, 60u8)],
+    )?;
+
+    distribute_native(ctx, &coins(30, LUNA))?;
+    distribute_cw20(ctx, CW20_TOKEN, 60u8)?;
+
+    assert_user_rewards(
+        ctx,
+        "user1",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 12u8)],
+        vec![cw20_reward(CW20_TOKEN, 24u8)],
+    )?;
+    assert_user_rewards(
+        ctx,
+        "user2",
+        vec![LUNA],
+        vec![CW20_TOKEN],
+        vec![native_reward(LUNA, 48u8)],
+        vec![cw20_reward(CW20_TOKEN, 96u8)],
+    )?;
+
+    Ok(())
+}
+
 ///////////////////////
 /////// HELPERS ///////
 ///////////////////////
@@ -296,6 +440,7 @@ fn instantiate_default(ctx: &mut Context) -> DistributorResult<()> {
         InstantiateMsg {
             enterprise_contract: ENTERPRISE_CONTRACT.to_string(),
             initial_weights: vec![],
+            minimum_eligible_weight: None,
         },
     )?;
     Ok(())
@@ -382,6 +527,21 @@ fn update_user_weights(
         ctx.env.clone(),
         mock_info(sender, &vec![]),
         ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg { new_user_weights }),
+    )
+}
+
+fn update_minimum_eligible_weight(
+    ctx: &mut Context,
+    sender: &str,
+    new_minimum_eligible_weight: impl Into<Uint128>,
+) -> DistributorResult<Response> {
+    execute(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        mock_info(sender, &vec![]),
+        ExecuteMsg::UpdateMinimumEligibleWeight(UpdateMinimumEligibleWeightMsg {
+            minimum_eligible_weight: new_minimum_eligible_weight.into(),
+        }),
     )
 }
 

@@ -1,5 +1,9 @@
 use crate::claim::claim_rewards;
 use crate::distributing::{distribute_cw20, distribute_native};
+use crate::eligibility::{
+    execute_update_minimum_eligible_weight, query_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT,
+};
+use crate::migration::migrate_v1_to_v2;
 use crate::rewards::query_user_rewards;
 use crate::state::ENTERPRISE_CONTRACT;
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -8,7 +12,7 @@ use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -29,9 +33,12 @@ pub fn instantiate(
     let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
+    let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
+    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
+
     let mut ctx = Context { deps, env, info };
 
-    save_initial_weights(&mut ctx, msg.initial_weights)?;
+    save_initial_weights(&mut ctx, msg.initial_weights, minimum_eligible_weight)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
@@ -46,6 +53,9 @@ pub fn execute(
     let ctx = &mut Context { deps, env, info };
     match msg {
         ExecuteMsg::UpdateUserWeights(msg) => update_user_weights(ctx, msg),
+        ExecuteMsg::UpdateMinimumEligibleWeight(msg) => {
+            execute_update_minimum_eligible_weight(ctx, msg)
+        }
         ExecuteMsg::DistributeNative {} => distribute_native(ctx),
         ExecuteMsg::ClaimRewards(msg) => claim_rewards(ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
@@ -72,12 +82,19 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
 
     let response = match msg {
         QueryMsg::UserRewards(params) => to_binary(&query_user_rewards(qctx, params)?)?,
+        QueryMsg::MinimumEligibleWeight {} => to_binary(&query_minimum_eligible_weight(qctx)?)?,
     };
     Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DistributorResult<Response> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DistributorResult<Response> {
+    let contract_version = get_contract_version(deps.storage)?;
+
+    if contract_version.version == "0.1.0" {
+        migrate_v1_to_v2(deps.branch(), msg.minimum_eligible_weight)?;
+    }
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))

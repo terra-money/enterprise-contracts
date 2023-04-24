@@ -33,6 +33,7 @@ fn reply_with_unknown_reply_id_fails() -> DaoResult<()> {
             enterprise_factory_contract: stub_enterprise_factory_contract(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     )?;
 

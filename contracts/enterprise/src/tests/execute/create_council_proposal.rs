@@ -130,7 +130,9 @@ fn create_council_proposal_allows_upgrade_dao_by_default() -> DaoResult<()> {
         description: Some("Description".to_string()),
         proposal_actions: vec![UpgradeDao(UpgradeDaoMsg {
             new_dao_code_id: 10,
-            migrate_msg: to_binary(&MigrateMsg {})?,
+            migrate_msg: to_binary(&MigrateMsg {
+                minimum_eligible_weight: None,
+            })?,
         })],
     };
     execute(
@@ -176,7 +178,9 @@ fn create_council_proposal_with_not_allowed_proposal_action_type_fails() -> DaoR
         description: Some("Description".to_string()),
         proposal_actions: vec![UpgradeDao(UpgradeDaoMsg {
             new_dao_code_id: 10,
-            migrate_msg: to_binary(&MigrateMsg {})?,
+            migrate_msg: to_binary(&MigrateMsg {
+                minimum_eligible_weight: None,
+            })?,
         })],
     };
     let result = execute(
@@ -235,7 +239,9 @@ fn create_council_proposal_shows_up_in_query() -> DaoResult<()> {
         description: Some("Description".to_string()),
         proposal_actions: vec![UpgradeDao(UpgradeDaoMsg {
             new_dao_code_id: 10,
-            migrate_msg: to_binary(&MigrateMsg {})?,
+            migrate_msg: to_binary(&MigrateMsg {
+                minimum_eligible_weight: None,
+            })?,
         })],
     };
     execute(

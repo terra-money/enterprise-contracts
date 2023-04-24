@@ -204,6 +204,7 @@ pub enum ProposalActionType {
     ExecuteMsgs,
     ModifyMultisigMembership,
     DistributeFunds,
+    UpdateMinimumWeightForRewards,
 }
 
 #[cw_serde]
@@ -218,6 +219,7 @@ pub enum ProposalAction {
     ExecuteMsgs(ExecuteMsgsMsg),
     ModifyMultisigMembership(ModifyMultisigMembershipMsg),
     DistributeFunds(DistributeFundsMsg),
+    UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
 }
 
 #[cw_serde]
@@ -292,6 +294,11 @@ pub struct ModifyMultisigMembershipMsg {
 #[cw_serde]
 pub struct DistributeFundsMsg {
     pub funds: Vec<Asset>,
+}
+
+#[cw_serde]
+pub struct UpdateMinimumWeightForRewardsMsg {
+    pub minimum_weight_for_rewards: Uint128,
 }
 
 #[cw_serde]
@@ -517,8 +524,7 @@ pub enum ProposalType {
 pub struct Proposal {
     pub proposal_type: ProposalType,
     pub id: ProposalId,
-    // TODO: would be good to have this, but cw3 doesn't return it, maybe include as Option?
-    // pub proposer: Addr,
+    pub proposer: Addr,
     pub title: String,
     pub description: String,
     pub status: ProposalStatus,
@@ -576,17 +582,6 @@ pub struct ClaimsParams {
 #[cw_serde]
 pub struct AssetTreasuryResponse {
     pub assets: Vec<Asset>,
-}
-
-#[cw_serde]
-pub struct NftTreasuryResponse {
-    pub nfts: Vec<NftCollection>,
-}
-
-#[cw_serde]
-pub struct NftCollection {
-    pub nft_address: Addr,
-    pub token_ids: Vec<NftTokenId>,
 }
 
 /// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually

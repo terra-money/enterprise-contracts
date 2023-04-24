@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint64};
+use cosmwasm_std::{Addr, Uint128, Uint64};
 use cw_asset::AssetInfo;
 use enterprise_protocol::api::{
     DaoCouncilSpec, DaoGovConfig, DaoMetadata, ExistingDaoMembershipMsg, NewMembershipInfo,
@@ -31,6 +31,10 @@ pub struct CreateDaoMsg {
     pub asset_whitelist: Option<Vec<AssetInfo>>,
     /// NFTs that are allowed to show in DAO's treasury
     pub nft_whitelist: Option<Vec<Addr>>,
+    /// Minimum weight that a user should have in order to qualify for rewards.
+    /// E.g. a value of 3 here means that a user in token or NFT DAO needs at least 3 staked
+    /// DAO assets, or a weight of 3 in multisig DAO, to be eligible for rewards.
+    pub minimum_weight_for_rewards: Option<Uint128>,
 }
 
 #[cw_serde]

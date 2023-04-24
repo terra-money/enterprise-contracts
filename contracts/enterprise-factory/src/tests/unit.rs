@@ -5,7 +5,7 @@ use crate::contract::{
 use common::cw::testing::{mock_env, mock_info};
 use cosmwasm_std::testing::mock_dependencies;
 use cosmwasm_std::{
-    to_binary, Addr, Decimal, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
+    to_binary, Addr, Decimal, Reply, SubMsg, SubMsgResponse, SubMsgResult, Uint128, WasmMsg,
 };
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::AssetInfo;
@@ -168,6 +168,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
             dao_membership: membership_info,
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: Some(Uint128::from(3u8)),
         }),
     )?;
 
@@ -198,6 +199,7 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                     enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
                     asset_whitelist: Some(asset_whitelist),
                     nft_whitelist: Some(nft_whitelist),
+                    minimum_weight_for_rewards: Some(Uint128::from(3u8)),
                 })?,
                 funds: vec![],
                 label: "DAO name".to_string(),
@@ -259,6 +261,7 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
             dao_membership: NewMembership(membership_info.clone()),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: Some(Uint128::from(3u8)),
         }),
     )?;
 
@@ -281,6 +284,7 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                     enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
                     asset_whitelist: Some(asset_whitelist),
                     nft_whitelist: Some(nft_whitelist),
+                    minimum_weight_for_rewards: Some(Uint128::from(3u8)),
                 })?,
                 funds: vec![],
                 label: "DAO name".to_string(),
@@ -349,6 +353,7 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
             dao_membership: NewMembership(membership_info.clone()),
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: Some(Uint128::from(3u8)),
         }),
     )?;
 
@@ -371,6 +376,7 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
                     enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
                     asset_whitelist: Some(asset_whitelist),
                     nft_whitelist: Some(nft_whitelist),
+                    minimum_weight_for_rewards: Some(Uint128::from(3u8)),
                 })?,
                 funds: vec![],
                 label: "DAO name".to_string(),
@@ -438,6 +444,7 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
             dao_membership: membership_info,
             asset_whitelist: Some(asset_whitelist.clone()),
             nft_whitelist: Some(nft_whitelist.clone()),
+            minimum_weight_for_rewards: Some(Uint128::from(3u8)),
         }),
     )?;
 
@@ -468,6 +475,7 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
                     enterprise_factory_contract: ENTERPRISE_FACTORY_ADDR.to_string(),
                     asset_whitelist: Some(asset_whitelist),
                     nft_whitelist: Some(nft_whitelist),
+                    minimum_weight_for_rewards: Some(Uint128::from(3u8)),
                 })?,
                 funds: vec![],
                 label: "DAO name".to_string(),

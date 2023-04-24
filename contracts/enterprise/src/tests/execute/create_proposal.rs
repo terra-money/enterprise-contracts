@@ -71,7 +71,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
     let response = create_proposal(
         deps.as_mut(),
         &env,
-        &info,
+        &mock_info("proposer", &vec![]),
         Some("Proposal title"),
         Some("Description"),
         proposal_actions.clone(),
@@ -100,6 +100,7 @@ fn create_proposal_token_dao() -> DaoResult<()> {
             proposal: Proposal {
                 proposal_type: General,
                 id: 1,
+                proposer: Addr::unchecked("proposer"),
                 title: "Proposal title".to_string(),
                 description: "Description".to_string(),
                 status: ProposalStatus::InProgress,
@@ -186,6 +187,7 @@ fn create_proposal_nft_dao() -> DaoResult<()> {
             proposal: Proposal {
                 proposal_type: General,
                 id: 1,
+                proposer: Addr::unchecked("user"),
                 title: "Proposal title".to_string(),
                 description: "Description".to_string(),
                 status: ProposalStatus::InProgress,
@@ -607,6 +609,7 @@ fn create_proposal_with_invalid_upgrade_dao_version_fails() -> DaoResult<()> {
             enterprise_factory_contract: enterprise_factory_contract.to_string(),
             asset_whitelist: None,
             nft_whitelist: None,
+            minimum_weight_for_rewards: None,
         },
     )?;
 

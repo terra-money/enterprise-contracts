@@ -4,8 +4,8 @@ use common::cw::Context;
 
 use crate::state::{poll_from, polls, votes, GovState, PollHelpers, PollStorage, GOV_STATE};
 use crate::validate::{
-    validate_create_poll, validate_not_already_ended, validate_voting_period_ended,
-    validate_within_voting_period,
+    validate_can_end_early, validate_create_poll, validate_not_already_ended,
+    validate_voting_period_ended, validate_within_voting_period,
 };
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, Poll, Vote, VoteOutcome,
@@ -107,7 +107,9 @@ pub fn end_poll(
         .may_load(ctx.deps.storage, poll_id.into())?
         .ok_or(PollNotFound { poll_id })?;
 
-    if !allow_early_ending {
+    if allow_early_ending {
+        validate_can_end_early(now, maximum_available_votes, &poll)?;
+    } else {
         validate_voting_period_ended(now, poll.ends_at)?;
     }
 
@@ -142,7 +144,10 @@ mod tests {
         PollStatusFilter, VoteOutcome, VotingScheme,
     };
     use poll_engine_api::error::PollError;
-    use poll_engine_api::error::PollError::{PollAlreadyEnded, WithinVotingPeriod};
+    use poll_engine_api::error::PollError::{
+        EndingEarlyQuorumNotReached, EndingEarlyThresholdNotReached, PollAlreadyEnded,
+        WithinVotingPeriod,
+    };
 
     #[test]
     fn initialize_sets_default_gov_state() {
@@ -364,18 +369,42 @@ mod tests {
             deposit_amount: 10u128,
             ..mock_poll(ctx.deps.storage)
         };
-        poll.status = PollStatus::Rejected {
-            reason: PollRejectionReason::IsRejectingOutcome,
-        };
         poll.results = BTreeMap::from([(0, 10)]);
         polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
 
         ctx.env.block.time = Timestamp::from_nanos(3);
         let params = EndPollParams {
             poll_id: poll.id.into(),
-            maximum_available_votes: Uint128::one(),
+            maximum_available_votes: 10u8.into(),
             error_if_already_ended: false,
             allow_early_ending: false,
+        };
+        let res = end_poll(&mut ctx, params);
+
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn can_end_already_ended_poll_with_error_flag_set_to_true() {
+        let mut deps = mock_dependencies();
+        let mut ctx = mock_ctx(deps.as_mut());
+        let state = GovState { poll_count: 0 };
+        GOV_STATE.save(ctx.deps.storage, &state).unwrap();
+
+        let mut poll = Poll {
+            deposit_amount: 10u128,
+            ..mock_poll(ctx.deps.storage)
+        };
+        poll.quorum = Decimal::percent(30);
+        poll.results = BTreeMap::from([(0, 8)]);
+        polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
+
+        ctx.env.block.time = Timestamp::from_nanos(3);
+        let params = EndPollParams {
+            poll_id: poll.id.into(),
+            maximum_available_votes: 30u8.into(),
+            error_if_already_ended: false,
+            allow_early_ending: true,
         };
         let res = end_poll(&mut ctx, params);
 
@@ -449,6 +478,77 @@ mod tests {
         );
         assert_eq!(poll.results, res.results);
         assert_eq!(poll.ends_at, res.ends_at);
+    }
+
+    #[test]
+    fn cannot_end_poll_before_expiration_with_allow_early_ending_flag_set_to_true_before_quorum() {
+        let mut deps = mock_dependencies();
+        let mut ctx = mock_ctx(deps.as_mut());
+        GOV_STATE
+            .save(ctx.deps.storage, &GovState::default())
+            .unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.results = BTreeMap::from([(0, 10)]);
+        poll.deposit_amount = 10;
+        poll.quorum = Decimal::percent(51);
+        poll.ends_at = Timestamp::from_nanos(3);
+        polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
+
+        ctx.env.block.time = Timestamp::from_nanos(2);
+        let params = EndPollParams {
+            poll_id: poll.id.into(),
+            maximum_available_votes: 20u8.into(),
+            error_if_already_ended: true,
+            allow_early_ending: true,
+        };
+
+        let result = end_poll(&mut ctx, params);
+        assert_eq!(result, Err(EndingEarlyQuorumNotReached {}));
+
+        let poll_status = query_poll_status(&ctx.to_query(), poll.id).unwrap();
+        assert_eq!(
+            PollStatus::InProgress {
+                ends_at: poll.ends_at,
+            },
+            poll_status.status
+        );
+    }
+
+    #[test]
+    fn cannot_end_poll_before_expiration_with_allow_early_ending_flag_set_to_true_before_threshold()
+    {
+        let mut deps = mock_dependencies();
+        let mut ctx = mock_ctx(deps.as_mut());
+        GOV_STATE
+            .save(ctx.deps.storage, &GovState::default())
+            .unwrap();
+
+        let mut poll = mock_poll(ctx.deps.storage);
+        poll.results = BTreeMap::from([(0, 50), (1, 50)]);
+        poll.deposit_amount = 10;
+        poll.threshold = Decimal::percent(51);
+        poll.ends_at = Timestamp::from_nanos(3);
+        polls().save(ctx.deps.storage, poll.id, &poll).unwrap();
+
+        ctx.env.block.time = Timestamp::from_nanos(2);
+        let params = EndPollParams {
+            poll_id: poll.id.into(),
+            maximum_available_votes: 100u8.into(),
+            error_if_already_ended: true,
+            allow_early_ending: true,
+        };
+
+        let result = end_poll(&mut ctx, params);
+        assert_eq!(result, Err(EndingEarlyThresholdNotReached {}));
+
+        let poll_status = query_poll_status(&ctx.to_query(), poll.id).unwrap();
+        assert_eq!(
+            PollStatus::InProgress {
+                ends_at: poll.ends_at,
+            },
+            poll_status.status
+        );
     }
 
     #[test]

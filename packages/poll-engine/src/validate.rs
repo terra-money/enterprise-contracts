@@ -1,9 +1,10 @@
 use std::string::ToString;
 
-use cosmwasm_std::{Decimal, Timestamp};
+use cosmwasm_std::{Decimal, Timestamp, Uint128};
 
 use common::cw::Context;
 
+use crate::state::{MostVoted, PollHelpers};
 use poll_engine_api::api::{CreatePollParams, Poll, PollStatus};
 use poll_engine_api::error::PollError::{
     OutsideVotingPeriod, PollAlreadyEnded, WithinVotingPeriod,
@@ -54,6 +55,32 @@ pub fn validate_voting_period_ended(now: Timestamp, ends_at: Timestamp) -> PollR
     } else {
         Ok(())
     }
+}
+
+pub fn validate_can_end_early(
+    now: Timestamp,
+    maximum_available_votes: Uint128,
+    poll: &Poll,
+) -> PollResult<()> {
+    // check if voting already ended
+    if now >= poll.ends_at {
+        // voting period already ended, we can proceed to end the poll
+        return Ok(());
+    }
+
+    // ensure quorum was reached
+    let quorum_reached = poll.quorum_reached(&poll.quorum, maximum_available_votes.u128());
+    if !quorum_reached {
+        return Err(PollError::EndingEarlyQuorumNotReached {});
+    }
+
+    // ensure threshold was reached
+    let threshold_reached = poll.most_voted_over_threshold() != MostVoted::None;
+    if !threshold_reached {
+        return Err(PollError::EndingEarlyThresholdNotReached {});
+    }
+
+    Ok(())
 }
 
 pub fn validate_not_already_ended(poll: &Poll) -> PollResult<()> {

@@ -1,6 +1,5 @@
 use crate::api::ProposalActionType;
 use cosmwasm_std::{StdError, Uint128};
-use funds_distributor_api::error::DistributorError;
 use poll_engine_api::error::PollError;
 use thiserror::Error;
 
@@ -13,9 +12,6 @@ pub enum DaoError {
 
     #[error("{0}")]
     Poll(#[from] PollError),
-
-    #[error("{0}")]
-    FundsDistributor(#[from] DistributorError),
 
     #[error("Unauthorized")]
     Unauthorized,
