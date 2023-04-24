@@ -1,0 +1,13 @@
+[package]
+name = "nft-staking-api"
+version = "0.1.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+cosmwasm-std = "1"
+cosmwasm-schema = "1.1"
+thiserror = "1"
