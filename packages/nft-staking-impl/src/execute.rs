@@ -1,9 +1,9 @@
-use crate::config::CONFIG;
+use crate::config::{Config, CONFIG};
 use crate::nft_staking::{increment_user_total_staked, save_nft_stake, NftStake, NFT_STAKES};
 use crate::total_staked::increment_total_staked;
 use common::cw::Context;
 use cosmwasm_std::{from_binary, Response, StdError};
-use nft_staking_api::api::ReceiveNftMsg;
+use nft_staking_api::api::{ReceiveNftMsg, UpdateAdminMsg};
 use nft_staking_api::error::NftStakingError::{NftTokenAlreadyStaked, Unauthorized};
 use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::Cw721HookMsg;
@@ -55,4 +55,30 @@ fn stake_nft(ctx: &mut Context, msg: ReceiveNftMsg, user: String) -> NftStakingR
         .add_attribute("action", "stake_cw721")
         .add_attribute("user_total_staked", new_user_total_staked.to_string())
         .add_attribute("total_staked", new_total_staked.to_string()))
+}
+
+/// Update the admin. Only the current admin can execute this.
+pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> NftStakingResult<Response> {
+    let config = CONFIG.load(ctx.deps.storage)?;
+    let old_admin = config.admin;
+
+    // only current admin can change the admin
+    if ctx.info.sender != old_admin {
+        return Err(Unauthorized);
+    }
+
+    let new_admin = ctx.deps.api.addr_validate(&msg.new_admin)?;
+
+    CONFIG.save(
+        ctx.deps.storage,
+        &Config {
+            admin: new_admin.clone(),
+            ..config
+        },
+    )?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_admin")
+        .add_attribute("old_admin", old_admin.to_string())
+        .add_attribute("new_admin", new_admin.to_string()))
 }
