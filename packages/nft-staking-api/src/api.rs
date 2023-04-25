@@ -13,6 +13,7 @@ pub enum ReleaseAt {
 // TODO: also move to common
 #[cw_serde]
 pub struct ReceiveNftMsg {
+    // this exists so we're Talis-compatible, otherwise it's not part of the CW721 standard
     pub edition: Option<Uint64>,
     pub sender: String,
     pub token_id: String,

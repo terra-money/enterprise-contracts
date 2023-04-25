@@ -10,6 +10,9 @@ pub enum NftStakingError {
 
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("NFT token with ID {token_id} has already been staked")]
+    NftTokenAlreadyStaked { token_id: String },
 }
 
 impl NftStakingError {

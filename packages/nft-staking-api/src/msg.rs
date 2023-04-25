@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum Cw721HookMsg {
-    Stake {},
+    Stake { user: String },
 }
 
 #[cw_serde]
