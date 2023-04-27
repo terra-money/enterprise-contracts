@@ -21,6 +21,12 @@ pub struct ReceiveNftMsg {
 }
 
 #[cw_serde]
+pub struct Claim {
+    pub nft_ids: Vec<NftTokenId>,
+    pub release_at: ReleaseAt,
+}
+
+#[cw_serde]
 pub struct UnstakeMsg {
     pub user: String,
     pub nft_ids: Vec<NftTokenId>,
@@ -50,8 +56,9 @@ pub struct ClaimsParams {
 
 #[cw_serde]
 pub struct NftClaim {
+    pub id: Uint64,
     pub user: Addr,
-    pub nfts: Vec<NftTokenId>,
+    pub nft_ids: Vec<NftTokenId>,
     pub release_at: ReleaseAt,
 }
 

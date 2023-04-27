@@ -10,6 +10,7 @@ pub fn instantiate(ctx: &mut Context, msg: InstantiateMsg) -> NftStakingResult<(
     let config = Config {
         admin,
         nft_contract,
+        unlocking_period: msg.unlocking_period,
     };
 
     CONFIG.save(ctx.deps.storage, &config)?;

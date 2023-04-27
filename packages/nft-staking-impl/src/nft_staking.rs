@@ -16,6 +16,20 @@ pub fn increment_user_total_staked(storage: &mut dyn Storage, user: Addr) -> Std
     Ok(new_user_total_staked)
 }
 
+pub fn decrement_user_total_staked(
+    storage: &mut dyn Storage,
+    user: Addr,
+    amount: Uint128,
+) -> StdResult<Uint128> {
+    let user_total_staked = USER_TOTAL_STAKED
+        .may_load(storage, user.clone())?
+        .unwrap_or_default();
+    let new_user_total_staked = user_total_staked - amount;
+    USER_TOTAL_STAKED.save(storage, user, &(new_user_total_staked))?;
+
+    Ok(new_user_total_staked)
+}
+
 #[cw_serde]
 pub struct NftStake {
     pub staker: Addr,

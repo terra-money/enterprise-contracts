@@ -3,11 +3,13 @@ use crate::api::{
     UpdateAdminMsg, UserNftStakeParams, UserNftStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cw_utils::Duration;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: String,
     pub nft_contract: String,
+    pub unlocking_period: Duration,
 }
 
 #[cw_serde]

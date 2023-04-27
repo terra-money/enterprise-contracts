@@ -1,10 +1,17 @@
+use crate::claims::add_claim;
 use crate::config::{Config, CONFIG};
-use crate::nft_staking::{increment_user_total_staked, save_nft_stake, NftStake, NFT_STAKES};
-use crate::total_staked::increment_total_staked;
+use crate::nft_staking::{
+    decrement_user_total_staked, increment_user_total_staked, save_nft_stake, NftStake, NFT_STAKES,
+};
+use crate::total_staked::{decrement_total_staked, increment_total_staked};
+use crate::validate::admin_caller_only;
 use common::cw::Context;
-use cosmwasm_std::{from_binary, Response, StdError};
-use nft_staking_api::api::{ReceiveNftMsg, UpdateAdminMsg};
-use nft_staking_api::error::NftStakingError::{NftTokenAlreadyStaked, Unauthorized};
+use cosmwasm_std::{from_binary, Response, StdError, Uint128};
+use cw_utils::Duration::{Height, Time};
+use nft_staking_api::api::{ReceiveNftMsg, ReleaseAt, UnstakeMsg, UpdateAdminMsg};
+use nft_staking_api::error::NftStakingError::{
+    NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
+};
 use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::Cw721HookMsg;
 
@@ -52,20 +59,69 @@ fn stake_nft(ctx: &mut Context, msg: ReceiveNftMsg, user: String) -> NftStakingR
     let new_total_staked = increment_total_staked(ctx)?;
 
     Ok(Response::new()
-        .add_attribute("action", "stake_cw721")
+        .add_attribute("action", "stake")
         .add_attribute("user_total_staked", new_user_total_staked.to_string())
         .add_attribute("total_staked", new_total_staked.to_string()))
+}
+
+/// Unstake NFTs. Only admin can perform this on behalf of a user.
+pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> NftStakingResult<Response> {
+    // only admin can execute this
+    admin_caller_only(ctx)?;
+
+    let user = ctx.deps.api.addr_validate(&msg.user)?;
+
+    for token_id in &msg.nft_ids {
+        let nft_stake = NFT_STAKES().may_load(ctx.deps.storage, token_id.to_string())?;
+
+        match nft_stake {
+            None => {
+                return Err(NoNftTokenStaked {
+                    token_id: token_id.to_string(),
+                });
+            }
+            Some(stake) => {
+                if stake.staker != user {
+                    return Err(Unauthorized);
+                } else {
+                    NFT_STAKES().remove(ctx.deps.storage, token_id.to_string())?;
+                }
+            }
+        }
+    }
+
+    let unstaked_amount = Uint128::from(msg.nft_ids.len() as u128);
+
+    decrement_user_total_staked(ctx.deps.storage, user.clone(), unstaked_amount)?;
+    let new_total_staked = decrement_total_staked(ctx, unstaked_amount)?;
+
+    let release_at = calculate_release_at(ctx)?;
+
+    let claim = add_claim(ctx.deps.storage, user, msg.nft_ids, release_at)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "unstake")
+        .add_attribute("total_staked", new_total_staked.to_string())
+        .add_attribute("claim_id", claim.id.to_string()))
+}
+
+// TODO: move to common?
+fn calculate_release_at(ctx: &mut Context) -> NftStakingResult<ReleaseAt> {
+    let config = CONFIG.load(ctx.deps.storage)?;
+
+    let release_at = match config.unlocking_period {
+        Height(height) => ReleaseAt::Height((ctx.env.block.height + height).into()),
+        Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
+    };
+    Ok(release_at)
 }
 
 /// Update the admin. Only the current admin can execute this.
 pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> NftStakingResult<Response> {
     let config = CONFIG.load(ctx.deps.storage)?;
-    let old_admin = config.admin;
 
-    // only current admin can change the admin
-    if ctx.info.sender != old_admin {
-        return Err(Unauthorized);
-    }
+    // only admin can execute this
+    let old_admin = admin_caller_only(ctx)?;
 
     let new_admin = ctx.deps.api.addr_validate(&msg.new_admin)?;
 

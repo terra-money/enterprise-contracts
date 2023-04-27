@@ -13,6 +13,9 @@ pub enum NftStakingError {
 
     #[error("NFT token with ID {token_id} has already been staked")]
     NftTokenAlreadyStaked { token_id: String },
+
+    #[error("No NFT token with ID {token_id} has been staked by this user")]
+    NoNftTokenStaked { token_id: String },
 }
 
 impl NftStakingError {
