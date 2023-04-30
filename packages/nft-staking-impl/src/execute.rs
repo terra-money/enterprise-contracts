@@ -1,4 +1,4 @@
-use crate::claims::add_claim;
+use crate::claims::{add_claim, get_releasable_claims, NFT_CLAIMS};
 use crate::config::{Config, CONFIG};
 use crate::nft_staking::{
     decrement_user_total_staked, increment_user_total_staked, save_nft_stake, NftStake, NFT_STAKES,
@@ -6,9 +6,10 @@ use crate::nft_staking::{
 use crate::total_staked::{decrement_total_staked, increment_total_staked};
 use crate::validate::admin_caller_only;
 use common::cw::Context;
-use cosmwasm_std::{from_binary, Response, StdError, Uint128};
+use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
+use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
-use nft_staking_api::api::{ReceiveNftMsg, ReleaseAt, UnstakeMsg, UpdateAdminMsg};
+use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, ReleaseAt, UnstakeMsg, UpdateAdminMsg};
 use nft_staking_api::error::NftStakingError::{
     NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
 };
@@ -137,4 +138,37 @@ pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> NftStakingResult<
         .add_attribute("action", "update_admin")
         .add_attribute("old_admin", old_admin.to_string())
         .add_attribute("new_admin", new_admin.to_string()))
+}
+
+/// Claim any unstaked items that are ready to be released.
+pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> NftStakingResult<Response> {
+    let user = ctx.deps.api.addr_validate(&msg.user)?;
+
+    let releasable_claims = get_releasable_claims(ctx, user.clone())?.claims;
+
+    let nft_contract = CONFIG.load(ctx.deps.storage)?.nft_contract;
+
+    let send_nfts_submsgs = releasable_claims
+        .iter()
+        .flat_map(|claim| claim.nft_ids.clone())
+        .flat_map(|token_id| {
+            wasm_execute(
+                nft_contract.to_string(),
+                &Cw721ExecuteMsg::TransferNft {
+                    recipient: user.to_string(),
+                    token_id,
+                },
+                vec![],
+            )
+        })
+        .map(SubMsg::new)
+        .collect::<Vec<SubMsg>>();
+
+    releasable_claims
+        .into_iter()
+        .try_for_each(|claim| NFT_CLAIMS().remove(ctx.deps.storage, claim.id.u64()))?;
+
+    Ok(Response::new()
+        .add_attribute("action", "claim")
+        .add_submessages(send_nfts_submsgs))
 }

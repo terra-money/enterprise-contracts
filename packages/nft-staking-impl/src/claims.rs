@@ -1,6 +1,8 @@
-use cosmwasm_std::{Addr, StdResult, Storage, Uint64};
+use common::cw::Context;
+use cosmwasm_std::{Addr, BlockInfo, Order, StdResult, Storage, Uint64};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
-use nft_staking_api::api::{NftClaim, NftTokenId, ReleaseAt};
+use nft_staking_api::api::{ClaimsResponse, NftClaim, NftTokenId, ReleaseAt};
+use nft_staking_api::error::NftStakingResult;
 
 const CLAIM_IDS: Item<Uint64> = Item::new("claim_ids");
 
@@ -47,4 +49,33 @@ pub fn add_claim(
     NFT_CLAIMS().save(storage, next_claim_id.into(), &claim)?;
 
     Ok(claim)
+}
+
+pub fn is_releasable(claim: &NftClaim, block_info: &BlockInfo) -> bool {
+    match claim.release_at {
+        ReleaseAt::Timestamp(timestamp) => block_info.time >= timestamp,
+        ReleaseAt::Height(height) => block_info.height >= height.u64(),
+    }
+}
+
+pub fn get_releasable_claims(ctx: &Context, user: Addr) -> NftStakingResult<ClaimsResponse> {
+    let releasable_claims: Vec<NftClaim> = NFT_CLAIMS()
+        .idx
+        .user
+        .prefix(user)
+        .range(ctx.deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(u64, NftClaim)>>>()?
+        .into_iter()
+        .filter_map(|(_, claim)| {
+            if is_releasable(&claim, &ctx.env.block) {
+                Some(claim)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Ok(ClaimsResponse {
+        claims: releasable_claims,
+    })
 }
