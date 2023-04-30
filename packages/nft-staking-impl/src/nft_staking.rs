@@ -1,10 +1,15 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use nft_staking_api::api::NftTokenId;
 
 pub const USER_TOTAL_STAKED: Map<Addr, Uint128> = Map::new("user_total_staked");
+
+pub fn get_user_total_stake(storage: &dyn Storage, user: Addr) -> StdResult<Uint128> {
+    Ok(USER_TOTAL_STAKED
+        .may_load(storage, user)?
+        .unwrap_or_default())
+}
 
 pub fn increment_user_total_staked(storage: &mut dyn Storage, user: Addr) -> StdResult<Uint128> {
     let user_total_staked = USER_TOTAL_STAKED
@@ -61,17 +66,4 @@ pub fn NFT_STAKES<'a>() -> IndexedMap<'a, String, NftStake, NftStakesIndexes<'a>
 
 pub fn save_nft_stake(store: &mut dyn Storage, nft_stake: &NftStake) -> StdResult<()> {
     NFT_STAKES().save(store, nft_stake.token_id.clone(), nft_stake)
-}
-
-pub fn load_all_nft_stakes_for_user(store: &dyn Storage, user: Addr) -> StdResult<Vec<NftStake>> {
-    let nft_stakes = NFT_STAKES()
-        .idx
-        .staker
-        .prefix(user)
-        .range(store, None, None, Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-        .into_iter()
-        .map(|(_, stake)| stake)
-        .collect();
-    Ok(nft_stakes)
 }

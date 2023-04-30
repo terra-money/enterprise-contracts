@@ -145,7 +145,8 @@ pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> NftStakingResul
 pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> NftStakingResult<Response> {
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
-    let releasable_claims = get_releasable_claims(ctx, user.clone())?.claims;
+    let releasable_claims =
+        get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;
 
     let nft_contract = CONFIG.load(ctx.deps.storage)?.nft_contract;
 

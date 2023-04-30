@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Timestamp, Uint128, Uint64};
-use cw_utils::Duration;
+use cw_utils::{Duration, Expiration};
 
 pub type NftTokenId = String;
 
@@ -53,6 +53,18 @@ pub struct UserNftStakeParams {
 }
 
 #[cw_serde]
+pub struct UserNftTotalStakeParams {
+    pub user: String,
+}
+
+#[cw_serde]
+pub struct TotalStakedAmountParams {
+    /// Denotes the moment at which we're interested in the total staked amount.
+    /// Expiration::Never is used for current total staked.
+    pub expiration: Expiration,
+}
+
+#[cw_serde]
 pub struct ClaimsParams {
     pub user: String,
 }
@@ -71,7 +83,13 @@ pub struct NftClaim {
 pub struct UserNftStakeResponse {
     pub user: Addr,
     pub tokens: Vec<NftTokenId>,
-    pub amount: Uint128,
+    pub total_user_stake: Uint128,
+}
+
+#[cw_serde]
+pub struct UserNftTotalStakeResponse {
+    pub user: Addr,
+    pub total_user_stake: Uint128,
 }
 
 #[cw_serde]

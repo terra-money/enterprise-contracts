@@ -15,4 +15,5 @@ cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
 cw721 = "0.16.0"
 nft-staking-api = { path = "../nft-staking-api" }
+itertools = "0.10.5"
 thiserror = "1"

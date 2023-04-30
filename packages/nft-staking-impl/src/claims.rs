@@ -1,4 +1,3 @@
-use common::cw::Context;
 use cosmwasm_std::{Addr, BlockInfo, Order, StdResult, Storage, Uint64};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use nft_staking_api::api::{ClaimsResponse, NftClaim, NftTokenId, ReleaseAt};
@@ -58,16 +57,34 @@ pub fn is_releasable(claim: &NftClaim, block_info: &BlockInfo) -> bool {
     }
 }
 
-pub fn get_releasable_claims(ctx: &Context, user: Addr) -> NftStakingResult<ClaimsResponse> {
+pub fn get_claims(storage: &dyn Storage, user: Addr) -> NftStakingResult<ClaimsResponse> {
+    let claims: Vec<NftClaim> = NFT_CLAIMS()
+        .idx
+        .user
+        .prefix(user)
+        .range(storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(u64, NftClaim)>>>()?
+        .into_iter()
+        .map(|(_, claim)| claim)
+        .collect();
+
+    Ok(ClaimsResponse { claims })
+}
+
+pub fn get_releasable_claims(
+    storage: &dyn Storage,
+    block: &BlockInfo,
+    user: Addr,
+) -> NftStakingResult<ClaimsResponse> {
     let releasable_claims: Vec<NftClaim> = NFT_CLAIMS()
         .idx
         .user
         .prefix(user)
-        .range(ctx.deps.storage, None, None, Order::Ascending)
+        .range(storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<(u64, NftClaim)>>>()?
         .into_iter()
         .filter_map(|(_, claim)| {
-            if is_releasable(&claim, &ctx.env.block) {
+            if is_releasable(&claim, block) {
                 Some(claim)
             } else {
                 None
