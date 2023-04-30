@@ -1,6 +1,6 @@
 use crate::api::{
     ClaimMsg, ClaimsParams, ClaimsResponse, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg,
-    UpdateAdminMsg, UserNftStakeParams, UserNftStakeResponse,
+    UpdateConfigMsg, UserNftStakeParams, UserNftStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Unstake(UnstakeMsg),
     Claim(ClaimMsg),
-    UpdateAdmin(UpdateAdminMsg),
+    UpdateConfig(UpdateConfigMsg),
     ReceiveNft(ReceiveNftMsg),
 }
 

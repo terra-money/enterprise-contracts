@@ -1,5 +1,5 @@
 use crate::claims::{add_claim, get_releasable_claims, NFT_CLAIMS};
-use crate::config::{Config, CONFIG};
+use crate::config::CONFIG;
 use crate::nft_staking::{
     decrement_user_total_staked, increment_user_total_staked, save_nft_stake, NftStake, NFT_STAKES,
 };
@@ -9,7 +9,7 @@ use common::cw::Context;
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
-use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, ReleaseAt, UnstakeMsg, UpdateAdminMsg};
+use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, ReleaseAt, UnstakeMsg, UpdateConfigMsg};
 use nft_staking_api::error::NftStakingError::{
     NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
 };
@@ -118,26 +118,27 @@ fn calculate_release_at(ctx: &mut Context) -> NftStakingResult<ReleaseAt> {
 }
 
 /// Update the admin. Only the current admin can execute this.
-pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> NftStakingResult<Response> {
-    let config = CONFIG.load(ctx.deps.storage)?;
-
+pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> NftStakingResult<Response> {
     // only admin can execute this
-    let old_admin = admin_caller_only(ctx)?;
+    admin_caller_only(ctx)?;
 
-    let new_admin = ctx.deps.api.addr_validate(&msg.new_admin)?;
+    let mut config = CONFIG.load(ctx.deps.storage)?;
 
-    CONFIG.save(
-        ctx.deps.storage,
-        &Config {
-            admin: new_admin.clone(),
-            ..config
-        },
-    )?;
+    if let Some(new_admin) = msg.new_admin {
+        config.admin = ctx.deps.api.addr_validate(&new_admin)?;
+    }
 
-    Ok(Response::new()
-        .add_attribute("action", "update_admin")
-        .add_attribute("old_admin", old_admin.to_string())
-        .add_attribute("new_admin", new_admin.to_string()))
+    if let Some(new_nft_contract) = msg.new_nft_contract {
+        config.nft_contract = ctx.deps.api.addr_validate(&new_nft_contract)?;
+    }
+
+    if let Some(new_unlocking_period) = msg.new_unlocking_period {
+        config.unlocking_period = new_unlocking_period;
+    }
+
+    CONFIG.save(ctx.deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("action", "update_config"))
 }
 
 /// Claim any unstaked items that are ready to be released.

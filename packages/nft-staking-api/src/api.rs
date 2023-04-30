@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Timestamp, Uint128, Uint64};
+use cw_utils::Duration;
 
 pub type NftTokenId = String;
 
@@ -38,8 +39,10 @@ pub struct ClaimMsg {
 }
 
 #[cw_serde]
-pub struct UpdateAdminMsg {
-    pub new_admin: String,
+pub struct UpdateConfigMsg {
+    pub new_admin: Option<String>,
+    pub new_nft_contract: Option<String>,
+    pub new_unlocking_period: Option<Duration>,
 }
 
 #[cw_serde]
