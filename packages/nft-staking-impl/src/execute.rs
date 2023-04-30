@@ -34,6 +34,9 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
 
     match from_binary(&msg.msg) {
         Ok(Cw721HookMsg::Stake { user }) => stake_nft(ctx, msg, user),
+        Ok(Cw721HookMsg::AddClaim { user, release_at }) => {
+            add_nft_claim(ctx, msg, user, release_at)
+        }
         _ => Err(StdError::generic_err("msg payload not recognized").into()),
     }
 }
@@ -63,6 +66,23 @@ fn stake_nft(ctx: &mut Context, msg: ReceiveNftMsg, user: String) -> NftStakingR
         .add_attribute("action", "stake")
         .add_attribute("user_total_staked", new_user_total_staked.to_string())
         .add_attribute("total_staked", new_total_staked.to_string()))
+}
+
+fn add_nft_claim(
+    ctx: &mut Context,
+    msg: ReceiveNftMsg,
+    user: String,
+    release_at: ReleaseAt,
+) -> NftStakingResult<Response> {
+    let token_id = msg.token_id;
+
+    let user = ctx.deps.api.addr_validate(&user)?;
+
+    let claim = add_claim(ctx.deps.storage, user, vec![token_id], release_at)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "add_claim")
+        .add_attribute("claim_id", claim.id.to_string()))
 }
 
 /// Unstake NFTs. Only admin can perform this on behalf of a user.
