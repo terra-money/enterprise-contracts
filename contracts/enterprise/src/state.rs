@@ -31,7 +31,10 @@ pub const DAO_CODE_VERSION: Item<Uint64> = Item::new("dao_code_version");
 pub const DAO_METADATA: Item<DaoMetadata> = Item::new(DAO_METADATA_KEY);
 pub const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 pub const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
+
+// TODO: remove after migration
 pub const ASSET_WHITELIST: Item<Vec<AssetInfo>> = Item::new("asset_whitelist");
+
 pub const NFT_WHITELIST: Map<Addr, ()> = Map::new("nft_whitelist");
 
 // TODO: use indexed map and then add pagination to the queries

@@ -1,3 +1,8 @@
+use crate::asset_whitelist::{
+    add_whitelisted_assets, get_whitelisted_assets_starting_with_cw1155,
+    get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
+    remove_whitelisted_assets,
+};
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -13,8 +18,8 @@ use crate::staking::{
     CW20_STAKES,
 };
 use crate::state::{
-    add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
-    DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
+    add_claim, State, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE, DAO_GOV_CONFIG,
+    DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
     ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STATE,
 };
 use crate::validate::{
@@ -40,8 +45,8 @@ use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
 use enterprise_protocol::api::{
-    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
+    AssetTreasuryResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim,
+    ClaimsParams, ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
     DaoInfoResponse, DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg,
     ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
@@ -112,7 +117,7 @@ pub const MAX_QUERY_LIMIT: u8 = 100;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -147,7 +152,7 @@ pub fn instantiate(
 
     let normalized_asset_whitelist =
         normalize_asset_whitelist(deps.as_ref(), &msg.asset_whitelist.unwrap_or_default())?;
-    ASSET_WHITELIST.save(deps.storage, &normalized_asset_whitelist)?;
+    add_whitelisted_assets(deps.branch(), normalized_asset_whitelist)?;
 
     for nft in &msg.nft_whitelist.unwrap_or_default() {
         NFT_WHITELIST.save(deps.storage, deps.api.addr_validate(nft.as_ref())?, &())?;
@@ -1066,18 +1071,12 @@ fn update_council(ctx: &mut Context, msg: UpdateCouncilMsg) -> DaoResult<Vec<Sub
     Ok(vec![])
 }
 
-fn update_asset_whitelist(deps: DepsMut, msg: UpdateAssetWhitelistMsg) -> DaoResult<Vec<SubMsg>> {
-    let mut asset_whitelist = ASSET_WHITELIST.load(deps.storage)?;
-
-    for add in msg.add {
-        asset_whitelist.push(add);
-    }
-
-    asset_whitelist.retain(|asset| !msg.remove.contains(asset));
-
-    let normalized_asset_whitelist = normalize_asset_whitelist(deps.as_ref(), &asset_whitelist)?;
-
-    ASSET_WHITELIST.save(deps.storage, &normalized_asset_whitelist)?;
+fn update_asset_whitelist(
+    mut deps: DepsMut,
+    msg: UpdateAssetWhitelistMsg,
+) -> DaoResult<Vec<SubMsg>> {
+    add_whitelisted_assets(deps.branch(), msg.add)?;
+    remove_whitelisted_assets(deps.branch(), msg.remove)?;
 
     Ok(vec![])
 }
@@ -1683,7 +1682,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::DaoInfo {} => to_binary(&query_dao_info(qctx)?)?,
         QueryMsg::MemberInfo(msg) => to_binary(&query_member_info(qctx, msg)?)?,
         QueryMsg::ListMultisigMembers(msg) => to_binary(&query_list_multisig_members(qctx, msg)?)?,
-        QueryMsg::AssetWhitelist {} => to_binary(&query_asset_whitelist(qctx)?)?,
+        QueryMsg::AssetWhitelist(params) => to_binary(&query_asset_whitelist(qctx, params)?)?,
         QueryMsg::NftWhitelist(params) => to_binary(&query_nft_whitelist(qctx, params)?)?,
         QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params)?)?,
         QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params)?)?,
@@ -1723,8 +1722,33 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
     })
 }
 
-pub fn query_asset_whitelist(qctx: QueryContext) -> DaoResult<AssetWhitelistResponse> {
-    let assets = ASSET_WHITELIST.load(qctx.deps.storage)?;
+pub fn query_asset_whitelist(
+    qctx: QueryContext,
+    params: AssetWhitelistParams,
+) -> DaoResult<AssetWhitelistResponse> {
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32) as usize;
+
+    let assets = if let Some(start_after) = params.start_after {
+        match start_after {
+            AssetInfo::Native(denom) => {
+                get_whitelisted_assets_starting_with_native(qctx, Some(denom), limit)?
+            }
+            AssetInfo::Cw20(addr) => {
+                let addr = qctx.deps.api.addr_validate(addr.as_ref())?;
+                get_whitelisted_assets_starting_with_cw20(qctx, Some(addr), limit)?
+            }
+            AssetInfo::Cw1155(addr, id) => {
+                let addr = qctx.deps.api.addr_validate(addr.as_ref())?;
+                get_whitelisted_assets_starting_with_cw1155(qctx, Some((addr, id)), limit)?
+            }
+            _ => return Err(StdError::generic_err("unknown asset type").into()),
+        }
+    } else {
+        get_whitelisted_assets_starting_with_native(qctx, None, limit)?
+    };
 
     Ok(AssetWhitelistResponse { assets })
 }
@@ -2190,6 +2214,7 @@ pub fn query_releasable_claims(
     })
 }
 
+// TODO: this has to go now
 pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryResponse> {
     let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
     let global_asset_whitelist: AssetWhitelistResponse = qctx
@@ -2197,7 +2222,14 @@ pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryRespons
         .querier
         .query_wasm_smart(enterprise_factory, &GlobalAssetWhitelist {})?;
 
-    let mut asset_whitelist = query_asset_whitelist(qctx.clone())?.assets;
+    let mut asset_whitelist = query_asset_whitelist(
+        qctx.clone(),
+        AssetWhitelistParams {
+            start_after: None,
+            limit: None,
+        },
+    )?
+    .assets;
 
     for asset in global_asset_whitelist.assets {
         // TODO: suboptimal, use maps or sth

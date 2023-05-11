@@ -1,12 +1,12 @@
 use crate::api::{
-    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo,
-    DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
-    UserStakeResponse,
+    AssetTreasuryResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
+    ClaimsResponse, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse,
+    DaoMembershipInfo, DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse,
+    MemberVoteParams, MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams,
+    NftWhitelistResponse, ProposalParams, ProposalResponse, ProposalStatusParams,
+    ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
+    ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg,
+    UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
@@ -73,7 +73,7 @@ pub enum QueryMsg {
     #[returns(MultisigMembersResponse)]
     ListMultisigMembers(ListMultisigMembersMsg),
     #[returns(AssetWhitelistResponse)]
-    AssetWhitelist {},
+    AssetWhitelist(AssetWhitelistParams),
     #[returns(NftWhitelistResponse)]
     NftWhitelist(NftWhitelistParams),
     #[returns(ProposalResponse)]

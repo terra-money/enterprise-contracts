@@ -394,6 +394,12 @@ pub struct DaoInfoResponse {
 }
 
 #[cw_serde]
+pub struct AssetWhitelistParams {
+    pub start_after: Option<AssetInfo>,
+    pub limit: Option<u32>,
+}
+
+#[cw_serde]
 pub struct AssetWhitelistResponse {
     pub assets: Vec<AssetInfo>,
 }
