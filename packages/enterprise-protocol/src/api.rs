@@ -399,6 +399,12 @@ pub struct AssetWhitelistResponse {
 }
 
 #[cw_serde]
+pub struct NftWhitelistParams {
+    pub start_after: Option<String>,
+    pub limit: Option<u32>,
+}
+
+#[cw_serde]
 pub struct NftWhitelistResponse {
     pub nfts: Vec<Addr>,
 }

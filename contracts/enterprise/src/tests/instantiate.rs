@@ -29,7 +29,7 @@ use enterprise_protocol::api::ProposalActionType::{UpdateAssetWhitelist, UpdateN
 use enterprise_protocol::api::{
     DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoMetadata, DaoSocialData, Logo, MultisigMember,
     NewDaoMembershipMsg, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
-    TokenMarketingInfo,
+    NftWhitelistParams, TokenMarketingInfo,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InvalidExistingMultisigContract, InvalidExistingNftContract,
@@ -144,7 +144,13 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
     let asset_whitelist_response = query_asset_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(asset_whitelist_response.assets, asset_whitelist);
 
-    let nft_whitelist_response = query_nft_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
+    let nft_whitelist_response = query_nft_whitelist(
+        mock_query_ctx(deps.as_ref(), &env),
+        NftWhitelistParams {
+            start_after: None,
+            limit: None,
+        },
+    )?;
     assert_eq!(nft_whitelist_response.nfts, nft_whitelist);
 
     let total_staked = query_total_staked_amount(mock_query_ctx(deps.as_ref(), &env))?;
@@ -372,7 +378,13 @@ fn instantiate_new_token_membership_instantiates_new_cw20_contract() -> DaoResul
     let asset_whitelist_response = query_asset_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(asset_whitelist_response.assets, asset_whitelist);
 
-    let nft_whitelist_response = query_nft_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
+    let nft_whitelist_response = query_nft_whitelist(
+        mock_query_ctx(deps.as_ref(), &env),
+        NftWhitelistParams {
+            start_after: None,
+            limit: None,
+        },
+    )?;
     assert_eq!(nft_whitelist_response.nfts, nft_whitelist);
 
     Ok(())
@@ -615,7 +627,13 @@ fn instantiate_new_nft_membership_instantiates_new_cw721_contract() -> DaoResult
     let asset_whitelist_response = query_asset_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(asset_whitelist_response.assets, asset_whitelist);
 
-    let nft_whitelist_response = query_nft_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
+    let nft_whitelist_response = query_nft_whitelist(
+        mock_query_ctx(deps.as_ref(), &env),
+        NftWhitelistParams {
+            start_after: None,
+            limit: None,
+        },
+    )?;
     assert_eq!(nft_whitelist_response.nfts, nft_whitelist);
 
     Ok(())
@@ -675,7 +693,13 @@ fn instantiate_new_multisig_membership_stores_members_properly() -> DaoResult<()
     let asset_whitelist_response = query_asset_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(asset_whitelist_response.assets, asset_whitelist);
 
-    let nft_whitelist_response = query_nft_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
+    let nft_whitelist_response = query_nft_whitelist(
+        mock_query_ctx(deps.as_ref(), &env),
+        NftWhitelistParams {
+            start_after: None,
+            limit: None,
+        },
+    )?;
     assert_eq!(nft_whitelist_response.nfts, nft_whitelist);
 
     let qctx = mock_query_ctx(deps.as_ref(), &env);

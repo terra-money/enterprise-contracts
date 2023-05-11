@@ -46,12 +46,12 @@ use enterprise_protocol::api::{
     ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
     MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse,
-    Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
-    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt,
-    RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
+    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistParams,
+    NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
+    ProposalId, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
+    ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
+    ReleaseAt, RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
     TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
     UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
     UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
@@ -1684,7 +1684,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::MemberInfo(msg) => to_binary(&query_member_info(qctx, msg)?)?,
         QueryMsg::ListMultisigMembers(msg) => to_binary(&query_list_multisig_members(qctx, msg)?)?,
         QueryMsg::AssetWhitelist {} => to_binary(&query_asset_whitelist(qctx)?)?,
-        QueryMsg::NftWhitelist {} => to_binary(&query_nft_whitelist(qctx)?)?,
+        QueryMsg::NftWhitelist(params) => to_binary(&query_nft_whitelist(qctx, params)?)?,
         QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params)?)?,
         QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params)?)?,
         QueryMsg::ProposalStatus(params) => to_binary(&query_proposal_status(qctx, params)?)?,
@@ -1729,9 +1729,24 @@ pub fn query_asset_whitelist(qctx: QueryContext) -> DaoResult<AssetWhitelistResp
     Ok(AssetWhitelistResponse { assets })
 }
 
-pub fn query_nft_whitelist(qctx: QueryContext) -> DaoResult<NftWhitelistResponse> {
+pub fn query_nft_whitelist(
+    qctx: QueryContext,
+    params: NftWhitelistParams,
+) -> DaoResult<NftWhitelistResponse> {
+    let start_after = params
+        .start_after
+        .map(|addr| qctx.deps.api.addr_validate(&addr))
+        .transpose()?
+        .map(Bound::exclusive);
+
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
+
     let nfts = NFT_WHITELIST
-        .range(qctx.deps.storage, None, None, Ascending)
+        .range(qctx.deps.storage, start_after, None, Ascending)
+        .take(limit as usize)
         .collect::<StdResult<Vec<(Addr, ())>>>()?
         .into_iter()
         .map(|(addr, _)| addr)
