@@ -591,11 +591,6 @@ pub struct ClaimsParams {
     pub owner: String,
 }
 
-#[cw_serde]
-pub struct AssetTreasuryResponse {
-    pub assets: Vec<Asset>,
-}
-
 /// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually
 /// implement it correctly (they return 'ids' instead of 'tokens').
 #[cw_serde]
