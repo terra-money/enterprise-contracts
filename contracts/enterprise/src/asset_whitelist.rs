@@ -4,7 +4,6 @@ use cosmwasm_std::{Addr, DepsMut, StdError, StdResult};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Bound, Map};
 use enterprise_protocol::error::DaoResult;
-use itertools::Itertools;
 
 pub const NATIVE_ASSET_WHITELIST: Map<String, ()> = Map::new("native_asset_whitelist");
 pub const CW20_ASSET_WHITELIST: Map<Addr, ()> = Map::new("cw20_asset_whitelist");
@@ -55,11 +54,13 @@ pub fn get_whitelisted_assets_starting_with_native(
 ) -> DaoResult<Vec<AssetInfo>> {
     let start_after = start_after.map(Bound::exclusive);
 
-    let mut native_assets = NATIVE_ASSET_WHITELIST
+    let mut native_assets: Vec<AssetInfo> = NATIVE_ASSET_WHITELIST
         .range(qctx.deps.storage, start_after, None, Ascending)
-        .map_ok(|(denom, _)| AssetInfo::native(denom))
         .take(limit)
-        .collect::<StdResult<Vec<AssetInfo>>>()?;
+        .collect::<StdResult<Vec<(String, ())>>>()?
+        .into_iter()
+        .map(|(denom, _)| AssetInfo::native(denom))
+        .collect();
 
     let native_assets_length = native_assets.len();
 
@@ -80,11 +81,13 @@ pub fn get_whitelisted_assets_starting_with_cw20(
 ) -> DaoResult<Vec<AssetInfo>> {
     let start_after = start_after.map(Bound::exclusive);
 
-    let mut cw20_assets = CW20_ASSET_WHITELIST
+    let mut cw20_assets: Vec<AssetInfo> = CW20_ASSET_WHITELIST
         .range(qctx.deps.storage, start_after, None, Ascending)
-        .map_ok(|(addr, _)| AssetInfo::cw20(addr))
         .take(limit)
-        .collect::<StdResult<Vec<AssetInfo>>>()?;
+        .collect::<StdResult<Vec<(Addr, ())>>>()?
+        .into_iter()
+        .map(|(addr, _)| AssetInfo::cw20(addr))
+        .collect();
 
     let cw20_assets_length = cw20_assets.len();
 
@@ -107,9 +110,11 @@ pub fn get_whitelisted_assets_starting_with_cw1155(
 
     let cw1155_assets = CW1155_ASSET_WHITELIST
         .range(qctx.deps.storage, start_after, None, Ascending)
-        .map_ok(|((addr, id), _)| AssetInfo::cw1155(addr, id))
         .take(limit)
-        .collect::<StdResult<Vec<AssetInfo>>>()?;
+        .collect::<StdResult<Vec<((Addr, String), ())>>>()?
+        .into_iter()
+        .map(|((addr, id), _)| AssetInfo::cw1155(addr, id))
+        .collect();
 
     Ok(cw1155_assets)
 }
