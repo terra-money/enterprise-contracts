@@ -40,24 +40,23 @@ use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
 use cw_asset::{Asset, AssetInfo, AssetInfoBase};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration, Expiration};
-use enterprise_factory_api::msg::QueryMsg::GlobalAssetWhitelist;
 use enterprise_protocol::api::ClaimAsset::{Cw20, Cw721};
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
 use enterprise_protocol::api::{
-    AssetTreasuryResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim,
-    ClaimsParams, ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
-    DaoInfoResponse, DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg,
-    ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
-    MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
-    MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistParams,
-    NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
-    ProposalId, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
-    ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
-    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
-    ReleaseAt, RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
+    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams, ClaimsResponse,
+    CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig, DaoInfoResponse,
+    DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
+    ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse,
+    NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo,
+    NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistParams, NftWhitelistResponse,
+    Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
+    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt,
+    RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
     TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
     UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
     UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
@@ -1674,7 +1673,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::TotalStakedAmount {} => to_binary(&query_total_staked_amount(qctx)?)?,
         QueryMsg::Claims(params) => to_binary(&query_claims(qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(qctx, params)?)?,
-        QueryMsg::Cw20Treasury {} => to_binary(&query_cw20_treasury(qctx)?)?,
     };
     Ok(response)
 }
@@ -2193,74 +2191,6 @@ pub fn query_releasable_claims(
     Ok(ClaimsResponse {
         claims: releasable_claims,
     })
-}
-
-// TODO: this has to go now
-pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryResponse> {
-    let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
-    let global_asset_whitelist: AssetWhitelistResponse = qctx
-        .deps
-        .querier
-        .query_wasm_smart(enterprise_factory, &GlobalAssetWhitelist {})?;
-
-    let mut asset_whitelist = query_asset_whitelist(
-        qctx.clone(),
-        AssetWhitelistParams {
-            start_after: None,
-            limit: None,
-        },
-    )?
-    .assets;
-
-    for asset in global_asset_whitelist.assets {
-        // TODO: suboptimal, use maps or sth
-        if !asset_whitelist.contains(&asset) {
-            asset_whitelist.push(asset);
-        }
-    }
-
-    // add 'uluna' to the asset whitelist, if not already present
-    let uluna = AssetInfo::native("uluna");
-    if !asset_whitelist.contains(&uluna) {
-        asset_whitelist.push(uluna);
-    }
-
-    let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
-
-    // if DAO is of Token type, add its own token to the asset whitelist, if not already present
-    let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
-    if dao_type == Token {
-        let dao_token = AssetInfo::cw20(dao_membership_contract.clone());
-        if !asset_whitelist.contains(&dao_token) {
-            asset_whitelist.push(dao_token);
-        }
-    }
-
-    let dao_address = qctx.env.contract.address.as_ref();
-
-    let assets = asset_whitelist
-        .into_iter()
-        .map(|asset| {
-            // subtract staked and deposited tokens, if the asset is DAO's membership token
-            let subtract_amount = if let AssetInfo::Cw20(token) = &asset {
-                if token == &dao_membership_contract {
-                    let staked = load_total_staked(qctx.deps.storage)?;
-                    let deposited = TOTAL_DEPOSITS.load(qctx.deps.storage)?;
-
-                    staked.add(deposited)
-                } else {
-                    Uint128::zero()
-                }
-            } else {
-                Uint128::zero()
-            };
-            asset
-                .query_balance(&qctx.deps.querier, dao_address)
-                .map(|balance| Asset::new(asset, balance.sub(subtract_amount)))
-        })
-        .collect::<StdResult<Vec<Asset>>>()?;
-
-    Ok(AssetTreasuryResponse { assets })
 }
 
 fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
