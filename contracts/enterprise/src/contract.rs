@@ -3,6 +3,7 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
+use crate::migration::migrate_asset_whitelist;
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -2290,7 +2291,7 @@ fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
     let contract_version = get_contract_version(deps.storage)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
@@ -2313,6 +2314,10 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
             new_code_id: 1393,
             msg: to_binary(&enterprise_governance_api::msg::MigrateMsg {})?,
         }));
+    }
+
+    if &contract_version.version == "0.4.0" {
+        migrate_asset_whitelist(deps.branch())?;
     }
 
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
