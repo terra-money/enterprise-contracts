@@ -137,7 +137,7 @@ fn calculate_release_at(ctx: &mut Context) -> NftStakingResult<ReleaseAt> {
     Ok(release_at)
 }
 
-/// Update the admin. Only the current admin can execute this.
+/// Update the config. Only the current admin can execute this.
 pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> NftStakingResult<Response> {
     // only admin can execute this
     admin_caller_only(ctx)?;

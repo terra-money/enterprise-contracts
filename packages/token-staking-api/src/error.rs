@@ -1,25 +1,22 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-pub type NftStakingResult<T> = Result<T, NftStakingError>;
+pub type TokenStakingResult<T> = Result<T, TokenStakingError>;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum NftStakingError {
+pub enum TokenStakingError {
     #[error("{0}")]
     Std(#[from] StdError),
 
     #[error("Unauthorized")]
     Unauthorized,
 
-    #[error("NFT token with ID {token_id} has already been staked")]
-    NftTokenAlreadyStaked { token_id: String },
-
-    #[error("No NFT token with ID {token_id} has been staked by this user")]
-    NoNftTokenStaked { token_id: String },
+    #[error("Insufficient staked amount")]
+    InsufficientStake,
 }
 
-impl NftStakingError {
-    /// Converts this NftStakingError into a StdError.
+impl TokenStakingError {
+    /// Converts this TokenStakingError into a StdError.
     pub fn std_err(&self) -> StdError {
         StdError::generic_err(format!("{:?}", self))
     }
