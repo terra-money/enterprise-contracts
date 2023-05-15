@@ -37,7 +37,6 @@ use cw_asset::{Asset, AssetInfo, AssetInfoBase};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Expiration};
 use enterprise_factory_api::msg::QueryMsg::GlobalAssetWhitelist;
-use enterprise_protocol::api::ClaimAsset::{Cw20, Cw721};
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
@@ -59,8 +58,8 @@ use enterprise_protocol::api::{
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InvalidCosmosMessage, NoVotesAvailable, NotMultisigMember,
-    NothingToClaim, ProposalAlreadyExecuted, Std, UnsupportedCouncilProposalAction,
-    WrongProposalType, ZeroInitialDaoBalance,
+    ProposalAlreadyExecuted, Std, UnsupportedCouncilProposalAction, WrongProposalType,
+    ZeroInitialDaoBalance,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -1414,76 +1413,44 @@ fn update_funds_distributor(
 }
 
 pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
-    let claims = CLAIMS
-        .may_load(ctx.deps.storage, &ctx.info.sender)?
-        .unwrap_or_default();
+    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
 
-    if claims.is_empty() {
-        return Err(NothingToClaim);
-    }
+    let user = ctx.info.sender.clone();
 
-    let block = ctx.env.block.clone();
+    // TODO: unify the code between token and NFT DAOs
+    let claim_msg = match dao_type {
+        Token => {
+            let staking_contract = STAKING_CONTRACT.load(ctx.deps.storage)?;
 
-    // TODO: this is real brute force, when indexed map is in we should filter smaller data set
-    let mut releasable_claims: Vec<Claim> = vec![];
-    let remaining_claims = claims
-        .into_iter()
-        .filter_map(|claim| {
-            let is_releasable = is_releasable(&claim, &block);
-            if is_releasable {
-                releasable_claims.push(claim);
-                None
-            } else {
-                Some(claim)
-            }
-        })
-        .collect();
-
-    if releasable_claims.is_empty() {
-        return Err(NothingToClaim);
-    }
-
-    CLAIMS.save(ctx.deps.storage, &ctx.info.sender, &remaining_claims)?;
-
-    let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
-
-    let mut submsgs: Vec<SubMsg> = vec![];
-    for releasable_claim in releasable_claims {
-        match releasable_claim.asset {
-            Cw20(msg) => submsgs.push(SubMsg::new(
-                Asset::cw20(dao_membership_contract.clone(), msg.amount)
-                    .transfer_msg(ctx.info.sender.clone())?,
-            )),
-            Cw721(msg) => {
-                for token in msg.tokens {
-                    submsgs.push(transfer_nft_submsg(
-                        dao_membership_contract.to_string(),
-                        token,
-                        ctx.info.sender.to_string(),
-                    )?)
-                }
-            }
+            SubMsg::new(wasm_execute(
+                staking_contract.to_string(),
+                &token_staking_api::msg::ExecuteMsg::Claim(token_staking_api::api::ClaimMsg {
+                    user: user.to_string(),
+                }),
+                vec![],
+            )?)
         }
-    }
+        Nft => {
+            let staking_contract = STAKING_CONTRACT.load(ctx.deps.storage)?;
+
+            SubMsg::new(wasm_execute(
+                staking_contract.to_string(),
+                &nft_staking_api::msg::ExecuteMsg::Claim(nft_staking_api::api::ClaimMsg {
+                    user: user.to_string(),
+                }),
+                vec![],
+            )?)
+        }
+        Multisig => {
+            return Err(UnsupportedOperationForDaoType {
+                dao_type: dao_type.to_string(),
+            })
+        }
+    };
 
     Ok(Response::new()
         .add_attribute("action", "claim")
-        .add_submessages(submsgs))
-}
-
-fn transfer_nft_submsg(
-    nft_contract: String,
-    token_id: String,
-    recipient: String,
-) -> StdResult<SubMsg> {
-    Ok(SubMsg::new(wasm_execute(
-        nft_contract,
-        &cw721::Cw721ExecuteMsg::TransferNft {
-            recipient,
-            token_id,
-        },
-        vec![],
-    )?))
+        .add_submessage(claim_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
