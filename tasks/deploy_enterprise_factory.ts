@@ -5,6 +5,7 @@ const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_FACTORY = "enterprise-factory";
 const FUNDS_DISTRIBUTOR = "funds-distributor";
 const TOKEN_STAKING = "token-staking";
+const NFT_STAKING = "token-staking";
 
 task(async ({ network, deployer, signer, refs }) => {
   deployer.buildContract(ENTERPRISE);
@@ -19,6 +20,12 @@ task(async ({ network, deployer, signer, refs }) => {
   const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
+  const tokenStakingCodeId = await deployer.storeCode(TOKEN_STAKING);
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
+  const nftStakingCodeId = await deployer.storeCode(NFT_STAKING);
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
   const cw3CodeId = refs.getContract(network, "cw3_fixed_multisig").codeId;
   const cw20CodeId = refs.getContract(network, "cw20_base").codeId;
   const cw721CodeId = refs.getContract(network, "cw721_base").codeId;
@@ -31,6 +38,8 @@ task(async ({ network, deployer, signer, refs }) => {
       enterprise_code_id: parseInt(enterpriseCodeId),
       enterprise_governance_code_id: parseInt(enterpriseGovernanceCodeId),
       funds_distributor_code_id: parseInt(fundsDistributorCodeId),
+      token_staking_code_id: parseInt(tokenStakingCodeId),
+      nft_staking_code_id: parseInt(nftStakingCodeId),
       cw3_fixed_multisig_code_id: parseInt(cw3CodeId),
       cw20_code_id: parseInt(cw20CodeId),
       cw721_code_id: parseInt(cw721CodeId),
