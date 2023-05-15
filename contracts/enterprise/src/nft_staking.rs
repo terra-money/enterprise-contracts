@@ -4,6 +4,8 @@ use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use enterprise_protocol::api::NftTokenId;
 
+// TODO: remove all this shit
+
 #[cw_serde]
 pub struct NftStake {
     pub staker: Addr,

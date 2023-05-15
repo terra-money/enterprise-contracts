@@ -1,15 +1,9 @@
+use common::cw::ReleaseAt;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
 use cw_utils::{Duration, Expiration};
 
 pub type NftTokenId = String;
-
-// TODO: move to common and remove other declarations of this
-#[cw_serde]
-pub enum ReleaseAt {
-    Timestamp(Timestamp),
-    Height(Uint64),
-}
 
 // TODO: also move to common
 #[cw_serde]

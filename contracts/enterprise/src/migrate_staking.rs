@@ -1,4 +1,5 @@
-use crate::state::{CLAIMS, DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_TYPE};
+use crate::nft_staking::{NftStake, NFT_STAKES};
+use crate::state::{CLAIMS, DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_TYPE, STAKING_CONTRACT};
 use cosmwasm_std::{
     to_binary, wasm_execute, wasm_instantiate, Addr, DepsMut, Env, Order, Reply, Response,
     StdError, StdResult, SubMsg, Uint128,
@@ -41,8 +42,25 @@ pub fn migrate_staking(deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>> {
             Ok(vec![instantiate_msg])
         }
         DaoType::Nft => {
-            // TODO: implement
-            Ok(vec![])
+            let nft_addr = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+
+            let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
+
+            let instantiate_msg = SubMsg::reply_on_success(
+                wasm_instantiate(
+                    0, // TODO: use real code ID
+                    &nft_staking_api::msg::InstantiateMsg {
+                        admin: env.contract.address.to_string(),
+                        nft_contract: nft_addr.to_string(),
+                        unlocking_period: gov_config.unlocking_period,
+                    },
+                    vec![],
+                    "NFT staking".to_string(),
+                )?,
+                INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID,
+            );
+
+            Ok(vec![instantiate_msg])
         }
         DaoType::Multisig => Ok(vec![]),
     }
@@ -57,7 +75,9 @@ pub fn reply_instantiate_token_staking_contract(deps: DepsMut, msg: Reply) -> Da
         .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
         .contract_address;
 
-    // TODO: store token staking contract address
+    let staking_contract = deps.api.addr_validate(&token_staking_contract_address)?;
+
+    STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
 
     let stakers = CW20_STAKES
         .range(deps.storage, None, None, Order::Ascending)
@@ -101,8 +121,6 @@ pub fn reply_instantiate_token_staking_contract(deps: DepsMut, msg: Reply) -> Da
     let mut claims: Vec<UserClaim> = vec![];
 
     for (user, user_claims) in all_claims {
-        CLAIMS.remove(deps.storage, &user);
-
         for claim in user_claims {
             if let ClaimAsset::Cw20(asset) = claim.asset {
                 total_claims_amount += asset.amount;
@@ -115,6 +133,8 @@ pub fn reply_instantiate_token_staking_contract(deps: DepsMut, msg: Reply) -> Da
             }
         }
     }
+
+    CLAIMS.clear(deps.storage);
 
     let initialize_claims_msg = SubMsg::new(wasm_execute(
         token_addr.to_string(),
@@ -129,4 +149,79 @@ pub fn reply_instantiate_token_staking_contract(deps: DepsMut, msg: Reply) -> Da
     Ok(Response::new()
         .add_submessage(initialize_stakers_msg)
         .add_submessage(initialize_claims_msg))
+}
+
+pub fn reply_instantiate_nft_staking_contract(deps: DepsMut, msg: Reply) -> DaoResult<Response> {
+    if msg.id != INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID {
+        return Err(StdError::generic_err("invalid reply ID").into());
+    }
+
+    let token_staking_contract_address = parse_reply_instantiate_data(msg)
+        .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+        .contract_address;
+
+    let staking_contract = deps.api.addr_validate(&token_staking_contract_address)?;
+
+    STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
+
+    // migrate stakes
+    let stakes = NFT_STAKES()
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(String, NftStake)>>>()?;
+
+    let mut send_nft_stakes_msgs = vec![];
+
+    let nft_addr = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+
+    for (token_id, stake) in stakes {
+        send_nft_stakes_msgs.push(SubMsg::new(wasm_execute(
+            nft_addr.to_string(),
+            &cw721::Cw721ExecuteMsg::SendNft {
+                contract: staking_contract.to_string(),
+                token_id,
+                msg: to_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
+                    user: stake.staker.to_string(),
+                })?,
+            },
+            vec![],
+        )?));
+    }
+
+    NFT_STAKES().clear(deps.storage);
+
+    // migrate claims
+    let all_claims = CLAIMS
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?;
+
+    let mut send_claims_msg = vec![];
+
+    for (user, user_claims) in all_claims {
+        CLAIMS.remove(deps.storage, &user);
+
+        for claim in user_claims {
+            if let ClaimAsset::Cw721(claim_assets) = claim.asset {
+                for token_id in claim_assets.tokens {
+                    send_claims_msg.push(SubMsg::new(wasm_execute(
+                        nft_addr.to_string(),
+                        &cw721::Cw721ExecuteMsg::SendNft {
+                            contract: staking_contract.to_string(),
+                            token_id,
+                            msg: to_binary(&nft_staking_api::msg::Cw721HookMsg::AddClaim {
+                                user: user.to_string(),
+                                release_at: claim.release_at.clone(),
+                            })?,
+                        },
+                        vec![],
+                    )?));
+                }
+            }
+        }
+    }
+
+    CLAIMS.clear(deps.storage);
+
+    Ok(Response::new()
+        .add_submessages(send_nft_stakes_msgs)
+        .add_submessages(send_claims_msg))
 }

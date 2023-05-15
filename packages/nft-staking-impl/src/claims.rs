@@ -1,6 +1,7 @@
+use common::cw::ReleaseAt;
 use cosmwasm_std::{Addr, BlockInfo, Order, StdResult, Storage, Uint64};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
-use nft_staking_api::api::{ClaimsResponse, NftClaim, NftTokenId, ReleaseAt};
+use nft_staking_api::api::{ClaimsResponse, NftClaim, NftTokenId};
 use nft_staking_api::error::NftStakingResult;
 
 const CLAIM_IDS: Item<Uint64> = Item::new("claim_ids");

@@ -5,11 +5,11 @@ use crate::nft_staking::{
 };
 use crate::total_staked::{decrement_total_staked, increment_total_staked};
 use crate::validate::admin_caller_only;
-use common::cw::Context;
+use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
-use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, ReleaseAt, UnstakeMsg, UpdateConfigMsg};
+use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateConfigMsg};
 use nft_staking_api::error::NftStakingError::{
     NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
 };
