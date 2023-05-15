@@ -2,6 +2,12 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Timestamp, Uint128, Uint64};
 use cw_utils::{Duration, Expiration};
 
+#[cw_serde]
+pub struct UserStake {
+    pub user: String,
+    pub staked_amount: Uint128,
+}
+
 // TODO: move to common and remove other declarations of this
 #[cw_serde]
 pub enum ReleaseAt {

@@ -1,3 +1,4 @@
+use crate::migrate_staking::migrate_staking;
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -2223,7 +2224,7 @@ fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
+pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> DaoResult<Response> {
     let contract_version = get_contract_version(deps.storage)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
@@ -2246,6 +2247,11 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
             new_code_id: 1393,
             msg: to_binary(&enterprise_governance_api::msg::MigrateMsg {})?,
         }));
+    }
+
+    // TODO: should also happen if the version was less than 0.4.0
+    if &contract_version.version == "0.4.0" {
+        submsgs.append(&mut migrate_staking(deps.branch(), env)?);
     }
 
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;

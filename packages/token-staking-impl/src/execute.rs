@@ -1,14 +1,21 @@
 use crate::claims::{add_claim, get_releasable_claims, TOKEN_CLAIMS};
 use crate::config::CONFIG;
-use crate::token_staking::{decrement_user_total_staked, get_user_stake, increment_user_stake};
-use crate::total_staked::{decrement_total_staked, increment_total_staked};
+use crate::token_staking::{
+    decrement_user_total_staked, get_user_stake, increment_user_stake, set_user_stake,
+};
+use crate::total_staked::{
+    decrement_total_staked, increment_total_staked, load_total_staked, save_total_staked,
+};
 use crate::validate::admin_caller_only;
 use common::cw::Context;
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
-use token_staking_api::api::{ClaimMsg, ReleaseAt, UnstakeMsg, UpdateConfigMsg};
-use token_staking_api::error::TokenStakingError::{InsufficientStake, Unauthorized};
+use std::ops::Not;
+use token_staking_api::api::{ClaimMsg, ReleaseAt, UnstakeMsg, UpdateConfigMsg, UserStake};
+use token_staking_api::error::TokenStakingError::{
+    IncorrectStakesInitializationAmount, InsufficientStake, StakesAlreadyInitialized, Unauthorized,
+};
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::Cw20HookMsg;
 
@@ -28,6 +35,7 @@ pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResul
 
     match from_binary(&msg.msg) {
         Ok(Cw20HookMsg::Stake { user }) => stake_token(ctx, msg, user),
+        Ok(Cw20HookMsg::InitializeStakers { stakers }) => initialize_stakers(ctx, msg, stakers),
         Ok(Cw20HookMsg::AddClaim { user, release_at }) => {
             add_token_claim(ctx, msg, user, release_at)
         }
@@ -49,6 +57,38 @@ fn stake_token(
         .add_attribute("action", "stake")
         .add_attribute("user_stake", new_user_stake.to_string())
         .add_attribute("total_staked", new_total_staked.to_string()))
+}
+
+fn initialize_stakers(
+    ctx: &mut Context,
+    msg: Cw20ReceiveMsg,
+    stakers: Vec<UserStake>,
+) -> TokenStakingResult<Response> {
+    let total_staked = load_total_staked(ctx.deps.storage)?;
+
+    if total_staked.is_zero().not() {
+        return Err(StakesAlreadyInitialized);
+    }
+
+    let mut user_stakes_sum = Uint128::zero();
+
+    for staker in stakers {
+        let user = ctx.deps.api.addr_validate(&staker.user)?;
+
+        user_stakes_sum += staker.staked_amount;
+
+        set_user_stake(ctx.deps.storage, user, staker.staked_amount)?;
+    }
+
+    if user_stakes_sum != msg.amount {
+        return Err(IncorrectStakesInitializationAmount);
+    }
+
+    save_total_staked(ctx.deps.storage, &user_stakes_sum, &ctx.env.block)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "initialize_stakes")
+        .add_attribute("total_staked", user_stakes_sum.to_string()))
 }
 
 fn add_token_claim(

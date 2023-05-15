@@ -11,6 +11,12 @@ pub enum TokenStakingError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error("Cannot initialize stakes - existing stakes already present")]
+    StakesAlreadyInitialized,
+
+    #[error("Initial stakes amount received does not match the sum of initial user stakes")]
+    IncorrectStakesInitializationAmount,
+
     #[error("Insufficient staked amount")]
     InsufficientStake,
 }
