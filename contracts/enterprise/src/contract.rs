@@ -10,7 +10,7 @@ use crate::proposals::{
 };
 use crate::staking::{
     load_total_staked, load_total_staked_at_height, load_total_staked_at_time,
-    query_user_cw20_stake,
+    query_user_cw20_stake, query_user_cw721_total_stake,
 };
 use crate::state::{
     State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
@@ -1284,7 +1284,7 @@ pub fn receive_cw721(ctx: &mut Context, cw721_msg: ReceiveNftMsg) -> DaoResult<R
                 vec![],
             )?);
 
-            let user_stake = Uint128::zero(); // TODO: load from query to nft staking contract
+            let user_stake = query_user_cw721_total_stake(ctx.deps.as_ref(), staker.clone())?;
             let new_user_stake = user_stake - Uint128::one();
 
             let update_funds_distributor_submsg =
@@ -1344,7 +1344,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 return Err(InvalidStakingAsset);
             }
 
-            let user_stake = Uint128::zero(); // TODO: load from query to nft staking contract
+            let user_stake =
+                query_user_cw721_total_stake(ctx.deps.as_ref(), ctx.info.sender.clone())?;
 
             let staking_contract = STAKING_CONTRACT.load(ctx.deps.storage)?;
 

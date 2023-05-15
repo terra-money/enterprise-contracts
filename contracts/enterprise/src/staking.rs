@@ -3,6 +3,7 @@ use cosmwasm_std::{Addr, Deps, StdError, StdResult, Timestamp, Uint128};
 use cw_utils::Expiration;
 use cw_utils::Expiration::{AtHeight, Never};
 use enterprise_protocol::api::DaoType;
+use nft_staking_api::api::{UserNftTotalStakeParams, UserNftTotalStakeResponse};
 use token_staking_api::api::{UserTokenStakeParams, UserTokenStakeResponse};
 use DaoType::{Multisig, Nft, Token};
 use Expiration::AtTime;
@@ -18,6 +19,19 @@ pub fn query_user_cw20_stake(deps: Deps, user: Addr) -> StdResult<Uint128> {
     )?;
 
     Ok(response.staked_amount)
+}
+
+pub fn query_user_cw721_total_stake(deps: Deps, user: Addr) -> StdResult<Uint128> {
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+
+    let response: UserNftTotalStakeResponse = deps.querier.query_wasm_smart(
+        staking_contract.to_string(),
+        &nft_staking_api::msg::QueryMsg::UserTotalStake(UserNftTotalStakeParams {
+            user: user.to_string(),
+        }),
+    )?;
+
+    Ok(response.total_user_stake)
 }
 
 pub fn load_total_staked(deps: Deps) -> StdResult<Uint128> {
