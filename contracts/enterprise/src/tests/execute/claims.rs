@@ -6,11 +6,12 @@ use crate::tests::helpers::{
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
+use common::cw::ReleaseAt;
 use cosmwasm_std::{wasm_execute, Addr, SubMsg, Timestamp};
 use cw_asset::Asset;
 use cw_utils::Duration;
 use enterprise_protocol::api::{
-    Claim, ClaimAsset, ClaimsParams, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig, ReleaseAt,
+    Claim, ClaimAsset, ClaimsParams, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg;

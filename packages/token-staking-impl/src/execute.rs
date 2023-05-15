@@ -7,14 +7,15 @@ use crate::total_staked::{
     decrement_total_staked, increment_total_staked, load_total_staked, save_total_staked,
 };
 use crate::validate::admin_caller_only;
-use common::cw::Context;
+use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
 use std::ops::Not;
-use token_staking_api::api::{ClaimMsg, ReleaseAt, UnstakeMsg, UpdateConfigMsg, UserStake};
+use token_staking_api::api::{ClaimMsg, UnstakeMsg, UpdateConfigMsg, UserClaim, UserStake};
 use token_staking_api::error::TokenStakingError::{
-    IncorrectStakesInitializationAmount, InsufficientStake, StakesAlreadyInitialized, Unauthorized,
+    IncorrectClaimsAmountReceived, IncorrectStakesInitializationAmount, InsufficientStake,
+    StakesAlreadyInitialized, Unauthorized,
 };
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::Cw20HookMsg;
@@ -36,9 +37,7 @@ pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResul
     match from_binary(&msg.msg) {
         Ok(Cw20HookMsg::Stake { user }) => stake_token(ctx, msg, user),
         Ok(Cw20HookMsg::InitializeStakers { stakers }) => initialize_stakers(ctx, msg, stakers),
-        Ok(Cw20HookMsg::AddClaim { user, release_at }) => {
-            add_token_claim(ctx, msg, user, release_at)
-        }
+        Ok(Cw20HookMsg::AddClaims { claims }) => add_token_claims(ctx, msg, claims),
         _ => Err(StdError::generic_err("msg payload not recognized").into()),
     }
 }
@@ -91,19 +90,26 @@ fn initialize_stakers(
         .add_attribute("total_staked", user_stakes_sum.to_string()))
 }
 
-fn add_token_claim(
+fn add_token_claims(
     ctx: &mut Context,
     msg: Cw20ReceiveMsg,
-    user: String,
-    release_at: ReleaseAt,
+    claims: Vec<UserClaim>,
 ) -> TokenStakingResult<Response> {
-    let user = ctx.deps.api.addr_validate(&user)?;
+    let mut total_amount = Uint128::zero();
 
-    let claim = add_claim(ctx.deps.storage, user, msg.amount, release_at)?;
+    for claim in claims {
+        let user = ctx.deps.api.addr_validate(&claim.user)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "add_claim")
-        .add_attribute("claim_id", claim.id.to_string()))
+        add_claim(ctx.deps.storage, user, claim.claim_amount, claim.release_at)?;
+
+        total_amount += claim.claim_amount;
+    }
+
+    if total_amount != msg.amount {
+        return Err(IncorrectClaimsAmountReceived);
+    }
+
+    Ok(Response::new().add_attribute("action", "add_claims"))
 }
 
 /// Unstake tokens. Only admin can perform this on behalf of a user.

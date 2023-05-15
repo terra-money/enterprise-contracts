@@ -17,6 +17,9 @@ pub enum TokenStakingError {
     #[error("Initial stakes amount received does not match the sum of initial user stakes")]
     IncorrectStakesInitializationAmount,
 
+    #[error("Received amount different from the total amount of claims")]
+    IncorrectClaimsAmountReceived,
+
     #[error("Insufficient staked amount")]
     InsufficientStake,
 }

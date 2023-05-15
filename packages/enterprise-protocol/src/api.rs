@@ -1,3 +1,4 @@
+use common::cw::ReleaseAt;
 use common::nft::TokensResponse;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Decimal, StdError, StdResult, Timestamp, Uint128, Uint64};
@@ -356,12 +357,6 @@ pub struct Cw20ClaimAsset {
 #[cw_serde]
 pub struct Cw721ClaimAsset {
     pub tokens: Vec<NftTokenId>,
-}
-
-#[cw_serde]
-pub enum ReleaseAt {
-    Timestamp(Timestamp),
-    Height(Uint64),
 }
 
 #[cw_serde]

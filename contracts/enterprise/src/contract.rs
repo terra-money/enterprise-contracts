@@ -1,9 +1,8 @@
-use crate::migrate_staking::migrate_staking;
+use crate::migrate_staking::{migrate_staking, reply_instantiate_token_staking_contract};
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
 };
-use crate::nft_staking;
 use crate::nft_staking::{load_all_nft_stakes_for_user, save_nft_stake, NftStake};
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo,
@@ -23,7 +22,8 @@ use crate::validate::{
     validate_dao_gov_config, validate_deposit, validate_existing_dao_contract,
     validate_modify_multisig_membership, validate_proposal_actions,
 };
-use common::cw::{Context, Pagination, QueryContext};
+use crate::{migrate_staking, nft_staking};
+use common::cw::{Context, Pagination, QueryContext, ReleaseAt};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, wasm_instantiate, Addr, Binary,
@@ -51,7 +51,7 @@ use enterprise_protocol::api::{
     Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
     RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
     TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
     UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
@@ -1616,6 +1616,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_attribute("dao_address", ctx.env.contract.address.to_string())
                 .add_attribute("proposal_id", proposal_id.to_string())
                 .add_submessages(execute_submsgs))
+        }
+        migrate_staking::INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID => {
+            reply_instantiate_token_staking_contract(deps, msg)
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }

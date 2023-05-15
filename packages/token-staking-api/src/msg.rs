@@ -1,6 +1,6 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ReleaseAt, TotalStakedAmountParams,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateConfigMsg, UserStake, UserTokenStakeParams,
+    ClaimMsg, ClaimsParams, ClaimsResponse, TotalStakedAmountParams, TotalStakedAmountResponse,
+    UnstakeMsg, UpdateConfigMsg, UserClaim, UserStake, UserTokenStakeParams,
     UserTokenStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -26,7 +26,7 @@ pub enum ExecuteMsg {
 pub enum Cw20HookMsg {
     Stake { user: String },
     InitializeStakers { stakers: Vec<UserStake> },
-    AddClaim { user: String, release_at: ReleaseAt },
+    AddClaims { claims: Vec<UserClaim> },
 }
 
 #[cw_serde]

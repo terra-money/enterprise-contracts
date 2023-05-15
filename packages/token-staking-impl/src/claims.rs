@@ -1,7 +1,8 @@
+use common::cw::ReleaseAt;
 use cosmwasm_std::{Addr, BlockInfo, Order, StdResult, Storage, Uint128, Uint64};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use itertools::Itertools;
-use token_staking_api::api::{ClaimsResponse, ReleaseAt, TokenClaim};
+use token_staking_api::api::{ClaimsResponse, TokenClaim};
 use token_staking_api::error::TokenStakingResult;
 
 const CLAIM_IDS: Item<Uint64> = Item::new("claim_ids");

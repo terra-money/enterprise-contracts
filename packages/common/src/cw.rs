@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     wasm_execute, wasm_instantiate, Addr, Api, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdResult, Storage, Uint128, WasmMsg,
+    MessageInfo, QuerierWrapper, Response, StdResult, Storage, Timestamp, Uint128, Uint64, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Bound, PrimaryKey};
@@ -82,6 +82,13 @@ impl<'a, K: PrimaryKey<'a>> Default for RangeArgs<'a, K> {
             order: cosmwasm_std::Order::Ascending,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ReleaseAt {
+    Timestamp(Timestamp),
+    Height(Uint64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

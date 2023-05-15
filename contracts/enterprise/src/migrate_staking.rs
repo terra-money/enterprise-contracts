@@ -1,13 +1,13 @@
 use crate::staking::CW20_STAKES;
-use crate::state::{DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_TYPE};
+use crate::state::{CLAIMS, DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_TYPE};
 use cosmwasm_std::{
     to_binary, wasm_execute, wasm_instantiate, Addr, DepsMut, Env, Order, Reply, Response,
     StdError, StdResult, SubMsg, Uint128,
 };
 use cw_utils::parse_reply_instantiate_data;
-use enterprise_protocol::api::DaoType;
+use enterprise_protocol::api::{Claim, ClaimAsset, DaoType};
 use enterprise_protocol::error::DaoResult;
-use token_staking_api::api::UserStake;
+use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::InitializeStakers;
 
 pub const INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID: u64 = 1001;
@@ -81,7 +81,7 @@ pub fn reply_instantiate_token_staking_contract(deps: DepsMut, msg: Reply) -> Da
     let initialize_stakers_msg = SubMsg::new(wasm_execute(
         token_addr.to_string(),
         &cw20::Cw20ExecuteMsg::Send {
-            contract: token_staking_contract_address,
+            contract: token_staking_contract_address.clone(),
             amount: total_stake,
             msg: to_binary(&InitializeStakers {
                 stakers: staking_contract_stakers,
@@ -90,5 +90,41 @@ pub fn reply_instantiate_token_staking_contract(deps: DepsMut, msg: Reply) -> Da
         vec![],
     )?);
 
-    Ok(Response::new().add_submessage(initialize_stakers_msg))
+    let all_claims = CLAIMS
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?;
+
+    let mut total_claims_amount = Uint128::zero();
+
+    let mut claims: Vec<UserClaim> = vec![];
+
+    for (user, user_claims) in all_claims {
+        CLAIMS.remove(deps.storage, &user);
+
+        for claim in user_claims {
+            if let ClaimAsset::Cw20(asset) = claim.asset {
+                total_claims_amount += asset.amount;
+
+                claims.push(UserClaim {
+                    user: user.to_string(),
+                    claim_amount: asset.amount,
+                    release_at: claim.release_at.clone(),
+                });
+            }
+        }
+    }
+
+    let initialize_claims_msg = SubMsg::new(wasm_execute(
+        token_addr.to_string(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: token_staking_contract_address,
+            amount: total_claims_amount,
+            msg: to_binary(&token_staking_api::msg::Cw20HookMsg::AddClaims { claims })?,
+        },
+        vec![],
+    )?);
+
+    Ok(Response::new()
+        .add_submessage(initialize_stakers_msg)
+        .add_submessage(initialize_claims_msg))
 }
