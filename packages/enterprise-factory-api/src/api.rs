@@ -10,6 +10,8 @@ pub struct Config {
     pub enterprise_code_id: u64,
     pub enterprise_governance_code_id: u64,
     pub funds_distributor_code_id: u64,
+    pub token_staking_code_id: u64,
+    pub nft_staking_code_id: u64,
     pub cw3_fixed_multisig_code_id: u64,
     pub cw20_code_id: u64,
     pub cw721_code_id: u64,

@@ -89,6 +89,8 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
     let instantiate_enterprise_msg = enterprise_protocol::msg::InstantiateMsg {
         enterprise_governance_code_id: config.enterprise_governance_code_id,
         funds_distributor_code_id: config.funds_distributor_code_id,
+        token_staking_code_id: config.token_staking_code_id,
+        nft_staking_code_id: config.nft_staking_code_id,
         dao_metadata: msg.dao_metadata.clone(),
         dao_gov_config: msg.dao_gov_config,
         dao_council: msg.dao_council,

@@ -17,6 +17,8 @@ use cw_asset::AssetInfo;
 pub struct InstantiateMsg {
     pub enterprise_governance_code_id: u64,
     pub funds_distributor_code_id: u64,
+    pub token_staking_code_id: u64,
+    pub nft_staking_code_id: u64,
     pub dao_metadata: DaoMetadata,
     pub dao_gov_config: DaoGovConfig,
     /// Optional council structure that can manage certain aspects of the DAO

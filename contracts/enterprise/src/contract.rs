@@ -3,7 +3,6 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
-use crate::migrate_staking;
 use crate::migrate_staking::{migrate_staking, reply_instantiate_token_staking_contract};
 use crate::migration::migrate_asset_whitelist;
 use crate::multisig::{
@@ -108,6 +107,8 @@ pub const ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
 pub const FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const CREATE_POLL_REPLY_ID: u64 = 4;
 pub const END_POLL_REPLY_ID: u64 = 5;
+pub const INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID: u64 = 6; // TODO: split replies for regular instantiation and instantiation during migration
+pub const INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID: u64 = 7;
 
 pub const CODE_VERSION: u8 = 4;
 
@@ -135,6 +136,8 @@ pub fn instantiate(
         &State {
             proposal_being_created: None,
             proposal_being_executed: None,
+            token_staking_code_id: msg.token_staking_code_id,
+            nft_staking_code_id: msg.nft_staking_code_id,
         },
     )?;
 
@@ -186,6 +189,8 @@ pub fn instantiate(
             ctx,
             membership,
             msg.funds_distributor_code_id,
+            msg.token_staking_code_id,
+            msg.nft_staking_code_id,
             msg.minimum_weight_for_rewards,
         )?,
     };
@@ -219,6 +224,54 @@ fn instantiate_funds_distributor_submsg(
     );
 
     Ok(instantiate_funds_distributor_contract_submsg)
+}
+
+fn instantiate_token_staking_contract_submsg(
+    deps: Deps,
+    env: Env,
+    token_staking_code_id: u64,
+    token_addr: Addr,
+) -> DaoResult<SubMsg> {
+    let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
+    let instantiate_submsg = SubMsg::reply_on_success(
+        wasm_instantiate(
+            token_staking_code_id,
+            &token_staking_api::msg::InstantiateMsg {
+                admin: env.contract.address.to_string(),
+                token_contract: token_addr.to_string(),
+                unlocking_period: gov_config.unlocking_period,
+            },
+            vec![],
+            "Token staking".to_string(),
+        )?,
+        INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID,
+    );
+
+    Ok(instantiate_submsg)
+}
+
+fn instantiate_nft_staking_contract_submsg(
+    deps: Deps,
+    env: Env,
+    nft_staking_code_id: u64,
+    nft_addr: Addr,
+) -> DaoResult<SubMsg> {
+    let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
+    let instantiate_submsg = SubMsg::reply_on_success(
+        wasm_instantiate(
+            nft_staking_code_id,
+            &nft_staking_api::msg::InstantiateMsg {
+                admin: env.contract.address.to_string(),
+                nft_contract: nft_addr.to_string(),
+                unlocking_period: gov_config.unlocking_period,
+            },
+            vec![],
+            "NFT staking".to_string(),
+        )?,
+        INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID,
+    );
+
+    Ok(instantiate_submsg)
 }
 
 fn dao_type_from_membership(membership_info: &DaoMembershipInfo) -> DaoType {
@@ -421,6 +474,8 @@ fn instantiate_existing_membership_dao(
     ctx: Context,
     membership: ExistingDaoMembershipMsg,
     funds_distributor_code_id: u64,
+    token_staking_code_id: u64,
+    nft_staking_code_id: u64,
     minimum_weight_for_rewards: Option<Uint128>,
 ) -> DaoResult<Vec<SubMsg>> {
     let membership_addr = ctx
@@ -438,9 +493,26 @@ fn instantiate_existing_membership_dao(
 
     let mut initial_weights: Vec<UserWeight> = vec![];
 
+    let mut submsgs = vec![];
+
     match membership.dao_type {
-        Token | Nft => {
+        Token => {
             DAO_MEMBERSHIP_CONTRACT.save(ctx.deps.storage, &membership_addr)?;
+            submsgs.push(instantiate_token_staking_contract_submsg(
+                ctx.deps.as_ref(),
+                ctx.env.clone(),
+                token_staking_code_id,
+                membership_addr,
+            )?);
+        }
+        Nft => {
+            DAO_MEMBERSHIP_CONTRACT.save(ctx.deps.storage, &membership_addr)?;
+            submsgs.push(instantiate_nft_staking_contract_submsg(
+                ctx.deps.as_ref(),
+                ctx.env.clone(),
+                nft_staking_code_id,
+                membership_addr,
+            )?);
         }
         Multisig => {
             DAO_MEMBERSHIP_CONTRACT.save(ctx.deps.storage, &ctx.env.contract.address)?;
@@ -482,12 +554,14 @@ fn instantiate_existing_membership_dao(
         }
     }
 
-    Ok(vec![instantiate_funds_distributor_submsg(
+    submsgs.push(instantiate_funds_distributor_submsg(
         &ctx,
         funds_distributor_code_id,
         minimum_weight_for_rewards,
         initial_weights,
-    )?])
+    )?);
+
+    Ok(submsgs)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -1460,7 +1534,27 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             DAO_MEMBERSHIP_CONTRACT.save(deps.storage, &addr)?;
 
-            Ok(Response::new())
+            let dao_type = DAO_TYPE.load(deps.storage)?;
+
+            let state = STATE.load(deps.storage)?;
+
+            let submsgs = match dao_type {
+                Token => vec![instantiate_token_staking_contract_submsg(
+                    deps.as_ref(),
+                    env,
+                    state.token_staking_code_id,
+                    addr,
+                )?],
+                Nft => vec![instantiate_nft_staking_contract_submsg(
+                    deps.as_ref(),
+                    env,
+                    state.nft_staking_code_id,
+                    addr,
+                )?],
+                Multisig => vec![],
+            };
+
+            Ok(Response::new().add_submessages(submsgs))
         }
         ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
@@ -1539,7 +1633,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_attribute("proposal_id", proposal_id.to_string())
                 .add_submessages(execute_submsgs))
         }
-        migrate_staking::INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID => {
+        INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID => {
             reply_instantiate_token_staking_contract(deps, msg)
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),

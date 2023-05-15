@@ -1,3 +1,6 @@
+use crate::contract::{
+    INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID, INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID,
+};
 use crate::state::{DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_TYPE, STAKING_CONTRACT};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -10,9 +13,6 @@ use enterprise_protocol::api::{Claim, ClaimAsset, DaoType, NftTokenId};
 use enterprise_protocol::error::DaoResult;
 use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::InitializeStakers;
-
-pub const INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID: u64 = 1001;
-pub const INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID: u64 = 1002;
 
 const CW20_STAKES: Map<Addr, Uint128> = Map::new("stakes");
 

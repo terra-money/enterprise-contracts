@@ -8,6 +8,9 @@ use enterprise_protocol::api::{DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, P
 pub struct State {
     pub proposal_being_created: Option<ProposalInfo>,
     pub proposal_being_executed: Option<ProposalId>,
+    // TODO: rename and make temporary, store when instantiating token/NFT and remove in reply
+    pub token_staking_code_id: u64,
+    pub nft_staking_code_id: u64,
 }
 
 pub const STATE: Item<State> = Item::new("state");
