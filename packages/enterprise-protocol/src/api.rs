@@ -385,6 +385,7 @@ pub struct DaoInfoResponse {
     pub dao_membership_contract: Addr,
     pub enterprise_factory_contract: Addr,
     pub funds_distributor_contract: Addr,
+    pub staking_contract: Option<Addr>,
     pub dao_code_version: Uint64,
 }
 

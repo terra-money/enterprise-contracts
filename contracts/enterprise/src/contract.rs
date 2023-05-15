@@ -1707,6 +1707,7 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
     let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
     let enterprise_factory_contract = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
     let funds_distributor_contract = FUNDS_DISTRIBUTOR_CONTRACT.load(qctx.deps.storage)?;
+    let staking_contract = STAKING_CONTRACT.may_load(qctx.deps.storage)?;
     let dao_code_version = DAO_CODE_VERSION.load(qctx.deps.storage)?;
 
     Ok(DaoInfoResponse {
@@ -1718,6 +1719,7 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
         dao_membership_contract,
         enterprise_factory_contract,
         funds_distributor_contract,
+        staking_contract,
         dao_code_version,
     })
 }
