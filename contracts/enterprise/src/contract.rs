@@ -3,7 +3,7 @@ use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
 };
-use crate::nft_staking::{load_all_nft_stakes_for_user, save_nft_stake, NftStake};
+use crate::nft_staking::load_all_nft_stakes_for_user;
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo,
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
@@ -13,7 +13,7 @@ use crate::staking::{
     query_user_cw20_stake,
 };
 use crate::state::{
-    add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
+    State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
     DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
     ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STAKING_CONTRACT,
     STATE,
@@ -35,7 +35,7 @@ use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
 use cw_asset::{Asset, AssetInfo, AssetInfoBase};
 use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_instantiate_data, Duration, Expiration};
+use cw_utils::{parse_reply_instantiate_data, Expiration};
 use enterprise_factory_api::msg::QueryMsg::GlobalAssetWhitelist;
 use enterprise_protocol::api::ClaimAsset::{Cw20, Cw721};
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
@@ -43,20 +43,19 @@ use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
 use enterprise_protocol::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, Cw721ClaimAsset, DaoGovConfig, DaoInfoResponse,
-    DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
-    ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse,
-    NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo,
-    NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse, Proposal,
-    ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
-    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
-    RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
-    UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
+    ClaimsResponse, CreateProposalMsg, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo, DaoType,
+    DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg, ExistingDaoMembershipMsg,
+    ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
+    ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse, NewDaoMembershipMsg,
+    NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
+    NftTokenId, NftUserStake, NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType,
+    ProposalDeposit, ProposalId, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, ReceiveNftMsg, RequestFundingFromDaoMsg, TalisFriendlyTokensResponse,
+    TokenUserStake, TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg,
+    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg,
+    UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InvalidCosmosMessage, NoVotesAvailable, NotMultisigMember,
@@ -84,12 +83,11 @@ use std::cmp::min;
 use std::ops::{Add, Not, Sub};
 use token_staking_api::api::UserTokenStakeParams;
 use DaoError::{
-    CustomError, InvalidStakingAsset, NoDaoCouncil, NoNftTokenStaked, NoSuchProposal, Unauthorized,
+    CustomError, InvalidStakingAsset, NoDaoCouncil, NoSuchProposal, Unauthorized,
     UnsupportedOperationForDaoType, ZeroInitialWeightMember,
 };
 use DaoMembershipInfo::{Existing, New};
 use DaoType::Token;
-use Duration::{Height, Time};
 use NewMembershipInfo::{NewMultisig, NewNft, NewToken};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
 use ProposalAction::{
@@ -1267,40 +1265,36 @@ pub fn receive_cw721(ctx: &mut Context, cw721_msg: ReceiveNftMsg) -> DaoResult<R
 
     match from_binary(&cw721_msg.msg) {
         Ok(Cw721HookMsg::Stake {}) => {
-            // TODO: change completely
             let token_id = cw721_msg.token_id;
-
-            let existing_stake = NFT_STAKES().may_load(ctx.deps.storage, token_id.clone())?;
-
-            if existing_stake.is_some() {
-                return Err(DaoError::NftTokenAlreadyStaked { token_id });
-            }
-
-            let total_staked = load_total_staked(ctx.deps.as_ref())?;
-            let new_total_staked = total_staked.add(Uint128::from(1u8));
 
             let staker = ctx.deps.api.addr_validate(&cw721_msg.sender)?;
 
-            let nft_stake = NftStake {
-                staker: staker.clone(),
-                token_id,
-            };
+            let nft_addr = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+            let staking_contract = STAKING_CONTRACT.load(ctx.deps.storage)?;
 
-            save_nft_stake(ctx.deps.storage, &nft_stake)?;
+            let stake_msg = SubMsg::new(wasm_execute(
+                nft_addr.to_string(),
+                &cw721::Cw721ExecuteMsg::SendNft {
+                    contract: staking_contract.to_string(),
+                    token_id,
+                    msg: to_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
+                        user: staker.to_string(),
+                    })?,
+                },
+                vec![],
+            )?);
 
-            let qctx = QueryContext {
-                deps: ctx.deps.as_ref(),
-                env: ctx.env.clone(),
-            };
-
-            let new_user_stake = get_user_staked_nfts(qctx, staker.clone())?.amount;
+            let user_stake = Uint128::zero(); // TODO: load from query to nft staking contract
+            let new_user_stake = user_stake - Uint128::one();
 
             let update_funds_distributor_submsg =
                 update_funds_distributor(ctx, staker, new_user_stake)?;
 
+            // TODO: update votes too?
+
             Ok(Response::new()
                 .add_attribute("action", "stake_cw721")
-                .add_attribute("total_staked", new_total_staked.to_string())
+                .add_submessage(stake_msg)
                 .add_submessage(update_funds_distributor_submsg))
         }
         _ => Err(CustomError {
@@ -1346,51 +1340,28 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 .add_submessage(update_funds_distributor_submsg))
         }
         UnstakeMsg::Cw721(msg) => {
-            // TODO: change completely
             if dao_type != Nft {
                 return Err(InvalidStakingAsset);
             }
 
-            for token in &msg.tokens {
-                // TODO: might be too slow, can we load this in a batch?
-                let nft_stake = NFT_STAKES().may_load(ctx.deps.storage, token.to_string())?;
+            let user_stake = Uint128::zero(); // TODO: load from query to nft staking contract
 
-                match nft_stake {
-                    None => {
-                        return Err(NoNftTokenStaked {
-                            token_id: token.to_string(),
-                        });
-                    }
-                    Some(stake) => {
-                        if stake.staker != ctx.info.sender {
-                            return Err(Unauthorized);
-                        } else {
-                            NFT_STAKES().remove(ctx.deps.storage, token.to_string())?;
-                        }
-                    }
-                }
-            }
+            let staking_contract = STAKING_CONTRACT.load(ctx.deps.storage)?;
 
-            let total_staked = load_total_staked(ctx.deps.as_ref())?;
-            let new_total_staked = total_staked.sub(Uint128::from(msg.tokens.len() as u128));
+            let unstake_amount = Uint128::from(msg.tokens.len() as u64);
 
-            let release_at = calculate_release_at(ctx)?;
+            let unstake_msg = SubMsg::new(wasm_execute(
+                staking_contract.to_string(),
+                &nft_staking_api::msg::ExecuteMsg::Unstake(nft_staking_api::api::UnstakeMsg {
+                    user: ctx.info.sender.to_string(),
+                    nft_ids: msg.tokens,
+                }),
+                vec![],
+            )?);
 
-            add_claim(
-                ctx.deps.storage,
-                &ctx.info.sender,
-                Claim {
-                    asset: Cw721(Cw721ClaimAsset { tokens: msg.tokens }),
-                    release_at,
-                },
-            )?;
+            let new_user_stake = user_stake - unstake_amount;
 
-            let qctx = QueryContext {
-                deps: ctx.deps.as_ref(),
-                env: ctx.env.clone(),
-            };
-            let new_user_stake = get_user_staked_nfts(qctx, ctx.info.sender.clone())?.amount;
-
+            // TODO: send a submsg to self to trigger this update in the future, shouldn't do the calculation locally!
             let update_user_votes_submsg =
                 update_user_votes(ctx.deps.as_ref(), ctx.info.sender.clone(), new_user_stake)?;
 
@@ -1399,21 +1370,11 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
 
             Ok(Response::new()
                 .add_attribute("action", "unstake_cw721")
-                .add_attribute("total_staked", new_total_staked.to_string())
+                .add_submessage(unstake_msg)
                 .add_submessage(update_user_votes_submsg)
                 .add_submessage(update_funds_distributor_submsg))
         }
     }
-}
-
-fn calculate_release_at(ctx: &mut Context) -> DaoResult<ReleaseAt> {
-    let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
-
-    let release_at = match gov_config.unlocking_period {
-        Height(height) => ReleaseAt::Height((ctx.env.block.height + height).into()),
-        Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
-    };
-    Ok(release_at)
 }
 
 pub fn update_user_votes(deps: Deps, user: Addr, new_amount: Uint128) -> DaoResult<SubMsg> {

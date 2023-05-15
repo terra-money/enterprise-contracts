@@ -76,9 +76,6 @@ pub enum DaoError {
     #[error("To create a proposal, a deposit amount of at least {required_amount} is required")]
     InsufficientProposalDeposit { required_amount: Uint128 },
 
-    #[error("No NFT token with ID {token_id} has been staked by this user")]
-    NoNftTokenStaked { token_id: String },
-
     #[error("This user does not own nor stake DAO's NFT")]
     NotNftOwner {},
 

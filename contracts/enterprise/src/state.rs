@@ -1,6 +1,6 @@
 use crate::proposals::ProposalInfo;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint64};
+use cosmwasm_std::{Addr, Timestamp, Uint64};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use enterprise_protocol::api::{Claim, DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, ProposalId};
@@ -40,12 +40,3 @@ pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
 
 // TODO: remove
 pub const CLAIMS: Map<&Addr, Vec<Claim>> = Map::new("claims");
-
-pub fn add_claim(storage: &mut dyn Storage, addr: &Addr, claim: Claim) -> StdResult<()> {
-    CLAIMS.update(storage, addr, |claims| -> StdResult<Vec<Claim>> {
-        let mut claims = claims.unwrap_or_default();
-        claims.push(claim);
-        Ok(claims)
-    })?;
-    Ok(())
-}
