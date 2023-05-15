@@ -26,11 +26,11 @@ use enterprise_protocol::api::ProposalAction::{
 };
 use enterprise_protocol::api::ProposalStatus::{Passed, Rejected};
 use enterprise_protocol::api::{
-    CreateProposalMsg, DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoMetadata, DaoSocialData,
-    ExecuteMsgsMsg, ExecuteProposalMsg, ListMultisigMembersMsg, Logo, ModifyMultisigMembershipMsg,
-    MultisigMember, ProposalAction, ProposalActionType, ProposalParams, RequestFundingFromDaoMsg,
-    UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg,
-    UpdateNftWhitelistMsg, UpgradeDaoMsg,
+    AssetWhitelistParams, CreateProposalMsg, DaoCouncil, DaoCouncilSpec, DaoGovConfig, DaoMetadata,
+    DaoSocialData, ExecuteMsgsMsg, ExecuteProposalMsg, ListMultisigMembersMsg, Logo,
+    ModifyMultisigMembershipMsg, MultisigMember, NftWhitelistParams, ProposalAction,
+    ProposalActionType, ProposalParams, RequestFundingFromDaoMsg, UpdateAssetWhitelistMsg,
+    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{ExecuteProposal, Receive};
@@ -329,10 +329,22 @@ fn execute_proposal_with_outcome_yes_and_ended_executes_proposal_actions() -> Da
         }
     );
 
-    let asset_whitelist = query_asset_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
+    let asset_whitelist = query_asset_whitelist(
+        mock_query_ctx(deps.as_ref(), &env),
+        AssetWhitelistParams {
+            start_after: None,
+            limit: None,
+        },
+    )?;
     assert_eq!(asset_whitelist.assets, vec![token1, token3]);
 
-    let nft_whitelist = query_nft_whitelist(mock_query_ctx(deps.as_ref(), &env))?;
+    let nft_whitelist = query_nft_whitelist(
+        mock_query_ctx(deps.as_ref(), &env),
+        NftWhitelistParams {
+            start_after: None,
+            limit: None,
+        },
+    )?;
     assert_eq!(nft_whitelist.nfts, vec![nft2, nft3]);
 
     // ensure proposal actions were not removed after execution

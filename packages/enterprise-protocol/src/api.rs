@@ -389,8 +389,20 @@ pub struct DaoInfoResponse {
 }
 
 #[cw_serde]
+pub struct AssetWhitelistParams {
+    pub start_after: Option<AssetInfo>,
+    pub limit: Option<u32>,
+}
+
+#[cw_serde]
 pub struct AssetWhitelistResponse {
     pub assets: Vec<AssetInfo>,
+}
+
+#[cw_serde]
+pub struct NftWhitelistParams {
+    pub start_after: Option<String>,
+    pub limit: Option<u32>,
 }
 
 #[cw_serde]
@@ -572,11 +584,6 @@ pub struct ClaimsResponse {
 #[cw_serde]
 pub struct ClaimsParams {
     pub owner: String,
-}
-
-#[cw_serde]
-pub struct AssetTreasuryResponse {
-    pub assets: Vec<Asset>,
 }
 
 /// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually
