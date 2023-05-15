@@ -1,12 +1,12 @@
-use crate::nft_staking::{NftStake, NFT_STAKES};
 use crate::state::{DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_TYPE, STAKING_CONTRACT};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, wasm_execute, wasm_instantiate, Addr, DepsMut, Env, Order, Reply, Response,
     StdError, StdResult, SubMsg, Uint128,
 };
-use cw_storage_plus::Map;
+use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use cw_utils::parse_reply_instantiate_data;
-use enterprise_protocol::api::{Claim, ClaimAsset, DaoType};
+use enterprise_protocol::api::{Claim, ClaimAsset, DaoType, NftTokenId};
 use enterprise_protocol::error::DaoResult;
 use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::InitializeStakers;
@@ -17,6 +17,35 @@ pub const INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID: u64 = 1002;
 const CW20_STAKES: Map<Addr, Uint128> = Map::new("stakes");
 
 const CLAIMS: Map<&Addr, Vec<Claim>> = Map::new("claims");
+
+#[cw_serde]
+pub struct NftStake {
+    pub staker: Addr,
+    pub token_id: NftTokenId,
+}
+
+pub struct NftStakesIndexes<'a> {
+    pub staker: MultiIndex<'a, Addr, NftStake, String>,
+}
+
+impl IndexList<NftStake> for NftStakesIndexes<'_> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<NftStake>> + '_> {
+        let v: Vec<&dyn Index<NftStake>> = vec![&self.staker];
+        Box::new(v.into_iter())
+    }
+}
+
+#[allow(non_snake_case)]
+pub fn NFT_STAKES<'a>() -> IndexedMap<'a, String, NftStake, NftStakesIndexes<'a>> {
+    let indexes = NftStakesIndexes {
+        staker: MultiIndex::new(
+            |_, nft_stake| nft_stake.staker.clone(),
+            "nft_stakes",
+            "nft_stakes__staker",
+        ),
+    };
+    IndexedMap::new("nft_stakes", indexes)
+}
 
 pub fn migrate_staking(deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>> {
     let dao_type = DAO_TYPE.load(deps.storage)?;

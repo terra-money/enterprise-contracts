@@ -1,9 +1,9 @@
+use crate::migrate_staking;
 use crate::migrate_staking::{migrate_staking, reply_instantiate_token_staking_contract};
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
 };
-use crate::nft_staking::load_all_nft_stakes_for_user;
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo,
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
@@ -23,7 +23,6 @@ use crate::validate::{
     validate_dao_gov_config, validate_deposit, validate_existing_dao_contract,
     validate_modify_multisig_membership, validate_proposal_actions,
 };
-use crate::{migrate_staking, nft_staking};
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
@@ -47,8 +46,8 @@ use enterprise_protocol::api::{
     ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
     MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse,
-    Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
+    NewNftMembershipInfo, NewTokenMembershipInfo, NftUserStake, NftWhitelistResponse, Proposal,
+    ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
@@ -71,7 +70,7 @@ use funds_distributor_api::api::{
 };
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
-use nft_staking::NFT_STAKES;
+use nft_staking_api::api::{UserNftStakeParams, UserNftStakeResponse};
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, Poll, PollId, PollParams, PollRejectionReason,
     PollResponse, PollStatus, PollStatusFilter, PollStatusResponse, PollVoterParams,
@@ -81,7 +80,6 @@ use poll_engine_api::api::{
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::ops::{Add, Not, Sub};
-use token_staking_api::api::UserTokenStakeParams;
 use DaoError::{
     CustomError, InvalidStakingAsset, NoDaoCouncil, NoSuchProposal, Unauthorized,
     UnsupportedOperationForDaoType, ZeroInitialWeightMember,
@@ -545,14 +543,8 @@ fn create_proposal(
 }
 
 fn user_has_nfts_staked(ctx: &Context) -> StdResult<bool> {
-    Ok(NFT_STAKES()
-        .idx
-        .staker
-        .prefix(ctx.info.sender.clone())
-        .range(ctx.deps.storage, None, None, Ascending)
-        .next()
-        .transpose()?
-        .is_some())
+    let nfts_staked = query_user_cw721_total_stake(ctx.deps.as_ref(), ctx.info.sender.clone())?;
+    Ok(nfts_staked.is_zero().not())
 }
 
 fn user_holds_nft(ctx: &Context) -> StdResult<bool> {
@@ -1938,7 +1930,7 @@ fn calculate_member_voting_power(
 fn load_member_weight(deps: Deps, member: Addr, dao_type: DaoType) -> DaoResult<Uint128> {
     let member_weight = match dao_type {
         Token => query_user_cw20_stake(deps, member)?,
-        Nft => (load_all_nft_stakes_for_user(deps.storage, member)?.len() as u128).into(),
+        Nft => query_user_cw721_total_stake(deps, member)?,
         Multisig => MULTISIG_MEMBERS
             .may_load(deps.storage, member)?
             .unwrap_or_default(),
@@ -1996,8 +1988,8 @@ fn get_user_available_votes(qctx: QueryContext, user: Addr) -> DaoResult<Uint128
     let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
 
     let user_available_votes = match dao_type {
-        Token => get_user_staked_tokens(qctx, user)?.amount,
-        Nft => get_user_staked_nfts(qctx, user)?.amount,
+        Token => query_user_cw20_stake(qctx.deps, user)?,
+        Nft => query_user_cw721_total_stake(qctx.deps, user)?,
         Multisig => MULTISIG_MEMBERS
             .may_load(qctx.deps.storage, user)?
             .unwrap_or_default(),
@@ -2006,6 +1998,7 @@ fn get_user_available_votes(qctx: QueryContext, user: Addr) -> DaoResult<Uint128
     Ok(user_available_votes)
 }
 
+// TODO: remove?
 pub fn query_user_stake(
     qctx: QueryContext,
     params: UserStakeParams,
@@ -2024,31 +2017,29 @@ pub fn query_user_stake(
 }
 
 fn get_user_staked_tokens(qctx: QueryContext, user: Addr) -> DaoResult<TokenUserStake> {
-    let staking_contract = STAKING_CONTRACT.load(qctx.deps.storage)?;
-
-    let response: token_staking_api::api::UserTokenStakeResponse =
-        qctx.deps.querier.query_wasm_smart(
-            staking_contract.to_string(),
-            &token_staking_api::msg::QueryMsg::UserStake(UserTokenStakeParams {
-                user: user.to_string(),
-            }),
-        )?;
+    let staked_amount = query_user_cw20_stake(qctx.deps, user)?;
 
     Ok(TokenUserStake {
-        amount: response.staked_amount,
+        amount: staked_amount,
     })
 }
 
 fn get_user_staked_nfts(qctx: QueryContext, user: Addr) -> DaoResult<NftUserStake> {
-    let staked_tokens: Vec<NftTokenId> = load_all_nft_stakes_for_user(qctx.deps.storage, user)?
-        .into_iter()
-        .map(|stake| stake.token_id)
-        .collect();
-    let amount = staked_tokens.len() as u128;
+    let staking_contract = STAKING_CONTRACT.load(qctx.deps.storage)?;
+
+    // TODO: paginate somehow
+    let response: UserNftStakeResponse = qctx.deps.querier.query_wasm_smart(
+        staking_contract.to_string(),
+        &nft_staking_api::msg::QueryMsg::UserStake(UserNftStakeParams {
+            user: user.to_string(),
+            start_after: None,
+            limit: Some(MAX_QUERY_LIMIT as u32),
+        }),
+    )?;
 
     Ok(NftUserStake {
-        tokens: staked_tokens,
-        amount: amount.into(),
+        tokens: response.tokens,
+        amount: response.total_user_stake,
     })
 }
 
