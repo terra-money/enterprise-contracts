@@ -3,7 +3,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Timestamp, Uint64};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
-use enterprise_protocol::api::{Claim, DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, ProposalId};
+use enterprise_protocol::api::{DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, ProposalId};
 
 #[cw_serde]
 pub struct State {
@@ -19,7 +19,7 @@ pub const DAO_CREATION_DATE: Item<Timestamp> = Item::new("dao_creation_date");
 
 // TODO: try to unify those below into a single storage structure
 
-// Address of contract which is used to calculate DAO membership
+/// Address of contract which is used to calculate DAO membership
 pub const DAO_MEMBERSHIP_CONTRACT: Item<Addr> = Item::new("dao_membership_contract");
 
 pub const ENTERPRISE_FACTORY_CONTRACT: Item<Addr> = Item::new("enterprise_factory_contract");
@@ -34,9 +34,6 @@ pub const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
 pub const ASSET_WHITELIST: Item<Vec<AssetInfo>> = Item::new("asset_whitelist");
 pub const NFT_WHITELIST: Map<Addr, ()> = Map::new("nft_whitelist");
 
-// Address of the staking contract.
-// Only token and NFT DAOs have this.
+/// Address of the staking contract.
+/// Only token and NFT DAOs have this.
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
-
-// TODO: remove
-pub const CLAIMS: Map<&Addr, Vec<Claim>> = Map::new("claims");

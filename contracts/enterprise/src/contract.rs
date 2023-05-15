@@ -13,8 +13,8 @@ use crate::staking::{
     query_user_cw20_stake, query_user_cw721_total_stake,
 };
 use crate::state::{
-    State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
-    DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
+    State, ASSET_WHITELIST, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE, DAO_GOV_CONFIG,
+    DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
     ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STAKING_CONTRACT,
     STATE,
 };
@@ -24,12 +24,12 @@ use crate::validate::{
     validate_modify_multisig_membership, validate_proposal_actions,
 };
 use crate::{migrate_staking, nft_staking};
-use common::cw::{Context, Pagination, QueryContext, ReleaseAt};
+use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    coin, entry_point, from_binary, to_binary, wasm_execute, wasm_instantiate, Addr, Binary,
-    BlockInfo, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
+    coin, entry_point, from_binary, to_binary, wasm_execute, wasm_instantiate, Addr, Binary, Coin,
+    CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult,
+    SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
@@ -41,20 +41,21 @@ use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
 use enterprise_protocol::api::{
-    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo, DaoType,
-    DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg, ExistingDaoMembershipMsg,
-    ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
-    ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse, NewDaoMembershipMsg,
-    NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
-    NftTokenId, NftUserStake, NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType,
-    ProposalDeposit, ProposalId, ProposalParams, ProposalResponse, ProposalStatus,
-    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, RequestFundingFromDaoMsg, TalisFriendlyTokensResponse,
-    TokenUserStake, TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg,
-    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg,
-    UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
+    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimAsset, ClaimsParams,
+    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
+    DaoInfoResponse, DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg,
+    ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
+    MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
+    MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
+    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse,
+    Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
+    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
+    RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
+    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
+    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
+    UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InvalidCosmosMessage, NoVotesAvailable, NotMultisigMember,
@@ -2060,32 +2061,123 @@ pub fn query_total_staked_amount(qctx: QueryContext) -> DaoResult<TotalStakedAmo
 }
 
 pub fn query_claims(qctx: QueryContext, params: ClaimsParams) -> DaoResult<ClaimsResponse> {
-    let sender = qctx.deps.api.addr_validate(&params.owner)?;
+    let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
 
-    let claims = CLAIMS
-        .may_load(qctx.deps.storage, &sender)?
-        .unwrap_or_default();
+    match dao_type {
+        Token => {
+            let staking_contract = STAKING_CONTRACT.load(qctx.deps.storage)?;
 
-    Ok(ClaimsResponse { claims })
+            let response: token_staking_api::api::ClaimsResponse =
+                qctx.deps.querier.query_wasm_smart(
+                    staking_contract.to_string(),
+                    &token_staking_api::msg::QueryMsg::Claims(
+                        token_staking_api::api::ClaimsParams { user: params.owner },
+                    ),
+                )?;
+
+            let claims = response
+                .claims
+                .into_iter()
+                .map(|claim| Claim {
+                    asset: ClaimAsset::Cw20(Cw20ClaimAsset {
+                        amount: claim.amount,
+                    }),
+                    release_at: claim.release_at,
+                })
+                .collect();
+
+            Ok(ClaimsResponse { claims })
+        }
+        Nft => {
+            let staking_contract = STAKING_CONTRACT.load(qctx.deps.storage)?;
+
+            let response: nft_staking_api::api::ClaimsResponse =
+                qctx.deps.querier.query_wasm_smart(
+                    staking_contract.to_string(),
+                    &nft_staking_api::msg::QueryMsg::Claims(nft_staking_api::api::ClaimsParams {
+                        user: params.owner,
+                    }),
+                )?;
+
+            let claims = response
+                .claims
+                .into_iter()
+                .map(|claim| Claim {
+                    asset: ClaimAsset::Cw721(Cw721ClaimAsset {
+                        tokens: claim.nft_ids,
+                    }),
+                    release_at: claim.release_at,
+                })
+                .collect();
+
+            Ok(ClaimsResponse { claims })
+        }
+        Multisig => Err(UnsupportedOperationForDaoType {
+            dao_type: dao_type.to_string(),
+        }),
+    }
 }
 
+// TODO: some duplication going on with regular claims query, sort this out
 pub fn query_releasable_claims(
     qctx: QueryContext,
     params: ClaimsParams,
 ) -> DaoResult<ClaimsResponse> {
-    let block = qctx.env.block.clone();
-    let claims = query_claims(qctx, params)?;
+    let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
 
-    // TODO: this is real brute force, when indexed map is in we should filter smaller data set
-    let releasable_claims = claims
-        .claims
-        .into_iter()
-        .filter(|claim| is_releasable(claim, &block))
-        .collect();
+    match dao_type {
+        Token => {
+            let staking_contract = STAKING_CONTRACT.load(qctx.deps.storage)?;
 
-    Ok(ClaimsResponse {
-        claims: releasable_claims,
-    })
+            let response: token_staking_api::api::ClaimsResponse =
+                qctx.deps.querier.query_wasm_smart(
+                    staking_contract.to_string(),
+                    &token_staking_api::msg::QueryMsg::ReleasableClaims(
+                        token_staking_api::api::ClaimsParams { user: params.owner },
+                    ),
+                )?;
+
+            let claims = response
+                .claims
+                .into_iter()
+                .map(|claim| Claim {
+                    asset: ClaimAsset::Cw20(Cw20ClaimAsset {
+                        amount: claim.amount,
+                    }),
+                    release_at: claim.release_at,
+                })
+                .collect();
+
+            Ok(ClaimsResponse { claims })
+        }
+        Nft => {
+            let staking_contract = STAKING_CONTRACT.load(qctx.deps.storage)?;
+
+            let response: nft_staking_api::api::ClaimsResponse =
+                qctx.deps.querier.query_wasm_smart(
+                    staking_contract.to_string(),
+                    &nft_staking_api::msg::QueryMsg::ReleasableClaims(
+                        nft_staking_api::api::ClaimsParams { user: params.owner },
+                    ),
+                )?;
+
+            let claims = response
+                .claims
+                .into_iter()
+                .map(|claim| Claim {
+                    asset: ClaimAsset::Cw721(Cw721ClaimAsset {
+                        tokens: claim.nft_ids,
+                    }),
+                    release_at: claim.release_at,
+                })
+                .collect();
+
+            Ok(ClaimsResponse { claims })
+        }
+        Multisig => Err(UnsupportedOperationForDaoType {
+            dao_type: dao_type.to_string(),
+        }),
+    }
 }
 
 pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryResponse> {
@@ -2146,13 +2238,6 @@ pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryRespons
         .collect::<StdResult<Vec<Asset>>>()?;
 
     Ok(AssetTreasuryResponse { assets })
-}
-
-fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
-    match claim.release_at {
-        ReleaseAt::Timestamp(timestamp) => block_info.time >= timestamp,
-        ReleaseAt::Height(height) => block_info.height >= height.u64(),
-    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
