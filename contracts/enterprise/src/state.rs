@@ -34,7 +34,11 @@ pub const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
 pub const ASSET_WHITELIST: Item<Vec<AssetInfo>> = Item::new("asset_whitelist");
 pub const NFT_WHITELIST: Map<Addr, ()> = Map::new("nft_whitelist");
 
-// TODO: use indexed map and then add pagination to the queries
+// Address of the staking contract.
+// Only token and NFT DAOs have this.
+pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
+
+// TODO: remove
 pub const CLAIMS: Map<&Addr, Vec<Claim>> = Map::new("claims");
 
 pub fn add_claim(storage: &mut dyn Storage, addr: &Addr, claim: Claim) -> StdResult<()> {

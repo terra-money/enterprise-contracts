@@ -1,9 +1,9 @@
-use crate::staking::CW20_STAKES;
 use crate::state::{CLAIMS, DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_TYPE};
 use cosmwasm_std::{
     to_binary, wasm_execute, wasm_instantiate, Addr, DepsMut, Env, Order, Reply, Response,
     StdError, StdResult, SubMsg, Uint128,
 };
+use cw_storage_plus::Map;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{Claim, ClaimAsset, DaoType};
 use enterprise_protocol::error::DaoResult;
@@ -12,6 +12,8 @@ use token_staking_api::msg::Cw20HookMsg::InitializeStakers;
 
 pub const INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID: u64 = 1001;
 pub const INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID: u64 = 1002;
+
+const CW20_STAKES: Map<Addr, Uint128> = Map::new("stakes");
 
 pub fn migrate_staking(deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>> {
     let dao_type = DAO_TYPE.load(deps.storage)?;

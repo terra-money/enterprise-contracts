@@ -9,13 +9,14 @@ use crate::proposals::{
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
 use crate::staking::{
-    load_total_staked, load_total_staked_at_height, load_total_staked_at_time, save_total_staked,
-    CW20_STAKES,
+    load_total_staked, load_total_staked_at_height, load_total_staked_at_time,
+    query_user_cw20_stake,
 };
 use crate::state::{
     add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
     DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
-    ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STATE,
+    ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STAKING_CONTRACT,
+    STATE,
 };
 use crate::validate::{
     apply_gov_config_changes, normalize_asset_whitelist, validate_dao_council,
@@ -28,7 +29,7 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, wasm_instantiate, Addr, Binary,
     BlockInfo, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, StdResult, Storage, SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
+    StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
@@ -42,13 +43,13 @@ use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
 use enterprise_protocol::api::{
     AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
-    DaoInfoResponse, DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg,
-    ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
-    MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
-    MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse,
-    Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
+    ClaimsResponse, CreateProposalMsg, Cw721ClaimAsset, DaoGovConfig, DaoInfoResponse,
+    DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
+    ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse,
+    NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo,
+    NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse, Proposal,
+    ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
@@ -58,9 +59,9 @@ use enterprise_protocol::api::{
     UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
-    DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
-    NotMultisigMember, NothingToClaim, ProposalAlreadyExecuted, Std,
-    UnsupportedCouncilProposalAction, WrongProposalType, ZeroInitialDaoBalance,
+    DuplicateMultisigMember, InvalidCosmosMessage, NoVotesAvailable, NotMultisigMember,
+    NothingToClaim, ProposalAlreadyExecuted, Std, UnsupportedCouncilProposalAction,
+    WrongProposalType, ZeroInitialDaoBalance,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -81,6 +82,7 @@ use poll_engine_api::api::{
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::ops::{Add, Not, Sub};
+use token_staking_api::api::UserTokenStakeParams;
 use DaoError::{
     CustomError, InvalidStakingAsset, NoDaoCouncil, NoNftTokenStaked, NoSuchProposal, Unauthorized,
     UnsupportedOperationForDaoType, ZeroInitialWeightMember,
@@ -154,7 +156,6 @@ pub fn instantiate(
         NFT_WHITELIST.save(deps.storage, deps.api.addr_validate(nft.as_ref())?, &())?;
     }
 
-    save_total_staked(deps.storage, &Uint128::zero(), &env.block)?;
     TOTAL_DEPOSITS.save(deps.storage, &Uint128::zero())?;
 
     // instantiate the governance contract
@@ -830,9 +831,9 @@ fn end_proposal(
             match dao_type {
                 Token | Nft => {
                     if ctx.env.block.time >= poll.poll.ends_at {
-                        load_total_staked_at_time(ctx.deps.storage, poll.poll.ends_at)?
+                        load_total_staked_at_time(ctx.deps.as_ref(), poll.poll.ends_at)?
                     } else {
-                        load_total_staked(ctx.deps.storage)?
+                        load_total_staked(ctx.deps.as_ref())?
                     }
                 }
                 Multisig => {
@@ -1214,24 +1215,32 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
 
     match from_binary(&cw20_msg.msg) {
         Ok(Cw20HookMsg::Stake {}) => {
-            let total_staked = load_total_staked(ctx.deps.storage)?;
-            let new_total_staked = total_staked.add(cw20_msg.amount);
-            save_total_staked(ctx.deps.storage, &new_total_staked, &ctx.env.block)?;
-
             let sender = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
-            let stake = CW20_STAKES
-                .may_load(ctx.deps.storage, sender.clone())?
-                .unwrap_or_default();
 
+            let stake = query_user_cw20_stake(ctx.deps.as_ref(), sender.clone())?;
             let new_stake = stake.add(cw20_msg.amount);
-            CW20_STAKES.save(ctx.deps.storage, sender.clone(), &new_stake)?;
+
+            let token_addr = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+            let staking_contract = STAKING_CONTRACT.load(ctx.deps.storage)?;
+
+            let stake_msg = SubMsg::new(wasm_execute(
+                token_addr.to_string(),
+                &cw20::Cw20ExecuteMsg::Send {
+                    contract: staking_contract.to_string(),
+                    amount: cw20_msg.amount,
+                    msg: to_binary(&token_staking_api::msg::Cw20HookMsg::Stake {
+                        user: sender.to_string(),
+                    })?,
+                },
+                vec![],
+            )?);
 
             let update_funds_distributor_submsg = update_funds_distributor(ctx, sender, new_stake)?;
+            // TODO: update votes too?
 
             Ok(Response::new()
                 .add_attribute("action", "stake_cw20")
-                .add_attribute("total_staked", new_total_staked.to_string())
-                .add_attribute("stake", new_stake.to_string())
+                .add_submessage(stake_msg)
                 .add_submessage(update_funds_distributor_submsg))
         }
         Ok(Cw20HookMsg::CreateProposal(msg)) => {
@@ -1258,6 +1267,7 @@ pub fn receive_cw721(ctx: &mut Context, cw721_msg: ReceiveNftMsg) -> DaoResult<R
 
     match from_binary(&cw721_msg.msg) {
         Ok(Cw721HookMsg::Stake {}) => {
+            // TODO: change completely
             let token_id = cw721_msg.token_id;
 
             let existing_stake = NFT_STAKES().may_load(ctx.deps.storage, token_id.clone())?;
@@ -1266,9 +1276,8 @@ pub fn receive_cw721(ctx: &mut Context, cw721_msg: ReceiveNftMsg) -> DaoResult<R
                 return Err(DaoError::NftTokenAlreadyStaked { token_id });
             }
 
-            let total_staked = load_total_staked(ctx.deps.storage)?;
+            let total_staked = load_total_staked(ctx.deps.as_ref())?;
             let new_total_staked = total_staked.add(Uint128::from(1u8));
-            save_total_staked(ctx.deps.storage, &new_total_staked, &ctx.env.block)?;
 
             let staker = ctx.deps.api.addr_validate(&cw721_msg.sender)?;
 
@@ -1309,32 +1318,21 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 return Err(InvalidStakingAsset);
             }
 
-            let stake = CW20_STAKES
-                .may_load(ctx.deps.storage, ctx.info.sender.clone())?
-                .unwrap_or_default();
-
-            if stake < msg.amount {
-                return Err(InsufficientStakedAssets);
-            }
-
-            let total_staked = load_total_staked(ctx.deps.storage)?;
-            let new_total_staked = total_staked.sub(msg.amount);
-            save_total_staked(ctx.deps.storage, &new_total_staked, &ctx.env.block)?;
-
+            let stake = query_user_cw20_stake(ctx.deps.as_ref(), ctx.info.sender.clone())?;
             let new_stake = stake.sub(msg.amount);
-            CW20_STAKES.save(ctx.deps.storage, ctx.info.sender.clone(), &new_stake)?;
 
-            let release_at = calculate_release_at(ctx)?;
+            let staking_contract = STAKING_CONTRACT.load(ctx.deps.storage)?;
 
-            add_claim(
-                ctx.deps.storage,
-                &ctx.info.sender,
-                Claim {
-                    asset: Cw20(Cw20ClaimAsset { amount: msg.amount }),
-                    release_at,
-                },
-            )?;
+            let unstake_msg = SubMsg::new(wasm_execute(
+                staking_contract.to_string(),
+                &token_staking_api::msg::ExecuteMsg::Unstake(token_staking_api::api::UnstakeMsg {
+                    user: ctx.info.sender.to_string(),
+                    amount: msg.amount,
+                }),
+                vec![],
+            )?);
 
+            // TODO: send a submsg to self to trigger this update in the future, shouldn't do the calculation locally!
             let update_user_votes_submsg =
                 update_user_votes(ctx.deps.as_ref(), ctx.info.sender.clone(), new_stake)?;
 
@@ -1343,12 +1341,12 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
 
             Ok(Response::new()
                 .add_attribute("action", "unstake_cw20")
-                .add_attribute("total_staked", new_total_staked.to_string())
-                .add_attribute("stake", new_stake.to_string())
+                .add_submessage(unstake_msg)
                 .add_submessage(update_user_votes_submsg)
                 .add_submessage(update_funds_distributor_submsg))
         }
         UnstakeMsg::Cw721(msg) => {
+            // TODO: change completely
             if dao_type != Nft {
                 return Err(InvalidStakingAsset);
             }
@@ -1373,9 +1371,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DaoResult<Response> {
                 }
             }
 
-            let total_staked = load_total_staked(ctx.deps.storage)?;
+            let total_staked = load_total_staked(ctx.deps.as_ref())?;
             let new_total_staked = total_staked.sub(Uint128::from(msg.tokens.len() as u128));
-            save_total_staked(ctx.deps.storage, &new_total_staked, &ctx.env.block)?;
 
             let release_at = calculate_release_at(ctx)?;
 
@@ -1860,35 +1857,33 @@ fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<Pr
     let total_votes_available = match info.proposal_type {
         General => match info.executed_at {
             Some(block) => match proposal.expires {
-                Expiration::AtHeight(height) => total_available_votes_at_height(
-                    dao_type,
-                    deps.storage,
-                    min(height, block.height),
-                )?,
+                Expiration::AtHeight(height) => {
+                    total_available_votes_at_height(dao_type, deps, min(height, block.height))?
+                }
                 Expiration::AtTime(time) => {
-                    total_available_votes_at_time(dao_type, deps.storage, min(time, block.time))?
+                    total_available_votes_at_time(dao_type, deps, min(time, block.time))?
                 }
                 Expiration::Never { .. } => {
                     // TODO: introduce a different structure to eliminate this branch
-                    total_available_votes_at_height(dao_type, deps.storage, block.height)?
+                    total_available_votes_at_height(dao_type, deps, block.height)?
                 }
             },
             None => match proposal.expires {
                 Expiration::AtHeight(height) => {
                     if env.block.height >= height {
-                        total_available_votes_at_height(dao_type, deps.storage, height)?
+                        total_available_votes_at_height(dao_type, deps, height)?
                     } else {
-                        current_total_available_votes(dao_type, deps.storage)?
+                        current_total_available_votes(dao_type, deps)?
                     }
                 }
                 Expiration::AtTime(time) => {
                     if env.block.time >= time {
-                        total_available_votes_at_time(dao_type, deps.storage, time)?
+                        total_available_votes_at_time(dao_type, deps, time)?
                     } else {
-                        current_total_available_votes(dao_type, deps.storage)?
+                        current_total_available_votes(dao_type, deps)?
                     }
                 }
-                Expiration::Never { .. } => current_total_available_votes(dao_type, deps.storage)?,
+                Expiration::Never { .. } => current_total_available_votes(dao_type, deps)?,
             },
         },
         Council => {
@@ -1911,30 +1906,30 @@ fn poll_to_proposal_response(deps: Deps, env: &Env, poll: &Poll) -> DaoResult<Pr
 
 fn total_available_votes_at_height(
     dao_type: DaoType,
-    store: &dyn Storage,
+    deps: Deps,
     height: u64,
 ) -> StdResult<Uint128> {
     match dao_type {
-        Token | Nft => load_total_staked_at_height(store, height),
-        Multisig => load_total_multisig_weight_at_height(store, height),
+        Token | Nft => load_total_staked_at_height(deps, height),
+        Multisig => load_total_multisig_weight_at_height(deps.storage, height),
     }
 }
 
 fn total_available_votes_at_time(
     dao_type: DaoType,
-    store: &dyn Storage,
+    deps: Deps,
     time: Timestamp,
 ) -> StdResult<Uint128> {
     match dao_type {
-        Token | Nft => load_total_staked_at_time(store, time),
-        Multisig => load_total_multisig_weight_at_time(store, time),
+        Token | Nft => load_total_staked_at_time(deps, time),
+        Multisig => load_total_multisig_weight_at_time(deps.storage, time),
     }
 }
 
-fn current_total_available_votes(dao_type: DaoType, store: &dyn Storage) -> StdResult<Uint128> {
+fn current_total_available_votes(dao_type: DaoType, deps: Deps) -> StdResult<Uint128> {
     match dao_type {
-        Token | Nft => load_total_staked(store),
-        Multisig => load_total_multisig_weight(store),
+        Token | Nft => load_total_staked(deps),
+        Multisig => load_total_multisig_weight(deps.storage),
     }
 }
 
@@ -2012,9 +2007,7 @@ fn calculate_member_voting_power(
 
 fn load_member_weight(deps: Deps, member: Addr, dao_type: DaoType) -> DaoResult<Uint128> {
     let member_weight = match dao_type {
-        Token => CW20_STAKES
-            .may_load(deps.storage, member)?
-            .unwrap_or_default(),
+        Token => query_user_cw20_stake(deps, member)?,
         Nft => (load_all_nft_stakes_for_user(deps.storage, member)?.len() as u128).into(),
         Multisig => MULTISIG_MEMBERS
             .may_load(deps.storage, member)?
@@ -2026,7 +2019,7 @@ fn load_member_weight(deps: Deps, member: Addr, dao_type: DaoType) -> DaoResult<
 
 fn load_total_weight(deps: Deps, dao_type: DaoType) -> DaoResult<Uint128> {
     let total_weight = match dao_type {
-        Token | Nft => load_total_staked(deps.storage)?,
+        Token | Nft => load_total_staked(deps)?,
         Multisig => load_total_multisig_weight(deps.storage)?,
     };
 
@@ -2101,11 +2094,18 @@ pub fn query_user_stake(
 }
 
 fn get_user_staked_tokens(qctx: QueryContext, user: Addr) -> DaoResult<TokenUserStake> {
-    let staked_amount = CW20_STAKES
-        .may_load(qctx.deps.storage, user)?
-        .unwrap_or_default();
+    let staking_contract = STAKING_CONTRACT.load(qctx.deps.storage)?;
+
+    let response: token_staking_api::api::UserTokenStakeResponse =
+        qctx.deps.querier.query_wasm_smart(
+            staking_contract.to_string(),
+            &token_staking_api::msg::QueryMsg::UserStake(UserTokenStakeParams {
+                user: user.to_string(),
+            }),
+        )?;
+
     Ok(TokenUserStake {
-        amount: staked_amount,
+        amount: response.staked_amount,
     })
 }
 
@@ -2123,7 +2123,7 @@ fn get_user_staked_nfts(qctx: QueryContext, user: Addr) -> DaoResult<NftUserStak
 }
 
 pub fn query_total_staked_amount(qctx: QueryContext) -> DaoResult<TotalStakedAmountResponse> {
-    let total_staked_amount = load_total_staked(qctx.deps.storage)?;
+    let total_staked_amount = load_total_staked(qctx.deps)?;
 
     Ok(TotalStakedAmountResponse {
         total_staked_amount,
@@ -2200,7 +2200,7 @@ pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryRespons
             // subtract staked and deposited tokens, if the asset is DAO's membership token
             let subtract_amount = if let AssetInfo::Cw20(token) = &asset {
                 if token == &dao_membership_contract {
-                    let staked = load_total_staked(qctx.deps.storage)?;
+                    let staked = load_total_staked(qctx.deps)?;
                     let deposited = TOTAL_DEPOSITS.load(qctx.deps.storage)?;
 
                     staked.add(deposited)

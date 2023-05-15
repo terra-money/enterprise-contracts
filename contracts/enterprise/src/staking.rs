@@ -1,45 +1,67 @@
-use cosmwasm_std::{Addr, BlockInfo, StdResult, Storage, Timestamp, Uint128};
-use cw_storage_plus::{Map, SnapshotItem, Strategy};
+use crate::state::{DAO_TYPE, STAKING_CONTRACT};
+use cosmwasm_std::{Addr, Deps, StdError, StdResult, Timestamp, Uint128};
+use cw_utils::Expiration;
+use cw_utils::Expiration::{AtHeight, Never};
+use enterprise_protocol::api::DaoType;
+use token_staking_api::api::{UserTokenStakeParams, UserTokenStakeResponse};
+use DaoType::{Multisig, Nft, Token};
+use Expiration::AtTime;
 
-pub const CW20_STAKES: Map<Addr, Uint128> = Map::new("stakes");
+pub fn query_user_cw20_stake(deps: Deps, user: Addr) -> StdResult<Uint128> {
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
 
-// TODO: uses double the storage, can we avoid this somehow? we do need timestamp snapshots after all
-const TOTAL_STAKED_HEIGHT_SNAPSHOT: SnapshotItem<Uint128> = SnapshotItem::new(
-    "total_staked_block_height_snapshot",
-    "total_staked_block_height_checkpoints",
-    "total_staked_block_height_changelog",
-    Strategy::EveryBlock,
-);
-const TOTAL_STAKED_SECONDS_SNAPSHOT: SnapshotItem<Uint128> = SnapshotItem::new(
-    "total_staked_time_seconds_snapshot",
-    "total_staked_time_seconds_checkpoints",
-    "total_staked_time_seconds_changelog",
-    Strategy::EveryBlock,
-);
+    let response: UserTokenStakeResponse = deps.querier.query_wasm_smart(
+        staking_contract.to_string(),
+        &token_staking_api::msg::QueryMsg::UserStake(UserTokenStakeParams {
+            user: user.to_string(),
+        }),
+    )?;
 
-pub fn load_total_staked(store: &dyn Storage) -> StdResult<Uint128> {
-    TOTAL_STAKED_HEIGHT_SNAPSHOT.load(store)
+    Ok(response.staked_amount)
 }
 
-pub fn load_total_staked_at_height(store: &dyn Storage, height: u64) -> StdResult<Uint128> {
-    Ok(TOTAL_STAKED_HEIGHT_SNAPSHOT
-        .may_load_at_height(store, height)?
-        .unwrap_or_default())
+pub fn load_total_staked(deps: Deps) -> StdResult<Uint128> {
+    load_total_staked_at_expiration(deps, Never {})
 }
 
-pub fn load_total_staked_at_time(store: &dyn Storage, time: Timestamp) -> StdResult<Uint128> {
-    Ok(TOTAL_STAKED_SECONDS_SNAPSHOT
-        .may_load_at_height(store, time.seconds())?
-        .unwrap_or_default())
+pub fn load_total_staked_at_height(deps: Deps, height: u64) -> StdResult<Uint128> {
+    load_total_staked_at_expiration(deps, AtHeight(height))
 }
 
-pub fn save_total_staked(
-    store: &mut dyn Storage,
-    amount: &Uint128,
-    block: &BlockInfo,
-) -> StdResult<()> {
-    TOTAL_STAKED_HEIGHT_SNAPSHOT.save(store, amount, block.height)?;
-    TOTAL_STAKED_SECONDS_SNAPSHOT.save(store, amount, block.time.seconds())?;
+pub fn load_total_staked_at_time(deps: Deps, time: Timestamp) -> StdResult<Uint128> {
+    load_total_staked_at_expiration(deps, AtTime(time))
+}
 
-    Ok(())
+fn load_total_staked_at_expiration(deps: Deps, expiration: Expiration) -> StdResult<Uint128> {
+    let dao_type = DAO_TYPE.load(deps.storage)?;
+
+    match dao_type {
+        Token => {
+            let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+            let response: token_staking_api::api::TotalStakedAmountResponse =
+                deps.querier.query_wasm_smart(
+                    staking_contract.to_string(),
+                    &token_staking_api::msg::QueryMsg::TotalStakedAmount(
+                        token_staking_api::api::TotalStakedAmountParams { expiration },
+                    ),
+                )?;
+
+            Ok(response.total_staked_amount)
+        }
+        Nft => {
+            let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+            let response: nft_staking_api::api::TotalStakedAmountResponse =
+                deps.querier.query_wasm_smart(
+                    staking_contract.to_string(),
+                    &nft_staking_api::msg::QueryMsg::TotalStakedAmount(
+                        nft_staking_api::api::TotalStakedAmountParams { expiration },
+                    ),
+                )?;
+
+            Ok(response.total_staked_amount)
+        }
+        Multisig => Err(StdError::generic_err(
+            "Unsupported operation for multisig DAOs",
+        )),
+    }
 }

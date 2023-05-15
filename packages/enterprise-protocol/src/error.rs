@@ -73,9 +73,6 @@ pub enum DaoError {
     #[error("Asset cannot be staked or unstaked - does not match DAO's governance asset")]
     InvalidStakingAsset,
 
-    #[error("Insufficient staked assets to perform the unstaking")]
-    InsufficientStakedAssets,
-
     #[error("To create a proposal, a deposit amount of at least {required_amount} is required")]
     InsufficientProposalDeposit { required_amount: Uint128 },
 
