@@ -4,6 +4,7 @@ const ENTERPRISE = "enterprise";
 const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_FACTORY = "enterprise-factory";
 const FUNDS_DISTRIBUTOR = "funds-distributor";
+const TOKEN_STAKING = "token-staking";
 
 task(async ({ network, deployer, signer, refs }) => {
   deployer.buildContract(ENTERPRISE);
