@@ -5,10 +5,8 @@ use crate::total_staked::{
 };
 use common::cw::QueryContext;
 use cw_utils::Expiration;
-use token_staking_api::api::{
-    ClaimsParams, ClaimsResponse, TotalStakedAmountParams, TotalStakedAmountResponse,
-    UserTokenStakeParams, UserTokenStakeResponse,
-};
+use staking_common::api::{ClaimsParams, TotalStakedAmountParams, TotalStakedAmountResponse};
+use token_staking_api::api::{ClaimsResponse, UserTokenStakeParams, UserTokenStakeResponse};
 use token_staking_api::error::TokenStakingResult;
 
 pub fn query_user_token_stake(

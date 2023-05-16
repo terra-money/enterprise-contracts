@@ -1,18 +1,13 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ReceiveNftMsg, TotalStakedAmountParams,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateConfigMsg, UserNftStakeParams,
-    UserNftStakeResponse, UserNftTotalStakeParams, UserNftTotalStakeResponse,
+    ClaimsResponse, ReceiveNftMsg, UnstakeMsg, UserNftStakeParams, UserNftStakeResponse,
+    UserNftTotalStakeResponse,
 };
 use common::cw::ReleaseAt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cw_utils::Duration;
-
-#[cw_serde]
-pub struct InstantiateMsg {
-    pub admin: String,
-    pub nft_contract: String,
-    pub unlocking_period: Duration,
-}
+use staking_common::api::{
+    ClaimMsg, ClaimsParams, TotalStakedAmountParams, TotalStakedAmountResponse, UpdateConfigMsg,
+    UserTotalStakeParams,
+};
 
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -34,7 +29,7 @@ pub enum QueryMsg {
     #[returns(UserNftStakeResponse)]
     UserStake(UserNftStakeParams),
     #[returns(UserNftTotalStakeResponse)]
-    UserTotalStake(UserNftTotalStakeParams),
+    UserTotalStake(UserTotalStakeParams),
     #[returns(TotalStakedAmountResponse)]
     TotalStakedAmount(TotalStakedAmountParams),
     #[returns(ClaimsResponse)]

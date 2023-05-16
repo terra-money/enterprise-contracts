@@ -3,8 +3,9 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+use staking_common::msg::InstantiateMsg;
 use token_staking_api::error::TokenStakingResult;
-use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use token_staking_api::msg::{ExecuteMsg, MigrateMsg, QueryMsg};
 use token_staking_impl::execute::{claim, receive_cw20, unstake, update_config};
 use token_staking_impl::query::{
     query_claims, query_releasable_claims, query_total_staked_amount, query_user_token_stake,

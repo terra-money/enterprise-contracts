@@ -1,18 +1,11 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, TotalStakedAmountParams, TotalStakedAmountResponse,
-    UnstakeMsg, UpdateConfigMsg, UserClaim, UserStake, UserTokenStakeParams,
-    UserTokenStakeResponse,
+    ClaimsResponse, UnstakeMsg, UserClaim, UserStake, UserTokenStakeParams, UserTokenStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
-use cw_utils::Duration;
-
-#[cw_serde]
-pub struct InstantiateMsg {
-    pub admin: String,
-    pub token_contract: String,
-    pub unlocking_period: Duration,
-}
+use staking_common::api::{
+    ClaimMsg, ClaimsParams, TotalStakedAmountParams, TotalStakedAmountResponse, UpdateConfigMsg,
+};
 
 #[cw_serde]
 pub enum ExecuteMsg {

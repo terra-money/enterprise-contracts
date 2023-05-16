@@ -9,10 +9,12 @@ use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, TotalStakedAmountParams, TotalStakedAmountResponse,
-    UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeParams, UserNftTotalStakeResponse,
+    ClaimsResponse, UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeResponse,
 };
 use nft_staking_api::error::NftStakingResult;
+use staking_common::api::{
+    ClaimsParams, TotalStakedAmountParams, TotalStakedAmountResponse, UserTotalStakeParams,
+};
 
 const MAX_QUERY_LIMIT: u32 = 100;
 const DEFAULT_QUERY_LIMIT: u32 = 50;
@@ -50,7 +52,7 @@ pub fn query_user_nft_stake(
 
 pub fn query_user_total_stake(
     qctx: &QueryContext,
-    params: UserNftTotalStakeParams,
+    params: UserTotalStakeParams,
 ) -> NftStakingResult<UserNftTotalStakeResponse> {
     let user = qctx.deps.api.addr_validate(&params.user)?;
 

@@ -4,12 +4,13 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use nft_staking_api::error::NftStakingResult;
-use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use nft_staking_api::msg::{ExecuteMsg, MigrateMsg, QueryMsg};
 use nft_staking_impl::execute::{claim, receive_nft, unstake, update_config};
 use nft_staking_impl::query::{
     query_claims, query_releasable_claims, query_total_staked_amount, query_user_nft_stake,
     query_user_total_stake,
 };
+use staking_common::msg::InstantiateMsg;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:nft-staking";

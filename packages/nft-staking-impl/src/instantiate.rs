@@ -1,11 +1,11 @@
 use crate::config::{Config, CONFIG};
 use common::cw::Context;
 use nft_staking_api::error::NftStakingResult;
-use nft_staking_api::msg::InstantiateMsg;
+use staking_common::msg::InstantiateMsg;
 
 pub fn instantiate(ctx: &mut Context, msg: InstantiateMsg) -> NftStakingResult<()> {
     let admin = ctx.deps.api.addr_validate(&msg.admin)?;
-    let nft_contract = ctx.deps.api.addr_validate(&msg.nft_contract)?;
+    let nft_contract = ctx.deps.api.addr_validate(&msg.asset_contract)?;
 
     let config = Config {
         admin,

@@ -239,9 +239,9 @@ fn instantiate_token_staking_contract_submsg(
     let instantiate_submsg = SubMsg::reply_on_success(
         wasm_instantiate(
             token_staking_code_id,
-            &token_staking_api::msg::InstantiateMsg {
+            &staking_common::msg::InstantiateMsg {
                 admin: env.contract.address.to_string(),
-                token_contract: token_addr.to_string(),
+                asset_contract: token_addr.to_string(),
                 unlocking_period: gov_config.unlocking_period,
             },
             vec![],
@@ -263,9 +263,9 @@ fn instantiate_nft_staking_contract_submsg(
     let instantiate_submsg = SubMsg::reply_on_success(
         wasm_instantiate(
             nft_staking_code_id,
-            &nft_staking_api::msg::InstantiateMsg {
+            &staking_common::msg::InstantiateMsg {
                 admin: env.contract.address.to_string(),
-                nft_contract: nft_addr.to_string(),
+                asset_contract: nft_addr.to_string(),
                 unlocking_period: gov_config.unlocking_period,
             },
             vec![],
@@ -1497,7 +1497,7 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
 
             SubMsg::new(wasm_execute(
                 staking_contract.to_string(),
-                &token_staking_api::msg::ExecuteMsg::Claim(token_staking_api::api::ClaimMsg {
+                &token_staking_api::msg::ExecuteMsg::Claim(staking_common::api::ClaimMsg {
                     user: user.to_string(),
                 }),
                 vec![],
@@ -1508,7 +1508,7 @@ pub fn claim(ctx: &mut Context) -> DaoResult<Response> {
 
             SubMsg::new(wasm_execute(
                 staking_contract.to_string(),
-                &nft_staking_api::msg::ExecuteMsg::Claim(nft_staking_api::api::ClaimMsg {
+                &nft_staking_api::msg::ExecuteMsg::Claim(staking_common::api::ClaimMsg {
                     user: user.to_string(),
                 }),
                 vec![],
@@ -2205,9 +2205,9 @@ pub fn query_claims(qctx: QueryContext, params: ClaimsParams) -> DaoResult<Claim
             let response: token_staking_api::api::ClaimsResponse =
                 qctx.deps.querier.query_wasm_smart(
                     staking_contract.to_string(),
-                    &token_staking_api::msg::QueryMsg::Claims(
-                        token_staking_api::api::ClaimsParams { user: params.owner },
-                    ),
+                    &token_staking_api::msg::QueryMsg::Claims(staking_common::api::ClaimsParams {
+                        user: params.owner,
+                    }),
                 )?;
 
             let claims = response
@@ -2229,7 +2229,7 @@ pub fn query_claims(qctx: QueryContext, params: ClaimsParams) -> DaoResult<Claim
             let response: nft_staking_api::api::ClaimsResponse =
                 qctx.deps.querier.query_wasm_smart(
                     staking_contract.to_string(),
-                    &nft_staking_api::msg::QueryMsg::Claims(nft_staking_api::api::ClaimsParams {
+                    &nft_staking_api::msg::QueryMsg::Claims(staking_common::api::ClaimsParams {
                         user: params.owner,
                     }),
                 )?;
@@ -2268,7 +2268,7 @@ pub fn query_releasable_claims(
                 qctx.deps.querier.query_wasm_smart(
                     staking_contract.to_string(),
                     &token_staking_api::msg::QueryMsg::ReleasableClaims(
-                        token_staking_api::api::ClaimsParams { user: params.owner },
+                        staking_common::api::ClaimsParams { user: params.owner },
                     ),
                 )?;
 
@@ -2292,7 +2292,7 @@ pub fn query_releasable_claims(
                 qctx.deps.querier.query_wasm_smart(
                     staking_contract.to_string(),
                     &nft_staking_api::msg::QueryMsg::ReleasableClaims(
-                        nft_staking_api::api::ClaimsParams { user: params.owner },
+                        staking_common::api::ClaimsParams { user: params.owner },
                     ),
                 )?;
 

@@ -3,7 +3,8 @@ use cosmwasm_std::{Addr, Deps, StdError, StdResult, Timestamp, Uint128};
 use cw_utils::Expiration;
 use cw_utils::Expiration::{AtHeight, Never};
 use enterprise_protocol::api::DaoType;
-use nft_staking_api::api::{UserNftTotalStakeParams, UserNftTotalStakeResponse};
+use nft_staking_api::api::UserNftTotalStakeResponse;
+use staking_common::api::{TotalStakedAmountParams, UserTotalStakeParams};
 use token_staking_api::api::{UserTokenStakeParams, UserTokenStakeResponse};
 use DaoType::{Multisig, Nft, Token};
 use Expiration::AtTime;
@@ -26,7 +27,7 @@ pub fn query_user_cw721_total_stake(deps: Deps, user: Addr) -> StdResult<Uint128
 
     let response: UserNftTotalStakeResponse = deps.querier.query_wasm_smart(
         staking_contract.to_string(),
-        &nft_staking_api::msg::QueryMsg::UserTotalStake(UserNftTotalStakeParams {
+        &nft_staking_api::msg::QueryMsg::UserTotalStake(UserTotalStakeParams {
             user: user.to_string(),
         }),
     )?;
@@ -52,24 +53,24 @@ fn load_total_staked_at_expiration(deps: Deps, expiration: Expiration) -> StdRes
     match dao_type {
         Token => {
             let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-            let response: token_staking_api::api::TotalStakedAmountResponse =
+            let response: staking_common::api::TotalStakedAmountResponse =
                 deps.querier.query_wasm_smart(
                     staking_contract.to_string(),
-                    &token_staking_api::msg::QueryMsg::TotalStakedAmount(
-                        token_staking_api::api::TotalStakedAmountParams { expiration },
-                    ),
+                    &token_staking_api::msg::QueryMsg::TotalStakedAmount(TotalStakedAmountParams {
+                        expiration,
+                    }),
                 )?;
 
             Ok(response.total_staked_amount)
         }
         Nft => {
             let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-            let response: nft_staking_api::api::TotalStakedAmountResponse =
+            let response: staking_common::api::TotalStakedAmountResponse =
                 deps.querier.query_wasm_smart(
                     staking_contract.to_string(),
-                    &nft_staking_api::msg::QueryMsg::TotalStakedAmount(
-                        nft_staking_api::api::TotalStakedAmountParams { expiration },
-                    ),
+                    &nft_staking_api::msg::QueryMsg::TotalStakedAmount(TotalStakedAmountParams {
+                        expiration,
+                    }),
                 )?;
 
             Ok(response.total_staked_amount)

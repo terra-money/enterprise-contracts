@@ -9,12 +9,13 @@ use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
-use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateConfigMsg};
+use nft_staking_api::api::{ReceiveNftMsg, UnstakeMsg};
 use nft_staking_api::error::NftStakingError::{
     NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
 };
 use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::Cw721HookMsg;
+use staking_common::api::{ClaimMsg, UpdateConfigMsg};
 
 /// Function to execute when receiving a ReceiveNft callback from a CW721 contract.
 pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Response> {
@@ -148,7 +149,7 @@ pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> NftStakingResul
         config.admin = ctx.deps.api.addr_validate(&new_admin)?;
     }
 
-    if let Some(new_nft_contract) = msg.new_nft_contract {
+    if let Some(new_nft_contract) = msg.new_asset_contract {
         config.nft_contract = ctx.deps.api.addr_validate(&new_nft_contract)?;
     }
 

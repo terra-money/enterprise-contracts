@@ -38,6 +38,7 @@ cosmwasm-std = "1"
 cw2 = "1.0.1"
 nft-staking-api = { path = "../../packages/nft-staking-api" }
 nft-staking-impl = { path = "../../packages/nft-staking-impl" }
+staking-common = { path = "../../packages/staking-common" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.1.9"

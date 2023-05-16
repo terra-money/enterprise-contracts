@@ -12,4 +12,5 @@ common = { path = "../common" }
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
 cw-utils = "1.0.1"
+staking-common = { path = "../staking-common" }
 thiserror = "1"

@@ -1,8 +1,10 @@
 use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use token_staking_api::api::{ClaimsResponse, TotalStakedAmountResponse, UserTokenStakeResponse};
-use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use staking_common::api::TotalStakedAmountResponse;
+use staking_common::msg::InstantiateMsg;
+use token_staking_api::api::{ClaimsResponse, UserTokenStakeResponse};
+use token_staking_api::msg::{ExecuteMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

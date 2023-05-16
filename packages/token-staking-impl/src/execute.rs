@@ -11,8 +11,9 @@ use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
+use staking_common::api::{ClaimMsg, UpdateConfigMsg};
 use std::ops::Not;
-use token_staking_api::api::{ClaimMsg, UnstakeMsg, UpdateConfigMsg, UserClaim, UserStake};
+use token_staking_api::api::{UnstakeMsg, UserClaim, UserStake};
 use token_staking_api::error::TokenStakingError::{
     IncorrectClaimsAmountReceived, IncorrectStakesInitializationAmount, InsufficientStake,
     StakesAlreadyInitialized, Unauthorized,
@@ -162,7 +163,7 @@ pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> TokenStakingRes
         config.admin = ctx.deps.api.addr_validate(&new_admin)?;
     }
 
-    if let Some(new_token_contract) = msg.new_token_contract {
+    if let Some(new_token_contract) = msg.new_asset_contract {
         config.token_contract = ctx.deps.api.addr_validate(&new_token_contract)?;
     }
 

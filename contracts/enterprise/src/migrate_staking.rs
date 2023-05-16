@@ -59,9 +59,9 @@ pub fn migrate_staking(deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>> {
             let instantiate_msg = SubMsg::reply_on_success(
                 wasm_instantiate(
                     0, // TODO: use real code ID
-                    &token_staking_api::msg::InstantiateMsg {
+                    &staking_common::msg::InstantiateMsg {
                         admin: env.contract.address.to_string(),
-                        token_contract: token_addr.to_string(),
+                        asset_contract: token_addr.to_string(),
                         unlocking_period: gov_config.unlocking_period,
                     },
                     vec![],
@@ -80,9 +80,9 @@ pub fn migrate_staking(deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>> {
             let instantiate_msg = SubMsg::reply_on_success(
                 wasm_instantiate(
                     0, // TODO: use real code ID
-                    &nft_staking_api::msg::InstantiateMsg {
+                    &staking_common::msg::InstantiateMsg {
                         admin: env.contract.address.to_string(),
-                        nft_contract: nft_addr.to_string(),
+                        asset_contract: nft_addr.to_string(),
                         unlocking_period: gov_config.unlocking_period,
                     },
                     vec![],
