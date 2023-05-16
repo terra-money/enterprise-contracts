@@ -4,7 +4,9 @@ use cw_utils::Expiration;
 use cw_utils::Expiration::{AtHeight, Never};
 use enterprise_protocol::api::DaoType;
 use nft_staking_api::api::UserNftTotalStakeResponse;
-use staking_common::api::{TotalStakedAmountParams, UserTotalStakeParams};
+use staking_common::api::{
+    TotalStakedAmountParams, TotalStakedAmountResponse, UserTotalStakeParams,
+};
 use token_staking_api::api::{UserTokenStakeParams, UserTokenStakeResponse};
 use DaoType::{Multisig, Nft, Token};
 use Expiration::AtTime;

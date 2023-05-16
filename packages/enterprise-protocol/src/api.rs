@@ -1,8 +1,8 @@
 use common::cw::ReleaseAt;
-use common::nft::TokensResponse;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Decimal, StdError, StdResult, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
+use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo};
 use cw_utils::{Duration, Expiration};
 use poll_engine_api::api::{Vote, VoteOutcome};

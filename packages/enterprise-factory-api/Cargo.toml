@@ -9,7 +9,6 @@ path = "src/lib.rs"
 
 [dependencies]
 common = { path = "../common" }
-common-derive = { path = "../common-derive" }
 cosmwasm-std = "1"
 cosmwasm-storage = "1"
 cosmwasm-schema = "1.1"

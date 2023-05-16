@@ -1,8 +1,4 @@
-use cosmwasm_std::{
-    wasm_execute, wasm_instantiate, Addr, Api, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdResult, Storage, Timestamp, Uint128, Uint64, WasmMsg,
-};
-use cw20::Cw20ExecuteMsg;
+use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Timestamp, Uint64};
 use cw_storage_plus::{Bound, PrimaryKey};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -35,36 +31,6 @@ pub struct QueryContext<'a> {
 impl<'a> QueryContext<'a> {
     pub fn from(deps: Deps<'a>, env: Env) -> QueryContext<'a> {
         QueryContext { deps, env }
-    }
-}
-
-pub trait ContextWrapper<'a> {
-    fn storage(&self) -> &dyn Storage;
-    fn api(&self) -> &dyn Api;
-    fn querier(&self) -> QuerierWrapper<'a>;
-    fn env(&self) -> &Env;
-    fn info(&self) -> &MessageInfo;
-}
-
-impl<'a> ContextWrapper<'a> for Context<'a> {
-    fn storage(&self) -> &dyn Storage {
-        self.deps.storage
-    }
-
-    fn api(&self) -> &dyn Api {
-        self.deps.api
-    }
-
-    fn querier(&self) -> QuerierWrapper<'a> {
-        self.deps.querier
-    }
-
-    fn env(&self) -> &Env {
-        &self.env
-    }
-
-    fn info(&self) -> &MessageInfo {
-        &self.info
     }
 }
 
@@ -117,77 +83,6 @@ pub struct Pagination<PK> {
     pub limit: Option<u64>,
     pub order_by: Option<Order>,
 }
-
-pub fn send_tokens(
-    asset_token: impl Into<String>,
-    recipient: impl Into<String>,
-    amount: u128,
-    method: &str,
-) -> StdResult<Response> {
-    let recipient = recipient.into();
-    Ok(Response::new()
-        .add_message(CosmosMsg::Wasm(wasm_execute(
-            asset_token.into(),
-            &Cw20ExecuteMsg::Transfer {
-                recipient: recipient.clone(),
-                amount: Uint128::new(amount),
-            },
-            vec![],
-        )?))
-        .add_attributes(vec![
-            ("method", method),
-            ("recipient", &recipient),
-            ("amount", amount.to_string().as_str()),
-        ]))
-}
-
-pub trait WasmMsgExt
-where
-    Self: Sized + Serialize,
-{
-    fn wasm_instantiate(
-        &self,
-        code_id: u64,
-        funds: Vec<Coin>,
-        label: String,
-    ) -> StdResult<WasmMsg> {
-        wasm_instantiate(code_id, self, funds, label)
-    }
-
-    fn wasm_execute(
-        &self,
-        contract_addr: impl Into<String>,
-        funds: Vec<Coin>,
-    ) -> StdResult<WasmMsg> {
-        wasm_execute(contract_addr, self, funds)
-    }
-}
-
-pub trait AddrExt {
-    fn addr_validate(&self, ctx: &mut Context) -> StdResult<Addr>
-    where
-        Self: AsRef<str>,
-    {
-        ctx.deps.api.addr_validate(self.as_ref())
-    }
-
-    fn addr_canonicalize(&self, ctx: &mut Context) -> StdResult<CanonicalAddr>
-    where
-        Self: AsRef<str>,
-    {
-        ctx.deps.api.addr_canonicalize(self.as_ref())
-    }
-
-    fn addr_humanize(&self, ctx: &mut Context) -> StdResult<Addr>
-    where
-        Self: AsRef<CanonicalAddr>,
-    {
-        ctx.deps.api.addr_humanize(self.as_ref())
-    }
-}
-
-impl AddrExt for String {}
-impl AddrExt for str {}
 
 pub mod testing {
     use cosmwasm_std::{

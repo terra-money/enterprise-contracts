@@ -9,7 +9,6 @@ path = "src/lib.rs"
 
 [dependencies]
 common = { path = "../common" }
-common-derive = { path = "../common-derive" }
 cosmwasm-std = "1"
 cosmwasm-storage = "1"
 cosmwasm-schema = "1.1"
@@ -18,6 +17,7 @@ cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
 cw2 = "1.0.1"
 cw20 = "1.0.1"
+cw721 = "0.16.0"
 poll-engine-api = { path = "../poll-engine-api" }
 funds-distributor-api = { path = "../funds-distributor-api" }
 schemars = "0.8"
