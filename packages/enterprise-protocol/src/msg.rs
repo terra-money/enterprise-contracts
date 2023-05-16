@@ -5,9 +5,9 @@ use crate::api::{
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
     ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
-    UserStakeResponse,
+    QueryMemberInfoMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
+use common::nft::ReceiveNftMsg;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;

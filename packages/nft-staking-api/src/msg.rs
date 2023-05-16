@@ -1,8 +1,8 @@
 use crate::api::{
-    ClaimsResponse, ReceiveNftMsg, UnstakeMsg, UserNftStakeParams, UserNftStakeResponse,
-    UserNftTotalStakeResponse,
+    ClaimsResponse, UnstakeMsg, UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeResponse,
 };
 use common::cw::ReleaseAt;
+use common::nft::ReceiveNftMsg;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use staking_common::api::{
     ClaimMsg, ClaimsParams, TotalStakedAmountParams, TotalStakedAmountResponse, UpdateConfigMsg,

@@ -5,6 +5,7 @@ use crate::contract::{
 };
 use common::cw::testing::{mock_info, mock_query_ctx};
 use common::cw::QueryContext;
+use common::nft::ReceiveNftMsg;
 use cosmwasm_std::{
     to_binary, Binary, Decimal, DepsMut, Env, MessageInfo, Reply, Response, SubMsgResponse,
     SubMsgResult, Uint128,
@@ -18,8 +19,8 @@ use enterprise_protocol::api::{
     CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoMembershipInfo, DaoMetadata,
     DaoSocialData, DaoType, ExistingDaoMembershipMsg, Logo, MultisigMember, NewDaoMembershipMsg,
     NewMembershipInfo, NewMultisigMembershipInfo, NftUserStake, ProposalAction, ProposalId,
-    ProposalParams, ProposalStatus, QueryMemberInfoMsg, ReceiveNftMsg, TokenUserStake,
-    UnstakeCw20Msg, UnstakeCw721Msg, UnstakeMsg, UserStake, UserStakeParams,
+    ProposalParams, ProposalStatus, QueryMemberInfoMsg, TokenUserStake, UnstakeCw20Msg,
+    UnstakeCw721Msg, UnstakeMsg, UserStake, UserStakeParams,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::{

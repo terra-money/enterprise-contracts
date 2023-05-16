@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, Empty};
+use cosmwasm_std::{Binary, Empty, Uint64};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,15 @@ pub struct Metadata {
     pub background_color: Option<String>,
     pub animation_url: Option<String>,
     pub youtube_url: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct ReceiveNftMsg {
+    // this exists so we're Talis-compatible, otherwise it's not part of the CW721 standard
+    pub edition: Option<Uint64>,
+    pub sender: String,
+    pub token_id: String,
+    pub msg: Binary,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

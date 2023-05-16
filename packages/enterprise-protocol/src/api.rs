@@ -330,14 +330,6 @@ pub struct UnstakeCw721Msg {
 }
 
 #[cw_serde]
-pub struct ReceiveNftMsg {
-    pub edition: Option<Uint64>,
-    pub sender: String,
-    pub token_id: String,
-    pub msg: Binary,
-}
-
-#[cw_serde]
 pub struct Claim {
     pub asset: ClaimAsset,
     pub release_at: ReleaseAt,

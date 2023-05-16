@@ -32,6 +32,7 @@ use crate::validate::{
     validate_modify_multisig_membership, validate_proposal_actions,
 };
 use common::cw::{Context, Pagination, QueryContext};
+use common::nft::ReceiveNftMsg;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, wasm_instantiate, Addr, Binary, Coin,
@@ -57,7 +58,7 @@ use enterprise_protocol::api::{
     NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
     ProposalId, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
     ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
-    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg,
     RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
     TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
     UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,

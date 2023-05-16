@@ -1,18 +1,8 @@
 use common::cw::ReleaseAt;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
+use cosmwasm_std::{Addr, Uint128, Uint64};
 
 pub type NftTokenId = String;
-
-// TODO: also move to common
-#[cw_serde]
-pub struct ReceiveNftMsg {
-    // this exists so we're Talis-compatible, otherwise it's not part of the CW721 standard
-    pub edition: Option<Uint64>,
-    pub sender: String,
-    pub token_id: String,
-    pub msg: Binary,
-}
 
 #[cw_serde]
 pub struct UnstakeMsg {

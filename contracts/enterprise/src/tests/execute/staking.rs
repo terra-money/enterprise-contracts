@@ -7,9 +7,9 @@ use crate::tests::helpers::{
 };
 use crate::tests::querier::mock_querier::mock_dependencies;
 use common::cw::testing::{mock_env, mock_info, mock_query_ctx};
+use common::nft::ReceiveNftMsg;
 use cosmwasm_std::{to_binary, Decimal};
 use cw20::Cw20ReceiveMsg;
-use enterprise_protocol::api::ReceiveNftMsg;
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg;
 
