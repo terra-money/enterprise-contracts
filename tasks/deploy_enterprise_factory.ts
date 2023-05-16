@@ -5,7 +5,7 @@ const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_FACTORY = "enterprise-factory";
 const FUNDS_DISTRIBUTOR = "funds-distributor";
 const TOKEN_STAKING = "token-staking";
-const NFT_STAKING = "token-staking";
+const NFT_STAKING = "nft-staking";
 
 task(async ({ network, deployer, signer, refs }) => {
   deployer.buildContract(ENTERPRISE);

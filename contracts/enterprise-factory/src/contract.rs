@@ -237,6 +237,8 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
             enterprise_code_id: msg.new_enterprise_code_id,
             enterprise_governance_code_id: msg.new_enterprise_governance_code_id,
             funds_distributor_code_id: msg.new_funds_distributor_code_id,
+            token_staking_code_id: msg.new_token_staking_code_id,
+            nft_staking_code_id: msg.new_nft_staking_code_id,
             ..config
         },
     )?;

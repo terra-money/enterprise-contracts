@@ -24,6 +24,8 @@ pub struct MigrateMsg {
     pub new_enterprise_code_id: u64,
     pub new_enterprise_governance_code_id: u64,
     pub new_funds_distributor_code_id: u64,
+    pub new_token_staking_code_id: u64,
+    pub new_nft_staking_code_id: u64,
 }
 
 #[cw_serde]

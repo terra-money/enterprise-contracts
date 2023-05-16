@@ -33,9 +33,11 @@ const ENTERPRISE_FACTORY_ADDR: &str = "enterprise_factory_addr";
 const ENTERPRISE_CODE_ID: u64 = 201;
 const ENTERPRISE_GOVERNANCE_CODE_ID: u64 = 202;
 const FUNDS_DISTRIBUTOR_CODE_ID: u64 = 203;
-const CW3_FIXED_MULTISIG_CODE_ID: u64 = 204;
-const CW_20_CODE_ID: u64 = 205;
-const CW_721_CODE_ID: u64 = 206;
+const TOKEN_STAKING_CODE_ID: u64 = 204;
+const NFT_STAKING_CODE_ID: u64 = 205;
+const CW3_FIXED_MULTISIG_CODE_ID: u64 = 206;
+const CW_20_CODE_ID: u64 = 207;
+const CW_721_CODE_ID: u64 = 208;
 
 const TOKEN_NAME: &str = "some_token";
 const TOKEN_SYMBOL: &str = "SMBL";
@@ -69,6 +71,8 @@ fn instantiate_stores_data() -> DaoResult<()> {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
                 enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                nft_staking_code_id: NFT_STAKING_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -85,6 +89,8 @@ fn instantiate_stores_data() -> DaoResult<()> {
             enterprise_code_id: ENTERPRISE_CODE_ID,
             enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
             funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+            token_staking_code_id: TOKEN_STAKING_CODE_ID,
+            nft_staking_code_id: NFT_STAKING_CODE_ID,
             cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
             cw20_code_id: CW_20_CODE_ID,
             cw721_code_id: CW_721_CODE_ID,
@@ -116,6 +122,8 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
                 enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                nft_staking_code_id: NFT_STAKING_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -181,6 +189,8 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
                     enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                    token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                    nft_staking_code_id: NFT_STAKING_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
                     dao_council: Some(dao_council),
@@ -227,6 +237,8 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 enterprise_code_id: ENTERPRISE_CODE_ID,
                 enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                nft_staking_code_id: NFT_STAKING_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -274,6 +286,8 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
                     enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                    token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                    nft_staking_code_id: NFT_STAKING_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
                     dao_council: Some(dao_council),
@@ -312,6 +326,8 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
                 enterprise_code_id: ENTERPRISE_CODE_ID,
                 enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                nft_staking_code_id: NFT_STAKING_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -366,6 +382,8 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
                     enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                    token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                    nft_staking_code_id: NFT_STAKING_CODE_ID,
                     dao_metadata,
                     dao_gov_config,
                     dao_council: Some(dao_council),
@@ -404,6 +422,8 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
                 enterprise_code_id: ENTERPRISE_CODE_ID,
                 enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                 funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                nft_staking_code_id: NFT_STAKING_CODE_ID,
                 cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
@@ -457,6 +477,8 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
                 msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
                     enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
                     funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+                    token_staking_code_id: TOKEN_STAKING_CODE_ID,
+                    nft_staking_code_id: NFT_STAKING_CODE_ID,
                     dao_metadata,
                     dao_gov_config: DaoGovConfig {
                         quorum: Decimal::percent(10),
@@ -538,6 +560,8 @@ fn stub_config() -> Config {
         enterprise_code_id: ENTERPRISE_CODE_ID,
         enterprise_governance_code_id: ENTERPRISE_GOVERNANCE_CODE_ID,
         funds_distributor_code_id: FUNDS_DISTRIBUTOR_CODE_ID,
+        token_staking_code_id: TOKEN_STAKING_CODE_ID,
+        nft_staking_code_id: NFT_STAKING_CODE_ID,
         cw3_fixed_multisig_code_id: CW3_FIXED_MULTISIG_CODE_ID,
         cw20_code_id: CW_20_CODE_ID,
         cw721_code_id: CW_721_CODE_ID,
