@@ -3,7 +3,10 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
-use crate::migrate_staking::{migrate_staking, reply_instantiate_token_staking_contract};
+use crate::migrate_staking::{
+    migrate_staking, reply_instantiate_nft_staking_contract,
+    reply_instantiate_token_staking_contract,
+};
 use crate::migration::migrate_asset_whitelist;
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
@@ -1635,6 +1638,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
         }
         INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID => {
             reply_instantiate_token_staking_contract(deps, msg)
+        }
+        INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID => {
+            reply_instantiate_nft_staking_contract(deps, msg)
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }
