@@ -114,7 +114,7 @@ pub const END_POLL_REPLY_ID: u64 = 5;
 pub const INSTANTIATE_TOKEN_STAKING_CONTRACT_REPLY_ID: u64 = 6; // TODO: split replies for regular instantiation and instantiation during migration
 pub const INSTANTIATE_NFT_STAKING_CONTRACT_REPLY_ID: u64 = 7;
 
-pub const CODE_VERSION: u8 = 4;
+pub const CODE_VERSION: u8 = 5;
 
 pub const DEFAULT_QUERY_LIMIT: u8 = 50;
 pub const MAX_QUERY_LIMIT: u8 = 100;
