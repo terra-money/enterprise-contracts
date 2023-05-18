@@ -280,14 +280,24 @@ fn instantiate_new_token_dao(
 
     DAO_TYPE.save(ctx.deps.storage, &Token)?;
 
-    let marketing =
-        info.token_marketing
-            .map(|marketing| cw20_base::msg::InstantiateMarketingInfo {
-                project: marketing.project,
-                description: marketing.description,
-                marketing: marketing.marketing_owner,
-                logo: marketing.logo_url.map(Logo::Url),
-            });
+    let marketing = info
+        .token_marketing
+        .map(|marketing| cw20_base::msg::InstantiateMarketingInfo {
+            project: marketing.project,
+            description: marketing.description,
+            marketing: marketing
+                .marketing_owner
+                .or_else(|| Some(ctx.env.contract.address.to_string())),
+            logo: marketing.logo_url.map(Logo::Url),
+        })
+        .or_else(|| {
+            Some(cw20_base::msg::InstantiateMarketingInfo {
+                project: None,
+                description: None,
+                marketing: Some(ctx.env.contract.address.to_string()),
+                logo: None,
+            })
+        });
 
     let initial_balances = match info.initial_dao_balance {
         None => info.initial_token_balances,
