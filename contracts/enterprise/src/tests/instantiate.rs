@@ -532,7 +532,12 @@ fn instantiate_new_token_membership_without_minter_sets_dao_as_minter() -> DaoRe
                             minter: DAO_ADDR.to_string(),
                             cap: None,
                         }),
-                        marketing: None,
+                        marketing: Some(InstantiateMarketingInfo {
+                            project: None,
+                            description: None,
+                            logo: None,
+                            marketing: Some(env.contract.address.to_string())
+                        }),
                     },
                     vec![],
                     TOKEN_NAME.to_string(),

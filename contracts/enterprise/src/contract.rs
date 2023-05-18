@@ -499,9 +499,10 @@ fn instantiate_existing_membership_dao(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DaoResult<Response> {
+    let sender = info.sender.clone();
     let mut ctx = Context { deps, env, info };
     match msg {
-        ExecuteMsg::CreateProposal(msg) => create_proposal(&mut ctx, msg, None),
+        ExecuteMsg::CreateProposal(msg) => create_proposal(&mut ctx, msg, None, sender),
         ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(&mut ctx, msg),
         ExecuteMsg::CastVote(msg) => cast_vote(&mut ctx, msg),
         ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(&mut ctx, msg),
@@ -517,6 +518,7 @@ fn create_proposal(
     ctx: &mut Context,
     msg: CreateProposalMsg,
     deposit: Option<ProposalDeposit>,
+    proposer: Addr,
 ) -> DaoResult<Response> {
     let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
 
@@ -525,7 +527,7 @@ fn create_proposal(
 
     let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
 
-    let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General)?;
+    let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General, proposer)?;
 
     let response = Response::new()
         .add_attribute("action", "create_proposal")
@@ -615,7 +617,14 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
                 ..gov_config
             };
 
-            let create_poll_submsg = create_poll(ctx, council_gov_config, msg, None, Council)?;
+            let create_poll_submsg = create_poll(
+                ctx,
+                council_gov_config,
+                msg,
+                None,
+                Council,
+                ctx.info.sender.clone(),
+            )?;
 
             Ok(Response::new()
                 .add_attribute("action", "create_council_proposal")
@@ -647,6 +656,7 @@ fn create_poll(
     msg: CreateProposalMsg,
     deposit: Option<ProposalDeposit>,
     proposal_type: ProposalType,
+    proposer: Addr,
 ) -> DaoResult<SubMsg> {
     let ends_at = ctx.env.block.time.plus_seconds(gov_config.vote_duration);
 
@@ -655,7 +665,7 @@ fn create_poll(
         wasm_execute(
             governance_contract.to_string(),
             &enterprise_governance_api::msg::ExecuteMsg::CreatePoll(CreatePollParams {
-                proposer: ctx.info.sender.to_string(),
+                proposer: proposer.to_string(),
                 deposit_amount: Uint128::zero(),
                 label: msg.title,
                 description: msg.description.unwrap_or_default(),
@@ -1246,10 +1256,10 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
         Ok(Cw20HookMsg::CreateProposal(msg)) => {
             let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
             let deposit = ProposalDeposit {
-                depositor,
+                depositor: depositor.clone(),
                 amount: cw20_msg.amount,
             };
-            create_proposal(ctx, msg, Some(deposit))
+            create_proposal(ctx, msg, Some(deposit), depositor)
         }
         _ => Err(CustomError {
             val: "msg payload not recognized".to_string(),
