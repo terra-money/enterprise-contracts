@@ -41,6 +41,7 @@ pub enum ExecuteMsg {
     CastVote(CastVoteMsg),
     CastCouncilVote(CastVoteMsg),
     ExecuteProposal(ExecuteProposalMsg),
+    ExecuteProposalActions(ExecuteProposalMsg),
     Unstake(UnstakeMsg),
     Claim {},
     Receive(Cw20ReceiveMsg),

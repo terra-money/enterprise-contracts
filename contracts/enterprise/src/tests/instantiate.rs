@@ -121,7 +121,7 @@ fn instantiate_stores_dao_metadata() -> DaoResult<()> {
     let dao_info = query_dao_info(mock_query_ctx(deps.as_ref(), &env))?;
     assert_eq!(dao_info.creation_date, current_time);
     assert_eq!(dao_info.metadata, metadata);
-    assert_eq!(dao_info.dao_code_version, Uint64::from(4u8));
+    assert_eq!(dao_info.dao_code_version, Uint64::from(5u8));
     assert_eq!(dao_info.dao_type, Token);
     assert_eq!(dao_info.gov_config, dao_gov_config);
     assert_eq!(

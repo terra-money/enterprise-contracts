@@ -109,6 +109,7 @@ pub const ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
 pub const FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const CREATE_POLL_REPLY_ID: u64 = 4;
 pub const END_POLL_REPLY_ID: u64 = 5;
+pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 6;
 
 pub const CODE_VERSION: u8 = 5;
 
@@ -512,6 +513,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::CastVote(msg) => cast_vote(&mut ctx, msg),
         ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(&mut ctx, msg),
         ExecuteMsg::ExecuteProposal(msg) => execute_proposal(&mut ctx, msg),
+        ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(&mut ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(&mut ctx, msg),
         ExecuteMsg::ReceiveNft(msg) => receive_cw721(&mut ctx, msg),
         ExecuteMsg::Unstake(msg) => unstake(&mut ctx, msg),
@@ -936,12 +938,20 @@ fn resolve_ended_proposal(ctx: &mut Context, proposal_id: ProposalId) -> DaoResu
         }
         PollStatus::Passed { .. } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
-            let mut submsgs = execute_proposal_actions(ctx, proposal_id)?;
+            let execute_proposal_actions_msg = SubMsg::reply_always(
+                wasm_execute(
+                    ctx.env.contract.address.to_string(),
+                    &ExecuteMsg::ExecuteProposalActions(ExecuteProposalMsg { proposal_id }),
+                    vec![],
+                )?,
+                EXECUTE_PROPOSAL_ACTIONS_REPLY_ID,
+            );
             let mut return_deposit_submsgs =
                 return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
-            submsgs.append(&mut return_deposit_submsgs);
 
-            submsgs
+            return_deposit_submsgs.insert(0, execute_proposal_actions_msg);
+
+            return_deposit_submsgs
         }
         PollStatus::Rejected { reason } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
@@ -974,7 +984,25 @@ fn resolve_ended_proposal(ctx: &mut Context, proposal_id: ProposalId) -> DaoResu
     Ok(submsgs)
 }
 
-fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoResult<Vec<SubMsg>> {
+// TODO: tests
+fn execute_proposal_actions(ctx: &mut Context, msg: ExecuteProposalMsg) -> DaoResult<Response> {
+    // only the DAO itself can execute this
+    if ctx.info.sender != ctx.env.contract.address {
+        return Err(Unauthorized);
+    }
+
+    let submsgs: Vec<SubMsg> = execute_proposal_actions_submsgs(ctx, msg.proposal_id)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "execute_proposal_actions")
+        .add_attribute("proposal_id", msg.proposal_id.to_string())
+        .add_submessages(submsgs))
+}
+
+fn execute_proposal_actions_submsgs(
+    ctx: &mut Context,
+    proposal_id: ProposalId,
+) -> DaoResult<Vec<SubMsg>> {
     let proposal_actions =
         get_proposal_actions(ctx.deps.storage, proposal_id)?.ok_or(NoSuchProposal)?;
 
@@ -1634,6 +1662,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_attribute("dao_address", ctx.env.contract.address.to_string())
                 .add_attribute("proposal_id", proposal_id.to_string())
                 .add_submessages(execute_submsgs))
+        }
+        EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
+            // no actions, regardless of the result
+            Ok(Response::new())
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }
