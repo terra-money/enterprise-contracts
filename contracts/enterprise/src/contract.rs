@@ -110,7 +110,7 @@ pub const FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const CREATE_POLL_REPLY_ID: u64 = 4;
 pub const END_POLL_REPLY_ID: u64 = 5;
 
-pub const CODE_VERSION: u8 = 4;
+pub const CODE_VERSION: u8 = 5;
 
 pub const DEFAULT_QUERY_LIMIT: u8 = 50;
 pub const MAX_QUERY_LIMIT: u8 = 100;
@@ -2246,6 +2246,7 @@ pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Respo
         }));
     }
 
+    // TODO: do this for higher versions too, probably just switch to using code version
     if &contract_version.version == "0.4.0" {
         migrate_asset_whitelist(deps.branch())?;
     }
