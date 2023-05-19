@@ -554,6 +554,12 @@ pub struct UserStakeParams {
 }
 
 #[cw_serde]
+pub struct StakedNftsParams {
+    pub start_after: Option<NftTokenId>,
+    pub limit: Option<u32>,
+}
+
+#[cw_serde]
 pub struct UserStakeResponse {
     pub user_stake: UserStake,
 }
@@ -579,6 +585,11 @@ pub struct NftUserStake {
 #[cw_serde]
 pub struct TotalStakedAmountResponse {
     pub total_staked_amount: Uint128,
+}
+
+#[cw_serde]
+pub struct StakedNftsResponse {
+    pub nfts: Vec<NftTokenId>,
 }
 
 #[cw_serde]

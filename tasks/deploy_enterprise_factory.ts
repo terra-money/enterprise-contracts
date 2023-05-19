@@ -10,20 +10,20 @@ task(async ({ network, deployer, signer, refs }) => {
   deployer.optimizeContract(ENTERPRISE);
 
   const enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const cw3CodeId = refs.getContract(network, "cw3_fixed_multisig").codeId;
   const cw20CodeId = refs.getContract(network, "cw20_base").codeId;
   const cw721CodeId = refs.getContract(network, "cw721_base").codeId;
 
   await deployer.storeCode(ENTERPRISE_FACTORY);
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const instantiateMsg = {
     config: {

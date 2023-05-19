@@ -56,10 +56,10 @@ use enterprise_protocol::api::{
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt,
-    RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
-    UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
+    RequestFundingFromDaoMsg, StakedNftsParams, StakedNftsResponse, TalisFriendlyTokensResponse,
+    TokenUserStake, TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg,
+    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg,
+    UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
     DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
@@ -1723,6 +1723,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::ProposalVotes(params) => to_binary(&query_proposal_votes(qctx, params)?)?,
         QueryMsg::UserStake(params) => to_binary(&query_user_stake(qctx, params)?)?,
         QueryMsg::TotalStakedAmount {} => to_binary(&query_total_staked_amount(qctx)?)?,
+        QueryMsg::StakedNfts(params) => to_binary(&query_staked_nfts(qctx, params)?)?,
         QueryMsg::Claims(params) => to_binary(&query_claims(qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(qctx, params)?)?,
     };
@@ -2214,6 +2215,36 @@ pub fn query_total_staked_amount(qctx: QueryContext) -> DaoResult<TotalStakedAmo
     Ok(TotalStakedAmountResponse {
         total_staked_amount,
     })
+}
+
+// TODO: test
+pub fn query_staked_nfts(
+    qctx: QueryContext,
+    params: StakedNftsParams,
+) -> DaoResult<StakedNftsResponse> {
+    let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
+
+    if dao_type != Nft {
+        return Err(UnsupportedOperationForDaoType {
+            dao_type: dao_type.to_string(),
+        });
+    }
+
+    let start_after = params.start_after.map(Bound::exclusive);
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
+
+    let nfts = NFT_STAKES()
+        .range(qctx.deps.storage, start_after, None, Ascending)
+        .take(limit as usize)
+        .collect::<StdResult<Vec<(String, NftStake)>>>()?
+        .into_iter()
+        .map(|(token_id, _)| token_id)
+        .collect();
+
+    Ok(StakedNftsResponse { nfts })
 }
 
 pub fn query_claims(qctx: QueryContext, params: ClaimsParams) -> DaoResult<ClaimsResponse> {

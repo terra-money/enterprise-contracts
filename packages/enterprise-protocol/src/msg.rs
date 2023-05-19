@@ -5,8 +5,8 @@ use crate::api::{
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
     ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, ReceiveNftMsg, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
-    UserStakeResponse,
+    QueryMemberInfoMsg, ReceiveNftMsg, StakedNftsParams, StakedNftsResponse,
+    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
@@ -91,6 +91,8 @@ pub enum QueryMsg {
     UserStake(UserStakeParams),
     #[returns(TotalStakedAmountResponse)]
     TotalStakedAmount {},
+    #[returns(StakedNftsResponse)]
+    StakedNfts(StakedNftsParams),
     #[returns(ClaimsResponse)]
     Claims(ClaimsParams),
     #[returns(ClaimsResponse)]
