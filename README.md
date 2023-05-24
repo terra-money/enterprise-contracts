@@ -5,10 +5,12 @@ You can find information about the usage and function of the smart contracts on 
 
 ## Contracts
 
-| Contract                                               | Description                                                                         |
-|--------------------------------------------------------|-------------------------------------------------------------------------------------|
-| [`enterprise`](./contracts/enterprise)                 | Represents a single DAO, containing all its code and treasury                       |
-| [`enterprise-factory`](./contracts/enterprise-factory) | Serves as a proxy to create DAOs, storing their addresses and global configurations |
+| Contract                                                     | Description                                                                           |
+|--------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| [`enterprise`](./contracts/enterprise)                       | Represents a single DAO, containing all its code and treasury                         |
+| [`enterprise-factory`](./contracts/enterprise-factory)       | Serves as a proxy to create DAOs, storing their addresses and global configurations   |
+| [`enterprise-governance`](./contracts/enterprise-governance) | Serves as a wrapper for the poll-engine library that handles all voting-related logic |
+| [`funds-distributor`](./contracts/funds-distributor)         | A contract for distributing a DAO's funds to its stakers                              |
 
 ## Development
 
@@ -72,21 +74,60 @@ We are using `terrariums` to manage contract deployment. The `terrarium.json` fi
 
 Terrariums synchronizes a `refs.json` file, that contains the `codeID` and `address` of deployed contracts on the various networks. This `refs.json` file can be synchronized to other locations by editing the `copy_refs_to` property in the `terrarium.json` file.
 
+#### terrarium.json setup
+
+To run deployment scripts, you need to first generate your own `terrarium.json` file using the provided `terrarium-template.json`.
+
+To do that, simply replace the `pisco` and `phoenix` signers' mnemonics to one of your wallets, for testnet and mainnet respectively.
+After that, just rename `terrarium-template.json` to `terrarium.json` and you're ready to run the deployment scripts.
+
+#### Running the deployment scripts
+
 To deploy a contract, you can run the following command:
 
 ```
-yarn terrariums deploy <contract>
+yarn deploy:<contract>
 ```
 
-Enterprise:
+Enterprise factory testnet:
 ```
-yarn terrariums deploy enterprise
+yarn deploy:enterprise-factory
 ```
 
-Enterprise factory:
+Enterprise factory mainnet:
 ```
-yarn terrariums deploy enterprise-factory
+yarn deploy:enterprise-factory:mainnet
 ```
+
+#### Running the migration scripts
+
+To migrate a contract, you can run the following command:
+
+```
+yarn migrate:<contract>
+```
+
+Enterprise factory testnet:
+```
+yarn migrate:enterprise-factory
+```
+
+Enterprise factory mainnet:
+```
+yarn migrate:enterprise-factory:mainnet
+```
+
+## CW20 and CW721 contracts
+
+Enterprise is using the standard CW20 and CW721 contract implementations for tokens and NFTs.
+The versions of those contracts used in different Enterprise versions are as follows:
+
+
+| Enterprise contract code ID | Enterprise code version (internal incremental versioning scheme for DAOs) | CW20 version | CW721 version |
+|-----------------------------|---------------------------------------------------------------------------|--------------|---------------|
+| 1327                        | 2                                                                         | 1.0.1        | 0.16.0        |
+| 1372                        | 3                                                                         | 1.0.1        | 0.16.0        |
+| 1397                        | 4                                                                         | 1.0.1        | 0.16.0        |
 
 ## License
 

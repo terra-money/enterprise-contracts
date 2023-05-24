@@ -1,0 +1,59 @@
+{
+  "workspace_optimizer": true,
+  "networks": {
+    "mainnet": {
+      "chainID": "phoenix-1",
+      "URL": "https://phoenix-lcd.terra.dev"
+    },
+    "testnet": {
+      "chainID": "pisco-1",
+      "URL": "https://pisco-lcd.terra.dev"
+    },
+    "localterra": {
+      "chainID": "localterra",
+      "URL": "http://localhost:1317"
+    }
+  },
+  "refs": {
+    "base_path": "./refs.json",
+    "copy_refs_to": []
+  },
+  "contracts": {
+    "enterprise-factory": {
+      "src": "./contracts/enterprise-factory/",
+      "deploy_script": "./tasks/deploy_enterprise_factory.ts"
+    },
+    "enterprise": {
+      "src": "./contracts/enterprise/"
+    },
+    "test-contract": {
+      "src": "./contracts/test-contract/",
+      "deploy_script": "./tasks/deploy_test_contract.ts"
+    },
+    "enterprise-governance": {
+      "src": "./contracts/enterprise-governance/"
+    },
+    "funds-distributor": {
+      "src": "./contracts/funds-distributor/"
+    },
+    "token-staking": {
+      "src": "./contracts/token-staking/"
+    },
+    "nft-staking": {
+      "src": "./contracts/nft-staking/"
+    },
+    "cw20_base": {},
+    "cw3_fixed_multisig": {},
+    "cw721_base": {}
+  },
+  "signers": {
+    "pisco": {
+      "mnemonic": "some seed phrase for a wallet you are using on testnet",
+      "network": "testnet"
+    },
+    "phoenix": {
+      "mnemonic": "some other seed phrase for a wallet you are using on mainnet",
+      "network": "mainnet"
+    }
+  }
+}
