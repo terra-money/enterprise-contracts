@@ -2,7 +2,12 @@ use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use enterprise_protocol::api::{AssetWhitelistResponse, ClaimsResponse, DaoInfoResponse, MemberInfoResponse, MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalResponse, ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, TotalStakedAmountResponse, UserStakeResponse, StakedNftsResponse};
+use enterprise_protocol::api::{
+    AssetWhitelistResponse, ClaimsResponse, DaoInfoResponse, MemberInfoResponse,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalResponse,
+    ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, StakedNftsResponse,
+    TotalStakedAmountResponse, UserStakeResponse,
+};
 use enterprise_protocol::msg::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
