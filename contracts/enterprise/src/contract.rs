@@ -946,12 +946,11 @@ fn resolve_ended_proposal(ctx: &mut Context, proposal_id: ProposalId) -> DaoResu
                 )?,
                 EXECUTE_PROPOSAL_ACTIONS_REPLY_ID,
             );
-            let mut return_deposit_submsgs =
-                return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
+            let mut submsgs = return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
 
-            return_deposit_submsgs.insert(0, execute_proposal_actions_msg);
+            submsgs.insert(0, execute_proposal_actions_msg);
 
-            return_deposit_submsgs
+            submsgs
         }
         PollStatus::Rejected { reason } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
@@ -2309,10 +2308,8 @@ pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Respo
         }));
     }
 
-    // TODO: do this for higher versions too, probably just switch to using code version
-    if &contract_version.version == "0.4.0" {
-        migrate_asset_whitelist(deps.branch())?;
-    }
+    // TODO: when upgrading the version, exclude versions higher than 0.4.0
+    migrate_asset_whitelist(deps.branch())?;
 
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
