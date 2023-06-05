@@ -4,7 +4,7 @@ use cw_utils::Expiration;
 
 #[cw_serde]
 pub struct UserWeight {
-    pub user: Addr,
+    pub user: String,
     pub weight: Uint128,
 }
 
@@ -13,7 +13,7 @@ pub struct UpdateMembersMsg {
     /// Members to be updated.
     /// Can contain existing members, in which case their new weight will be the one specified in
     /// this message. This effectively allows removing of members (by setting their weight to 0).
-    pub update_members: Option<String>,
+    pub update_members: Vec<UserWeight>,
 }
 
 #[cw_serde]
@@ -37,7 +37,8 @@ pub struct TotalWeightParams {
 
 #[cw_serde]
 pub struct UserWeightResponse {
-    pub user_weight: UserWeight,
+    pub user: Addr,
+    pub weight: Uint128,
 }
 
 #[cw_serde]

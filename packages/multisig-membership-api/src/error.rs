@@ -10,6 +10,9 @@ pub enum MultisigMembershipError {
 
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("A user appears multiple times in the weights array")]
+    DuplicateUserWeightFound,
 }
 
 impl MultisigMembershipError {
