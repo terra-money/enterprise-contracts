@@ -1,0 +1,46 @@
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Addr, Uint128};
+use cw_utils::Expiration;
+
+#[cw_serde]
+pub struct UserWeight {
+    pub user: Addr,
+    pub weight: Uint128,
+}
+
+#[cw_serde]
+pub struct UpdateMembersMsg {
+    /// Members to be updated.
+    /// Can contain existing members, in which case their new weight will be the one specified in
+    /// this message. This effectively allows removing of members (by setting their weight to 0).
+    pub update_members: Option<String>,
+}
+
+#[cw_serde]
+pub struct UpdateConfigMsg {
+    pub new_admin: Option<String>,
+}
+
+#[cw_serde]
+pub struct UserWeightParams {
+    pub user: String,
+}
+
+#[cw_serde]
+pub struct TotalWeightParams {
+    /// Denotes the moment at which we're interested in the total weight.
+    /// Expiration::Never is used for current total weight.
+    pub expiration: Expiration, // TODO: name this 'history_moment' or sth?
+}
+
+////// Responses
+
+#[cw_serde]
+pub struct UserWeightResponse {
+    pub user_weight: UserWeight,
+}
+
+#[cw_serde]
+pub struct TotalWeightResponse {
+    pub total_weight: Uint128,
+}

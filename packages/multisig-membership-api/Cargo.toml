@@ -1,0 +1,15 @@
+[package]
+name = "multisig-membership-api"
+version = "0.1.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+common = { path = "../common" }
+cosmwasm-std = "1"
+cosmwasm-schema = "1.1"
+cw-utils = "1.0.1"
+thiserror = "1"
