@@ -148,10 +148,6 @@ pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> NftStakingResul
         config.admin = ctx.deps.api.addr_validate(&new_admin)?;
     }
 
-    if let Some(new_nft_contract) = msg.new_nft_contract {
-        config.nft_contract = ctx.deps.api.addr_validate(&new_nft_contract)?;
-    }
-
     if let Some(new_unlocking_period) = msg.new_unlocking_period {
         config.unlocking_period = new_unlocking_period;
     }

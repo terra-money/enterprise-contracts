@@ -30,7 +30,6 @@ pub struct ClaimMsg {
 #[cw_serde]
 pub struct UpdateConfigMsg {
     pub new_admin: Option<String>,
-    pub new_token_contract: Option<String>,
     pub new_unlocking_period: Option<Duration>,
 }
 

@@ -162,10 +162,6 @@ pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> TokenStakingRes
         config.admin = ctx.deps.api.addr_validate(&new_admin)?;
     }
 
-    if let Some(new_token_contract) = msg.new_token_contract {
-        config.token_contract = ctx.deps.api.addr_validate(&new_token_contract)?;
-    }
-
     if let Some(new_unlocking_period) = msg.new_unlocking_period {
         config.unlocking_period = new_unlocking_period;
     }
