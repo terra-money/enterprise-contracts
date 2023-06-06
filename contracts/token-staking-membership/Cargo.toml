@@ -35,7 +35,6 @@ optimize = """docker run --rm -v "${process.cwd()}":/code \
 [dependencies]
 common = { path = "../../packages/common" }
 cosmwasm-std = "1"
-cw-storage-plus = "1.0.1"
 cw2 = "1.0.1"
 token-staking-api = { path = "../../packages/token-staking-api" }
 token-staking-impl = { path = "../../packages/token-staking-impl" }

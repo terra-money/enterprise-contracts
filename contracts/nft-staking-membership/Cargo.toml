@@ -1,5 +1,5 @@
 [package]
-name = "multisig-membership"
+name = "nft-staking-membership"
 version = "0.1.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
@@ -36,8 +36,8 @@ optimize = """docker run --rm -v "${process.cwd()}":/code \
 common = { path = "../../packages/common" }
 cosmwasm-std = "1"
 cw2 = "1.0.1"
-multisig-membership-api = { path = "../../packages/multisig-membership-api" }
-multisig-membership-impl = { path = "../../packages/multisig-membership-impl" }
+nft-staking-api = { path = "../../packages/nft-staking-api" }
+nft-staking-impl = { path = "../../packages/nft-staking-impl" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.1.9"
