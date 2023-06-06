@@ -1,11 +1,8 @@
 use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use enterprise_governance_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use poll_engine_api::api::{
-    PollResponse, PollStatusResponse, PollVoterResponse, PollVotersResponse, PollsResponse,
-    VoterResponse,
-};
+use token_staking_api::api::{ClaimsResponse, TotalStakedAmountResponse, UserTokenStakeResponse};
+use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -17,10 +14,7 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(MigrateMsg), &out_dir);
-    export_schema(&schema_for!(PollResponse), &out_dir);
-    export_schema(&schema_for!(PollsResponse), &out_dir);
-    export_schema(&schema_for!(PollStatusResponse), &out_dir);
-    export_schema(&schema_for!(PollVoterResponse), &out_dir);
-    export_schema(&schema_for!(PollVotersResponse), &out_dir);
-    export_schema(&schema_for!(VoterResponse), &out_dir);
+    export_schema(&schema_for!(ClaimsResponse), &out_dir);
+    export_schema(&schema_for!(TotalStakedAmountResponse), &out_dir);
+    export_schema(&schema_for!(UserTokenStakeResponse), &out_dir);
 }

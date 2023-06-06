@@ -1,9 +1,9 @@
-# Multisig membership
+# NFT staking membership
 
-A contract for managing a multisig membership for an Enterprise DAO.
-Essentially a proxy to the multisig-membership library.
+A contract for managing an NFT (CW721) staking membership for an Enterprise DAO.
+Essentially a proxy to the nft-staking library.
 
 Mainly serves to:
-- store multisig members' weights
-- provide an interface to modify multisig members
-- provide queries for user and total weights
+- store users' NFT stakes
+- provide an interface to stake, unstake, and claim user NFTs
+- provide queries for user and total stakes, and user claims
