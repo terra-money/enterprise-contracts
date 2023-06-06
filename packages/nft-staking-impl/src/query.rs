@@ -1,4 +1,5 @@
 use crate::claims::{get_claims, get_releasable_claims};
+use crate::config::CONFIG;
 use crate::nft_staking::{get_user_total_stake, NftStake, NFT_STAKES};
 use crate::total_staked::{
     load_total_staked, load_total_staked_at_height, load_total_staked_at_time,
@@ -9,13 +10,24 @@ use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, TotalStakedAmountParams, TotalStakedAmountResponse,
-    UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeParams, UserNftTotalStakeResponse,
+    ClaimsParams, ClaimsResponse, ConfigResponse, TotalStakedAmountParams,
+    TotalStakedAmountResponse, UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeParams,
+    UserNftTotalStakeResponse,
 };
 use nft_staking_api::error::NftStakingResult;
 
 const MAX_QUERY_LIMIT: u32 = 100;
 const DEFAULT_QUERY_LIMIT: u32 = 50;
+
+pub fn query_config(qctx: &QueryContext) -> NftStakingResult<ConfigResponse> {
+    let config = CONFIG.load(qctx.deps.storage)?;
+
+    Ok(ConfigResponse {
+        admin: config.admin,
+        nft_contract: config.nft_contract,
+        unlocking_period: config.unlocking_period,
+    })
+}
 
 pub fn query_user_nft_stake(
     qctx: &QueryContext,

@@ -36,6 +36,11 @@ pub struct TotalWeightParams {
 ////// Responses
 
 #[cw_serde]
+pub struct ConfigResponse {
+    pub admin: Addr,
+}
+
+#[cw_serde]
 pub struct UserWeightResponse {
     pub user: Addr,
     pub weight: Uint128,

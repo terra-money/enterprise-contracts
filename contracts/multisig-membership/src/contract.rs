@@ -6,7 +6,7 @@ use cw2::set_contract_version;
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use multisig_membership_impl::execute::{update_config, update_members};
-use multisig_membership_impl::query::{query_total_weight, query_user_weight};
+use multisig_membership_impl::query::{query_config, query_total_weight, query_user_weight};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:multisig-membership";
@@ -53,6 +53,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> MultisigMembershipResult<Bi
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
+        QueryMsg::Config {} => to_binary(&query_config(&qctx)?)?,
         QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,
     };

@@ -7,8 +7,8 @@ use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use nft_staking_impl::execute::{claim, receive_nft, unstake, update_config};
 use nft_staking_impl::query::{
-    query_claims, query_releasable_claims, query_total_staked_amount, query_user_nft_stake,
-    query_user_total_stake,
+    query_claims, query_config, query_releasable_claims, query_total_staked_amount,
+    query_user_nft_stake, query_user_total_stake,
 };
 
 // version info for migration info
@@ -58,6 +58,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
+        QueryMsg::Config {} => to_binary(&query_config(&qctx)?)?,
         QueryMsg::UserStake(params) => to_binary(&query_user_nft_stake(&qctx, params)?)?,
         QueryMsg::UserTotalStake(params) => to_binary(&query_user_total_stake(&qctx, params)?)?,
         QueryMsg::TotalStakedAmount(params) => {

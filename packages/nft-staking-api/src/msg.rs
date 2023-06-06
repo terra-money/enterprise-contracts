@@ -1,5 +1,5 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ReceiveNftMsg, TotalStakedAmountParams,
+    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, ReceiveNftMsg, TotalStakedAmountParams,
     TotalStakedAmountResponse, UnstakeMsg, UpdateConfigMsg, UserNftStakeParams,
     UserNftStakeResponse, UserNftTotalStakeParams, UserNftTotalStakeResponse,
 };
@@ -31,6 +31,8 @@ pub enum Cw721HookMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(ConfigResponse)]
+    Config {},
     #[returns(UserNftStakeResponse)]
     UserStake(UserNftStakeParams),
     #[returns(UserNftTotalStakeResponse)]

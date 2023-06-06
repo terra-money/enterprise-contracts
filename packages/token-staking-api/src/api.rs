@@ -75,3 +75,10 @@ pub struct ClaimsResponse {
 pub struct TotalStakedAmountResponse {
     pub total_staked_amount: Uint128,
 }
+
+#[cw_serde]
+pub struct ConfigResponse {
+    pub admin: Addr,
+    pub token_contract: Addr,
+    pub unlocking_period: Duration,
+}

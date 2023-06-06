@@ -1,3 +1,4 @@
+use crate::config::CONFIG;
 use crate::member_weights::MEMBER_WEIGHTS;
 use crate::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
@@ -5,9 +6,17 @@ use crate::total_weight::{
 use common::cw::QueryContext;
 use cw_utils::Expiration;
 use multisig_membership_api::api::{
-    TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse,
+    ConfigResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse,
 };
 use multisig_membership_api::error::MultisigMembershipResult;
+
+pub fn query_config(qctx: &QueryContext) -> MultisigMembershipResult<ConfigResponse> {
+    let config = CONFIG.load(qctx.deps.storage)?;
+
+    Ok(ConfigResponse {
+        admin: config.admin,
+    })
+}
 
 pub fn query_user_weight(
     qctx: &QueryContext,

@@ -67,6 +67,13 @@ pub struct NftClaim {
 ////// Responses
 
 #[cw_serde]
+pub struct ConfigResponse {
+    pub admin: Addr,
+    pub nft_contract: Addr,
+    pub unlocking_period: Duration,
+}
+
+#[cw_serde]
 pub struct UserNftStakeResponse {
     pub user: Addr,
     pub tokens: Vec<NftTokenId>,

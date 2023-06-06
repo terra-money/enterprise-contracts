@@ -1,4 +1,5 @@
 use crate::claims::{get_claims, get_releasable_claims};
+use crate::config::CONFIG;
 use crate::token_staking::get_user_stake;
 use crate::total_staked::{
     load_total_staked, load_total_staked_at_height, load_total_staked_at_time,
@@ -6,10 +7,20 @@ use crate::total_staked::{
 use common::cw::QueryContext;
 use cw_utils::Expiration;
 use token_staking_api::api::{
-    ClaimsParams, ClaimsResponse, TotalStakedAmountParams, TotalStakedAmountResponse,
-    UserTokenStakeParams, UserTokenStakeResponse,
+    ClaimsParams, ClaimsResponse, ConfigResponse, TotalStakedAmountParams,
+    TotalStakedAmountResponse, UserTokenStakeParams, UserTokenStakeResponse,
 };
 use token_staking_api::error::TokenStakingResult;
+
+pub fn query_config(qctx: &QueryContext) -> TokenStakingResult<ConfigResponse> {
+    let config = CONFIG.load(qctx.deps.storage)?;
+
+    Ok(ConfigResponse {
+        admin: config.admin,
+        token_contract: config.token_contract,
+        unlocking_period: config.unlocking_period,
+    })
+}
 
 pub fn query_user_token_stake(
     qctx: &QueryContext,

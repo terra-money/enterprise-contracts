@@ -1,6 +1,6 @@
 use crate::api::{
-    TotalWeightParams, TotalWeightResponse, UpdateConfigMsg, UpdateMembersMsg, UserWeight,
-    UserWeightParams, UserWeightResponse,
+    ConfigResponse, TotalWeightParams, TotalWeightResponse, UpdateConfigMsg, UpdateMembersMsg,
+    UserWeight, UserWeightParams, UserWeightResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
@@ -19,6 +19,8 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(ConfigResponse)]
+    Config {},
     #[returns(UserWeightResponse)]
     UserWeight(UserWeightParams),
     #[returns(TotalWeightResponse)]
