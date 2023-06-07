@@ -1,7 +1,9 @@
 use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use multisig_membership_api::api::{ConfigResponse, MembersResponse, TotalWeightResponse, UserWeightResponse};
+use multisig_membership_api::api::{
+    ConfigResponse, MembersResponse, TotalWeightResponse, UserWeightResponse,
+};
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {

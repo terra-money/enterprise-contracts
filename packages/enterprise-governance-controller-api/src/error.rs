@@ -1,5 +1,5 @@
 use crate::api::ProposalActionType;
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use poll_engine_api::error::PollError;
 use thiserror::Error;
 
@@ -33,6 +33,12 @@ pub enum GovernanceControllerError {
 
     #[error("Zero-duration voting is not allowed")]
     ZeroVoteDuration,
+
+    #[error("To create a proposal, a deposit amount of at least {required_amount} is required")]
+    InsufficientProposalDeposit { required_amount: Uint128 },
+
+    #[error("Invalid deposit type")]
+    InvalidDepositType,
 
     #[error("Proposal voting duration cannot be longer than unstaking duration")]
     VoteDurationLongerThanUnstaking,

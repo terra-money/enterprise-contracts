@@ -41,6 +41,15 @@ pub struct GovConfig {
     pub allow_early_proposal_execution: bool,
 }
 
+// TODO: remove later, not needed
+#[cw_serde]
+pub struct DaoCouncil {
+    pub members: Vec<Addr>,
+    pub allowed_proposal_action_types: Vec<ProposalActionType>,
+    pub quorum: Decimal,
+    pub threshold: Decimal,
+}
+
 #[cw_serde]
 pub struct DaoCouncilSpec {
     /// Addresses of council members. Each member has equal voting power.
@@ -207,7 +216,6 @@ pub struct ExecuteProposalMsg {
 #[cw_serde]
 pub struct GovConfigResponse {
     pub gov_config: GovConfig,
-    pub dao_type: DaoType,
     pub dao_membership_contract: Addr,
     pub dao_council_contract: Addr,
 }
