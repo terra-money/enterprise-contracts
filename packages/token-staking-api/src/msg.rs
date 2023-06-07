@@ -1,7 +1,7 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, TotalStakedAmountParams,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateConfigMsg, UserClaim, UserStake,
-    UserTokenStakeParams, UserTokenStakeResponse,
+    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, StakersParams, StakersResponse,
+    TotalStakedAmountParams, TotalStakedAmountResponse, UnstakeMsg, UpdateConfigMsg, UserClaim,
+    UserStake, UserTokenStakeParams, UserTokenStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
@@ -42,6 +42,8 @@ pub enum QueryMsg {
     Claims(ClaimsParams),
     #[returns(ClaimsResponse)]
     ReleasableClaims(ClaimsParams),
+    #[returns(StakersResponse)]
+    Stakers(StakersParams),
 }
 
 #[cw_serde]

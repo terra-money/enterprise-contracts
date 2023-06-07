@@ -1,7 +1,8 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, ReceiveNftMsg, TotalStakedAmountParams,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateConfigMsg, UserNftStakeParams,
-    UserNftStakeResponse, UserNftTotalStakeParams, UserNftTotalStakeResponse,
+    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, ReceiveNftMsg, StakersParams,
+    StakersResponse, TotalStakedAmountParams, TotalStakedAmountResponse, UnstakeMsg,
+    UpdateConfigMsg, UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeParams,
+    UserNftTotalStakeResponse,
 };
 use common::cw::ReleaseAt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -43,6 +44,8 @@ pub enum QueryMsg {
     Claims(ClaimsParams),
     #[returns(ClaimsResponse)]
     ReleasableClaims(ClaimsParams),
+    #[returns(StakersResponse)]
+    Stakers(StakersParams),
 }
 
 #[cw_serde]

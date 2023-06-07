@@ -33,6 +33,12 @@ pub struct TotalWeightParams {
     pub expiration: Expiration, // TODO: name this 'history_moment' or sth?
 }
 
+#[cw_serde]
+pub struct MembersParams {
+    pub start_after: Option<String>,
+    pub limit: Option<u32>,
+}
+
 ////// Responses
 
 #[cw_serde]
@@ -49,4 +55,9 @@ pub struct UserWeightResponse {
 #[cw_serde]
 pub struct TotalWeightResponse {
     pub total_weight: Uint128,
+}
+
+#[cw_serde]
+pub struct MembersResponse {
+    pub members: Vec<UserWeightResponse>,
 }

@@ -7,7 +7,7 @@ use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use token_staking_impl::execute::{claim, receive_cw20, unstake, update_config};
 use token_staking_impl::query::{
-    query_claims, query_config, query_releasable_claims, query_total_staked_amount,
+    query_claims, query_config, query_releasable_claims, query_stakers, query_total_staked_amount,
     query_user_token_stake,
 };
 
@@ -65,6 +65,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> TokenStakingResult<Binary> 
         }
         QueryMsg::Claims(params) => to_binary(&query_claims(&qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(&qctx, params)?)?,
+        QueryMsg::Stakers(params) => to_binary(&query_stakers(&qctx, params)?)?,
     };
 
     Ok(response)

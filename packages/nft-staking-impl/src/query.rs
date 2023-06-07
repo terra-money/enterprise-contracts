@@ -1,23 +1,24 @@
 use crate::claims::{get_claims, get_releasable_claims};
 use crate::config::CONFIG;
-use crate::nft_staking::{get_user_total_stake, NftStake, NFT_STAKES};
+use crate::nft_staking::{get_user_total_stake, NftStake, NFT_STAKES, USER_TOTAL_STAKED};
 use crate::total_staked::{
     load_total_staked, load_total_staked_at_height, load_total_staked_at_time,
 };
 use common::cw::QueryContext;
-use cosmwasm_std::{Order, StdResult};
+use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::{Addr, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, ConfigResponse, TotalStakedAmountParams,
-    TotalStakedAmountResponse, UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeParams,
-    UserNftTotalStakeResponse,
+    ClaimsParams, ClaimsResponse, ConfigResponse, StakerWeight, StakersParams, StakersResponse,
+    TotalStakedAmountParams, TotalStakedAmountResponse, UserNftStakeParams, UserNftStakeResponse,
+    UserNftTotalStakeParams, UserNftTotalStakeResponse,
 };
 use nft_staking_api::error::NftStakingResult;
 
-const MAX_QUERY_LIMIT: u32 = 100;
-const DEFAULT_QUERY_LIMIT: u32 = 50;
+const MAX_QUERY_LIMIT: u8 = 100;
+const DEFAULT_QUERY_LIMIT: u8 = 50;
 
 pub fn query_config(qctx: &QueryContext) -> NftStakingResult<ConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
@@ -38,8 +39,8 @@ pub fn query_user_nft_stake(
     let start_after = params.start_after.map(Bound::exclusive);
     let limit = params
         .limit
-        .unwrap_or(DEFAULT_QUERY_LIMIT)
-        .min(MAX_QUERY_LIMIT);
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
 
     let user_stake = NFT_STAKES()
         .idx
@@ -102,4 +103,29 @@ pub fn query_releasable_claims(
     let user = qctx.deps.api.addr_validate(&params.user)?;
 
     get_releasable_claims(qctx.deps.storage, &qctx.env.block, user)
+}
+
+pub fn query_stakers(
+    qctx: &QueryContext,
+    params: StakersParams,
+) -> NftStakingResult<StakersResponse> {
+    let start_after = params
+        .start_after
+        .map(|addr| qctx.deps.api.addr_validate(&addr))
+        .transpose()?
+        .map(Bound::exclusive);
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
+
+    let stakers = USER_TOTAL_STAKED
+        .range(qctx.deps.storage, start_after, None, Ascending)
+        .take(limit as usize)
+        .collect::<StdResult<Vec<(Addr, Uint128)>>>()?
+        .into_iter()
+        .map(|(staker, weight)| StakerWeight { staker, weight })
+        .collect();
+
+    Ok(StakersResponse { stakers })
 }

@@ -7,7 +7,7 @@ use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use nft_staking_impl::execute::{claim, receive_nft, unstake, update_config};
 use nft_staking_impl::query::{
-    query_claims, query_config, query_releasable_claims, query_total_staked_amount,
+    query_claims, query_config, query_releasable_claims, query_stakers, query_total_staked_amount,
     query_user_nft_stake, query_user_total_stake,
 };
 
@@ -66,6 +66,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
         }
         QueryMsg::Claims(params) => to_binary(&query_claims(&qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(&qctx, params)?)?,
+        QueryMsg::Stakers(params) => to_binary(&query_stakers(&qctx, params)?)?,
     };
 
     Ok(response)

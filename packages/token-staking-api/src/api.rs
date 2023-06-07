@@ -58,6 +58,12 @@ pub struct TokenClaim {
     pub release_at: ReleaseAt,
 }
 
+#[cw_serde]
+pub struct StakersParams {
+    pub start_after: Option<String>,
+    pub limit: Option<u32>,
+}
+
 ////// Responses
 
 #[cw_serde]
@@ -81,4 +87,15 @@ pub struct ConfigResponse {
     pub admin: Addr,
     pub token_contract: Addr,
     pub unlocking_period: Duration,
+}
+
+#[cw_serde]
+pub struct StakerWeight {
+    pub staker: Addr,
+    pub weight: Uint128,
+}
+
+#[cw_serde]
+pub struct StakersResponse {
+    pub stakers: Vec<StakerWeight>,
 }

@@ -64,6 +64,12 @@ pub struct NftClaim {
     pub release_at: ReleaseAt,
 }
 
+#[cw_serde]
+pub struct StakersParams {
+    pub start_after: Option<String>,
+    pub limit: Option<u32>,
+}
+
 ////// Responses
 
 #[cw_serde]
@@ -94,4 +100,15 @@ pub struct ClaimsResponse {
 #[cw_serde]
 pub struct TotalStakedAmountResponse {
     pub total_staked_amount: Uint128,
+}
+
+#[cw_serde]
+pub struct StakerWeight {
+    pub staker: Addr,
+    pub weight: Uint128,
+}
+
+#[cw_serde]
+pub struct StakersResponse {
+    pub stakers: Vec<StakerWeight>,
 }
