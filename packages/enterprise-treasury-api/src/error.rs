@@ -10,6 +10,9 @@ pub enum EnterpriseTreasuryError {
 
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("Error parsing message into Cosmos message")]
+    InvalidCosmosMessage,
 }
 
 impl EnterpriseTreasuryError {

@@ -4,10 +4,13 @@ use crate::api::{
     UpdateAssetWhitelistMsg, UpdateConfigMsg, UpdateNftWhitelistMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cw_asset::AssetInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub enterprise_contract: String,
+    pub asset_whitelist: Option<Vec<AssetInfo>>,
+    pub nft_whitelist: Option<Vec<String>>,
 }
 
 #[cw_serde]
