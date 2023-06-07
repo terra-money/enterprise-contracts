@@ -2,7 +2,8 @@ use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 use token_staking_api::api::{
-    ClaimsResponse, ConfigResponse, TotalStakedAmountResponse, UserTokenStakeResponse,
+    ClaimsResponse, ConfigResponse, StakersResponse, TotalStakedAmountResponse,
+    UserTokenStakeResponse,
 };
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
@@ -20,4 +21,5 @@ fn main() {
     export_schema(&schema_for!(ConfigResponse), &out_dir);
     export_schema(&schema_for!(TotalStakedAmountResponse), &out_dir);
     export_schema(&schema_for!(UserTokenStakeResponse), &out_dir);
+    export_schema(&schema_for!(StakersResponse), &out_dir);
 }

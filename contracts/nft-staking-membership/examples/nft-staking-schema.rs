@@ -1,10 +1,7 @@
 use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use nft_staking_api::api::{
-    ClaimsResponse, ConfigResponse, TotalStakedAmountResponse, UserNftStakeResponse,
-    UserNftTotalStakeResponse,
-};
+use nft_staking_api::api::{ClaimsResponse, ConfigResponse, StakersResponse, TotalStakedAmountResponse, UserNftStakeResponse, UserNftTotalStakeResponse};
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
@@ -22,4 +19,5 @@ fn main() {
     export_schema(&schema_for!(ClaimsResponse), &out_dir);
     export_schema(&schema_for!(UserNftStakeResponse), &out_dir);
     export_schema(&schema_for!(UserNftTotalStakeResponse), &out_dir);
+    export_schema(&schema_for!(StakersResponse), &out_dir);
 }
