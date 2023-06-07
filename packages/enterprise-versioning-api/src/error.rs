@@ -10,6 +10,12 @@ pub enum EnterpriseVersioningError {
 
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("Version {version} already exists")]
+    VersionAlreadyExists { version: u64 },
+
+    #[error("Version {version} not found")]
+    VersionNotFound { version: u64 },
 }
 
 impl EnterpriseVersioningError {
