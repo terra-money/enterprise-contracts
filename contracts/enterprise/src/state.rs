@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Timestamp, Uint64};
 use cw_storage_plus::Item;
 use enterprise_protocol::api::{DaoMetadata, DaoType};
@@ -9,7 +10,19 @@ pub const DAO_CREATION_DATE: Item<Timestamp> = Item::new("dao_creation_date");
 // Address of contract which is used to calculate DAO membership
 pub const DAO_MEMBERSHIP_CONTRACT: Item<Addr> = Item::new("dao_membership_contract");
 
-pub const ENTERPRISE_FACTORY_CONTRACT: Item<Addr> = Item::new("enterprise_factory_contract");
+#[cw_serde]
+pub struct ComponentContracts {
+    pub enterprise_factory_contract: Addr,
+    pub enterprise_governance_contract: Addr,
+    pub enterprise_governance_controller_contract: Addr,
+    pub enterprise_treasury_contract: Addr,
+    pub enterprise_versioning_contract: Addr,
+    pub funds_distributor_contract: Addr,
+    pub membership_contract: Addr,
+}
+
+pub const COMPONENT_CONTRACTS: Item<ComponentContracts> = Item::new("component_contracts");
+
 pub const ENTERPRISE_GOVERNANCE_CONTRACT: Item<Addr> = Item::new("enterprise_governance_contract");
 pub const FUNDS_DISTRIBUTOR_CONTRACT: Item<Addr> = Item::new("funds_distributor_contract");
 

@@ -17,7 +17,7 @@ use enterprise_factory_api::api::{
 };
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::api::{
-    AssetWhitelistResponse, DaoMembershipInfo, NewDaoMembershipMsg, NewMembershipInfo,
+    AssetWhitelistResponse, DaoMembershipInfo, DaoType, NewDaoMembershipMsg, NewMembershipInfo,
     NftWhitelistResponse,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
@@ -92,7 +92,15 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         dao_metadata: msg.dao_metadata.clone(),
         dao_membership_info,
         enterprise_factory_contract: env.contract.address.to_string(),
+        // TODO: properly supply those params below
+        enterprise_governance_contract: "".to_string(),
+        enterprise_governance_controller_contract: "".to_string(),
+        enterprise_treasury_contract: "".to_string(),
+        enterprise_versioning_contract: "".to_string(),
+        funds_distributor_contract: "".to_string(),
+        membership_contract: "".to_string(),
         minimum_weight_for_rewards: msg.minimum_weight_for_rewards,
+        dao_type: DaoType::Token,
     };
     let create_dao_submsg = SubMsg::reply_on_success(
         WasmMsg::Instantiate {

@@ -1,6 +1,7 @@
 use crate::state::{
-    DAO_CODE_VERSION, DAO_CREATION_DATE, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE,
-    ENTERPRISE_FACTORY_CONTRACT, ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT,
+    ComponentContracts, COMPONENT_CONTRACTS, DAO_CODE_VERSION, DAO_CREATION_DATE,
+    DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_GOVERNANCE_CONTRACT,
+    FUNDS_DISTRIBUTOR_CONTRACT,
 };
 use crate::validate::validate_existing_dao_contract;
 use common::commons::ModifyValue::Change;
@@ -14,9 +15,9 @@ use cw20::{Cw20Coin, Logo, MinterResponse};
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::{
-    DaoInfoResponse, DaoMembershipInfo, DaoType, ExistingDaoMembershipMsg, NewDaoMembershipMsg,
-    NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
-    UpdateMetadataMsg, UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoMembershipInfo, DaoType,
+    ExistingDaoMembershipMsg, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
+    NewNftMembershipInfo, NewTokenMembershipInfo, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{Std, ZeroInitialDaoBalance};
 use enterprise_protocol::error::{DaoError, DaoResult};
@@ -53,11 +54,30 @@ pub fn instantiate(
 
     DAO_CREATION_DATE.save(deps.storage, &env.block.time)?;
 
-    DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
-    ENTERPRISE_FACTORY_CONTRACT.save(
+    COMPONENT_CONTRACTS.save(
         deps.storage,
-        &deps.api.addr_validate(&msg.enterprise_factory_contract)?,
+        &ComponentContracts {
+            enterprise_factory_contract: deps
+                .api
+                .addr_validate(&msg.enterprise_factory_contract)?,
+            enterprise_governance_contract: deps
+                .api
+                .addr_validate(&msg.enterprise_governance_contract)?,
+            enterprise_governance_controller_contract: deps
+                .api
+                .addr_validate(&msg.enterprise_governance_controller_contract)?,
+            enterprise_treasury_contract: deps
+                .api
+                .addr_validate(&msg.enterprise_treasury_contract)?,
+            enterprise_versioning_contract: deps
+                .api
+                .addr_validate(&msg.enterprise_versioning_contract)?,
+            funds_distributor_contract: deps.api.addr_validate(&msg.funds_distributor_contract)?,
+            membership_contract: deps.api.addr_validate(&msg.membership_contract)?,
+        },
     )?;
+
+    DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
     DAO_CODE_VERSION.save(deps.storage, &CODE_VERSION.into())?;
 
     // instantiate the governance contract
@@ -470,28 +490,37 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
 
     let response = match msg {
         QueryMsg::DaoInfo {} => to_binary(&query_dao_info(qctx)?)?,
+        QueryMsg::ComponentContracts {} => to_binary(&query_dao_info(qctx)?)?,
     };
     Ok(response)
 }
 
 pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
-    // TODO: some stuff (like gov config) shouldn't live here anymore
     let creation_date = DAO_CREATION_DATE.load(qctx.deps.storage)?;
     let metadata = DAO_METADATA.load(qctx.deps.storage)?;
     let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
-    let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
-    let enterprise_factory_contract = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
-    let funds_distributor_contract = FUNDS_DISTRIBUTOR_CONTRACT.load(qctx.deps.storage)?;
     let dao_code_version = DAO_CODE_VERSION.load(qctx.deps.storage)?;
 
     Ok(DaoInfoResponse {
         creation_date,
         metadata,
         dao_type,
-        dao_membership_contract,
-        enterprise_factory_contract,
-        funds_distributor_contract,
         dao_code_version,
+    })
+}
+
+pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContractsResponse> {
+    let component_contracts = COMPONENT_CONTRACTS.load(qctx.deps.storage)?;
+
+    Ok(ComponentContractsResponse {
+        enterprise_factory_contract: component_contracts.enterprise_factory_contract,
+        enterprise_governance_contract: component_contracts.enterprise_governance_contract,
+        enterprise_governance_controller_contract: component_contracts
+            .enterprise_governance_controller_contract,
+        enterprise_treasury_contract: component_contracts.enterprise_treasury_contract,
+        enterprise_versioning_contract: component_contracts.enterprise_versioning_contract,
+        funds_distributor_contract: component_contracts.funds_distributor_contract,
+        membership_contract: component_contracts.membership_contract,
     })
 }
 

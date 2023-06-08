@@ -1,9 +1,8 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
-use cw_asset::{Asset, AssetInfo};
-use cw_utils::Duration;
+use cw_asset::AssetInfo;
 use std::fmt;
 use strum_macros::Display;
 
@@ -122,61 +121,9 @@ pub struct MultisigMember {
 }
 
 #[cw_serde]
-pub struct UpdateGovConfigMsg {
-    pub quorum: ModifyValue<Decimal>,
-    pub threshold: ModifyValue<Decimal>,
-    pub veto_threshold: ModifyValue<Option<Decimal>>,
-    pub voting_duration: ModifyValue<Uint64>,
-    pub unlocking_period: ModifyValue<Duration>,
-    pub minimum_deposit: ModifyValue<Option<Uint128>>,
-    pub allow_early_proposal_execution: ModifyValue<bool>,
-}
-
-#[cw_serde]
-pub struct UpdateAssetWhitelistMsg {
-    /// New assets to add to the whitelist. Will ignore assets that are already whitelisted.
-    pub add: Vec<AssetInfo>,
-    /// Assets to remove from the whitelist. Will ignore assets that are not already whitelisted.
-    pub remove: Vec<AssetInfo>,
-}
-
-#[cw_serde]
-pub struct UpdateNftWhitelistMsg {
-    /// New NFTs to add to the whitelist. Will ignore NFTs that are already whitelisted.
-    pub add: Vec<Addr>,
-    /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
-    pub remove: Vec<Addr>,
-}
-
-#[cw_serde]
-pub struct RequestFundingFromDaoMsg {
-    pub recipient: String,
-    pub assets: Vec<Asset>,
-}
-
-#[cw_serde]
 pub struct UpgradeDaoMsg {
     pub new_dao_code_id: u64,
     pub migrate_msg: Binary,
-}
-
-#[cw_serde]
-pub struct ExecuteMsgsMsg {
-    pub action_type: String,
-    pub msgs: Vec<String>,
-}
-
-#[cw_serde]
-pub struct ModifyMultisigMembershipMsg {
-    /// Members to be edited.
-    /// Can contain existing members, in which case their new weight will be the one specified in
-    /// this message. This effectively allows removing of members (by setting their weight to 0).
-    pub edit_members: Vec<MultisigMember>,
-}
-
-#[cw_serde]
-pub struct DistributeFundsMsg {
-    pub funds: Vec<Asset>,
 }
 
 #[cw_serde]
@@ -184,10 +131,18 @@ pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
     pub dao_type: DaoType,
-    pub dao_membership_contract: Addr,
-    pub enterprise_factory_contract: Addr,
-    pub funds_distributor_contract: Addr,
     pub dao_code_version: Uint64,
+}
+
+#[cw_serde]
+pub struct ComponentContractsResponse {
+    pub enterprise_factory_contract: Addr,
+    pub enterprise_governance_contract: Addr,
+    pub enterprise_governance_controller_contract: Addr,
+    pub enterprise_treasury_contract: Addr,
+    pub enterprise_versioning_contract: Addr,
+    pub funds_distributor_contract: Addr,
+    pub membership_contract: Addr,
 }
 
 #[cw_serde]
