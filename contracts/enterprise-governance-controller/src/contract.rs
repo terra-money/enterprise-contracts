@@ -4,22 +4,19 @@ use crate::proposals::{
 };
 use crate::state::{State, DAO_COUNCIL, DAO_TYPE, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
 use crate::validate::{
-    apply_gov_config_changes, normalize_asset_whitelist, validate_dao_council, validate_deposit,
-    validate_modify_multisig_membership, validate_proposal_actions,
+    apply_gov_config_changes, validate_deposit, validate_modify_multisig_membership,
+    validate_proposal_actions,
 };
 use common::cw::{Context, Pagination, QueryContext};
-use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    coin, entry_point, from_binary, to_binary, wasm_execute, wasm_instantiate, Addr, Binary,
-    BlockInfo, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, StdResult, Storage, SubMsg, Timestamp, Uint128, Uint64, WasmMsg,
+    coin, entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, Timestamp,
+    Uint128, Uint64,
 };
-use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
-use cw_asset::{Asset, AssetInfo, AssetInfoBase};
-use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_instantiate_data, Duration, Expiration};
-use enterprise_governance_controller_api::api::ModifyValue::Change;
+use cw2::set_contract_version;
+use cw20::Cw20ReceiveMsg;
+use cw_asset::{Asset, AssetInfoBase};
+use cw_utils::Expiration;
 use enterprise_governance_controller_api::api::ProposalAction::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
@@ -41,16 +38,12 @@ use enterprise_governance_controller_api::error::GovernanceControllerError::{
     NoVotesAvailable, ProposalAlreadyExecuted, Std, Unauthorized, UnsupportedCouncilProposalAction,
     WrongProposalType,
 };
-use enterprise_governance_controller_api::error::{
-    GovernanceControllerError, GovernanceControllerResult,
-};
+use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use enterprise_governance_controller_api::msg::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use enterprise_protocol::api::DaoType;
-use funds_distributor_api::api::{
-    UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg, UserWeight,
-};
+use funds_distributor_api::api::UpdateMinimumEligibleWeightMsg;
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
 use poll_engine_api::api::{
@@ -61,8 +54,7 @@ use poll_engine_api::api::{
 };
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
-use std::ops::{Add, Not, Sub};
-use Duration::{Height, Time};
+use std::ops::{Add, Sub};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
 
 // version info for migration info

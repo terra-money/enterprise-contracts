@@ -1,7 +1,7 @@
 use crate::proposals::ProposalInfo;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint64};
-use cw_storage_plus::{Item, Map};
+use cosmwasm_std::Addr;
+use cw_storage_plus::Item;
 use enterprise_governance_controller_api::api::{DaoCouncil, GovConfig, ProposalId};
 use enterprise_protocol::api::DaoType;
 

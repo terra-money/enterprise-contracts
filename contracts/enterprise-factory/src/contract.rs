@@ -90,12 +90,9 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         enterprise_governance_code_id: config.enterprise_governance_code_id,
         funds_distributor_code_id: config.funds_distributor_code_id,
         dao_metadata: msg.dao_metadata.clone(),
-        dao_gov_config: msg.dao_gov_config,
         dao_council: msg.dao_council,
         dao_membership_info,
         enterprise_factory_contract: env.contract.address.to_string(),
-        asset_whitelist: msg.asset_whitelist,
-        nft_whitelist: msg.nft_whitelist,
         minimum_weight_for_rewards: msg.minimum_weight_for_rewards,
     };
     let create_dao_submsg = SubMsg::reply_on_success(

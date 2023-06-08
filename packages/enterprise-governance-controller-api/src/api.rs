@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::{Asset, AssetInfo};
 use cw_utils::{Duration, Expiration};
-use enterprise_protocol::api::{DaoType, Logo};
+use enterprise_protocol::api::Logo;
 use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
