@@ -42,6 +42,7 @@ cw-utils = "1.0.1"
 cw2 = "1.0.1"
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
+enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
 itertools = "0.10"
 
 [dev-dependencies]

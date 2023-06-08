@@ -24,6 +24,7 @@ strum = "0.24"
 strum_macros = "0.24"
 thiserror = "1"
 enterprise-protocol = { path = "../enterprise-protocol" }
+enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
 
 [dev-dependencies]
 cosmwasm-schema = "1"

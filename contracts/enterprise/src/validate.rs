@@ -1,13 +1,12 @@
 use common::cw::Context;
-use cosmwasm_std::{StdResult};
+use cosmwasm_std::StdResult;
 use cw20::TokenInfoResponse;
 use cw721::NumTokensResponse;
+use enterprise_protocol::api::DaoType;
 use enterprise_protocol::api::DaoType::{Multisig, Nft, Token};
-use enterprise_protocol::api::{DaoType};
 use enterprise_protocol::error::{DaoError, DaoResult};
 use DaoError::{
-    InvalidExistingMultisigContract, InvalidExistingNftContract,
-    InvalidExistingTokenContract
+    InvalidExistingMultisigContract, InvalidExistingNftContract, InvalidExistingTokenContract,
 };
 
 pub fn validate_existing_dao_contract(

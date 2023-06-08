@@ -1,38 +1,30 @@
 use crate::state::{
-    DAO_CODE_VERSION, DAO_CREATION_DATE,
-    DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
-    ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT,
+    DAO_CODE_VERSION, DAO_CREATION_DATE, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE,
+    ENTERPRISE_FACTORY_CONTRACT, ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT,
 };
-use crate::validate::{
-    validate_existing_dao_contract,
-};
+use crate::validate::validate_existing_dao_contract;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_instantiate, Binary,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, Uint128, WasmMsg,
+    entry_point, to_binary, wasm_instantiate, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
-use cw2::{set_contract_version};
+use cw2::set_contract_version;
 use cw20::{Cw20Coin, Logo, MinterResponse};
-use cw_utils::{parse_reply_instantiate_data};
+use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::{
-    DaoInfoResponse,
-    DaoMembershipInfo, DaoType,
-    ExistingDaoMembershipMsg,
-    NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo,
-    NewTokenMembershipInfo,
-    UpdateMetadataMsg,
-    UpgradeDaoMsg
+    DaoInfoResponse, DaoMembershipInfo, DaoType, ExistingDaoMembershipMsg, NewDaoMembershipMsg,
+    NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
+    UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{Std, ZeroInitialDaoBalance};
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use funds_distributor_api::api::{UserWeight};
-use std::ops::{Add};
+use funds_distributor_api::api::UserWeight;
+use std::ops::Add;
 use cosmwasm_std::CosmosMsg::Wasm;
-use DaoError::{ZeroInitialWeightMember};
+use DaoError::ZeroInitialWeightMember;
 use DaoMembershipInfo::{Existing, New};
 use DaoType::Token;
 use NewMembershipInfo::{NewMultisig, NewNft, NewToken};
@@ -384,7 +376,12 @@ fn instantiate_existing_membership_dao(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, _msg: ExecuteMsg) -> DaoResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    _msg: ExecuteMsg,
+) -> DaoResult<Response> {
     let mut _ctx = Context { deps, env, info };
     // match msg {
     // }
@@ -508,6 +505,5 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
     // TODO: if version < 5, either fail or migrate to version 5 first
 
-    Ok(Response::new()
-        .add_attribute("action", "migrate"))
+    Ok(Response::new().add_attribute("action", "migrate"))
 }

@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Timestamp, Uint64};
-use cw_storage_plus::{Item};
+use cw_storage_plus::Item;
 use enterprise_protocol::api::{DaoMetadata, DaoType};
 
 pub const DAO_METADATA_KEY: &str = "dao_metadata";
