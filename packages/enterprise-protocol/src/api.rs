@@ -2,7 +2,6 @@ use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
-use cw_asset::AssetInfo;
 use std::fmt;
 use strum_macros::Display;
 
@@ -143,26 +142,4 @@ pub struct ComponentContractsResponse {
     pub enterprise_versioning_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub membership_contract: Addr,
-}
-
-#[cw_serde]
-pub struct AssetWhitelistParams {
-    pub start_after: Option<AssetInfo>,
-    pub limit: Option<u32>,
-}
-
-#[cw_serde]
-pub struct AssetWhitelistResponse {
-    pub assets: Vec<AssetInfo>,
-}
-
-#[cw_serde]
-pub struct NftWhitelistParams {
-    pub start_after: Option<String>,
-    pub limit: Option<u32>,
-}
-
-#[cw_serde]
-pub struct NftWhitelistResponse {
-    pub nfts: Vec<Addr>,
 }

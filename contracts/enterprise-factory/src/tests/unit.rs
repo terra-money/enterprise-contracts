@@ -1,5 +1,5 @@
 use crate::contract::{
-    execute, instantiate, query_asset_whitelist, query_config, query_nft_whitelist, reply,
+    execute, instantiate, query_config, reply,
     ENTERPRISE_INSTANTIATE_ID,
 };
 use common::cw::testing::{mock_env, mock_info};
@@ -74,8 +74,6 @@ fn instantiate_stores_data() -> DaoResult<()> {
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
             },
-            global_asset_whitelist: Some(asset_whitelist.clone()),
-            global_nft_whitelist: Some(nft_whitelist.clone()),
         },
     )?;
 
@@ -91,12 +89,6 @@ fn instantiate_stores_data() -> DaoResult<()> {
             cw721_code_id: CW_721_CODE_ID,
         }
     );
-
-    let global_asset_whitelist = query_asset_whitelist(deps.as_ref())?;
-    assert_eq!(global_asset_whitelist.assets, asset_whitelist);
-
-    let global_nft_whitelist = query_nft_whitelist(deps.as_ref())?;
-    assert_eq!(global_nft_whitelist.nfts, nft_whitelist);
 
     Ok(())
 }
@@ -121,8 +113,6 @@ fn create_token_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
             },
-            global_asset_whitelist: None,
-            global_nft_whitelist: None,
         },
     )?;
 
@@ -228,8 +218,6 @@ fn create_nft_dao_instantiates_proper_enterprise_contract() -> DaoResult<()> {
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
             },
-            global_asset_whitelist: None,
-            global_nft_whitelist: None,
         },
     )?;
 
@@ -309,8 +297,6 @@ fn create_multisig_dao_instantiates_proper_enterprise_contract() -> DaoResult<()
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
             },
-            global_asset_whitelist: None,
-            global_nft_whitelist: None,
         },
     )?;
 
@@ -397,8 +383,6 @@ fn create_existing_membership_dao_instantiates_proper_enterprise_contract() -> D
                 cw20_code_id: CW_20_CODE_ID,
                 cw721_code_id: CW_721_CODE_ID,
             },
-            global_asset_whitelist: None,
-            global_nft_whitelist: None,
         },
     )?;
 
@@ -476,8 +460,6 @@ fn reply_with_unknown_reply_id_fails() -> DaoResult<()> {
         info.clone(),
         InstantiateMsg {
             config: stub_config(),
-            global_asset_whitelist: None,
-            global_nft_whitelist: None,
         },
     )?;
 

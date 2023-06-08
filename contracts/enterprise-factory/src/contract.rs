@@ -1,6 +1,5 @@
 use crate::state::{
-    CONFIG, DAO_ADDRESSES, DAO_ID_COUNTER, ENTERPRISE_CODE_IDS, GLOBAL_ASSET_WHITELIST,
-    GLOBAL_NFT_WHITELIST,
+    CONFIG, DAO_ADDRESSES, DAO_ID_COUNTER, ENTERPRISE_CODE_IDS,
 };
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
@@ -17,8 +16,7 @@ use enterprise_factory_api::api::{
 };
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::api::{
-    AssetWhitelistResponse, DaoMembershipInfo, DaoType, NewDaoMembershipMsg, NewMembershipInfo,
-    NftWhitelistResponse,
+    DaoMembershipInfo, DaoType, NewDaoMembershipMsg, NewMembershipInfo,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use itertools::Itertools;
@@ -44,11 +42,6 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     CONFIG.save(deps.storage, &msg.config)?;
-    GLOBAL_ASSET_WHITELIST.save(
-        deps.storage,
-        &msg.global_asset_whitelist.unwrap_or_default(),
-    )?;
-    GLOBAL_NFT_WHITELIST.save(deps.storage, &msg.global_nft_whitelist.unwrap_or_default())?;
     DAO_ID_COUNTER.save(deps.storage, &1u64)?;
 
     ENTERPRISE_CODE_IDS.save(deps.storage, msg.config.enterprise_code_id, &())?;
@@ -154,8 +147,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> DaoResult<Binary> {
     let response = match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?)?,
-        QueryMsg::GlobalAssetWhitelist {} => to_binary(&query_asset_whitelist(deps)?)?,
-        QueryMsg::GlobalNftWhitelist {} => to_binary(&query_nft_whitelist(deps)?)?,
         QueryMsg::AllDaos(msg) => to_binary(&query_all_daos(deps, msg)?)?,
         QueryMsg::EnterpriseCodeIds(msg) => to_binary(&query_enterprise_code_ids(deps, msg)?)?,
         QueryMsg::IsEnterpriseCodeId(msg) => to_binary(&query_is_enterprise_code_id(deps, msg)?)?,
@@ -167,18 +158,6 @@ pub fn query_config(deps: Deps) -> DaoResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
 
     Ok(ConfigResponse { config })
-}
-
-pub fn query_asset_whitelist(deps: Deps) -> DaoResult<AssetWhitelistResponse> {
-    let assets = GLOBAL_ASSET_WHITELIST.load(deps.storage)?;
-
-    Ok(AssetWhitelistResponse { assets })
-}
-
-pub fn query_nft_whitelist(deps: Deps) -> DaoResult<NftWhitelistResponse> {
-    let nfts = GLOBAL_NFT_WHITELIST.load(deps.storage)?;
-
-    Ok(NftWhitelistResponse { nfts })
 }
 
 pub fn query_all_daos(deps: Deps, msg: QueryAllDaosMsg) -> DaoResult<AllDaosResponse> {
