@@ -1,4 +1,4 @@
-use crate::api::{DaoInfoResponse, DaoMembershipInfo, DaoMetadata};
+use crate::api::{DaoInfoResponse, DaoMembershipInfo, DaoMetadata, UpdateMetadataMsg};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 
@@ -17,7 +17,9 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    UpdateMetadata(UpdateMetadataMsg),
+}
 
 #[cw_serde]
 pub struct MigrateMsg {}

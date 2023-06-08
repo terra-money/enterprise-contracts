@@ -3,6 +3,7 @@ use crate::state::{
     ENTERPRISE_FACTORY_CONTRACT, ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT,
 };
 use crate::validate::validate_existing_dao_contract;
+use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, to_binary, wasm_instantiate, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
@@ -12,7 +13,6 @@ use cw2::set_contract_version;
 use cw20::{Cw20Coin, Logo, MinterResponse};
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
-use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::{
     DaoInfoResponse, DaoMembershipInfo, DaoType, ExistingDaoMembershipMsg, NewDaoMembershipMsg,
     NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo, NewTokenMembershipInfo,
@@ -376,22 +376,16 @@ fn instantiate_existing_membership_dao(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    _msg: ExecuteMsg,
-) -> DaoResult<Response> {
-    let mut _ctx = Context { deps, env, info };
-    // match msg {
-    // }
-    // TODO: add execute msgs for modifying DAO info, probably nothing else
-    Ok(Response::new())
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DaoResult<Response> {
+    let ctx = &mut Context { deps, env, info };
+
+    match msg {
+        ExecuteMsg::UpdateMetadata(msg) => update_metadata(ctx, msg),
+    }
 }
 
-// TODO: will be called from execute msg
-fn _update_metadata(deps: DepsMut, msg: UpdateMetadataMsg) -> DaoResult<Vec<SubMsg>> {
-    let mut metadata = DAO_METADATA.load(deps.storage)?;
+fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Response> {
+    let mut metadata = DAO_METADATA.load(ctx.deps.storage)?;
 
     if let Change(name) = msg.name {
         metadata.name = name;
@@ -418,9 +412,9 @@ fn _update_metadata(deps: DepsMut, msg: UpdateMetadataMsg) -> DaoResult<Vec<SubM
         metadata.socials.telegram_username = telegram;
     }
 
-    DAO_METADATA.save(deps.storage, &metadata)?;
+    DAO_METADATA.save(ctx.deps.storage, &metadata)?;
 
-    Ok(vec![])
+    Ok(Response::new().add_attribute("action", "update_metadata"))
 }
 
 // TODO: there should be a message, and then this should dispatch to other contracts

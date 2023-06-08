@@ -1,3 +1,4 @@
+use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
@@ -5,15 +6,6 @@ use cw_asset::{Asset, AssetInfo};
 use cw_utils::Duration;
 use std::fmt;
 use strum_macros::Display;
-
-pub type ProposalId = u64;
-pub type NftTokenId = String;
-
-#[cw_serde]
-pub enum ModifyValue<T> {
-    Change(T),
-    NoChange,
-}
 
 #[cw_serde]
 #[derive(Display)]
@@ -53,6 +45,17 @@ pub struct DaoSocialData {
     pub discord_username: Option<String>,
     pub twitter_username: Option<String>,
     pub telegram_username: Option<String>,
+}
+
+#[cw_serde]
+pub struct UpdateMetadataMsg {
+    pub name: ModifyValue<String>,
+    pub description: ModifyValue<Option<String>>,
+    pub logo: ModifyValue<Logo>,
+    pub github_username: ModifyValue<Option<String>>,
+    pub discord_username: ModifyValue<Option<String>>,
+    pub twitter_username: ModifyValue<Option<String>>,
+    pub telegram_username: ModifyValue<Option<String>>,
 }
 
 #[cw_serde]
@@ -116,17 +119,6 @@ pub struct NewMultisigMembershipInfo {
 pub struct MultisigMember {
     pub address: String,
     pub weight: Uint128,
-}
-
-#[cw_serde]
-pub struct UpdateMetadataMsg {
-    pub name: ModifyValue<String>,
-    pub description: ModifyValue<Option<String>>,
-    pub logo: ModifyValue<Logo>,
-    pub github_username: ModifyValue<Option<String>>,
-    pub discord_username: ModifyValue<Option<String>>,
-    pub twitter_username: ModifyValue<Option<String>>,
-    pub telegram_username: ModifyValue<Option<String>>,
 }
 
 #[cw_serde]
