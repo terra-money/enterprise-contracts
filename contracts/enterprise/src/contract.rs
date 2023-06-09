@@ -1,33 +1,25 @@
 use crate::state::{
-    ComponentContracts, COMPONENT_CONTRACTS, DAO_CODE_VERSION, DAO_CREATION_DATE,
-    DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
-    ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, IS_INSTANTIATION_FINALIZED,
+    ComponentContracts, COMPONENT_CONTRACTS, DAO_CODE_VERSION, DAO_CREATION_DATE, DAO_METADATA,
+    DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT, IS_INSTANTIATION_FINALIZED,
 };
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, Uint128, WasmMsg,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg,
+    WasmMsg,
 };
-use cosmwasm_std::CosmosMsg::Wasm;
 use cw2::set_contract_version;
-use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, UpdateMetadataMsg,
     UpgradeDaoMsg,
 };
-use enterprise_protocol::error::DaoError::{AlreadyInitialized, Std, Unauthorized};
+use enterprise_protocol::error::DaoError::{AlreadyInitialized, Unauthorized};
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use funds_distributor_api::api::UserWeight;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-pub const DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 1;
-pub const ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
-pub const FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 
 pub const CODE_VERSION: u8 = 5;
 
@@ -52,31 +44,6 @@ pub fn instantiate(
     DAO_CODE_VERSION.save(deps.storage, &CODE_VERSION.into())?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
-}
-
-// TODO: remove
-fn _instantiate_funds_distributor_submsg(
-    ctx: &Context,
-    funds_distributor_code_id: u64,
-    minimum_weight_for_rewards: Option<Uint128>,
-    initial_weights: Vec<UserWeight>,
-) -> DaoResult<SubMsg> {
-    let instantiate_funds_distributor_contract_submsg = SubMsg::reply_on_success(
-        Wasm(WasmMsg::Instantiate {
-            admin: Some(ctx.env.contract.address.to_string()),
-            code_id: funds_distributor_code_id,
-            msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
-                enterprise_contract: ctx.env.contract.address.to_string(),
-                initial_weights,
-                minimum_eligible_weight: minimum_weight_for_rewards,
-            })?,
-            funds: vec![],
-            label: "Funds distributor contract".to_string(),
-        }),
-        FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID,
-    );
-
-    Ok(instantiate_funds_distributor_contract_submsg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -199,41 +166,8 @@ fn _upgrade_dao(env: Env, msg: UpgradeDaoMsg) -> DaoResult<Vec<SubMsg>> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
-    match msg.id {
-        DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
-            let contract_address = parse_reply_instantiate_data(msg)
-                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
-                .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
-
-            DAO_MEMBERSHIP_CONTRACT.save(deps.storage, &addr)?;
-
-            Ok(Response::new())
-        }
-        ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID => {
-            let contract_address = parse_reply_instantiate_data(msg)
-                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
-                .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
-
-            ENTERPRISE_GOVERNANCE_CONTRACT.save(deps.storage, &addr)?;
-
-            Ok(Response::new().add_attribute("governance_contract", addr.to_string()))
-        }
-        FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID => {
-            let contract_address = parse_reply_instantiate_data(msg)
-                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
-                .contract_address;
-
-            let addr = deps.api.addr_validate(&contract_address)?;
-
-            FUNDS_DISTRIBUTOR_CONTRACT.save(deps.storage, &addr)?;
-
-            Ok(Response::new().add_attribute("funds_distributor_contract", addr.to_string()))
-        }
-        _ => Err(Std(StdError::generic_err("No such reply ID found"))),
-    }
+pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> DaoResult<Response> {
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

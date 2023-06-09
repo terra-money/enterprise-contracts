@@ -30,7 +30,7 @@ pub fn import_cw20_membership(deps: DepsMut, msg: ImportCw20MembershipMsg) -> Da
 
 pub fn instantiate_new_cw20_membership(
     deps: DepsMut,
-    msg: Box<NewCw20MembershipMsg>,
+    msg: NewCw20MembershipMsg,
 ) -> DaoResult<SubMsg> {
     if let Some(initial_dao_balance) = msg.initial_dao_balance {
         if initial_dao_balance == Uint128::zero() {

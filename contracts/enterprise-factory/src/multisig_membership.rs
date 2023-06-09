@@ -73,9 +73,17 @@ pub fn instantiate_multisig_membership_contract(
 ) -> DaoResult<SubMsg> {
     let multisig_membership_code_id = CONFIG.load(deps.storage)?.multisig_membership_code_id;
 
-    let enterprise_address = DAO_BEING_CREATED
-        .load(deps.storage)?
-        .require_enterprise_address()?;
+    let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+
+    let enterprise_address = dao_being_created.require_enterprise_address()?;
+
+    DAO_BEING_CREATED.save(
+        deps.storage,
+        &DaoBeingCreated {
+            initial_weights: Some(initial_weights.clone()),
+            ..dao_being_created
+        },
+    )?;
 
     let submsg = SubMsg::reply_on_success(
         wasm_instantiate(

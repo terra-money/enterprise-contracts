@@ -11,6 +11,8 @@ use multisig_membership_api::api::UserWeight;
 pub struct Config {
     pub enterprise_code_id: u64,
     pub enterprise_governance_code_id: u64,
+    pub enterprise_governance_controller_code_id: u64, // TODO: migrate to this
+    pub enterprise_treasury_code_id: u64,              // TODO: migrate to this
     pub funds_distributor_code_id: u64,
     pub cw3_fixed_multisig_code_id: u64,
     pub cw20_code_id: u64,
@@ -46,14 +48,14 @@ pub struct ConfigResponse {
 #[cw_serde]
 pub struct CreateDaoMsg {
     pub dao_metadata: DaoMetadata,
-    pub dao_gov_config: GovConfig,
+    pub gov_config: GovConfig,
     /// Optional council structure that can manage certain aspects of the DAO
     pub dao_council: Option<DaoCouncilSpec>,
     pub dao_membership: CreateDaoMembershipMsg,
     /// assets that are allowed to show in DAO's treasury
     pub asset_whitelist: Option<Vec<AssetInfo>>,
     /// NFTs that are allowed to show in DAO's treasury
-    pub nft_whitelist: Option<Vec<Addr>>,
+    pub nft_whitelist: Option<Vec<String>>,
     /// Minimum weight that a user should have in order to qualify for rewards.
     /// E.g. a value of 3 here means that a user in token or NFT DAO needs at least 3 staked
     /// DAO assets, or a weight of 3 in multisig DAO, to be eligible for rewards.

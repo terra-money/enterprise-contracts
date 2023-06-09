@@ -11,7 +11,8 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    CreateDao(CreateDaoMsg),
+    CreateDao(Box<CreateDaoMsg>),
+    FinalizeDaoCreation {},
 }
 
 #[cw_serde]
