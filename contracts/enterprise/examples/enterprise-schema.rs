@@ -1,9 +1,7 @@
 use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse,
-};
+use enterprise_protocol::api::{ComponentContractsResponse, DaoInfoResponse};
 
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 

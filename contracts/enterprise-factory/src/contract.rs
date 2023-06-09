@@ -1,5 +1,14 @@
+use crate::multisig_membership::{import_cw3_membership, instantiate_new_multisig_membership};
+use crate::nft_membership::{
+    import_cw721_membership, instantiate_new_cw721_membership,
+    instantiate_nft_staking_membership_contract,
+};
 use crate::state::{
-    CONFIG, DAO_ADDRESSES, DAO_ID_COUNTER, ENTERPRISE_CODE_IDS,
+    DaoBeingCreated, CONFIG, DAO_ADDRESSES, DAO_BEING_CREATED, DAO_ID_COUNTER, ENTERPRISE_CODE_IDS,
+};
+use crate::token_membership::{
+    import_cw20_membership, instantiate_new_cw20_membership,
+    instantiate_token_staking_membership_contract,
 };
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
@@ -15,13 +24,9 @@ use enterprise_factory_api::api::{
     IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
 };
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use enterprise_protocol::api::{
-    DaoMembershipInfo, DaoType, NewDaoMembershipMsg, NewMembershipInfo,
-};
 use enterprise_protocol::error::{DaoError, DaoResult};
 use itertools::Itertools;
-use CreateDaoMembershipMsg::{ExistingMembership, NewMembership};
-use NewMembershipInfo::{NewMultisig, NewNft, NewToken};
+use CreateDaoMembershipMsg::{ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewMultisig};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-factory";
@@ -30,7 +35,10 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_QUERY_LIMIT: u32 = 100;
 const DEFAULT_QUERY_LIMIT: u32 = 50;
 
-pub const ENTERPRISE_INSTANTIATE_ID: u64 = 1;
+pub const ENTERPRISE_INSTANTIATE_REPLY_ID: u64 = 1;
+pub const CW20_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
+pub const CW721_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
+pub const MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 4;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -64,36 +72,20 @@ pub fn execute(
 fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
-    let dao_membership_info = match msg.dao_membership {
-        NewMembership(info) => {
-            let membership_contract_code_id = match info {
-                NewToken(_) => config.cw20_code_id,
-                NewNft(_) => config.cw721_code_id,
-                NewMultisig(_) => config.cw3_fixed_multisig_code_id,
-            };
-            DaoMembershipInfo::New(NewDaoMembershipMsg {
-                membership_contract_code_id,
-                membership_info: info,
-            })
-        }
-        ExistingMembership(info) => DaoMembershipInfo::Existing(info),
-    };
+    DAO_BEING_CREATED.save(
+        deps.storage,
+        &DaoBeingCreated {
+            membership: Some(msg.dao_membership),
+            enterprise_address: None,
+            dao_type: None,
+            unlocking_period: None,
+            membership_address: None,
+        },
+    )?;
 
     let instantiate_enterprise_msg = enterprise_protocol::msg::InstantiateMsg {
-        enterprise_governance_code_id: config.enterprise_governance_code_id,
-        funds_distributor_code_id: config.funds_distributor_code_id,
         dao_metadata: msg.dao_metadata.clone(),
-        dao_membership_info,
         enterprise_factory_contract: env.contract.address.to_string(),
-        // TODO: properly supply those params below
-        enterprise_governance_contract: "".to_string(),
-        enterprise_governance_controller_contract: "".to_string(),
-        enterprise_treasury_contract: "".to_string(),
-        enterprise_versioning_contract: "".to_string(),
-        funds_distributor_contract: "".to_string(),
-        membership_contract: "".to_string(),
-        minimum_weight_for_rewards: msg.minimum_weight_for_rewards,
-        dao_type: DaoType::Token,
     };
     let create_dao_submsg = SubMsg::reply_on_success(
         WasmMsg::Instantiate {
@@ -103,7 +95,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
             funds: vec![],
             label: msg.dao_metadata.name,
         },
-        ENTERPRISE_INSTANTIATE_ID,
+        ENTERPRISE_INSTANTIATE_REPLY_ID,
     );
 
     Ok(Response::new()
@@ -114,7 +106,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
     match msg.id {
-        ENTERPRISE_INSTANTIATE_ID => {
+        ENTERPRISE_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
@@ -132,10 +124,83 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
                 admin: contract_address.clone(),
             });
 
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+
+            let membership = dao_being_created.require_membership()?;
+
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
+                    enterprise_address: Some(addr),
+                    ..dao_being_created
+                },
+            )?;
+
+            let membership_submsg = match membership {
+                ImportCw20(msg) => import_cw20_membership(deps, msg)?,
+                NewCw20(msg) => instantiate_new_cw20_membership(deps, msg)?,
+                ImportCw721(msg) => import_cw721_membership(deps, msg)?,
+                NewCw721(msg) => instantiate_new_cw721_membership(deps, msg)?,
+                ImportCw3(msg) => import_cw3_membership(deps, msg)?,
+                NewMultisig(msg) => instantiate_new_multisig_membership(deps, msg)?,
+            };
+
             Ok(Response::new()
                 .add_submessage(update_admin_msg)
+                .add_submessage(membership_submsg)
                 .add_attribute("action", "instantiate_dao")
                 .add_attribute("dao_address", contract_address))
+        }
+        CW20_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            let unlocking_period = DAO_BEING_CREATED
+                .load(deps.storage)?
+                .require_unlocking_period()?;
+
+            Ok(
+                Response::new().add_submessage(instantiate_token_staking_membership_contract(
+                    deps,
+                    addr,
+                    unlocking_period,
+                )?),
+            )
+        }
+        CW721_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            let unlocking_period = DAO_BEING_CREATED
+                .load(deps.storage)?
+                .require_unlocking_period()?;
+
+            Ok(
+                Response::new().add_submessage(instantiate_nft_staking_membership_contract(
+                    deps,
+                    addr,
+                    unlocking_period,
+                )?),
+            )
+        }
+        MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
+                Ok(DaoBeingCreated {
+                    membership_address: Some(addr),
+                    ..info
+                })
+            })?;
+
+            Ok(Response::new())
         }
         _ => Err(DaoError::Std(StdError::generic_err(
             "No such reply ID found",

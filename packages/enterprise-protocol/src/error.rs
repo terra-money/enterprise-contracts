@@ -11,6 +11,9 @@ pub enum DaoError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error("Initialization has already happened")]
+    AlreadyInitialized,
+
     #[error("Supplied existing token is not a valid CW20 contract")]
     InvalidExistingTokenContract,
 

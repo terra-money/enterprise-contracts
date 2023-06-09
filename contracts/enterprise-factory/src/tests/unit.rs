@@ -1,7 +1,4 @@
-use crate::contract::{
-    execute, instantiate, query_config, reply,
-    ENTERPRISE_INSTANTIATE_ID,
-};
+use crate::contract::{execute, instantiate, query_config, reply, ENTERPRISE_INSTANTIATE_ID};
 use common::cw::testing::{mock_env, mock_info};
 use cosmwasm_std::testing::mock_dependencies;
 use cosmwasm_std::{

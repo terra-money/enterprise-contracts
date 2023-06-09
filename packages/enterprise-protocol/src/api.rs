@@ -46,6 +46,16 @@ pub struct DaoSocialData {
 }
 
 #[cw_serde]
+pub struct FinalizeInstantiationMsg {
+    pub enterprise_treasury_contract: String,
+    pub enterprise_governance_contract: String,
+    pub enterprise_governance_controller_contract: String,
+    pub funds_distributor_contract: String,
+    pub membership_contract: String,
+    pub dao_type: DaoType,
+}
+
+#[cw_serde]
 pub struct UpdateMetadataMsg {
     pub name: ModifyValue<String>,
     pub description: ModifyValue<Option<String>>,
@@ -113,6 +123,7 @@ pub struct NewMultisigMembershipInfo {
     pub multisig_members: Vec<MultisigMember>,
 }
 
+// TODO: remove
 #[cw_serde]
 pub struct MultisigMember {
     pub address: String,
@@ -139,7 +150,6 @@ pub struct ComponentContractsResponse {
     pub enterprise_governance_contract: Addr,
     pub enterprise_governance_controller_contract: Addr,
     pub enterprise_treasury_contract: Addr,
-    pub enterprise_versioning_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub membership_contract: Addr,
 }
