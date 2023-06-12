@@ -18,7 +18,13 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub treasury_code_id: u64,
+    pub governance_controller_code_id: u64,
+    pub token_membership_code_id: u64,
+    pub nft_membership_code_id: u64,
+    pub multisig_membership_code_id: u64,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]

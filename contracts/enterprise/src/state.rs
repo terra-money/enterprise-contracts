@@ -24,9 +24,6 @@ pub const COMPONENT_CONTRACTS: Item<ComponentContracts> = Item::new("component_c
 pub const ENTERPRISE_FACTORY_CONTRACT: Item<Addr> = Item::new("enterprise_factory_contract");
 pub const IS_INSTANTIATION_FINALIZED: Item<bool> = Item::new("is_creation_finalized");
 
-pub const ENTERPRISE_GOVERNANCE_CONTRACT: Item<Addr> = Item::new("enterprise_governance_contract");
-pub const FUNDS_DISTRIBUTOR_CONTRACT: Item<Addr> = Item::new("funds_distributor_contract");
-
 pub const DAO_TYPE: Item<DaoType> = Item::new("dao_type");
 pub const DAO_CODE_VERSION: Item<Uint64> = Item::new("dao_code_version");
 pub const DAO_METADATA: Item<DaoMetadata> = Item::new(DAO_METADATA_KEY);

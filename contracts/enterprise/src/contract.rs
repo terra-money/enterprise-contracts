@@ -1,3 +1,4 @@
+use crate::migration::migrate_to_rewrite;
 use crate::state::{
     ComponentContracts, COMPONENT_CONTRACTS, DAO_CODE_VERSION, DAO_CREATION_DATE, DAO_METADATA,
     DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT, IS_INSTANTIATION_FINALIZED,
@@ -5,17 +6,22 @@ use crate::state::{
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg,
-    WasmMsg,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, UpdateMetadataMsg,
     UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{AlreadyInitialized, Unauthorized};
-use enterprise_protocol::error::DaoResult;
+use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+
+pub const ENTERPRISE_TREASURY_REPLY_ID: u64 = 1;
+pub const ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID: u64 = 2;
+pub const MEMBERSHIP_REPLY_ID: u64 = 3;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise";
@@ -42,6 +48,8 @@ pub fn instantiate(
 
     DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
     DAO_CODE_VERSION.save(deps.storage, &CODE_VERSION.into())?;
+
+    IS_INSTANTIATION_FINALIZED.save(deps.storage, &false)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
@@ -166,8 +174,66 @@ fn _upgrade_dao(env: Env, msg: UpgradeDaoMsg) -> DaoResult<Vec<SubMsg>> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> DaoResult<Response> {
-    Ok(Response::new())
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
+    match msg.id {
+        ENTERPRISE_TREASURY_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
+
+            COMPONENT_CONTRACTS.save(
+                deps.storage,
+                &ComponentContracts {
+                    enterprise_treasury_contract: addr,
+                    ..component_contracts
+                },
+            )?;
+
+            Ok(Response::new())
+        }
+        ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
+
+            COMPONENT_CONTRACTS.save(
+                deps.storage,
+                &ComponentContracts {
+                    enterprise_governance_controller_contract: addr,
+                    ..component_contracts
+                },
+            )?;
+
+            Ok(Response::new())
+        }
+        MEMBERSHIP_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
+
+            COMPONENT_CONTRACTS.save(
+                deps.storage,
+                &ComponentContracts {
+                    membership_contract: addr,
+                    ..component_contracts
+                },
+            )?;
+
+            Ok(Response::new())
+        }
+        _ => Err(DaoError::Std(StdError::generic_err(
+            "No such reply ID found",
+        ))),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -211,8 +277,18 @@ pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContr
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> DaoResult<Response> {
     // TODO: if version < 5, either fail or migrate to version 5 first
+
+    migrate_to_rewrite(
+        deps,
+        env,
+        msg.treasury_code_id,
+        msg.governance_controller_code_id,
+        msg.token_membership_code_id,
+        msg.nft_membership_code_id,
+        msg.multisig_membership_code_id,
+    )?;
 
     Ok(Response::new().add_attribute("action", "migrate"))
 }
