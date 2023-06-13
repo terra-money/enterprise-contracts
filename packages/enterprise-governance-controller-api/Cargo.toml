@@ -14,6 +14,8 @@ cw20 = "1.0.1"
 cw-asset = "2.4.0"
 cw-utils = "1.0.1"
 enterprise-protocol = { path = "../enterprise-protocol"}
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 poll-engine-api = { path = "../poll-engine-api"}
 serde_with = { version = "2", features = ["json", "macros"] }
 strum_macros = "0.24"

@@ -1,8 +1,7 @@
-use crate::state::{DAO_TYPE, GOV_CONFIG};
+use crate::state::GOV_CONFIG;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, Uint128};
 use cw_asset::{AssetInfo, AssetInfoBase};
 use cw_utils::Duration;
-use enterprise_factory_api::api::{IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse};
 use enterprise_governance_controller_api::api::ModifyValue::Change;
 use enterprise_governance_controller_api::api::ProposalAction::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
@@ -25,8 +24,7 @@ use enterprise_protocol::api::DaoType;
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{
-    InvalidEnterpriseCodeId, MinimumDepositNotAllowed, UnsupportedOperationForDaoType,
-    VoteDurationLongerThanUnstaking,
+    MinimumDepositNotAllowed, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
 };
 
 pub fn validate_dao_gov_config(
@@ -104,6 +102,7 @@ pub fn validate_deposit(
 
 pub fn validate_proposal_actions(
     deps: Deps,
+    dao_type: DaoType,
     proposal_actions: &Vec<ProposalAction>,
 ) -> GovernanceControllerResult<()> {
     for proposal_action in proposal_actions {
@@ -114,7 +113,9 @@ pub fn validate_proposal_actions(
             UpdateNftWhitelist(msg) => validate_nft_whitelist_changes(deps, &msg.add, &msg.remove)?,
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
-            ModifyMultisigMembership(msg) => validate_modify_multisig_membership(deps, msg)?,
+            ModifyMultisigMembership(msg) => {
+                validate_modify_multisig_membership(deps, dao_type.clone(), msg)?
+            }
             UpdateCouncil(msg) => {
                 validate_dao_council(deps, msg.dao_council.clone())?;
             }
@@ -123,8 +124,6 @@ pub fn validate_proposal_actions(
                 let gov_config = GOV_CONFIG.load(deps.storage)?;
 
                 let updated_gov_config = apply_gov_config_changes(gov_config, msg);
-
-                let dao_type = DAO_TYPE.load(deps.storage)?;
 
                 validate_dao_gov_config(&dao_type, &updated_gov_config)?;
             }
@@ -315,23 +314,9 @@ fn validate_nft_whitelist_changes(
     Ok(())
 }
 
-fn validate_upgrade_dao(deps: Deps, msg: &UpgradeDaoMsg) -> GovernanceControllerResult<()> {
-    // TODO: get address from enterprise contract query
-    let enterprise_factory = Addr::unchecked("factory");
-    let response: IsEnterpriseCodeIdResponse = deps.querier.query_wasm_smart(
-        enterprise_factory.to_string(),
-        &enterprise_factory_api::msg::QueryMsg::IsEnterpriseCodeId(IsEnterpriseCodeIdMsg {
-            code_id: msg.new_dao_code_id.into(),
-        }),
-    )?;
-
-    if !response.is_enterprise_code_id {
-        Err(InvalidEnterpriseCodeId {
-            code_id: msg.new_dao_code_id,
-        })
-    } else {
-        Ok(())
-    }
+fn validate_upgrade_dao(_deps: Deps, _msg: &UpgradeDaoMsg) -> GovernanceControllerResult<()> {
+    // TODO: we no longer need this, right? doesn't need to check for valid code IDs
+    Ok(())
 }
 
 fn validate_execute_msgs(msg: &ExecuteMsgsMsg) -> GovernanceControllerResult<()> {
@@ -343,10 +328,9 @@ fn validate_execute_msgs(msg: &ExecuteMsgsMsg) -> GovernanceControllerResult<()>
 
 pub fn validate_modify_multisig_membership(
     deps: Deps,
+    dao_type: DaoType,
     msg: &ModifyMultisigMembershipMsg,
 ) -> GovernanceControllerResult<()> {
-    let dao_type = DAO_TYPE.load(deps.storage)?;
-
     if dao_type != Multisig {
         return Err(UnsupportedOperationForDaoType {
             dao_type: dao_type.to_string(),
@@ -356,7 +340,7 @@ pub fn validate_modify_multisig_membership(
     let mut deduped_addr_validated_members: HashMap<Addr, Uint128> = HashMap::new();
 
     for member in &msg.edit_members {
-        let addr = deps.api.addr_validate(&member.address)?;
+        let addr = deps.api.addr_validate(&member.user)?;
 
         if deduped_addr_validated_members
             .insert(addr, member.weight)

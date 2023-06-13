@@ -2,21 +2,22 @@ use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo,
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
-use crate::state::{State, DAO_COUNCIL, DAO_TYPE, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
+use crate::state::{State, DAO_COUNCIL, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
 use crate::validate::{
-    apply_gov_config_changes, validate_deposit, validate_modify_multisig_membership,
-    validate_proposal_actions,
+    apply_gov_config_changes, validate_dao_gov_config, validate_deposit,
+    validate_modify_multisig_membership, validate_proposal_actions,
 };
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, Timestamp,
-    Uint128, Uint64,
+    DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Timestamp, Uint128,
+    Uint64,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfoBase};
 use cw_utils::Expiration;
+use cw_utils::Expiration::Never;
 use enterprise_governance_controller_api::api::ProposalAction::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
@@ -30,8 +31,7 @@ use enterprise_governance_controller_api::api::{
     ProposalId, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
     ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
     ProposalVotesResponse, ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg,
-    UpdateAssetWhitelistMsg, UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg,
-    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg, UpgradeDaoMsg,
+    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpgradeDaoMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil, NoSuchProposal,
@@ -42,10 +42,16 @@ use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use enterprise_governance_controller_api::msg::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use enterprise_protocol::api::DaoType;
+use enterprise_protocol::api::{
+    ComponentContractsResponse, DaoInfoResponse, DaoType, UpdateMetadataMsg,
+};
+use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
+use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
+use enterprise_treasury_api::msg::ExecuteMsg::Spend;
 use funds_distributor_api::api::UpdateMinimumEligibleWeightMsg;
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
+use multisig_membership_api::api::UpdateMembersMsg;
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, Poll, PollId, PollParams, PollRejectionReason,
     PollResponse, PollStatus, PollStatusFilter, PollStatusResponse, PollVoterParams,
@@ -55,6 +61,10 @@ use poll_engine_api::api::{
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::ops::{Add, Sub};
+use token_staking_api::api::{
+    TotalStakedAmountParams, TotalStakedAmountResponse, UserTokenStakeParams,
+    UserTokenStakeResponse,
+};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
 
 // version info for migration info
@@ -85,7 +95,7 @@ pub fn instantiate(
         },
     )?;
 
-    // TODO: validate gov config?
+    // TODO: validate gov config? do we need to anymore?
     GOV_CONFIG.save(deps.storage, &msg.gov_config)?;
 
     ENTERPRISE_CONTRACT.save(
@@ -125,9 +135,11 @@ fn create_proposal(
     let gov_config = GOV_CONFIG.load(ctx.deps.storage)?;
 
     validate_deposit(&gov_config, &deposit)?;
-    validate_proposal_actions(ctx.deps.as_ref(), &msg.proposal_actions)?;
-
-    let _dao_type = DAO_TYPE.load(ctx.deps.storage)?;
+    validate_proposal_actions(
+        ctx.deps.as_ref(),
+        query_dao_type(ctx.deps.as_ref())?,
+        &msg.proposal_actions,
+    )?;
 
     let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General, proposer)?;
 
@@ -150,7 +162,11 @@ fn create_council_proposal(
     match dao_council {
         None => Err(NoDaoCouncil),
         Some(dao_council) => {
-            validate_proposal_actions(ctx.deps.as_ref(), &msg.proposal_actions)?;
+            validate_proposal_actions(
+                ctx.deps.as_ref(),
+                query_dao_type(ctx.deps.as_ref())?,
+                &msg.proposal_actions,
+            )?;
 
             let proposer = ctx.info.sender.clone();
 
@@ -221,8 +237,7 @@ fn create_poll(
 ) -> GovernanceControllerResult<SubMsg> {
     let ends_at = ctx.env.block.time.plus_seconds(gov_config.vote_duration);
 
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(ctx.deps.as_ref())?;
     let create_poll_submsg = SubMsg::reply_on_success(
         wasm_execute(
             governance_contract.to_string(),
@@ -280,8 +295,7 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
         return Err(WrongProposalType);
     }
 
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(ctx.deps.as_ref())?;
 
     let cast_vote_submessage = SubMsg::new(wasm_execute(
         governance_contract.to_string(),
@@ -322,8 +336,7 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControlle
                 return Err(WrongProposalType);
             }
 
-            // TODO: enterprise query for addr
-            let governance_contract = Addr::unchecked("governance");
+            let governance_contract = query_enterprise_governance_addr(ctx.deps.as_ref())?;
 
             let cast_vote_submessage = SubMsg::new(wasm_execute(
                 governance_contract.to_string(),
@@ -388,8 +401,7 @@ fn return_deposit_submsgs(
     match deposit {
         None => Ok(vec![]),
         Some(deposit) => {
-            // TODO: enterprise query for addr
-            let membership_contract = Addr::unchecked("membership");
+            let membership_contract = query_membership_addr(deps.as_ref())?;
 
             let transfer_msg =
                 Asset::cw20(membership_contract, deposit.amount).transfer_msg(deposit.depositor)?;
@@ -411,8 +423,8 @@ fn end_proposal(
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
     let _poll = query_poll(&qctx, msg.proposal_id)?;
 
-    // TODO: load total available votes from membership contract
-    let total_available_votes = Uint128::zero();
+    // TODO: do we use the current or at some expiration time?
+    let total_available_votes = current_total_available_votes(ctx.deps.as_ref())?;
 
     if total_available_votes == Uint128::zero() {
         return Err(NoVotesAvailable);
@@ -426,8 +438,7 @@ fn end_proposal(
         Council => true,
     };
 
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(ctx.deps.as_ref())?;
     let end_poll_submsg = SubMsg::reply_on_success(
         wasm_execute(
             governance_contract.to_string(),
@@ -521,7 +532,6 @@ fn resolve_ended_proposal(
     Ok(submsgs)
 }
 
-// TODO: tests
 fn execute_proposal_actions(
     ctx: &mut Context,
     msg: ExecuteProposalMsg,
@@ -553,7 +563,7 @@ fn execute_proposal_actions_submsgs(
             UpdateMetadata(msg) => update_metadata(ctx.deps.branch(), msg)?,
             UpdateGovConfig(msg) => update_gov_config(ctx, msg)?,
             UpdateCouncil(msg) => update_council(ctx, msg)?,
-            RequestFundingFromDao(msg) => execute_funding_from_dao(msg)?,
+            RequestFundingFromDao(msg) => execute_funding_from_dao(ctx.deps.branch(), msg)?,
             UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx.deps.branch(), msg)?,
             UpdateNftWhitelist(msg) => update_nft_whitelist(ctx.deps.branch(), msg)?,
             UpgradeDao(msg) => upgrade_dao(ctx.env.clone(), msg)?,
@@ -571,20 +581,36 @@ fn execute_proposal_actions_submsgs(
 }
 
 fn update_metadata(
-    _deps: DepsMut,
-    _msg: UpdateMetadataMsg,
+    deps: DepsMut,
+    msg: UpdateMetadataMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    // TODO: send out msg
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
 
-    Ok(vec![])
+    let submsg = SubMsg::new(wasm_execute(
+        enterprise_contract.to_string(),
+        &enterprise_protocol::msg::ExecuteMsg::UpdateMetadata(msg),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
 }
 
 fn execute_funding_from_dao(
-    _msg: RequestFundingFromDaoMsg,
+    deps: DepsMut,
+    msg: RequestFundingFromDaoMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    // TODO: send out msg
+    let treasury_addr = query_enterprise_components(deps.as_ref())?.enterprise_treasury_contract;
 
-    Ok(vec![])
+    let submsg = SubMsg::new(wasm_execute(
+        treasury_addr.to_string(),
+        &Spend(SpendMsg {
+            recipient: msg.recipient,
+            assets: msg.assets,
+        }),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
 }
 
 fn update_gov_config(
@@ -595,7 +621,7 @@ fn update_gov_config(
 
     let updated_gov_config = apply_gov_config_changes(gov_config, &msg);
 
-    // TODO: validate new gov config
+    validate_dao_gov_config(&query_dao_type(ctx.deps.as_ref())?, &updated_gov_config)?;
 
     GOV_CONFIG.save(ctx.deps.storage, &updated_gov_config)?;
 
@@ -612,21 +638,33 @@ fn update_council(
 }
 
 fn update_asset_whitelist(
-    _deps: DepsMut,
-    _msg: UpdateAssetWhitelistMsg,
+    deps: DepsMut,
+    msg: UpdateAssetWhitelistMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    // TODO: send out msg
+    let treasury_addr = query_enterprise_components(deps.as_ref())?.enterprise_treasury_contract;
 
-    Ok(vec![])
+    let submsg = SubMsg::new(wasm_execute(
+        treasury_addr.to_string(),
+        &enterprise_treasury_api::msg::ExecuteMsg::UpdateAssetWhitelist(msg),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
 }
 
 fn update_nft_whitelist(
-    _deps: DepsMut,
-    _msg: UpdateNftWhitelistMsg,
+    deps: DepsMut,
+    msg: UpdateNftWhitelistMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    // TODO: send out msg
+    let treasury_addr = query_enterprise_components(deps.as_ref())?.enterprise_treasury_contract;
 
-    Ok(vec![])
+    let submsg = SubMsg::new(wasm_execute(
+        treasury_addr.to_string(),
+        &enterprise_treasury_api::msg::ExecuteMsg::UpdateNftWhitelist(msg),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
 }
 
 fn upgrade_dao(_env: Env, _msg: UpgradeDaoMsg) -> GovernanceControllerResult<Vec<SubMsg>> {
@@ -650,23 +688,30 @@ fn modify_multisig_membership(
     _env: Env,
     msg: ModifyMultisigMembershipMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    validate_modify_multisig_membership(deps.as_ref(), &msg)?;
+    validate_modify_multisig_membership(deps.as_ref(), query_dao_type(deps.as_ref())?, &msg)?;
 
-    // TODO: send out msg to membership contract
+    let membership_contract = query_membership_addr(deps.as_ref())?;
 
-    Ok(vec![])
+    let submsg = SubMsg::new(wasm_execute(
+        membership_contract.to_string(),
+        &multisig_membership_api::msg::ExecuteMsg::UpdateMembers(UpdateMembersMsg {
+            update_members: msg.edit_members,
+        }),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
 }
 
-// TODO: tests
 fn distribute_funds(
-    _ctx: &mut Context,
+    ctx: &mut Context,
     msg: DistributeFundsMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
     let mut native_funds: Vec<Coin> = vec![];
     let mut submsgs: Vec<SubMsg> = vec![];
 
-    // TODO: enterprise query for addr
-    let funds_distributor = Addr::unchecked("funds_distr");
+    let funds_distributor =
+        query_enterprise_components(ctx.deps.as_ref())?.funds_distributor_contract;
 
     for asset in msg.funds {
         match asset.info {
@@ -693,11 +738,11 @@ fn distribute_funds(
 }
 
 fn update_minimum_weight_for_rewards(
-    _ctx: &mut Context,
+    ctx: &mut Context,
     msg: UpdateMinimumWeightForRewardsMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    // TODO: enterprise query for addr
-    let funds_distributor = Addr::unchecked("funds_distr");
+    let funds_distributor =
+        query_enterprise_components(ctx.deps.as_ref())?.funds_distributor_contract;
 
     let submsg = SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
@@ -719,9 +764,9 @@ pub fn receive_cw20(
     match from_binary(&cw20_msg.msg) {
         Ok(Cw20HookMsg::CreateProposal(msg)) => {
             // only membership CW20 contract can execute this message
-            let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
-            // TODO: enterprise query for addr
-            let membership_contract = Addr::unchecked("membership");
+            let dao_type = query_dao_type(ctx.deps.as_ref())?;
+
+            let membership_contract = query_membership_addr(ctx.deps.as_ref())?;
             if dao_type != DaoType::Token || ctx.info.sender != membership_contract {
                 return Err(InvalidDepositType);
             }
@@ -739,12 +784,11 @@ pub fn receive_cw20(
 }
 
 pub fn update_user_votes(
-    _deps: Deps,
+    deps: Deps,
     user: Addr,
     new_amount: Uint128,
 ) -> GovernanceControllerResult<SubMsg> {
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(deps)?;
 
     let update_votes_submsg = SubMsg::new(wasm_execute(
         governance_contract.to_string(),
@@ -878,10 +922,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> GovernanceControllerResult<
 pub fn query_gov_config(qctx: QueryContext) -> GovernanceControllerResult<GovConfigResponse> {
     let gov_config = GOV_CONFIG.load(qctx.deps.storage)?;
 
+    let membership_contract = query_membership_addr(qctx.deps)?;
+
     Ok(GovConfigResponse {
         gov_config,
-        dao_membership_contract: Addr::unchecked("membership_contract"), // TODO: read from state
-        dao_council_contract: Addr::unchecked("council_contract"),       // TODO: read from state
+        dao_membership_contract: membership_contract,
+        dao_council_contract: Addr::unchecked("council_contract"), // TODO: read from state
     })
 }
 
@@ -897,8 +943,7 @@ pub fn query_proposal(
 }
 
 fn query_poll(qctx: &QueryContext, poll_id: PollId) -> GovernanceControllerResult<PollResponse> {
-    // TODO: get from enterprise contract
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(qctx.deps)?;
 
     let poll: PollResponse = qctx.deps.querier.query_wasm_smart(
         governance_contract.to_string(),
@@ -911,8 +956,7 @@ pub fn query_proposals(
     qctx: QueryContext,
     msg: ProposalsParams,
 ) -> GovernanceControllerResult<ProposalsResponse> {
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(qctx.deps)?;
 
     let polls: PollsResponse = qctx.deps.querier.query_wasm_smart(
         governance_contract.to_string(),
@@ -984,8 +1028,7 @@ fn query_poll_status(
     qctx: &QueryContext,
     poll_id: PollId,
 ) -> GovernanceControllerResult<PollStatusResponse> {
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(qctx.deps)?;
     let poll_status_response: PollStatusResponse = qctx.deps.querier.query_wasm_smart(
         governance_contract.to_string(),
         &enterprise_governance_api::msg::QueryMsg::PollStatus { poll_id },
@@ -1032,40 +1075,36 @@ fn poll_to_proposal_response(
         proposal_actions: actions,
     };
 
-    let dao_type = DAO_TYPE.load(deps.storage)?;
-
     let total_votes_available = match info.proposal_type {
         General => match info.executed_at {
             Some(block) => match proposal.expires {
-                Expiration::AtHeight(height) => total_available_votes_at_height(
-                    dao_type,
-                    deps.storage,
-                    min(height, block.height),
-                )?,
-                Expiration::AtTime(time) => {
-                    total_available_votes_at_time(dao_type, deps.storage, min(time, block.time))?
+                Expiration::AtHeight(height) => {
+                    total_available_votes_at_height(deps, min(height, block.height))?
                 }
-                Expiration::Never { .. } => {
+                Expiration::AtTime(time) => {
+                    total_available_votes_at_time(deps, min(time, block.time))?
+                }
+                Never { .. } => {
                     // TODO: introduce a different structure to eliminate this branch
-                    total_available_votes_at_height(dao_type, deps.storage, block.height)?
+                    total_available_votes_at_height(deps, block.height)?
                 }
             },
             None => match proposal.expires {
                 Expiration::AtHeight(height) => {
                     if env.block.height >= height {
-                        total_available_votes_at_height(dao_type, deps.storage, height)?
+                        total_available_votes_at_height(deps, height)?
                     } else {
-                        current_total_available_votes(dao_type, deps.storage)?
+                        current_total_available_votes(deps)?
                     }
                 }
                 Expiration::AtTime(time) => {
                     if env.block.time >= time {
-                        total_available_votes_at_time(dao_type, deps.storage, time)?
+                        total_available_votes_at_time(deps, time)?
                     } else {
-                        current_total_available_votes(dao_type, deps.storage)?
+                        current_total_available_votes(deps)?
                     }
                 }
-                Expiration::Never { .. } => current_total_available_votes(dao_type, deps.storage)?,
+                Never { .. } => current_total_available_votes(deps)?,
             },
         },
         Council => {
@@ -1086,35 +1125,51 @@ fn poll_to_proposal_response(
     })
 }
 
-fn total_available_votes_at_height(
-    _dao_type: DaoType,
-    _store: &dyn Storage,
-    _height: u64,
-) -> StdResult<Uint128> {
-    // TODO: query membership contract
-    Ok(Uint128::zero())
+// TODO: unify those 3
+fn total_available_votes_at_height(deps: Deps, height: u64) -> GovernanceControllerResult<Uint128> {
+    let membership_contract = query_membership_addr(deps)?;
+    // TODO: unify the query properly by adding a lib containing msg structures for all 3, instead of like a pleb here
+    let response: TotalStakedAmountResponse = deps.querier.query_wasm_smart(
+        membership_contract,
+        &token_staking_api::msg::QueryMsg::TotalStakedAmount(TotalStakedAmountParams {
+            expiration: Expiration::AtHeight(height),
+        }),
+    )?;
+    Ok(response.total_staked_amount)
 }
 
 fn total_available_votes_at_time(
-    _dao_type: DaoType,
-    _store: &dyn Storage,
-    _time: Timestamp,
-) -> StdResult<Uint128> {
-    // TODO: query membership contract
-    Ok(Uint128::zero())
+    deps: Deps,
+    time: Timestamp,
+) -> GovernanceControllerResult<Uint128> {
+    let membership_contract = query_membership_addr(deps)?;
+    // TODO: unify the query properly by adding a lib containing msg structures for all 3, instead of like a pleb here
+    let response: TotalStakedAmountResponse = deps.querier.query_wasm_smart(
+        membership_contract,
+        &token_staking_api::msg::QueryMsg::TotalStakedAmount(TotalStakedAmountParams {
+            expiration: Expiration::AtTime(time),
+        }),
+    )?;
+    Ok(response.total_staked_amount)
 }
 
-fn current_total_available_votes(_dao_type: DaoType, _store: &dyn Storage) -> StdResult<Uint128> {
-    // TODO: query membership contract
-    Ok(Uint128::zero())
+fn current_total_available_votes(deps: Deps) -> GovernanceControllerResult<Uint128> {
+    let membership_contract = query_membership_addr(deps)?;
+    // TODO: unify the query properly by adding a lib containing msg structures for all 3, instead of like a pleb here
+    let response: TotalStakedAmountResponse = deps.querier.query_wasm_smart(
+        membership_contract,
+        &token_staking_api::msg::QueryMsg::TotalStakedAmount(TotalStakedAmountParams {
+            expiration: Never {},
+        }),
+    )?;
+    Ok(response.total_staked_amount)
 }
 
 pub fn query_member_vote(
     qctx: QueryContext,
     params: MemberVoteParams,
 ) -> GovernanceControllerResult<MemberVoteResponse> {
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(qctx.deps)?;
     let vote: PollVoterResponse = qctx.deps.querier.query_wasm_smart(
         governance_contract.to_string(),
         &enterprise_governance_api::msg::QueryMsg::PollVoter(PollVoterParams {
@@ -1130,8 +1185,7 @@ pub fn query_proposal_votes(
     qctx: QueryContext,
     params: ProposalVotesParams,
 ) -> GovernanceControllerResult<ProposalVotesResponse> {
-    // TODO: enterprise query for addr
-    let governance_contract = Addr::unchecked("governance");
+    let governance_contract = query_enterprise_governance_addr(qctx.deps)?;
     let poll_voters: PollVotersResponse = qctx.deps.querier.query_wasm_smart(
         governance_contract.to_string(),
         &enterprise_governance_api::msg::QueryMsg::PollVoters(PollVotersParams {
@@ -1155,14 +1209,18 @@ pub fn query_proposal_votes(
     })
 }
 
-fn get_user_available_votes(
-    _qctx: QueryContext,
-    _user: Addr,
-) -> GovernanceControllerResult<Uint128> {
-    // TODO: query membership contract
-    let user_available_votes = Uint128::zero();
+fn get_user_available_votes(qctx: QueryContext, user: Addr) -> GovernanceControllerResult<Uint128> {
+    let membership_contract = query_membership_addr(qctx.deps)?;
 
-    Ok(user_available_votes)
+    // TODO: unify in a lib for membership contracts
+    let response: UserTokenStakeResponse = qctx.deps.querier.query_wasm_smart(
+        membership_contract.to_string(),
+        &UserTokenStakeParams {
+            user: user.to_string(),
+        },
+    )?;
+
+    Ok(response.staked_amount)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -1170,4 +1228,34 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> GovernanceControll
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+fn query_dao_type(deps: Deps) -> GovernanceControllerResult<DaoType> {
+    let enterprise = ENTERPRISE_CONTRACT.load(deps.storage)?;
+
+    let response: DaoInfoResponse = deps
+        .querier
+        .query_wasm_smart(enterprise.to_string(), &DaoInfo {})?;
+
+    Ok(response.dao_type)
+}
+
+fn query_enterprise_components(
+    deps: Deps,
+) -> GovernanceControllerResult<ComponentContractsResponse> {
+    let enterprise = ENTERPRISE_CONTRACT.load(deps.storage)?;
+
+    let response: ComponentContractsResponse = deps
+        .querier
+        .query_wasm_smart(enterprise.to_string(), &ComponentContracts {})?;
+
+    Ok(response)
+}
+
+fn query_enterprise_governance_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
+    Ok(query_enterprise_components(deps)?.enterprise_governance_contract)
+}
+
+fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
+    Ok(query_enterprise_components(deps)?.membership_contract)
 }

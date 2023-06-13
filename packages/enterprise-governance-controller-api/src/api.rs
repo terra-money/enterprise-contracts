@@ -1,8 +1,10 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::Asset;
 use cw_utils::{Duration, Expiration};
-use enterprise_protocol::api::Logo;
+use enterprise_protocol::api::UpdateMetadataMsg;
+use enterprise_treasury_api::api::{UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
+use multisig_membership_api::api::UserWeight;
 use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
@@ -124,17 +126,6 @@ pub enum ProposalAction {
 }
 
 #[cw_serde]
-pub struct UpdateMetadataMsg {
-    pub name: ModifyValue<String>,
-    pub description: ModifyValue<Option<String>>,
-    pub logo: ModifyValue<Logo>,
-    pub github_username: ModifyValue<Option<String>>,
-    pub discord_username: ModifyValue<Option<String>>,
-    pub twitter_username: ModifyValue<Option<String>>,
-    pub telegram_username: ModifyValue<Option<String>>,
-}
-
-#[cw_serde]
 pub struct UpdateGovConfigMsg {
     pub quorum: ModifyValue<Decimal>,
     pub threshold: ModifyValue<Decimal>,
@@ -148,22 +139,6 @@ pub struct UpdateGovConfigMsg {
 #[cw_serde]
 pub struct UpdateCouncilMsg {
     pub dao_council: Option<DaoCouncilSpec>,
-}
-
-#[cw_serde]
-pub struct UpdateAssetWhitelistMsg {
-    /// New assets to add to the whitelist. Will ignore assets that are already whitelisted.
-    pub add: Vec<AssetInfo>,
-    /// Assets to remove from the whitelist. Will ignore assets that are not already whitelisted.
-    pub remove: Vec<AssetInfo>,
-}
-
-#[cw_serde]
-pub struct UpdateNftWhitelistMsg {
-    /// New NFTs to add to the whitelist. Will ignore NFTs that are already whitelisted.
-    pub add: Vec<Addr>,
-    /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
-    pub remove: Vec<Addr>,
 }
 
 #[cw_serde]
@@ -189,7 +164,7 @@ pub struct ModifyMultisigMembershipMsg {
     /// Members to be edited.
     /// Can contain existing members, in which case their new weight will be the one specified in
     /// this message. This effectively allows removing of members (by setting their weight to 0).
-    pub edit_members: Vec<MultisigMember>,
+    pub edit_members: Vec<UserWeight>,
 }
 
 #[cw_serde]
