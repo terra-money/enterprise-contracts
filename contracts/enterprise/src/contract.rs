@@ -3,7 +3,7 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
-use crate::migration::migrate_asset_whitelist;
+use crate::migration::{migrate_asset_whitelist, whitelist_dao_membership_asset};
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -2310,6 +2310,7 @@ pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Respo
 
     // TODO: when upgrading the version, exclude versions higher than 0.4.0
     migrate_asset_whitelist(deps.branch())?;
+    whitelist_dao_membership_asset(deps.branch())?;
 
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
