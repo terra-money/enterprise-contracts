@@ -280,7 +280,7 @@ pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContr
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> DaoResult<Response> {
     // TODO: if version < 5, either fail or migrate to version 5 first
 
-    migrate_to_rewrite(
+    let submsgs = migrate_to_rewrite(
         deps,
         env,
         msg.treasury_code_id,
@@ -290,5 +290,7 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> DaoResult<Response> 
         msg.multisig_membership_code_id,
     )?;
 
-    Ok(Response::new().add_attribute("action", "migrate"))
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_submessages(submsgs))
 }
