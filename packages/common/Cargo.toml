@@ -9,7 +9,6 @@ edition = "2021"
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-common-derive = { path = "../common-derive" }
 cosmwasm-std = "1"
 cw-storage-plus = "1.0.1"
 cw20 = "1.0.1"

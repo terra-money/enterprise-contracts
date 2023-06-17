@@ -1,8 +1,12 @@
 use crate::proposals::ProposalInfo;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint64};
+use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint128, Uint64};
 use cw_storage_plus::{Item, Map};
-use enterprise_protocol::api::{Claim, DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, ProposalId};
+use enterprise_protocol::api::{
+    Claim, ClaimAsset, DaoCouncil, DaoGovConfig, DaoMetadata, DaoType, NftTokenId, ProposalId,
+};
+use enterprise_protocol::error::DaoResult;
 
 #[cw_serde]
 pub struct State {
@@ -43,4 +47,38 @@ pub fn add_claim(storage: &mut dyn Storage, addr: &Addr, claim: Claim) -> StdRes
         Ok(claims)
     })?;
     Ok(())
+}
+
+pub fn total_cw20_claims(storage: &dyn Storage) -> DaoResult<Uint128> {
+    let amount = CLAIMS
+        .range(storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
+        .into_iter()
+        .flat_map(|(_, claims)| claims)
+        .fold(Uint128::zero(), |acc, next| {
+            if let ClaimAsset::Cw20(asset) = next.asset {
+                acc + asset.amount
+            } else {
+                acc
+            }
+        });
+
+    Ok(amount)
+}
+
+pub fn is_nft_token_id_claimed(storage: &dyn Storage, token_id: NftTokenId) -> DaoResult<bool> {
+    let contains_nft_token_id = CLAIMS
+        .range(storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
+        .into_iter()
+        .flat_map(|(_, claims)| claims)
+        .any(|claim| {
+            if let ClaimAsset::Cw721(asset) = claim.asset {
+                asset.tokens.contains(&token_id)
+            } else {
+                false
+            }
+        });
+
+    Ok(contains_nft_token_id)
 }

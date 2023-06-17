@@ -1,4 +1,4 @@
-use crate::api::ProposalActionType;
+use crate::api::{NftTokenId, ProposalActionType};
 use cosmwasm_std::{StdError, Uint128};
 use poll_engine_api::error::PollError;
 use thiserror::Error;
@@ -15,6 +15,12 @@ pub enum DaoError {
 
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("Attempting to spend more DAO token than available")]
+    NotEnoughDaoTokenBalance,
+
+    #[error("NFT token with ID {token_id} not available for spending")]
+    NftTokenNotAvailableForSpending { token_id: NftTokenId },
 
     #[error("The DAO does not have a council specified")]
     NoDaoCouncil,
