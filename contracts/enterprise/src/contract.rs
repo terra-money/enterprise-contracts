@@ -1077,29 +1077,22 @@ fn execute_funding_from_dao(
 
     for asset in msg.assets {
         // TODO: does not work with CW1155, make sure it does in the future
-        let submsg =
-            if dao_type == Token && asset.info == AssetInfo::cw20(membership_contract.clone()) {
-                let balance = asset
-                    .info
-                    .query_balance(&ctx.deps.querier, ctx.env.contract.address.clone())?;
+        if dao_type == Token && asset.info == AssetInfo::cw20(membership_contract.clone()) {
+            let balance = asset
+                .info
+                .query_balance(&ctx.deps.querier, ctx.env.contract.address.clone())?;
 
-                let total_deposits = TOTAL_DEPOSITS.load(ctx.deps.storage)?;
-                let total_staked = load_total_staked(ctx.deps.storage)?;
+            let total_deposits = TOTAL_DEPOSITS.load(ctx.deps.storage)?;
+            let total_staked = load_total_staked(ctx.deps.storage)?;
 
-                let total_claims = total_cw20_claims(ctx.deps.storage)?;
+            let total_claims = total_cw20_claims(ctx.deps.storage)?;
 
-                if total_deposits + total_staked + total_claims + asset.amount <= balance {
-                    Some(SubMsg::new(asset.transfer_msg(msg.recipient.clone())?))
-                } else {
-                    None
-                }
-            } else {
-                Some(SubMsg::new(asset.transfer_msg(msg.recipient.clone())?))
-            };
+            if total_deposits + total_staked + total_claims + asset.amount > balance {
+                return Err(NotEnoughDaoTokenBalance);
+            }
+        };
 
-        if let Some(submsg) = submsg {
-            submsgs.push(submsg);
-        }
+        submsgs.push(SubMsg::new(asset.transfer_msg(msg.recipient.clone())?));
     }
 
     Ok(submsgs)
@@ -1367,20 +1360,14 @@ fn distribute_funds(ctx: &mut Context, msg: DistributeFundsMsg) -> DaoResult<Vec
 
                     let total_claims = total_cw20_claims(ctx.deps.storage)?;
 
-                    if total_deposits + total_staked + total_claims + asset.amount <= balance {
-                        submsgs.push(SubMsg::new(asset.send_msg(
-                            funds_distributor.to_string(),
-                            to_binary(&Distribute {})?,
-                        )?))
-                    } else {
-                        // do nothing
+                    if total_deposits + total_staked + total_claims + asset.amount > balance {
+                        return Err(NotEnoughDaoTokenBalance);
                     }
-                } else {
-                    submsgs.push(SubMsg::new(asset.send_msg(
-                        funds_distributor.to_string(),
-                        to_binary(&Distribute {})?,
-                    )?))
                 }
+                submsgs.push(SubMsg::new(asset.send_msg(
+                    funds_distributor.to_string(),
+                    to_binary(&Distribute {})?,
+                )?))
             }
             AssetInfoBase::Cw1155(_, _) => {
                 return Err(Std(StdError::generic_err(
