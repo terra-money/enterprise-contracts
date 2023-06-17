@@ -45,7 +45,7 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "1397"
+      "codeId": "1619"
     },
     "cw3_fixed_multisig": {
       "codeId": "1316"
@@ -57,14 +57,14 @@
       "codeId": "1318"
     },
     "enterprise-factory": {
-      "codeId": "1398",
+      "codeId": "1622",
       "address": "terra1y2dwydnnnctdwwmvs23ct60fj626t66qk53cae2gc55k3ce92jmqldj0sf"
     },
     "enterprise-governance": {
-      "codeId": "1393"
+      "codeId": "1620"
     },
     "funds-distributor": {
-      "codeId": "1394"
+      "codeId": "1621"
     }
   }
 }
