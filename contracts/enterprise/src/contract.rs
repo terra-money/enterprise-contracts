@@ -1730,7 +1730,7 @@ fn transfer_nft_submsg(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
+pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
     match msg.id {
         DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
@@ -1739,6 +1739,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let addr = deps.api.addr_validate(&contract_address)?;
 
             DAO_MEMBERSHIP_CONTRACT.save(deps.storage, &addr)?;
+
+            let dao_type = DAO_TYPE.load(deps.storage)?;
+
+            match dao_type {
+                Token => add_whitelisted_assets(deps.branch(), vec![AssetInfo::cw20(addr)])?,
+                Nft => NFT_WHITELIST.save(deps.storage, addr, &())?,
+                Multisig => {} // no-op
+            }
 
             Ok(Response::new())
         }
