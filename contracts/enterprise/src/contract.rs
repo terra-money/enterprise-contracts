@@ -1167,26 +1167,17 @@ fn execute_msgs(ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg>
                 if contract_addr == membership_contract {
                     match from_binary(&msg) {
                         Ok(cw20::Cw20ExecuteMsg::Transfer { amount, .. }) => {
-                            if dao_type == Token
-                                && contract_addr == membership_contract
-                                && !can_spend_dao_token(ctx, membership_contract.clone(), amount)?
-                            {
+                            if !can_spend_dao_token(ctx, membership_contract.clone(), amount)? {
                                 return Err(NotEnoughDaoTokenBalance);
                             }
                         }
                         Ok(cw20::Cw20ExecuteMsg::Send { amount, .. }) => {
-                            if dao_type == Token
-                                && contract_addr == membership_contract
-                                && !can_spend_dao_token(ctx, membership_contract.clone(), amount)?
-                            {
+                            if !can_spend_dao_token(ctx, membership_contract.clone(), amount)? {
                                 return Err(NotEnoughDaoTokenBalance);
                             }
                         }
                         Ok(cw20::Cw20ExecuteMsg::IncreaseAllowance { amount, .. }) => {
-                            if dao_type == Token
-                                && contract_addr == membership_contract
-                                && !can_spend_dao_token(ctx, membership_contract.clone(), amount)?
-                            {
+                            if !can_spend_dao_token(ctx, membership_contract.clone(), amount)? {
                                 return Err(NotEnoughDaoTokenBalance);
                             }
                         }
@@ -1206,26 +1197,17 @@ fn execute_msgs(ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg>
                 if contract_addr == membership_contract {
                     match from_binary(&msg) {
                         Ok(cw721::Cw721ExecuteMsg::TransferNft { token_id, .. }) => {
-                            if dao_type == Nft
-                                && contract_addr == membership_contract
-                                && !can_spend_dao_nft_token_id(ctx, token_id.clone())?
-                            {
+                            if !can_spend_dao_nft_token_id(ctx, token_id.clone())? {
                                 return Err(NftTokenNotAvailableForSpending { token_id });
                             }
                         }
                         Ok(cw721::Cw721ExecuteMsg::SendNft { token_id, .. }) => {
-                            if dao_type == Nft
-                                && contract_addr == membership_contract
-                                && !can_spend_dao_nft_token_id(ctx, token_id.clone())?
-                            {
+                            if !can_spend_dao_nft_token_id(ctx, token_id.clone())? {
                                 return Err(NftTokenNotAvailableForSpending { token_id });
                             }
                         }
                         Ok(cw721::Cw721ExecuteMsg::Approve { token_id, .. }) => {
-                            if dao_type == Nft
-                                && contract_addr == membership_contract
-                                && !can_spend_dao_nft_token_id(ctx, token_id.clone())?
-                            {
+                            if !can_spend_dao_nft_token_id(ctx, token_id.clone())? {
                                 return Err(NftTokenNotAvailableForSpending { token_id });
                             }
                         }
