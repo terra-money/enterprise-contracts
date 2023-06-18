@@ -1,7 +1,6 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Timestamp, Uint128, Uint64};
-use cw20::{Cw20Coin, MinterResponse};
+use cosmwasm_std::{Addr, Binary, Timestamp, Uint64};
 use std::fmt;
 use strum_macros::Display;
 
@@ -64,70 +63,6 @@ pub struct UpdateMetadataMsg {
     pub discord_username: ModifyValue<Option<String>>,
     pub twitter_username: ModifyValue<Option<String>>,
     pub telegram_username: ModifyValue<Option<String>>,
-}
-
-#[cw_serde]
-pub enum DaoMembershipInfo {
-    New(NewDaoMembershipMsg),
-    Existing(ExistingDaoMembershipMsg),
-}
-
-#[cw_serde]
-pub struct NewDaoMembershipMsg {
-    pub membership_contract_code_id: u64,
-    pub membership_info: NewMembershipInfo,
-}
-
-#[cw_serde]
-pub enum NewMembershipInfo {
-    NewToken(Box<NewTokenMembershipInfo>),
-    NewNft(NewNftMembershipInfo),
-    NewMultisig(NewMultisigMembershipInfo),
-}
-
-#[cw_serde]
-pub struct ExistingDaoMembershipMsg {
-    pub dao_type: DaoType,
-    pub membership_contract_addr: String,
-}
-
-#[cw_serde]
-pub struct NewTokenMembershipInfo {
-    pub token_name: String,
-    pub token_symbol: String,
-    pub token_decimals: u8,
-    pub initial_token_balances: Vec<Cw20Coin>,
-    /// Optional amount of tokens to be minted to the DAO's address
-    pub initial_dao_balance: Option<Uint128>,
-    pub token_mint: Option<MinterResponse>,
-    pub token_marketing: Option<TokenMarketingInfo>,
-}
-
-#[cw_serde]
-pub struct TokenMarketingInfo {
-    pub project: Option<String>,
-    pub description: Option<String>,
-    pub marketing_owner: Option<String>,
-    pub logo_url: Option<String>,
-}
-
-#[cw_serde]
-pub struct NewNftMembershipInfo {
-    pub nft_name: String,
-    pub nft_symbol: String,
-    pub minter: Option<String>,
-}
-
-#[cw_serde]
-pub struct NewMultisigMembershipInfo {
-    pub multisig_members: Vec<MultisigMember>,
-}
-
-// TODO: remove
-#[cw_serde]
-pub struct MultisigMember {
-    pub address: String,
-    pub weight: Uint128,
 }
 
 #[cw_serde]
