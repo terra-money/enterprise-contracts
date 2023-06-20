@@ -1,7 +1,7 @@
-use common::nft::TokensResponse;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Decimal, StdError, StdResult, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
+use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo};
 use cw_utils::{Duration, Expiration};
 use poll_engine_api::api::{Vote, VoteOutcome};
@@ -394,8 +394,20 @@ pub struct DaoInfoResponse {
 }
 
 #[cw_serde]
+pub struct AssetWhitelistParams {
+    pub start_after: Option<AssetInfo>,
+    pub limit: Option<u32>,
+}
+
+#[cw_serde]
 pub struct AssetWhitelistResponse {
     pub assets: Vec<AssetInfo>,
+}
+
+#[cw_serde]
+pub struct NftWhitelistParams {
+    pub start_after: Option<String>,
+    pub limit: Option<u32>,
 }
 
 #[cw_serde]
@@ -542,6 +554,12 @@ pub struct UserStakeParams {
 }
 
 #[cw_serde]
+pub struct StakedNftsParams {
+    pub start_after: Option<NftTokenId>,
+    pub limit: Option<u32>,
+}
+
+#[cw_serde]
 pub struct UserStakeResponse {
     pub user_stake: UserStake,
 }
@@ -570,6 +588,11 @@ pub struct TotalStakedAmountResponse {
 }
 
 #[cw_serde]
+pub struct StakedNftsResponse {
+    pub nfts: Vec<NftTokenId>,
+}
+
+#[cw_serde]
 pub struct ClaimsResponse {
     pub claims: Vec<Claim>,
 }
@@ -577,11 +600,6 @@ pub struct ClaimsResponse {
 #[cw_serde]
 pub struct ClaimsParams {
     pub owner: String,
-}
-
-#[cw_serde]
-pub struct AssetTreasuryResponse {
-    pub assets: Vec<Asset>,
 }
 
 /// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually

@@ -1,3 +1,9 @@
+use crate::asset_whitelist::{
+    add_whitelisted_assets, get_whitelisted_assets_starting_with_cw1155,
+    get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
+    remove_whitelisted_assets,
+};
+use crate::migration::{migrate_asset_whitelist, whitelist_dao_membership_asset};
 use crate::multisig::{
     load_total_multisig_weight, load_total_multisig_weight_at_height,
     load_total_multisig_weight_at_time, save_total_multisig_weight, MULTISIG_MEMBERS,
@@ -13,9 +19,10 @@ use crate::staking::{
     CW20_STAKES,
 };
 use crate::state::{
-    add_claim, State, ASSET_WHITELIST, CLAIMS, DAO_CODE_VERSION, DAO_COUNCIL, DAO_CREATION_DATE,
-    DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
-    ENTERPRISE_GOVERNANCE_CONTRACT, FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STATE,
+    add_claim, is_nft_token_id_claimed, total_cw20_claims, State, CLAIMS, DAO_CODE_VERSION,
+    DAO_COUNCIL, DAO_CREATION_DATE, DAO_GOV_CONFIG, DAO_MEMBERSHIP_CONTRACT, DAO_METADATA,
+    DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT, ENTERPRISE_GOVERNANCE_CONTRACT,
+    FUNDS_DISTRIBUTOR_CONTRACT, NFT_WHITELIST, STATE,
 };
 use crate::validate::{
     apply_gov_config_changes, normalize_asset_whitelist, validate_dao_council,
@@ -34,32 +41,32 @@ use cw20::{Cw20Coin, Cw20ReceiveMsg, Logo, MinterResponse};
 use cw_asset::{Asset, AssetInfo, AssetInfoBase};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration, Expiration};
-use enterprise_factory_api::msg::QueryMsg::GlobalAssetWhitelist;
 use enterprise_protocol::api::ClaimAsset::{Cw20, Cw721};
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
 use enterprise_protocol::api::ModifyValue::Change;
 use enterprise_protocol::api::ProposalType::{Council, General};
 use enterprise_protocol::api::{
-    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig,
-    DaoInfoResponse, DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg,
-    ExecuteProposalMsg, ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse,
-    MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember,
-    MultisigMembersResponse, NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo,
-    NewNftMembershipInfo, NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistResponse,
+    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimsParams, ClaimsResponse,
+    CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoGovConfig, DaoInfoResponse,
+    DaoMembershipInfo, DaoType, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
+    ExistingDaoMembershipMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, ModifyMultisigMembershipMsg, MultisigMember, MultisigMembersResponse,
+    NewDaoMembershipMsg, NewMembershipInfo, NewMultisigMembershipInfo, NewNftMembershipInfo,
+    NewTokenMembershipInfo, NftTokenId, NftUserStake, NftWhitelistParams, NftWhitelistResponse,
     Proposal, ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalParams,
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, ReleaseAt,
-    RequestFundingFromDaoMsg, TalisFriendlyTokensResponse, TokenUserStake,
-    TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistMsg,
-    UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
+    RequestFundingFromDaoMsg, StakedNftsParams, StakedNftsResponse, TalisFriendlyTokensResponse,
+    TokenUserStake, TotalStakedAmountResponse, UnstakeMsg, UpdateAssetWhitelistMsg,
+    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMetadataMsg, UpdateMinimumWeightForRewardsMsg,
+    UpdateNftWhitelistMsg, UpgradeDaoMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_protocol::error::DaoError::{
-    DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage, NoVotesAvailable,
-    NotMultisigMember, NothingToClaim, ProposalAlreadyExecuted, Std,
-    UnsupportedCouncilProposalAction, WrongProposalType, ZeroInitialDaoBalance,
+    DuplicateMultisigMember, InsufficientStakedAssets, InvalidCosmosMessage,
+    NftTokenNotAvailableForSpending, NoVotesAvailable, NotEnoughDaoTokenBalance, NotMultisigMember,
+    NothingToClaim, ProposalAlreadyExecuted, Std, UnsupportedCouncilProposalAction,
+    WrongProposalType, ZeroInitialDaoBalance,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{
@@ -80,6 +87,7 @@ use poll_engine_api::api::{
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::ops::{Add, Not, Sub};
+use CosmosMsg::Wasm;
 use DaoError::{
     CustomError, InvalidStakingAsset, NoDaoCouncil, NoNftTokenStaked, NoSuchProposal, Unauthorized,
     UnsupportedOperationForDaoType, ZeroInitialWeightMember,
@@ -94,6 +102,7 @@ use ProposalAction::{
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
+use WasmMsg::Execute;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise";
@@ -104,15 +113,16 @@ pub const ENTERPRISE_GOVERNANCE_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
 pub const FUNDS_DISTRIBUTOR_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const CREATE_POLL_REPLY_ID: u64 = 4;
 pub const END_POLL_REPLY_ID: u64 = 5;
+pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 6;
 
-pub const CODE_VERSION: u8 = 4;
+pub const CODE_VERSION: u8 = 5;
 
 pub const DEFAULT_QUERY_LIMIT: u8 = 50;
 pub const MAX_QUERY_LIMIT: u8 = 100;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -147,7 +157,7 @@ pub fn instantiate(
 
     let normalized_asset_whitelist =
         normalize_asset_whitelist(deps.as_ref(), &msg.asset_whitelist.unwrap_or_default())?;
-    ASSET_WHITELIST.save(deps.storage, &normalized_asset_whitelist)?;
+    add_whitelisted_assets(deps.branch(), normalized_asset_whitelist)?;
 
     for nft in &msg.nft_whitelist.unwrap_or_default() {
         NFT_WHITELIST.save(deps.storage, deps.api.addr_validate(nft.as_ref())?, &())?;
@@ -158,7 +168,7 @@ pub fn instantiate(
 
     // instantiate the governance contract
     let instantiate_governance_contract_submsg = SubMsg::reply_on_success(
-        CosmosMsg::Wasm(WasmMsg::Instantiate {
+        Wasm(WasmMsg::Instantiate {
             admin: Some(env.contract.address.to_string()),
             code_id: msg.enterprise_governance_code_id,
             msg: to_binary(&enterprise_governance_api::msg::InstantiateMsg {
@@ -201,7 +211,7 @@ fn instantiate_funds_distributor_submsg(
     initial_weights: Vec<UserWeight>,
 ) -> DaoResult<SubMsg> {
     let instantiate_funds_distributor_contract_submsg = SubMsg::reply_on_success(
-        CosmosMsg::Wasm(WasmMsg::Instantiate {
+        Wasm(WasmMsg::Instantiate {
             admin: Some(ctx.env.contract.address.to_string()),
             code_id: funds_distributor_code_id,
             msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
@@ -280,14 +290,24 @@ fn instantiate_new_token_dao(
 
     DAO_TYPE.save(ctx.deps.storage, &Token)?;
 
-    let marketing =
-        info.token_marketing
-            .map(|marketing| cw20_base::msg::InstantiateMarketingInfo {
-                project: marketing.project,
-                description: marketing.description,
-                marketing: marketing.marketing_owner,
-                logo: marketing.logo_url.map(Logo::Url),
-            });
+    let marketing = info
+        .token_marketing
+        .map(|marketing| cw20_base::msg::InstantiateMarketingInfo {
+            project: marketing.project,
+            description: marketing.description,
+            marketing: marketing
+                .marketing_owner
+                .or_else(|| Some(ctx.env.contract.address.to_string())),
+            logo: marketing.logo_url.map(Logo::Url),
+        })
+        .or_else(|| {
+            Some(cw20_base::msg::InstantiateMarketingInfo {
+                project: None,
+                description: None,
+                marketing: Some(ctx.env.contract.address.to_string()),
+                logo: None,
+            })
+        });
 
     let initial_balances = match info.initial_dao_balance {
         None => info.initial_token_balances,
@@ -489,13 +509,15 @@ fn instantiate_existing_membership_dao(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DaoResult<Response> {
+    let sender = info.sender.clone();
     let mut ctx = Context { deps, env, info };
     match msg {
-        ExecuteMsg::CreateProposal(msg) => create_proposal(&mut ctx, msg, None),
+        ExecuteMsg::CreateProposal(msg) => create_proposal(&mut ctx, msg, None, sender),
         ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(&mut ctx, msg),
         ExecuteMsg::CastVote(msg) => cast_vote(&mut ctx, msg),
         ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(&mut ctx, msg),
         ExecuteMsg::ExecuteProposal(msg) => execute_proposal(&mut ctx, msg),
+        ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(&mut ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(&mut ctx, msg),
         ExecuteMsg::ReceiveNft(msg) => receive_cw721(&mut ctx, msg),
         ExecuteMsg::Unstake(msg) => unstake(&mut ctx, msg),
@@ -507,6 +529,7 @@ fn create_proposal(
     ctx: &mut Context,
     msg: CreateProposalMsg,
     deposit: Option<ProposalDeposit>,
+    proposer: Addr,
 ) -> DaoResult<Response> {
     let gov_config = DAO_GOV_CONFIG.load(ctx.deps.storage)?;
 
@@ -515,7 +538,7 @@ fn create_proposal(
 
     let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
 
-    let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General)?;
+    let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General, proposer)?;
 
     let response = Response::new()
         .add_attribute("action", "create_proposal")
@@ -605,7 +628,14 @@ fn create_council_proposal(ctx: &mut Context, msg: CreateProposalMsg) -> DaoResu
                 ..gov_config
             };
 
-            let create_poll_submsg = create_poll(ctx, council_gov_config, msg, None, Council)?;
+            let create_poll_submsg = create_poll(
+                ctx,
+                council_gov_config,
+                msg,
+                None,
+                Council,
+                ctx.info.sender.clone(),
+            )?;
 
             Ok(Response::new()
                 .add_attribute("action", "create_council_proposal")
@@ -637,6 +667,7 @@ fn create_poll(
     msg: CreateProposalMsg,
     deposit: Option<ProposalDeposit>,
     proposal_type: ProposalType,
+    proposer: Addr,
 ) -> DaoResult<SubMsg> {
     let ends_at = ctx.env.block.time.plus_seconds(gov_config.vote_duration);
 
@@ -645,7 +676,7 @@ fn create_poll(
         wasm_execute(
             governance_contract.to_string(),
             &enterprise_governance_api::msg::ExecuteMsg::CreatePoll(CreatePollParams {
-                proposer: ctx.info.sender.to_string(),
+                proposer: proposer.to_string(),
                 deposit_amount: Uint128::zero(),
                 label: msg.title,
                 description: msg.description.unwrap_or_default(),
@@ -911,10 +942,17 @@ fn resolve_ended_proposal(ctx: &mut Context, proposal_id: ProposalId) -> DaoResu
         }
         PollStatus::Passed { .. } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
-            let mut submsgs = execute_proposal_actions(ctx, proposal_id)?;
-            let mut return_deposit_submsgs =
-                return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
-            submsgs.append(&mut return_deposit_submsgs);
+            let execute_proposal_actions_msg = SubMsg::reply_always(
+                wasm_execute(
+                    ctx.env.contract.address.to_string(),
+                    &ExecuteMsg::ExecuteProposalActions(ExecuteProposalMsg { proposal_id }),
+                    vec![],
+                )?,
+                EXECUTE_PROPOSAL_ACTIONS_REPLY_ID,
+            );
+            let mut submsgs = return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
+
+            submsgs.insert(0, execute_proposal_actions_msg);
 
             submsgs
         }
@@ -949,7 +987,25 @@ fn resolve_ended_proposal(ctx: &mut Context, proposal_id: ProposalId) -> DaoResu
     Ok(submsgs)
 }
 
-fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoResult<Vec<SubMsg>> {
+// TODO: tests
+fn execute_proposal_actions(ctx: &mut Context, msg: ExecuteProposalMsg) -> DaoResult<Response> {
+    // only the DAO itself can execute this
+    if ctx.info.sender != ctx.env.contract.address {
+        return Err(Unauthorized);
+    }
+
+    let submsgs: Vec<SubMsg> = execute_proposal_actions_submsgs(ctx, msg.proposal_id)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "execute_proposal_actions")
+        .add_attribute("proposal_id", msg.proposal_id.to_string())
+        .add_submessages(submsgs))
+}
+
+fn execute_proposal_actions_submsgs(
+    ctx: &mut Context,
+    proposal_id: ProposalId,
+) -> DaoResult<Vec<SubMsg>> {
     let proposal_actions =
         get_proposal_actions(ctx.deps.storage, proposal_id)?.ok_or(NoSuchProposal)?;
 
@@ -960,11 +1016,11 @@ fn execute_proposal_actions(ctx: &mut Context, proposal_id: ProposalId) -> DaoRe
             UpdateMetadata(msg) => update_metadata(ctx.deps.branch(), msg)?,
             UpdateGovConfig(msg) => update_gov_config(ctx, msg)?,
             UpdateCouncil(msg) => update_council(ctx, msg)?,
-            RequestFundingFromDao(msg) => execute_funding_from_dao(msg)?,
+            RequestFundingFromDao(msg) => execute_funding_from_dao(ctx, msg)?,
             UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx.deps.branch(), msg)?,
             UpdateNftWhitelist(msg) => update_nft_whitelist(ctx.deps.branch(), msg)?,
             UpgradeDao(msg) => upgrade_dao(ctx.env.clone(), msg)?,
-            ExecuteMsgs(msg) => execute_msgs(msg)?,
+            ExecuteMsgs(msg) => execute_msgs(ctx, msg)?,
             ModifyMultisigMembership(msg) => {
                 modify_multisig_membership(ctx.deps.branch(), ctx.env.clone(), msg)?
             }
@@ -1010,16 +1066,34 @@ fn update_metadata(deps: DepsMut, msg: UpdateMetadataMsg) -> DaoResult<Vec<SubMs
     Ok(vec![])
 }
 
-fn execute_funding_from_dao(msg: RequestFundingFromDaoMsg) -> DaoResult<Vec<SubMsg>> {
-    // TODO: does not work with CW1155, make sure it does in the future
-    let submsgs = msg
-        .assets
-        .into_iter()
-        .map(|asset| asset.transfer_msg(msg.recipient.clone()))
-        .collect::<StdResult<Vec<CosmosMsg>>>()?
-        .into_iter()
-        .map(SubMsg::new)
-        .collect();
+fn execute_funding_from_dao(
+    ctx: &mut Context,
+    msg: RequestFundingFromDaoMsg,
+) -> DaoResult<Vec<SubMsg>> {
+    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
+    let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+
+    let mut submsgs: Vec<SubMsg> = vec![];
+
+    for asset in msg.assets {
+        // TODO: does not work with CW1155, make sure it does in the future
+        if dao_type == Token && asset.info == AssetInfo::cw20(membership_contract.clone()) {
+            let balance = asset
+                .info
+                .query_balance(&ctx.deps.querier, ctx.env.contract.address.clone())?;
+
+            let total_deposits = TOTAL_DEPOSITS.load(ctx.deps.storage)?;
+            let total_staked = load_total_staked(ctx.deps.storage)?;
+
+            let total_claims = total_cw20_claims(ctx.deps.storage)?;
+
+            if total_deposits + total_staked + total_claims + asset.amount > balance {
+                return Err(NotEnoughDaoTokenBalance);
+            }
+        };
+
+        submsgs.push(SubMsg::new(asset.transfer_msg(msg.recipient.clone())?));
+    }
 
     Ok(submsgs)
 }
@@ -1046,18 +1120,12 @@ fn update_council(ctx: &mut Context, msg: UpdateCouncilMsg) -> DaoResult<Vec<Sub
     Ok(vec![])
 }
 
-fn update_asset_whitelist(deps: DepsMut, msg: UpdateAssetWhitelistMsg) -> DaoResult<Vec<SubMsg>> {
-    let mut asset_whitelist = ASSET_WHITELIST.load(deps.storage)?;
-
-    for add in msg.add {
-        asset_whitelist.push(add);
-    }
-
-    asset_whitelist.retain(|asset| !msg.remove.contains(asset));
-
-    let normalized_asset_whitelist = normalize_asset_whitelist(deps.as_ref(), &asset_whitelist)?;
-
-    ASSET_WHITELIST.save(deps.storage, &normalized_asset_whitelist)?;
+fn update_asset_whitelist(
+    mut deps: DepsMut,
+    msg: UpdateAssetWhitelistMsg,
+) -> DaoResult<Vec<SubMsg>> {
+    add_whitelisted_assets(deps.branch(), msg.add)?;
+    remove_whitelisted_assets(deps.branch(), msg.remove)?;
 
     Ok(vec![])
 }
@@ -1081,15 +1149,112 @@ fn upgrade_dao(env: Env, msg: UpgradeDaoMsg) -> DaoResult<Vec<SubMsg>> {
     })])
 }
 
-fn execute_msgs(msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg>> {
+fn execute_msgs(ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Vec<SubMsg>> {
+    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
+    let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+
     let mut submsgs: Vec<SubMsg> = vec![];
+
     for msg in msg.msgs {
-        submsgs.push(SubMsg::new(
-            serde_json_wasm::from_str::<CosmosMsg>(msg.as_str())
-                .map_err(|_| InvalidCosmosMessage)?,
-        ))
+        let msg = serde_json_wasm::from_str::<CosmosMsg>(msg.as_str())
+            .map_err(|_| InvalidCosmosMessage)?;
+
+        if dao_type == Token {
+            if let Wasm(Execute {
+                contract_addr, msg, ..
+            }) = msg.clone()
+            {
+                if contract_addr == membership_contract {
+                    match from_binary(&msg) {
+                        Ok(cw20::Cw20ExecuteMsg::Transfer { amount, .. }) => {
+                            if !can_spend_dao_token(ctx, membership_contract.clone(), amount)? {
+                                return Err(NotEnoughDaoTokenBalance);
+                            }
+                        }
+                        Ok(cw20::Cw20ExecuteMsg::Send { amount, .. }) => {
+                            if !can_spend_dao_token(ctx, membership_contract.clone(), amount)? {
+                                return Err(NotEnoughDaoTokenBalance);
+                            }
+                        }
+                        Ok(cw20::Cw20ExecuteMsg::IncreaseAllowance { amount, .. }) => {
+                            if !can_spend_dao_token(ctx, membership_contract.clone(), amount)? {
+                                return Err(NotEnoughDaoTokenBalance);
+                            }
+                        }
+                        _ => {
+                            // no-op
+                        }
+                    }
+                }
+            }
+        }
+
+        if dao_type == Nft {
+            if let Wasm(Execute {
+                contract_addr, msg, ..
+            }) = msg.clone()
+            {
+                if contract_addr == membership_contract {
+                    match from_binary(&msg) {
+                        Ok(cw721::Cw721ExecuteMsg::TransferNft { token_id, .. }) => {
+                            if !can_spend_dao_nft_token_id(ctx, token_id.clone())? {
+                                return Err(NftTokenNotAvailableForSpending { token_id });
+                            }
+                        }
+                        Ok(cw721::Cw721ExecuteMsg::SendNft { token_id, .. }) => {
+                            if !can_spend_dao_nft_token_id(ctx, token_id.clone())? {
+                                return Err(NftTokenNotAvailableForSpending { token_id });
+                            }
+                        }
+                        Ok(cw721::Cw721ExecuteMsg::Approve { token_id, .. }) => {
+                            if !can_spend_dao_nft_token_id(ctx, token_id.clone())? {
+                                return Err(NftTokenNotAvailableForSpending { token_id });
+                            }
+                        }
+                        Ok(cw721::Cw721ExecuteMsg::ApproveAll { .. }) => {
+                            if dao_type == Nft && contract_addr == membership_contract {
+                                return Err(UnsupportedOperationForDaoType {
+                                    dao_type: Nft.to_string(),
+                                });
+                            }
+                        }
+                        _ => {
+                            // no-op
+                        }
+                    }
+                }
+            }
+        }
+
+        submsgs.push(SubMsg::new(msg))
     }
     Ok(submsgs)
+}
+
+fn can_spend_dao_token(ctx: &Context, token: Addr, amount: Uint128) -> DaoResult<bool> {
+    let balance = AssetInfo::cw20(token)
+        .query_balance(&ctx.deps.querier, ctx.env.contract.address.clone())?;
+
+    let total_deposits = TOTAL_DEPOSITS.load(ctx.deps.storage)?;
+    let total_staked = load_total_staked(ctx.deps.storage)?;
+
+    let total_claims = total_cw20_claims(ctx.deps.storage)?;
+
+    Ok(total_deposits + total_staked + total_claims <= balance - amount)
+}
+
+fn can_spend_dao_nft_token_id(ctx: &Context, token_id: NftTokenId) -> DaoResult<bool> {
+    let is_staked = NFT_STAKES()
+        .may_load(ctx.deps.storage, token_id.clone())?
+        .is_some();
+
+    if is_staked {
+        Ok(false)
+    } else {
+        let is_claimed = is_nft_token_id_claimed(ctx.deps.storage, token_id)?;
+
+        Ok(!is_claimed)
+    }
 }
 
 fn modify_multisig_membership(
@@ -1158,14 +1323,34 @@ fn distribute_funds(ctx: &mut Context, msg: DistributeFundsMsg) -> DaoResult<Vec
     let mut native_funds: Vec<Coin> = vec![];
     let mut submsgs: Vec<SubMsg> = vec![];
 
+    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
+    let membership_contract = DAO_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+
     let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
 
     for asset in msg.funds {
-        match asset.info {
+        match asset.info.clone() {
             AssetInfoBase::Native(denom) => native_funds.push(coin(asset.amount.u128(), denom)),
-            AssetInfoBase::Cw20(_) => submsgs.push(SubMsg::new(
-                asset.send_msg(funds_distributor.to_string(), to_binary(&Distribute {})?)?,
-            )),
+            AssetInfoBase::Cw20(token) => {
+                if dao_type == Token && token == membership_contract {
+                    let balance = asset
+                        .info
+                        .query_balance(&ctx.deps.querier, ctx.env.contract.address.clone())?;
+
+                    let total_deposits = TOTAL_DEPOSITS.load(ctx.deps.storage)?;
+                    let total_staked = load_total_staked(ctx.deps.storage)?;
+
+                    let total_claims = total_cw20_claims(ctx.deps.storage)?;
+
+                    if total_deposits + total_staked + total_claims + asset.amount > balance {
+                        return Err(NotEnoughDaoTokenBalance);
+                    }
+                }
+                submsgs.push(SubMsg::new(asset.send_msg(
+                    funds_distributor.to_string(),
+                    to_binary(&Distribute {})?,
+                )?))
+            }
             AssetInfoBase::Cw1155(_, _) => {
                 return Err(Std(StdError::generic_err(
                     "cw1155 assets are not supported at this time",
@@ -1236,10 +1421,10 @@ pub fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DaoResult<Re
         Ok(Cw20HookMsg::CreateProposal(msg)) => {
             let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
             let deposit = ProposalDeposit {
-                depositor,
+                depositor: depositor.clone(),
                 amount: cw20_msg.amount,
             };
-            create_proposal(ctx, msg, Some(deposit))
+            create_proposal(ctx, msg, Some(deposit), depositor)
         }
         _ => Err(CustomError {
             val: "msg payload not recognized".to_string(),
@@ -1527,7 +1712,7 @@ fn transfer_nft_submsg(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
+pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
     match msg.id {
         DAO_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
@@ -1536,6 +1721,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let addr = deps.api.addr_validate(&contract_address)?;
 
             DAO_MEMBERSHIP_CONTRACT.save(deps.storage, &addr)?;
+
+            let dao_type = DAO_TYPE.load(deps.storage)?;
+
+            match dao_type {
+                Token => add_whitelisted_assets(deps.branch(), vec![AssetInfo::cw20(addr)])?,
+                Nft => NFT_WHITELIST.save(deps.storage, addr, &())?,
+                Multisig => {} // no-op
+            }
 
             Ok(Response::new())
         }
@@ -1616,6 +1809,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_attribute("proposal_id", proposal_id.to_string())
                 .add_submessages(execute_submsgs))
         }
+        EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
+            // no actions, regardless of the result
+            Ok(Response::new())
+        }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }
 }
@@ -1663,8 +1860,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::DaoInfo {} => to_binary(&query_dao_info(qctx)?)?,
         QueryMsg::MemberInfo(msg) => to_binary(&query_member_info(qctx, msg)?)?,
         QueryMsg::ListMultisigMembers(msg) => to_binary(&query_list_multisig_members(qctx, msg)?)?,
-        QueryMsg::AssetWhitelist {} => to_binary(&query_asset_whitelist(qctx)?)?,
-        QueryMsg::NftWhitelist {} => to_binary(&query_nft_whitelist(qctx)?)?,
+        QueryMsg::AssetWhitelist(params) => to_binary(&query_asset_whitelist(qctx, params)?)?,
+        QueryMsg::NftWhitelist(params) => to_binary(&query_nft_whitelist(qctx, params)?)?,
         QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params)?)?,
         QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params)?)?,
         QueryMsg::ProposalStatus(params) => to_binary(&query_proposal_status(qctx, params)?)?,
@@ -1672,9 +1869,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::ProposalVotes(params) => to_binary(&query_proposal_votes(qctx, params)?)?,
         QueryMsg::UserStake(params) => to_binary(&query_user_stake(qctx, params)?)?,
         QueryMsg::TotalStakedAmount {} => to_binary(&query_total_staked_amount(qctx)?)?,
+        QueryMsg::StakedNfts(params) => to_binary(&query_staked_nfts(qctx, params)?)?,
         QueryMsg::Claims(params) => to_binary(&query_claims(qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(qctx, params)?)?,
-        QueryMsg::Cw20Treasury {} => to_binary(&query_cw20_treasury(qctx)?)?,
     };
     Ok(response)
 }
@@ -1703,15 +1900,55 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
     })
 }
 
-pub fn query_asset_whitelist(qctx: QueryContext) -> DaoResult<AssetWhitelistResponse> {
-    let assets = ASSET_WHITELIST.load(qctx.deps.storage)?;
+pub fn query_asset_whitelist(
+    qctx: QueryContext,
+    params: AssetWhitelistParams,
+) -> DaoResult<AssetWhitelistResponse> {
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32) as usize;
+
+    let assets = if let Some(start_after) = params.start_after {
+        match start_after {
+            AssetInfo::Native(denom) => {
+                get_whitelisted_assets_starting_with_native(qctx, Some(denom), limit)?
+            }
+            AssetInfo::Cw20(addr) => {
+                let addr = qctx.deps.api.addr_validate(addr.as_ref())?;
+                get_whitelisted_assets_starting_with_cw20(qctx, Some(addr), limit)?
+            }
+            AssetInfo::Cw1155(addr, id) => {
+                let addr = qctx.deps.api.addr_validate(addr.as_ref())?;
+                get_whitelisted_assets_starting_with_cw1155(qctx, Some((addr, id)), limit)?
+            }
+            _ => return Err(StdError::generic_err("unknown asset type").into()),
+        }
+    } else {
+        get_whitelisted_assets_starting_with_native(qctx, None, limit)?
+    };
 
     Ok(AssetWhitelistResponse { assets })
 }
 
-pub fn query_nft_whitelist(qctx: QueryContext) -> DaoResult<NftWhitelistResponse> {
+pub fn query_nft_whitelist(
+    qctx: QueryContext,
+    params: NftWhitelistParams,
+) -> DaoResult<NftWhitelistResponse> {
+    let start_after = params
+        .start_after
+        .map(|addr| qctx.deps.api.addr_validate(&addr))
+        .transpose()?
+        .map(Bound::exclusive);
+
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
+
     let nfts = NFT_WHITELIST
-        .range(qctx.deps.storage, None, None, Ascending)
+        .range(qctx.deps.storage, start_after, None, Ascending)
+        .take(limit as usize)
         .collect::<StdResult<Vec<(Addr, ())>>>()?
         .into_iter()
         .map(|(addr, _)| addr)
@@ -2126,6 +2363,36 @@ pub fn query_total_staked_amount(qctx: QueryContext) -> DaoResult<TotalStakedAmo
     })
 }
 
+// TODO: test
+pub fn query_staked_nfts(
+    qctx: QueryContext,
+    params: StakedNftsParams,
+) -> DaoResult<StakedNftsResponse> {
+    let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
+
+    if dao_type != Nft {
+        return Err(UnsupportedOperationForDaoType {
+            dao_type: dao_type.to_string(),
+        });
+    }
+
+    let start_after = params.start_after.map(Bound::exclusive);
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
+
+    let nfts = NFT_STAKES()
+        .range(qctx.deps.storage, start_after, None, Ascending)
+        .take(limit as usize)
+        .collect::<StdResult<Vec<(String, NftStake)>>>()?
+        .into_iter()
+        .map(|(token_id, _)| token_id)
+        .collect();
+
+    Ok(StakedNftsResponse { nfts })
+}
+
 pub fn query_claims(qctx: QueryContext, params: ClaimsParams) -> DaoResult<ClaimsResponse> {
     let sender = qctx.deps.api.addr_validate(&params.owner)?;
 
@@ -2155,66 +2422,6 @@ pub fn query_releasable_claims(
     })
 }
 
-pub fn query_cw20_treasury(qctx: QueryContext) -> DaoResult<AssetTreasuryResponse> {
-    let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
-    let global_asset_whitelist: AssetWhitelistResponse = qctx
-        .deps
-        .querier
-        .query_wasm_smart(enterprise_factory, &GlobalAssetWhitelist {})?;
-
-    let mut asset_whitelist = query_asset_whitelist(qctx.clone())?.assets;
-
-    for asset in global_asset_whitelist.assets {
-        // TODO: suboptimal, use maps or sth
-        if !asset_whitelist.contains(&asset) {
-            asset_whitelist.push(asset);
-        }
-    }
-
-    // add 'uluna' to the asset whitelist, if not already present
-    let uluna = AssetInfo::native("uluna");
-    if !asset_whitelist.contains(&uluna) {
-        asset_whitelist.push(uluna);
-    }
-
-    let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
-
-    // if DAO is of Token type, add its own token to the asset whitelist, if not already present
-    let dao_type = DAO_TYPE.load(qctx.deps.storage)?;
-    if dao_type == Token {
-        let dao_token = AssetInfo::cw20(dao_membership_contract.clone());
-        if !asset_whitelist.contains(&dao_token) {
-            asset_whitelist.push(dao_token);
-        }
-    }
-
-    let dao_address = qctx.env.contract.address.as_ref();
-
-    let assets = asset_whitelist
-        .into_iter()
-        .map(|asset| {
-            // subtract staked and deposited tokens, if the asset is DAO's membership token
-            let subtract_amount = if let AssetInfo::Cw20(token) = &asset {
-                if token == &dao_membership_contract {
-                    let staked = load_total_staked(qctx.deps.storage)?;
-                    let deposited = TOTAL_DEPOSITS.load(qctx.deps.storage)?;
-
-                    staked.add(deposited)
-                } else {
-                    Uint128::zero()
-                }
-            } else {
-                Uint128::zero()
-            };
-            asset
-                .query_balance(&qctx.deps.querier, dao_address)
-                .map(|balance| Asset::new(asset, balance.sub(subtract_amount)))
-        })
-        .collect::<StdResult<Vec<Asset>>>()?;
-
-    Ok(AssetTreasuryResponse { assets })
-}
-
 fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
     match claim.release_at {
         ReleaseAt::Timestamp(timestamp) => block_info.time >= timestamp,
@@ -2223,7 +2430,7 @@ fn is_releasable(claim: &Claim, block_info: &BlockInfo) -> bool {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
     let contract_version = get_contract_version(deps.storage)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
@@ -2247,6 +2454,10 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
             msg: to_binary(&enterprise_governance_api::msg::MigrateMsg {})?,
         }));
     }
+
+    // TODO: when upgrading the version, exclude versions higher than 0.4.0
+    migrate_asset_whitelist(deps.branch())?;
+    whitelist_dao_membership_asset(deps.branch())?;
 
     DAO_CODE_VERSION.save(deps.storage, &Uint64::from(CODE_VERSION))?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

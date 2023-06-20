@@ -1,10 +1,11 @@
 use crate::api::{
-    AssetTreasuryResponse, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
+    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
     CreateProposalMsg, DaoCouncilSpec, DaoGovConfig, DaoInfoResponse, DaoMembershipInfo,
     DaoMetadata, ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalParams,
-    ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
-    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
+    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, ReceiveNftMsg, StakedNftsParams, StakedNftsResponse,
     TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -40,6 +41,7 @@ pub enum ExecuteMsg {
     CastVote(CastVoteMsg),
     CastCouncilVote(CastVoteMsg),
     ExecuteProposal(ExecuteProposalMsg),
+    ExecuteProposalActions(ExecuteProposalMsg),
     Unstake(UnstakeMsg),
     Claim {},
     Receive(Cw20ReceiveMsg),
@@ -72,9 +74,9 @@ pub enum QueryMsg {
     #[returns(MultisigMembersResponse)]
     ListMultisigMembers(ListMultisigMembersMsg),
     #[returns(AssetWhitelistResponse)]
-    AssetWhitelist {},
+    AssetWhitelist(AssetWhitelistParams),
     #[returns(NftWhitelistResponse)]
-    NftWhitelist {},
+    NftWhitelist(NftWhitelistParams),
     #[returns(ProposalResponse)]
     Proposal(ProposalParams),
     #[returns(ProposalsResponse)]
@@ -89,10 +91,10 @@ pub enum QueryMsg {
     UserStake(UserStakeParams),
     #[returns(TotalStakedAmountResponse)]
     TotalStakedAmount {},
+    #[returns(StakedNftsResponse)]
+    StakedNfts(StakedNftsParams),
     #[returns(ClaimsResponse)]
     Claims(ClaimsParams),
     #[returns(ClaimsResponse)]
     ReleasableClaims(ClaimsParams),
-    #[returns(AssetTreasuryResponse)]
-    Cw20Treasury {},
 }

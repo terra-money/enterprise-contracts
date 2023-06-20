@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    wasm_execute, wasm_instantiate, Addr, Api, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdResult, Storage, Uint128, WasmMsg,
+    wasm_execute, Addr, Api, CanonicalAddr, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, Response, StdResult, Storage, Uint128,
 };
 use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Bound, PrimaryKey};
@@ -132,28 +132,6 @@ pub fn send_tokens(
             ("recipient", &recipient),
             ("amount", amount.to_string().as_str()),
         ]))
-}
-
-pub trait WasmMsgExt
-where
-    Self: Sized + Serialize,
-{
-    fn wasm_instantiate(
-        &self,
-        code_id: u64,
-        funds: Vec<Coin>,
-        label: String,
-    ) -> StdResult<WasmMsg> {
-        wasm_instantiate(code_id, self, funds, label)
-    }
-
-    fn wasm_execute(
-        &self,
-        contract_addr: impl Into<String>,
-        funds: Vec<Coin>,
-    ) -> StdResult<WasmMsg> {
-        wasm_execute(contract_addr, self, funds)
-    }
 }
 
 pub trait AddrExt {

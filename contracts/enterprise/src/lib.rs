@@ -1,6 +1,8 @@
 extern crate core;
 
+pub mod asset_whitelist;
 pub mod contract;
+pub mod migration;
 pub mod multisig;
 pub mod nft_staking;
 pub mod proposals;

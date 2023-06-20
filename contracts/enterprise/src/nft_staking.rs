@@ -11,7 +11,7 @@ pub struct NftStake {
 }
 
 pub struct NftStakesIndexes<'a> {
-    pub staker: MultiIndex<'a, Addr, NftStake, String>,
+    pub staker: MultiIndex<'a, Addr, NftStake, NftTokenId>,
 }
 
 impl IndexList<NftStake> for NftStakesIndexes<'_> {
@@ -22,7 +22,7 @@ impl IndexList<NftStake> for NftStakesIndexes<'_> {
 }
 
 #[allow(non_snake_case)]
-pub fn NFT_STAKES<'a>() -> IndexedMap<'a, String, NftStake, NftStakesIndexes<'a>> {
+pub fn NFT_STAKES<'a>() -> IndexedMap<'a, NftTokenId, NftStake, NftStakesIndexes<'a>> {
     let indexes = NftStakesIndexes {
         staker: MultiIndex::new(
             |_, nft_stake| nft_stake.staker.clone(),
