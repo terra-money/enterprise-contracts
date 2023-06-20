@@ -7,7 +7,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use enterprise_versioning_api::api::{
-    AddVersionMsg, AdminResponse, Version, VersionParams, VersionResponse, VersionsParams,
+    AddVersionMsg, AdminResponse, VersionInfo, VersionParams, VersionResponse, VersionsParams,
     VersionsResponse,
 };
 use enterprise_versioning_api::error::EnterpriseVersioningError::{
@@ -61,17 +61,18 @@ fn add_version(ctx: &mut Context, msg: AddVersionMsg) -> EnterpriseVersioningRes
         return Err(Unauthorized);
     }
 
-    if VERSIONS.has(ctx.deps.storage, msg.version.version) {
-        return Err(VersionAlreadyExists {
-            version: msg.version.version,
-        });
+    let version = msg.version.version.clone();
+    let version_key = version.clone().into();
+
+    if VERSIONS.has(ctx.deps.storage, version_key) {
+        return Err(VersionAlreadyExists { version });
     }
 
-    VERSIONS.save(ctx.deps.storage, msg.version.version, &msg.version)?;
+    VERSIONS.save(ctx.deps.storage, version_key, &msg.version)?;
 
     Ok(Response::new()
         .add_attribute("action", "add_version")
-        .add_attribute("version", msg.version.version.to_string()))
+        .add_attribute("version", version.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -102,7 +103,7 @@ pub fn query_version(
     qctx: &QueryContext,
     params: VersionParams,
 ) -> EnterpriseVersioningResult<VersionResponse> {
-    let version = VERSIONS.may_load(qctx.deps.storage, params.version)?;
+    let version = VERSIONS.may_load(qctx.deps.storage, params.version.clone().into())?;
 
     match version {
         None => Err(VersionNotFound {
@@ -126,7 +127,7 @@ pub fn query_versions(
         .range(qctx.deps.storage, start_after, None, Ascending)
         .take(limit as usize)
         .map(|res| res.map(|(_, version)| version))
-        .collect::<StdResult<Vec<Version>>>()?;
+        .collect::<StdResult<Vec<VersionInfo>>>()?;
 
     Ok(VersionsResponse { versions })
 }

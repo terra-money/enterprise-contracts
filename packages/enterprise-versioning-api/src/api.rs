@@ -1,9 +1,29 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
+use std::fmt;
 
 #[cw_serde]
 pub struct Version {
-    pub version: u64,
+    pub major: u64,
+    pub minor: u64,
+    pub patch: u64,
+}
+
+impl From<Version> for (u64, u64, u64) {
+    fn from(version: Version) -> Self {
+        (version.major, version.minor, version.patch)
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+#[cw_serde]
+pub struct VersionInfo {
+    pub version: Version,
     /// Changelog items from the previous version
     pub changelog: Vec<String>,
     pub enterprise_controller_code_id: u64,
@@ -16,17 +36,17 @@ pub struct Version {
 
 #[cw_serde]
 pub struct AddVersionMsg {
-    pub version: Version,
+    pub version: VersionInfo,
 }
 
 #[cw_serde]
 pub struct VersionParams {
-    pub version: u64,
+    pub version: Version,
 }
 
 #[cw_serde]
 pub struct VersionsParams {
-    pub start_after: Option<u64>,
+    pub start_after: Option<Version>,
     pub limit: Option<u32>,
 }
 
@@ -39,10 +59,10 @@ pub struct AdminResponse {
 
 #[cw_serde]
 pub struct VersionResponse {
-    pub version: Version,
+    pub version: VersionInfo,
 }
 
 #[cw_serde]
 pub struct VersionsResponse {
-    pub versions: Vec<Version>,
+    pub versions: Vec<VersionInfo>,
 }

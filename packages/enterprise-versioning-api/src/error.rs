@@ -1,3 +1,4 @@
+use crate::api::Version;
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
@@ -12,10 +13,10 @@ pub enum EnterpriseVersioningError {
     Unauthorized,
 
     #[error("Version {version} already exists")]
-    VersionAlreadyExists { version: u64 },
+    VersionAlreadyExists { version: Version },
 
     #[error("Version {version} not found")]
-    VersionNotFound { version: u64 },
+    VersionNotFound { version: Version },
 }
 
 impl EnterpriseVersioningError {
