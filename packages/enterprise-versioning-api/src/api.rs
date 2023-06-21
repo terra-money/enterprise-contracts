@@ -26,12 +26,14 @@ pub struct VersionInfo {
     pub version: Version,
     /// Changelog items from the previous version
     pub changelog: Vec<String>,
-    pub enterprise_controller_code_id: u64,
+    pub enterprise_code_id: u64,
+    pub enterprise_governance_code_id: u64,
+    pub enterprise_governance_controller_code_id: u64,
+    pub enterprise_treasury_code_id: u64,
+    pub funds_distributor_code_id: u64,
     pub token_staking_membership_code_id: u64,
     pub nft_staking_membership_code_id: u64,
-    pub multisig_staking_membership_code_id: u64,
-    pub funds_distributor_code_id: u64,
-    pub enterprise_governance_code_id: u64,
+    pub multisig_membership_code_id: u64,
 }
 
 #[cw_serde]

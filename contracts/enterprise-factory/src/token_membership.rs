@@ -117,15 +117,13 @@ pub fn instantiate_token_staking_membership_contract(
     cw20_address: Addr,
     unlocking_period: Duration,
 ) -> DaoResult<SubMsg> {
-    let token_membership_code_id = CONFIG.load(deps.storage)?.token_staking_membership_code_id;
-
-    let enterprise_address = DAO_BEING_CREATED
-        .load(deps.storage)?
-        .require_enterprise_address()?;
+    let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+    let enterprise_address = dao_being_created.require_enterprise_address()?;
+    let version_info = dao_being_created.require_version_info()?;
 
     let submsg = SubMsg::reply_on_success(
         wasm_instantiate(
-            token_membership_code_id,
+            version_info.token_staking_membership_code_id,
             &InstantiateMsg {
                 admin: enterprise_address.to_string(),
                 token_contract: cw20_address.to_string(),

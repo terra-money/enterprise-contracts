@@ -6,6 +6,7 @@ use enterprise_factory_api::api::{Config, CreateDaoMsg};
 use enterprise_protocol::api::DaoType;
 use enterprise_protocol::error::DaoError::Std;
 use enterprise_protocol::error::DaoResult;
+use enterprise_versioning_api::api::VersionInfo;
 use multisig_membership_api::api::UserWeight;
 
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -20,7 +21,10 @@ pub const DAO_BEING_CREATED: Item<DaoBeingCreated> = Item::new("dao_being_create
 
 #[cw_serde]
 pub struct DaoBeingCreated {
+    // TODO: make those two non-optional, move this to a separate file, and make this one optional
+    // TODO continued: introducing a 'require_dao_being_created' function
     pub create_dao_msg: Option<CreateDaoMsg>,
+    pub version_info: Option<VersionInfo>,
     pub enterprise_address: Option<Addr>,
     // TODO: make this explicitly initialized for every membership type?
     pub initial_weights: Option<Vec<UserWeight>>,
@@ -39,6 +43,12 @@ impl DaoBeingCreated {
     pub fn require_create_dao_msg(&self) -> DaoResult<CreateDaoMsg> {
         self.create_dao_msg.clone().ok_or(Std(StdError::generic_err(
             "invalid state - create DAO msg not present when expected",
+        )))
+    }
+
+    pub fn require_version_info(&self) -> DaoResult<VersionInfo> {
+        self.version_info.clone().ok_or(Std(StdError::generic_err(
+            "invalid state - version info not present when expected",
         )))
     }
 

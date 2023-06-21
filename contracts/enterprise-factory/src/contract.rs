@@ -1,3 +1,4 @@
+use crate::migration::migrate_config;
 use crate::multisig_membership::{import_cw3_membership, instantiate_new_multisig_membership};
 use crate::nft_membership::{
     import_cw721_membership, instantiate_new_cw721_membership,
@@ -19,9 +20,8 @@ use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_factory_api::api::{
-    AllDaosResponse, Config, ConfigResponse, CreateDaoMembershipMsg, CreateDaoMsg,
-    EnterpriseCodeIdsMsg, EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg,
-    IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
+    AllDaosResponse, ConfigResponse, CreateDaoMembershipMsg, CreateDaoMsg, EnterpriseCodeIdsMsg,
+    EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
 };
 use enterprise_factory_api::msg::ExecuteMsg::FinalizeDaoCreation;
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -29,6 +29,7 @@ use enterprise_protocol::api::FinalizeInstantiationMsg;
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
+use enterprise_versioning_api::api::{Version, VersionInfo};
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
 use CreateDaoMembershipMsg::{ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewMultisig};
@@ -62,8 +63,6 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &msg.config)?;
     DAO_ID_COUNTER.save(deps.storage, &1u64)?;
 
-    ENTERPRISE_CODE_IDS.save(deps.storage, msg.config.enterprise_code_id, &())?;
-
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -76,12 +75,31 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 }
 
 fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response> {
-    let config = CONFIG.load(deps.storage)?;
+    // TODO: fetch this properly
+    let latest_version = VersionInfo {
+        version: Version {
+            major: 0,
+            minor: 0,
+            patch: 0,
+        },
+        changelog: vec![],
+        enterprise_code_id: 0,
+        enterprise_governance_code_id: 0,
+        enterprise_governance_controller_code_id: 0,
+        enterprise_treasury_code_id: 0,
+        funds_distributor_code_id: 0,
+        token_staking_membership_code_id: 0,
+        nft_staking_membership_code_id: 0,
+        multisig_membership_code_id: 0,
+    };
+
+    let enterprise_code_id = latest_version.enterprise_code_id;
 
     DAO_BEING_CREATED.save(
         deps.storage,
         &DaoBeingCreated {
             create_dao_msg: Some(msg.clone()),
+            version_info: Some(latest_version),
             enterprise_address: None,
             initial_weights: None,
             dao_type: None,
@@ -101,7 +119,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
     let create_dao_submsg = SubMsg::reply_on_success(
         WasmMsg::Instantiate {
             admin: Some(env.contract.address.to_string()),
-            code_id: config.enterprise_code_id,
+            code_id: enterprise_code_id,
             msg: to_binary(&instantiate_enterprise_msg)?,
             funds: vec![],
             label: msg.dao_metadata.name,
@@ -125,6 +143,7 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
         deps.storage,
         &DaoBeingCreated {
             create_dao_msg: None,
+            version_info: None,
             enterprise_address: None,
             initial_weights: None,
             dao_type: None,
@@ -187,6 +206,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
             let create_dao_msg = dao_being_created.require_create_dao_msg()?;
+            let version_info = dao_being_created.require_version_info()?;
 
             DAO_BEING_CREATED.save(
                 deps.storage,
@@ -205,8 +225,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 NewMultisig(msg) => instantiate_new_multisig_membership(deps.branch(), msg)?,
             };
 
-            let config = CONFIG.load(deps.storage)?;
-
             let initial_weights = dao_being_created
                 .initial_weights
                 .unwrap_or_default()
@@ -219,7 +237,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let funds_distributor_submsg = SubMsg::reply_on_success(
                 wasm_instantiate(
-                    config.funds_distributor_code_id,
+                    version_info.funds_distributor_code_id,
                     &funds_distributor_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
                         initial_weights,
@@ -233,7 +251,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let enterprise_governance_submsg = SubMsg::reply_on_success(
                 wasm_instantiate(
-                    config.enterprise_governance_code_id,
+                    version_info.enterprise_governance_code_id,
                     &enterprise_governance_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
                     }, // TODO: supply enterprise-governance-controller instead?
@@ -245,7 +263,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let enterprise_governance_controller_submsg = SubMsg::reply_on_success(
                 wasm_instantiate(
-                    config.enterprise_governance_controller_code_id,
+                    version_info.enterprise_governance_controller_code_id,
                     &enterprise_governance_controller_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
                         gov_config: create_dao_msg.gov_config,
@@ -258,7 +276,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let enterprise_treasury_submsg = SubMsg::reply_on_success(
                 wasm_instantiate(
-                    config.enterprise_treasury_code_id,
+                    version_info.enterprise_treasury_code_id,
                     &enterprise_treasury_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
                         asset_whitelist: create_dao_msg.asset_whitelist,
@@ -470,20 +488,8 @@ pub fn query_is_enterprise_code_id(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    let config = CONFIG.load(deps.storage)?;
-
-    CONFIG.save(
-        deps.storage,
-        &Config {
-            enterprise_code_id: msg.new_enterprise_code_id,
-            enterprise_governance_code_id: msg.new_enterprise_governance_code_id,
-            funds_distributor_code_id: msg.new_funds_distributor_code_id,
-            ..config
-        },
-    )?;
-
-    ENTERPRISE_CODE_IDS.save(deps.storage, msg.new_enterprise_code_id, &())?;
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
+    migrate_config(deps.branch(), msg.enterprise_versioning_addr)?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

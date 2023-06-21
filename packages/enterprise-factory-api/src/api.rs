@@ -9,17 +9,9 @@ use multisig_membership_api::api::UserWeight;
 
 #[cw_serde]
 pub struct Config {
-    pub enterprise_code_id: u64,
-    pub enterprise_governance_code_id: u64,
-    pub enterprise_governance_controller_code_id: u64, // TODO: migrate to this
-    pub enterprise_treasury_code_id: u64,              // TODO: migrate to this
-    pub funds_distributor_code_id: u64,
-    pub cw3_fixed_multisig_code_id: u64,
+    pub enterprise_versioning: Addr,
     pub cw20_code_id: u64,
     pub cw721_code_id: u64,
-    pub token_staking_membership_code_id: u64, // TODO: migrate to this
-    pub nft_staking_membership_code_id: u64,   // TODO: migrate to this
-    pub multisig_membership_code_id: u64,      // TODO: migrate to this
 }
 
 #[cw_serde]

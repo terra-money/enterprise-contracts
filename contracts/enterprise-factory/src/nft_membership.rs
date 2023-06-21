@@ -68,15 +68,14 @@ pub fn instantiate_nft_staking_membership_contract(
     cw721_address: Addr,
     unlocking_period: Duration,
 ) -> DaoResult<SubMsg> {
-    let nft_membership_code_id = CONFIG.load(deps.storage)?.nft_staking_membership_code_id;
+    let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
-    let enterprise_address = DAO_BEING_CREATED
-        .load(deps.storage)?
-        .require_enterprise_address()?;
+    let enterprise_address = dao_being_created.require_enterprise_address()?;
+    let version_info = dao_being_created.require_version_info()?;
 
     let submsg = SubMsg::reply_on_success(
         wasm_instantiate(
-            nft_membership_code_id,
+            version_info.nft_staking_membership_code_id,
             &InstantiateMsg {
                 admin: enterprise_address.to_string(),
                 nft_contract: cw721_address.to_string(),
