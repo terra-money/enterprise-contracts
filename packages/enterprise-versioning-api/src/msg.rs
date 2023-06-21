@@ -22,6 +22,8 @@ pub enum QueryMsg {
     Version(VersionParams),
     #[returns(VersionsResponse)]
     Versions(VersionsParams),
+    #[returns(VersionResponse)]
+    LatestVersion {},
 }
 
 #[cw_serde]

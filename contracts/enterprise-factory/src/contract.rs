@@ -29,7 +29,8 @@ use enterprise_protocol::api::FinalizeInstantiationMsg;
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
-use enterprise_versioning_api::api::{Version, VersionInfo};
+use enterprise_versioning_api::api::VersionResponse;
+use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
 use CreateDaoMembershipMsg::{ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewMultisig};
@@ -75,23 +76,13 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 }
 
 fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response> {
-    // TODO: fetch this properly
-    let latest_version = VersionInfo {
-        version: Version {
-            major: 0,
-            minor: 0,
-            patch: 0,
-        },
-        changelog: vec![],
-        enterprise_code_id: 0,
-        enterprise_governance_code_id: 0,
-        enterprise_governance_controller_code_id: 0,
-        enterprise_treasury_code_id: 0,
-        funds_distributor_code_id: 0,
-        token_staking_membership_code_id: 0,
-        nft_staking_membership_code_id: 0,
-        multisig_membership_code_id: 0,
-    };
+    let config = CONFIG.load(deps.storage)?;
+
+    let latest_version_response: VersionResponse = deps
+        .querier
+        .query_wasm_smart(config.enterprise_versioning.to_string(), &LatestVersion {})?;
+
+    let latest_version = latest_version_response.version;
 
     let enterprise_code_id = latest_version.enterprise_code_id;
 

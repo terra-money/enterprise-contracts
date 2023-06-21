@@ -1,6 +1,6 @@
 use crate::state::{ADMIN, VERSIONS};
 use common::cw::{Context, QueryContext};
-use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
 };
@@ -11,7 +11,7 @@ use enterprise_versioning_api::api::{
     VersionsResponse,
 };
 use enterprise_versioning_api::error::EnterpriseVersioningError::{
-    Unauthorized, VersionAlreadyExists, VersionNotFound,
+    NoVersionsExist, Unauthorized, VersionAlreadyExists, VersionNotFound,
 };
 use enterprise_versioning_api::error::EnterpriseVersioningResult;
 use enterprise_versioning_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -88,6 +88,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseVersioningResult<
         QueryMsg::Admin {} => to_binary(&query_admin(&qctx)?)?,
         QueryMsg::Version(params) => to_binary(&query_version(&qctx, params)?)?,
         QueryMsg::Versions(params) => to_binary(&query_versions(&qctx, params)?)?,
+        QueryMsg::LatestVersion {} => to_binary(&query_latest_version(&qctx)?)?,
     };
 
     Ok(response)
@@ -130,6 +131,25 @@ pub fn query_versions(
         .collect::<StdResult<Vec<VersionInfo>>>()?;
 
     Ok(VersionsResponse { versions })
+}
+
+pub fn query_latest_version(qctx: &QueryContext) -> EnterpriseVersioningResult<VersionResponse> {
+    if VERSIONS.is_empty(qctx.deps.storage) {
+        Err(NoVersionsExist)
+    } else {
+        // TODO: test this, God knows if this sorting will actually work
+        let latest_version = VERSIONS
+            .range(qctx.deps.storage, None, None, Descending)
+            .take(1)
+            .map(|res| res.map(|(_, version)| version))
+            .collect::<StdResult<Vec<VersionInfo>>>()?
+            .first()
+            .cloned()
+            .ok_or(NoVersionsExist)?;
+        Ok(VersionResponse {
+            version: latest_version,
+        })
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

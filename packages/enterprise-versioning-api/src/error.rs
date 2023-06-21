@@ -17,6 +17,9 @@ pub enum EnterpriseVersioningError {
 
     #[error("Version {version} not found")]
     VersionNotFound { version: Version },
+
+    #[error("No Enterprise versions exist yet")]
+    NoVersionsExist,
 }
 
 impl EnterpriseVersioningError {
