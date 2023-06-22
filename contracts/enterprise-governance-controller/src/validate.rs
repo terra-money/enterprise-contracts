@@ -11,7 +11,7 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 use enterprise_governance_controller_api::api::{
     DaoCouncil, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, GovConfig,
     ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
-    UpdateGovConfigMsg, UpgradeDaoMsg,
+    UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
@@ -20,8 +20,8 @@ use enterprise_governance_controller_api::error::GovernanceControllerError::{
 use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
 };
-use enterprise_protocol::api::DaoType;
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
+use enterprise_protocol::api::{DaoType, UpgradeDaoMsg};
 use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{
     MinimumDepositNotAllowed, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,

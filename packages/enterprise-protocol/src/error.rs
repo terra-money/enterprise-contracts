@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use enterprise_versioning_api::api::Version;
 use thiserror::Error;
 
 pub type DaoResult<T> = Result<T, DaoError>;
@@ -28,6 +29,9 @@ pub enum DaoError {
 
     #[error("Zero initial DAO balance is not allowed upon DAO creation")]
     ZeroInitialDaoBalance,
+
+    #[error("Attempting to migrate from {current} to a lower version ({target})")]
+    MigratingToLowerVersion { current: Version, target: Version },
 
     #[error("Supplied migrate msg is not a map of (version, migrate msg for version)")]
     InvalidMigrateMsgMap,

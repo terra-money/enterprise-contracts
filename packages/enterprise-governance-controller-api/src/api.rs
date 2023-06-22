@@ -1,8 +1,8 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::Asset;
 use cw_utils::{Duration, Expiration};
-use enterprise_protocol::api::UpdateMetadataMsg;
+use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
 use enterprise_treasury_api::api::{UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
 use multisig_membership_api::api::UserWeight;
 use poll_engine_api::api::{Vote, VoteOutcome};
@@ -145,12 +145,6 @@ pub struct UpdateCouncilMsg {
 pub struct RequestFundingFromDaoMsg {
     pub recipient: String,
     pub assets: Vec<Asset>,
-}
-
-#[cw_serde]
-pub struct UpgradeDaoMsg {
-    pub new_dao_code_id: u64,
-    pub migrate_msg: Binary,
 }
 
 #[cw_serde]

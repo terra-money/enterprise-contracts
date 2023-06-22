@@ -31,7 +31,7 @@ use enterprise_governance_controller_api::api::{
     ProposalId, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
     ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
     ProposalVotesResponse, ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg,
-    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpgradeDaoMsg,
+    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil, NoSuchProposal,
@@ -43,7 +43,7 @@ use enterprise_governance_controller_api::msg::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, DaoType, UpdateMetadataMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoType, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
 use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
@@ -566,7 +566,7 @@ fn execute_proposal_actions_submsgs(
             RequestFundingFromDao(msg) => execute_funding_from_dao(ctx.deps.branch(), msg)?,
             UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx.deps.branch(), msg)?,
             UpdateNftWhitelist(msg) => update_nft_whitelist(ctx.deps.branch(), msg)?,
-            UpgradeDao(msg) => upgrade_dao(ctx.env.clone(), msg)?,
+            UpgradeDao(msg) => upgrade_dao(ctx, msg)?,
             ExecuteMsgs(msg) => execute_msgs(msg)?,
             ModifyMultisigMembership(msg) => {
                 modify_multisig_membership(ctx.deps.branch(), ctx.env.clone(), msg)?
@@ -667,9 +667,18 @@ fn update_nft_whitelist(
     Ok(vec![submsg])
 }
 
-fn upgrade_dao(_env: Env, _msg: UpgradeDaoMsg) -> GovernanceControllerResult<Vec<SubMsg>> {
-    // TODO: send out msg
-    Ok(vec![])
+fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> GovernanceControllerResult<Vec<SubMsg>> {
+    // TODO: validate upgrade DAO msg again?
+
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    let submsg = SubMsg::new(wasm_execute(
+        enterprise_contract.to_string(),
+        &enterprise_protocol::msg::ExecuteMsg::UpgradeDao(msg),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
 }
 
 fn execute_msgs(msg: ExecuteMsgsMsg) -> GovernanceControllerResult<Vec<SubMsg>> {
