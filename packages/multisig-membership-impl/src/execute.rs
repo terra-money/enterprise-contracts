@@ -3,8 +3,8 @@ use crate::member_weights::MEMBER_WEIGHTS;
 use crate::total_weight::{load_total_weight, save_total_weight};
 use crate::validate::{admin_caller_only, dedup_user_weights};
 use common::cw::Context;
-use cosmwasm_std::Response;
-use multisig_membership_api::api::{UpdateConfigMsg, UpdateMembersMsg};
+use cosmwasm_std::{Response, Uint128};
+use multisig_membership_api::api::{SetMembersMsg, UpdateConfigMsg, UpdateMembersMsg};
 use multisig_membership_api::error::MultisigMembershipResult;
 
 /// Update members' weights. Only the current admin can execute this.
@@ -32,6 +32,28 @@ pub fn update_members(
     save_total_weight(ctx.deps.storage, &total_weight, &ctx.env.block)?;
 
     Ok(Response::new().add_attribute("action", "update_members"))
+}
+
+/// Clear existing members and replace with the given members' weights. Only the current admin can execute this.
+pub fn set_members(ctx: &mut Context, msg: SetMembersMsg) -> MultisigMembershipResult<Response> {
+    // only admin can execute this
+    admin_caller_only(ctx)?;
+
+    MEMBER_WEIGHTS.clear(ctx.deps.storage);
+
+    let deduped_edit_members = dedup_user_weights(ctx, msg.new_members)?;
+
+    let mut total_weight = Uint128::zero();
+
+    for (member, weight) in deduped_edit_members {
+        total_weight += weight;
+
+        MEMBER_WEIGHTS.save(ctx.deps.storage, member, &weight)?;
+    }
+
+    save_total_weight(ctx.deps.storage, &total_weight, &ctx.env.block)?;
+
+    Ok(Response::new().add_attribute("action", "set_members"))
 }
 
 /// Update the config. Only the current admin can execute this.

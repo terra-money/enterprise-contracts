@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use multisig_membership_impl::execute::{update_config, update_members};
+use multisig_membership_impl::execute::{set_members, update_config, update_members};
 use multisig_membership_impl::query::{
     query_config, query_members, query_total_weight, query_user_weight,
 };
@@ -41,6 +41,7 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::UpdateMembers(msg) => update_members(ctx, msg),
+        ExecuteMsg::SetMembers(msg) => set_members(ctx, msg),
         ExecuteMsg::UpdateConfig(msg) => update_config(ctx, msg),
     }
 }

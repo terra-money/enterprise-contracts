@@ -17,6 +17,12 @@ pub struct UpdateMembersMsg {
 }
 
 #[cw_serde]
+pub struct SetMembersMsg {
+    /// All existing members will be removed, and replaced with the given members and their weights.
+    pub new_members: Vec<UserWeight>,
+}
+
+#[cw_serde]
 pub struct UpdateConfigMsg {
     pub new_admin: Option<String>,
 }

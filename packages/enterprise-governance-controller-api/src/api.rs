@@ -43,9 +43,8 @@ pub struct GovConfig {
     pub allow_early_proposal_execution: bool,
 }
 
-// TODO: remove later, not needed
 #[cw_serde]
-pub struct DaoCouncil {
+pub struct DaoCouncilGovConfig {
     pub members: Vec<Addr>,
     pub allowed_proposal_action_types: Vec<ProposalActionType>,
     pub quorum: Decimal,

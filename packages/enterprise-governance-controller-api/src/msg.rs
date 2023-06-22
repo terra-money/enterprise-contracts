@@ -10,6 +10,7 @@ use cw20::Cw20ReceiveMsg;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub enterprise_contract: String,
+    pub dao_council_membership_contract: String,
     pub gov_config: GovConfig,
 }
 
