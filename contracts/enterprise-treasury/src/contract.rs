@@ -3,7 +3,7 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
-use crate::state::{Config, CONFIG, NFT_WHITELIST};
+use crate::state::{Config, CONFIG, ENTERPRISE_CONTRACT, NFT_WHITELIST};
 use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::Order::Ascending;
@@ -14,6 +14,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_asset::{AssetInfo, AssetInfoBase};
 use cw_storage_plus::Bound;
+use enterprise_protocol::api::ComponentContractsResponse;
+use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use enterprise_treasury_api::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
     ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SpendMsg,
@@ -48,6 +50,9 @@ pub fn instantiate(
             admin: admin.clone(),
         },
     )?;
+
+    let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
+    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
     add_whitelisted_assets(deps.branch(), msg.asset_whitelist.unwrap_or_default())?;
 
@@ -156,8 +161,12 @@ fn distribute_funds(
 ) -> EnterpriseTreasuryResult<Response> {
     admin_only(ctx)?;
 
-    // TODO: query this address from Enterprise
-    let funds_distributor = Addr::unchecked("funds_distributor");
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let component_contracts: ComponentContractsResponse = ctx
+        .deps
+        .querier
+        .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
+    let funds_distributor = component_contracts.funds_distributor_contract;
 
     let mut native_funds: Vec<Coin> = vec![];
     let mut submsgs: Vec<SubMsg> = vec![];

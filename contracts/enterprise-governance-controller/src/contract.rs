@@ -729,8 +729,6 @@ fn update_council(
 
     COUNCIL_GOV_CONFIG.save(ctx.deps.storage, &dao_council)?;
 
-    // TODO: update votes, or let multisig membership handle this callback?
-
     let submsg = SubMsg::new(wasm_execute(
         dao_council_membership_contract.to_string(),
         &SetMembers(SetMembersMsg { new_members }),

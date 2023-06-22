@@ -137,7 +137,6 @@ pub fn query_latest_version(qctx: &QueryContext) -> EnterpriseVersioningResult<V
     if VERSIONS.is_empty(qctx.deps.storage) {
         Err(NoVersionsExist)
     } else {
-        // TODO: test this, God knows if this sorting will actually work
         let latest_version = VERSIONS
             .range(qctx.deps.storage, None, None, Descending)
             .take(1)

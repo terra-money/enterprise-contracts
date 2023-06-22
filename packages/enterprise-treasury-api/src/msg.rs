@@ -9,6 +9,7 @@ use cw_asset::AssetInfo;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: String,
+    pub enterprise_contract: String,
     pub asset_whitelist: Option<Vec<AssetInfo>>,
     pub nft_whitelist: Option<Vec<String>>,
 }

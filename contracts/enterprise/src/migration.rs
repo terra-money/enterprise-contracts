@@ -197,6 +197,7 @@ pub fn create_treasury_contract(
             code_id: treasury_code_id,
             msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
                 admin: env.contract.address.to_string(),
+                enterprise_contract: env.contract.address.to_string(),
                 asset_whitelist: Some(asset_whitelist),
                 nft_whitelist: Some(nft_whitelist),
             })?,
