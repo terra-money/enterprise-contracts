@@ -19,7 +19,7 @@ use enterprise_protocol::api::{
     UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
-    AlreadyInitialized, InvalidMigrateMsgMap, Unauthorized,
+    AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion, Unauthorized,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -186,6 +186,15 @@ fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Respo
 }
 
 fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
+    let current_version = DAO_VERSION.load(ctx.deps.storage)?;
+
+    if current_version >= msg.new_version {
+        return Err(MigratingToLowerVersion {
+            current: current_version,
+            target: msg.new_version,
+        });
+    }
+
     let component_contracts = COMPONENT_CONTRACTS.load(ctx.deps.storage)?;
 
     if component_contracts.enterprise_governance_controller_contract != ctx.info.sender {
@@ -196,7 +205,8 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
         .map_err(|e| DaoError::Std(StdError::generic_err(e.to_string())))?;
 
     if let Object(migrate_msgs_map) = migrate_msg_json {
-        let versions = get_versions_between_current_and_target(ctx, msg.new_version.clone())?;
+        let versions =
+            get_versions_between_current_and_target(ctx, current_version, msg.new_version.clone())?;
 
         let mut submsgs = vec![];
 
@@ -225,10 +235,9 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
 
 fn get_versions_between_current_and_target(
     ctx: &Context,
+    current_version: Version,
     target_version: Version,
 ) -> DaoResult<Vec<VersionInfo>> {
-    let current_version = DAO_VERSION.load(ctx.deps.storage)?;
-
     let enterprise_versioning = ENTERPRISE_VERSIONING_CONTRACT.load(ctx.deps.storage)?;
 
     let mut versions: Vec<VersionInfo> = vec![];
