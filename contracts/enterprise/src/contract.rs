@@ -1,5 +1,5 @@
 use crate::migration::{
-    dao_council_membership_contract_created, finalize_migration,
+    council_membership_contract_created, finalize_migration,
     governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
     treasury_contract_created,
 };
@@ -35,7 +35,7 @@ use std::str::FromStr;
 
 pub const ENTERPRISE_TREASURY_REPLY_ID: u64 = 1;
 pub const ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID: u64 = 2;
-pub const DAO_COUNCIL_MEMBERSHIP_REPLY_ID: u64 = 3;
+pub const COUNCIL_MEMBERSHIP_REPLY_ID: u64 = 3;
 pub const MEMBERSHIP_REPLY_ID: u64 = 4;
 
 // version info for migration info
@@ -296,10 +296,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             governance_controller_contract_created(deps, addr)
         }
-        DAO_COUNCIL_MEMBERSHIP_REPLY_ID => {
+        COUNCIL_MEMBERSHIP_REPLY_ID => {
             let addr = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
 
-            dao_council_membership_contract_created(deps, env, addr)
+            council_membership_contract_created(deps, env, addr)
         }
         MEMBERSHIP_REPLY_ID => {
             let addr = parse_instantiated_contract_addr(deps.as_ref(), msg)?;

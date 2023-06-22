@@ -3,7 +3,7 @@ use crate::proposals::{
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
 use crate::state::{
-    State, DAO_COUNCIL, DAO_COUNCIL_MEMBERSHIP_CONTRACT, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
+    State, COUNCIL_GOV_CONFIG, COUNCIL_MEMBERSHIP_CONTRACT, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
 };
 use crate::validate::{
     apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
@@ -104,12 +104,14 @@ pub fn instantiate(
     // TODO: validate gov config? do we need to anymore?
     GOV_CONFIG.save(deps.storage, &msg.gov_config)?;
 
+    COUNCIL_GOV_CONFIG.save(deps.storage, &msg.council_gov_config)?;
+
     ENTERPRISE_CONTRACT.save(
         deps.storage,
         &deps.api.addr_validate(&msg.enterprise_contract)?,
     )?;
 
-    DAO_COUNCIL_MEMBERSHIP_CONTRACT.save(
+    COUNCIL_MEMBERSHIP_CONTRACT.save(
         deps.storage,
         &deps
             .api
@@ -178,7 +180,7 @@ fn create_council_proposal(
     ctx: &mut Context,
     msg: CreateProposalMsg,
 ) -> GovernanceControllerResult<Response> {
-    let dao_council = DAO_COUNCIL.load(ctx.deps.storage)?;
+    let dao_council = COUNCIL_GOV_CONFIG.load(ctx.deps.storage)?;
 
     match dao_council {
         None => Err(NoDaoCouncil),
@@ -343,7 +345,7 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
 }
 
 fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
-    let dao_council = DAO_COUNCIL.load(ctx.deps.storage)?;
+    let dao_council = COUNCIL_GOV_CONFIG.load(ctx.deps.storage)?;
 
     match dao_council {
         None => Err(NoDaoCouncil),
@@ -668,7 +670,7 @@ fn update_council(
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
     let dao_council = validate_dao_council(ctx.deps.as_ref(), msg.dao_council.clone())?;
 
-    let dao_council_membership_contract = DAO_COUNCIL_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+    let dao_council_membership_contract = COUNCIL_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
 
     let new_members = msg
         .dao_council
@@ -681,7 +683,7 @@ fn update_council(
         })
         .collect();
 
-    DAO_COUNCIL.save(ctx.deps.storage, &dao_council)?;
+    COUNCIL_GOV_CONFIG.save(ctx.deps.storage, &dao_council)?;
 
     // TODO: update votes, or let multisig membership handle this callback?
 
@@ -987,7 +989,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> GovernanceControllerResult<
 
 pub fn query_gov_config(qctx: QueryContext) -> GovernanceControllerResult<GovConfigResponse> {
     let gov_config = GOV_CONFIG.load(qctx.deps.storage)?;
-    let dao_council_membership = DAO_COUNCIL_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
+    let dao_council_membership = COUNCIL_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
 
     let membership_contract = query_membership_addr(qctx.deps)?;
 
@@ -1299,7 +1301,7 @@ fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
 }
 
 fn query_council_member_weight(deps: Deps, member: String) -> GovernanceControllerResult<Uint128> {
-    let dao_council_membership = DAO_COUNCIL_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+    let dao_council_membership = COUNCIL_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
     let member_weight: UserWeightResponse = deps.querier.query_wasm_smart(
         dao_council_membership.to_string(),
@@ -1313,7 +1315,7 @@ fn query_council_total_weight(
     deps: Deps,
     expiration: Expiration,
 ) -> GovernanceControllerResult<Uint128> {
-    let dao_council_membership = DAO_COUNCIL_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+    let dao_council_membership = COUNCIL_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
     let member_weight: UserWeightResponse = deps.querier.query_wasm_smart(
         dao_council_membership.to_string(),

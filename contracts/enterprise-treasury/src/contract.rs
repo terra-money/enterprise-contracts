@@ -42,7 +42,12 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let admin = deps.api.addr_validate(&msg.admin)?;
-    CONFIG.save(deps.storage, &Config { admin })?;
+    CONFIG.save(
+        deps.storage,
+        &Config {
+            admin: admin.clone(),
+        },
+    )?;
 
     add_whitelisted_assets(deps.branch(), msg.asset_whitelist.unwrap_or_default())?;
 
@@ -53,7 +58,7 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("enterprise_contract", enterprise_contract.to_string()))
+        .add_attribute("admin", admin.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -78,7 +83,7 @@ pub fn execute(
 fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> EnterpriseTreasuryResult<Response> {
     admin_only(ctx)?;
 
-    let new_admin = ctx.deps.api.addr_validate(&msg.admin)?;
+    let new_admin = ctx.deps.api.addr_validate(&msg.new_admin)?;
 
     CONFIG.save(
         ctx.deps.storage,

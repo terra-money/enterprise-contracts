@@ -9,7 +9,7 @@ use enterprise_governance_controller_api::api::ProposalAction::{
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::{
-    DaoCouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, GovConfig,
+    CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, GovConfig,
     ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
     UpdateGovConfigMsg,
 };
@@ -379,11 +379,11 @@ pub fn validate_modify_multisig_membership(
 pub fn validate_dao_council(
     deps: Deps,
     dao_council: Option<DaoCouncilSpec>,
-) -> GovernanceControllerResult<Option<DaoCouncilGovConfig>> {
+) -> GovernanceControllerResult<Option<CouncilGovConfig>> {
     match dao_council {
         None => Ok(None),
         Some(dao_council) => {
-            let members = validate_no_duplicate_council_members(deps, dao_council.members)?;
+            validate_no_duplicate_council_members(deps, dao_council.members)?;
             validate_allowed_council_proposal_types(
                 dao_council.allowed_proposal_action_types.clone(),
             )?;
@@ -391,8 +391,7 @@ pub fn validate_dao_council(
             validate_quorum_value(dao_council.quorum)?;
             validate_threshold_value(dao_council.threshold)?;
 
-            Ok(Some(DaoCouncilGovConfig {
-                members,
+            Ok(Some(CouncilGovConfig {
                 allowed_proposal_action_types: dao_council
                     .allowed_proposal_action_types
                     .unwrap_or_else(|| vec![ProposalActionType::UpgradeDao]),

@@ -1,8 +1,8 @@
 use crate::api::{
-    CastVoteMsg, CreateProposalMsg, ExecuteProposalMsg, GovConfig, GovConfigResponse,
-    MemberVoteParams, MemberVoteResponse, ProposalParams, ProposalResponse, ProposalStatusParams,
-    ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
-    ProposalsResponse,
+    CastVoteMsg, CouncilGovConfig, CreateProposalMsg, ExecuteProposalMsg, GovConfig,
+    GovConfigResponse, MemberVoteParams, MemberVoteResponse, ProposalParams, ProposalResponse,
+    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
     pub enterprise_contract: String,
     pub dao_council_membership_contract: String,
     pub gov_config: GovConfig,
+    pub council_gov_config: Option<CouncilGovConfig>,
 }
 
 #[cw_serde]

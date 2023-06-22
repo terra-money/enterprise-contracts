@@ -44,8 +44,7 @@ pub struct GovConfig {
 }
 
 #[cw_serde]
-pub struct DaoCouncilGovConfig {
-    pub members: Vec<Addr>,
+pub struct CouncilGovConfig {
     pub allowed_proposal_action_types: Vec<ProposalActionType>,
     pub quorum: Decimal,
     pub threshold: Decimal,

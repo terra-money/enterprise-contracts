@@ -1,5 +1,5 @@
 use crate::contract::{
-    DAO_COUNCIL_MEMBERSHIP_REPLY_ID, ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID,
+    COUNCIL_MEMBERSHIP_REPLY_ID, ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID,
     ENTERPRISE_TREASURY_REPLY_ID,
 };
 use crate::state::{
@@ -10,14 +10,14 @@ use common::cw::Context;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    wasm_execute, wasm_instantiate, Addr, Decimal, DepsMut, Env, Order, Response, StdError,
-    StdResult, SubMsg, Uint128, Uint64,
+    wasm_execute, wasm_instantiate, Addr, Decimal, DepsMut, Env, Response, StdError, StdResult,
+    SubMsg, Uint128, Uint64,
 };
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
-use enterprise_governance_controller_api::api::{GovConfig, ProposalActionType};
+use enterprise_governance_controller_api::api::{CouncilGovConfig, GovConfig, ProposalActionType};
 use enterprise_protocol::api::DaoType;
 use enterprise_protocol::error::DaoError::{Std, Unauthorized};
 use enterprise_protocol::error::DaoResult;
@@ -49,6 +49,7 @@ struct MigrationInfo {
     pub enterprise_governance_controller_contract: Option<Addr>,
     pub enterprise_treasury_contract: Option<Addr>,
     pub membership_contract: Option<Addr>,
+    pub council_membership_contract: Option<Addr>,
 }
 const MIGRATION_INFO: Item<MigrationInfo> = Item::new("migration_info");
 
@@ -113,6 +114,7 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>>
             enterprise_governance_controller_contract: None,
             enterprise_treasury_contract: None,
             membership_contract: None,
+            council_membership_contract: None,
         },
     )?;
 
@@ -136,8 +138,6 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>>
         version_info.version.multisig_membership_code_id,
     )?;
 
-    // TODO: also save ComponentContracts inside FinalizeMigration msg
-
     Ok(vec![
         dao_council_membership_submsg,
         treasury_submsg,
@@ -151,21 +151,21 @@ pub fn create_treasury_contract(
     treasury_code_id: u64,
 ) -> DaoResult<SubMsg> {
     let mut asset_whitelist = NATIVE_ASSET_WHITELIST
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(String, ())>>>()?
         .into_iter()
         .map(|(denom, _)| AssetInfo::native(denom))
         .collect::<Vec<AssetInfo>>();
 
     let mut cw20_asset_whitelist = CW20_ASSET_WHITELIST
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(Addr, ())>>>()?
         .into_iter()
         .map(|(addr, _)| AssetInfo::cw20(addr))
         .collect::<Vec<AssetInfo>>();
 
     let mut cw1155_asset_whitelist = CW1155_ASSET_WHITELIST
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<((Addr, String), ())>>>()?
         .into_iter()
         .map(|((addr, token_id), _)| AssetInfo::cw1155(addr, token_id))
@@ -233,26 +233,34 @@ pub fn create_dao_council_membership_contract(
         wasm_instantiate(
             multisig_membership_code_id,
             &multisig_membership_api::msg::InstantiateMsg {
-                // TODO: don't forget to update the admin to governance-controller
                 admin: env.contract.address.to_string(),
                 initial_weights: Some(council_members),
             },
             vec![],
             "Dao council membership".to_string(),
         )?,
-        DAO_COUNCIL_MEMBERSHIP_REPLY_ID,
+        COUNCIL_MEMBERSHIP_REPLY_ID,
     );
 
     Ok(instantiate_dao_council_membership)
 }
 
-pub fn dao_council_membership_contract_created(
+pub fn council_membership_contract_created(
     deps: DepsMut,
     env: Env,
-    dao_council_membership_contract: Addr,
+    council_membership_contract: Addr,
 ) -> DaoResult<Response> {
+    let migration_info = MIGRATION_INFO.load(deps.storage)?;
+    MIGRATION_INFO.save(
+        deps.storage,
+        &MigrationInfo {
+            council_membership_contract: Some(council_membership_contract.clone()),
+            ..migration_info
+        },
+    )?;
+
     let create_governance_controller_submsg =
-        create_governance_controller_contract(deps, env, dao_council_membership_contract)?;
+        create_governance_controller_contract(deps, env, council_membership_contract)?;
 
     Ok(Response::new().add_submessage(create_governance_controller_submsg))
 }
@@ -264,6 +272,7 @@ pub fn create_governance_controller_contract(
 ) -> DaoResult<SubMsg> {
     let version_info = MIGRATION_INFO.load(deps.storage)?.version_info;
     let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
+    let dao_council = DAO_COUNCIL.load(deps.storage)?;
     let submsg = SubMsg::reply_on_success(
         wasm_instantiate(
             version_info.enterprise_governance_controller_code_id,
@@ -279,6 +288,11 @@ pub fn create_governance_controller_contract(
                     minimum_deposit: gov_config.minimum_deposit,
                     allow_early_proposal_execution: gov_config.allow_early_proposal_execution,
                 },
+                council_gov_config: dao_council.map(|council| CouncilGovConfig {
+                    allowed_proposal_action_types: council.allowed_proposal_action_types,
+                    quorum: council.quorum,
+                    threshold: council.threshold,
+                }),
             },
             vec![],
             "Enterprise governance controller".to_string(),
@@ -406,6 +420,12 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
     let membership_contract = migration_info
         .membership_contract
         .ok_or(Std(StdError::generic_err("missing membership address")))?;
+    let council_membership_contract =
+        migration_info
+            .council_membership_contract
+            .ok_or(Std(StdError::generic_err(
+                "missing council membership address",
+            )))?;
 
     let enterprise_governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(ctx.deps.storage)?;
     let funds_distributor_contract = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
@@ -413,8 +433,17 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
     let update_treasury_admin_submsg = SubMsg::new(wasm_execute(
         treasury_contract.to_string(),
         &enterprise_treasury_api::msg::ExecuteMsg::UpdateConfig(UpdateConfigMsg {
-            admin: governance_controller_contract.to_string(),
+            new_admin: governance_controller_contract.to_string(),
         }),
+        vec![],
+    )?);
+    let update_council_membership_admin_submsg = SubMsg::new(wasm_execute(
+        council_membership_contract.to_string(),
+        &multisig_membership_api::msg::ExecuteMsg::UpdateConfig(
+            multisig_membership_api::api::UpdateConfigMsg {
+                new_admin: Some(governance_controller_contract.to_string()),
+            },
+        ),
         vec![],
     )?);
     // TODO: update membership contract admin?
@@ -449,5 +478,7 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
 
     MIGRATION_INFO.remove(ctx.deps.storage);
 
-    Ok(Response::new().add_submessage(update_treasury_admin_submsg))
+    Ok(Response::new()
+        .add_submessage(update_treasury_admin_submsg)
+        .add_submessage(update_council_membership_admin_submsg))
 }

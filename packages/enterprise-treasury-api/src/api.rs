@@ -4,7 +4,7 @@ use cw_asset::{Asset, AssetInfo};
 
 #[cw_serde]
 pub struct UpdateConfigMsg {
-    pub admin: String,
+    pub new_admin: String,
 }
 
 #[cw_serde]
