@@ -35,8 +35,8 @@ use enterprise_governance_controller_api::api::{
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil, NoSuchProposal,
-    NoVotesAvailable, ProposalAlreadyExecuted, Std, Unauthorized, UnsupportedCouncilProposalAction,
-    WrongProposalType,
+    NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted, Std, Unauthorized,
+    UnsupportedCouncilProposalAction, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use enterprise_governance_controller_api::msg::{
@@ -134,6 +134,16 @@ fn create_proposal(
 ) -> GovernanceControllerResult<Response> {
     let gov_config = GOV_CONFIG.load(ctx.deps.storage)?;
 
+    let qctx = QueryContext {
+        deps: ctx.deps.as_ref(),
+        env: ctx.env.clone(),
+    };
+    let user_available_votes = get_user_available_votes(qctx, proposer.clone())?;
+
+    if user_available_votes.is_zero() {
+        return Err(NoVotingPower);
+    }
+
     validate_deposit(&gov_config, &deposit)?;
     validate_proposal_actions(
         ctx.deps.as_ref(),
@@ -147,8 +157,6 @@ fn create_proposal(
         .add_attribute("action", "create_proposal")
         .add_attribute("dao_address", ctx.env.contract.address.to_string())
         .add_submessage(create_poll_submsg);
-
-    // TODO: check if member can create a proposal, fail if they can't (not an NFT owner, multisig or council member, etc)
 
     Ok(response)
 }

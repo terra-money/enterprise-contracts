@@ -58,8 +58,8 @@ pub enum GovernanceControllerError {
     #[error("No votes are available")]
     NoVotesAvailable,
 
-    #[error("This user is not a member of the DAO's multisig")]
-    NotMultisigMember {},
+    #[error("This user has no voting power to create a proposal")]
+    NoVotingPower,
 
     #[error("An asset is added or removed multiple times")]
     DuplicateAssetFound,
