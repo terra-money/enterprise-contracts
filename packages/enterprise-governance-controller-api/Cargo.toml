@@ -8,6 +8,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
+common = { path = "../common"}
 cosmwasm-schema = "1.1"
 cosmwasm-std = "1.2.4"
 cw20 = "1.0.1"

@@ -1,8 +1,8 @@
 use crate::state::{ENTERPRISE_CONTRACT, GOV_CONFIG};
+use common::commons::ModifyValue::Change;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, Uint128};
 use cw_asset::{AssetInfo, AssetInfoBase};
 use cw_utils::Duration;
-use enterprise_governance_controller_api::api::ModifyValue::Change;
 use enterprise_governance_controller_api::api::ProposalAction::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
@@ -398,6 +398,24 @@ pub fn validate_dao_council(
                 quorum: dao_council.quorum,
                 threshold: dao_council.threshold,
             }))
+        }
+    }
+}
+
+pub fn validate_council_gov_config(
+    council_gov_config: &Option<CouncilGovConfig>,
+) -> GovernanceControllerResult<()> {
+    match council_gov_config {
+        None => Ok(()),
+        Some(council_gov_config) => {
+            validate_allowed_council_proposal_types(Some(
+                council_gov_config.allowed_proposal_action_types.clone(),
+            ))?;
+
+            validate_quorum_value(council_gov_config.quorum)?;
+            validate_threshold_value(council_gov_config.threshold)?;
+
+            Ok(())
         }
     }
 }

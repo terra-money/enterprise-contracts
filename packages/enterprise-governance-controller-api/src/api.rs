@@ -1,3 +1,4 @@
+use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::Asset;
@@ -11,12 +12,6 @@ use std::collections::BTreeMap;
 use strum_macros::Display;
 
 pub type ProposalId = u64;
-
-#[cw_serde]
-pub enum ModifyValue<T> {
-    Change(T),
-    NoChange,
-}
 
 #[cw_serde]
 pub struct GovConfig {

@@ -6,9 +6,11 @@ use crate::state::{
     State, COUNCIL_GOV_CONFIG, COUNCIL_MEMBERSHIP_CONTRACT, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
 };
 use crate::validate::{
-    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
-    validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao,
+    apply_gov_config_changes, validate_council_gov_config, validate_dao_council,
+    validate_dao_gov_config, validate_deposit, validate_modify_multisig_membership,
+    validate_proposal_actions, validate_upgrade_dao,
 };
+use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps,
@@ -70,6 +72,7 @@ use token_staking_api::api::{
     TotalStakedAmountParams, TotalStakedAmountResponse, UserTokenStakeParams,
     UserTokenStakeResponse,
 };
+use DaoType::{Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
 
@@ -101,15 +104,18 @@ pub fn instantiate(
         },
     )?;
 
-    // TODO: validate gov config? do we need to anymore?
+    let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
+    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
+
+    let dao_info: DaoInfoResponse = deps
+        .querier
+        .query_wasm_smart(enterprise_contract.to_string(), &DaoInfo {})?;
+
+    validate_dao_gov_config(&dao_info.dao_type, &msg.gov_config)?;
     GOV_CONFIG.save(deps.storage, &msg.gov_config)?;
 
+    validate_council_gov_config(&msg.council_gov_config)?;
     COUNCIL_GOV_CONFIG.save(deps.storage, &msg.council_gov_config)?;
-
-    ENTERPRISE_CONTRACT.save(
-        deps.storage,
-        &deps.api.addr_validate(&msg.enterprise_contract)?,
-    )?;
 
     COUNCIL_MEMBERSHIP_CONTRACT.save(
         deps.storage,
@@ -661,7 +667,45 @@ fn update_gov_config(
 
     GOV_CONFIG.save(ctx.deps.storage, &updated_gov_config)?;
 
-    Ok(vec![])
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let dao_info: DaoInfoResponse = ctx
+        .deps
+        .querier
+        .query_wasm_smart(enterprise_contract.to_string(), &DaoInfo {})?;
+    let component_contracts: ComponentContractsResponse = ctx
+        .deps
+        .querier
+        .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
+
+    let mut submsgs = vec![];
+
+    if let Change(new_unlocking_period) = msg.unlocking_period {
+        match dao_info.dao_type {
+            Token => submsgs.push(SubMsg::new(wasm_execute(
+                component_contracts.membership_contract.to_string(),
+                &token_staking_api::msg::ExecuteMsg::UpdateConfig(
+                    token_staking_api::api::UpdateConfigMsg {
+                        new_admin: None,
+                        new_unlocking_period: Some(new_unlocking_period),
+                    },
+                ),
+                vec![],
+            )?)),
+            Nft => submsgs.push(SubMsg::new(wasm_execute(
+                component_contracts.membership_contract.to_string(),
+                &nft_staking_api::msg::ExecuteMsg::UpdateConfig(
+                    nft_staking_api::api::UpdateConfigMsg {
+                        new_admin: None,
+                        new_unlocking_period: Some(new_unlocking_period),
+                    },
+                ),
+                vec![],
+            )?)),
+            Multisig => {} // no-op
+        }
+    }
+
+    Ok(submsgs)
 }
 
 fn update_council(
@@ -835,7 +879,7 @@ pub fn receive_cw20(
             let dao_type = query_dao_type(ctx.deps.as_ref())?;
 
             let membership_contract = query_membership_addr(ctx.deps.as_ref())?;
-            if dao_type != DaoType::Token || ctx.info.sender != membership_contract {
+            if dao_type != Token || ctx.info.sender != membership_contract {
                 return Err(InvalidDepositType);
             }
             let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
