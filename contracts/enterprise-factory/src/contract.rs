@@ -270,7 +270,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 wasm_instantiate(
                     version_info.enterprise_treasury_code_id,
                     &enterprise_treasury_api::msg::InstantiateMsg {
-                        enterprise_contract: enterprise_contract.to_string(),
+                        admin: enterprise_contract.to_string(),
                         asset_whitelist: create_dao_msg.asset_whitelist,
                         nft_whitelist: create_dao_msg.nft_whitelist,
                     },

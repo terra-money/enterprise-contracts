@@ -13,21 +13,16 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Called by enterprise-factory contract to finalize instantiation (only once)
-    FinalizeInstantiation(FinalizeInstantiationMsg),
     UpdateMetadata(UpdateMetadataMsg),
     UpgradeDao(UpgradeDaoMsg),
+
+    // called by this contract itself
+    FinalizeInstantiation(FinalizeInstantiationMsg),
+    FinalizeMigration {},
 }
 
 #[cw_serde]
-pub struct MigrateMsg {
-    // TODO: fetch versioning contract from factory, and then fetch all these from there instead of doing this like a pleb
-    pub treasury_code_id: u64,
-    pub governance_controller_code_id: u64,
-    pub token_membership_code_id: u64,
-    pub nft_membership_code_id: u64,
-    pub multisig_membership_code_id: u64,
-}
+pub struct MigrateMsg {}
 
 #[cw_serde]
 #[derive(QueryResponses)]

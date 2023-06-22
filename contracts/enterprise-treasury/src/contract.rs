@@ -3,8 +3,8 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
-use crate::state::{Config, CONFIG, ENTERPRISE_CONTRACT, NFT_WHITELIST};
-use crate::validate::dao_contracts_only;
+use crate::state::{Config, CONFIG, NFT_WHITELIST};
+use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
@@ -41,8 +41,8 @@ pub fn instantiate(
 ) -> EnterpriseTreasuryResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
-    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
+    let admin = deps.api.addr_validate(&msg.admin)?;
+    CONFIG.save(deps.storage, &Config { admin })?;
 
     add_whitelisted_assets(deps.branch(), msg.asset_whitelist.unwrap_or_default())?;
 
@@ -76,30 +76,27 @@ pub fn execute(
 }
 
 fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> EnterpriseTreasuryResult<Response> {
-    dao_contracts_only(ctx)?;
+    admin_only(ctx)?;
 
-    let new_enterprise_contract = ctx.deps.api.addr_validate(&msg.new_enterprise_contract)?;
+    let new_admin = ctx.deps.api.addr_validate(&msg.admin)?;
 
     CONFIG.save(
         ctx.deps.storage,
         &Config {
-            enterprise_contract: new_enterprise_contract.clone(),
+            admin: new_admin.clone(),
         },
     )?;
 
     Ok(Response::new()
         .add_attribute("action", "update_config")
-        .add_attribute(
-            "new_enterprise_contract",
-            new_enterprise_contract.to_string(),
-        ))
+        .add_attribute("new_admin", new_admin.to_string()))
 }
 
 fn update_asset_whitelist(
     ctx: &mut Context,
     msg: UpdateAssetWhitelistMsg,
 ) -> EnterpriseTreasuryResult<Response> {
-    dao_contracts_only(ctx)?;
+    admin_only(ctx)?;
 
     add_whitelisted_assets(ctx.deps.branch(), msg.add)?;
     remove_whitelisted_assets(ctx.deps.branch(), msg.remove)?;
@@ -111,7 +108,7 @@ fn update_nft_whitelist(
     ctx: &mut Context,
     msg: UpdateNftWhitelistMsg,
 ) -> EnterpriseTreasuryResult<Response> {
-    dao_contracts_only(ctx)?;
+    admin_only(ctx)?;
 
     for add in msg.add {
         NFT_WHITELIST.save(
@@ -131,7 +128,7 @@ fn update_nft_whitelist(
 }
 
 fn spend(ctx: &mut Context, msg: SpendMsg) -> EnterpriseTreasuryResult<Response> {
-    dao_contracts_only(ctx)?;
+    admin_only(ctx)?;
 
     // TODO: does not work with CW1155, make sure it does in the future
     let spend_submsgs = msg
@@ -152,7 +149,7 @@ fn distribute_funds(
     ctx: &mut Context,
     msg: DistributeFundsMsg,
 ) -> EnterpriseTreasuryResult<Response> {
-    dao_contracts_only(ctx)?;
+    admin_only(ctx)?;
 
     // TODO: query this address from Enterprise
     let funds_distributor = Addr::unchecked("funds_distributor");
@@ -188,7 +185,7 @@ fn execute_cosmos_msgs(
     ctx: &mut Context,
     msg: ExecuteCosmosMsgsMsg,
 ) -> EnterpriseTreasuryResult<Response> {
-    dao_contracts_only(ctx)?;
+    admin_only(ctx)?;
 
     let mut submsgs: Vec<SubMsg> = vec![];
     for msg in msg.msgs {
@@ -225,7 +222,7 @@ pub fn query_config(qctx: QueryContext) -> EnterpriseTreasuryResult<ConfigRespon
     let config = CONFIG.load(qctx.deps.storage)?;
 
     Ok(ConfigResponse {
-        enterprise_contract: config.enterprise_contract,
+        admin: config.admin,
     })
 }
 

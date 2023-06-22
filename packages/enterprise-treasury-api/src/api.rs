@@ -4,7 +4,7 @@ use cw_asset::{Asset, AssetInfo};
 
 #[cw_serde]
 pub struct UpdateConfigMsg {
-    pub new_enterprise_contract: String,
+    pub admin: String,
 }
 
 #[cw_serde]
@@ -56,7 +56,7 @@ pub struct NftWhitelistParams {
 
 #[cw_serde]
 pub struct ConfigResponse {
-    pub enterprise_contract: Addr,
+    pub admin: Addr,
 }
 
 #[cw_serde]
