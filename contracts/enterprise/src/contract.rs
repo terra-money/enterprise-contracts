@@ -147,6 +147,12 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
 }
 
 fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Response> {
+    let component_contracts = COMPONENT_CONTRACTS.load(ctx.deps.storage)?;
+
+    if component_contracts.enterprise_governance_controller_contract != ctx.info.sender {
+        return Err(Unauthorized);
+    }
+
     let mut metadata = DAO_METADATA.load(ctx.deps.storage)?;
 
     if let Change(name) = msg.name {
@@ -180,6 +186,12 @@ fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Respo
 }
 
 fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
+    let component_contracts = COMPONENT_CONTRACTS.load(ctx.deps.storage)?;
+
+    if component_contracts.enterprise_governance_controller_contract != ctx.info.sender {
+        return Err(Unauthorized);
+    }
+
     let migrate_msg_json: serde_json::Value = serde_json::from_slice(msg.migrate_msg.as_slice())
         .map_err(|e| DaoError::Std(StdError::generic_err(e.to_string())))?;
 
