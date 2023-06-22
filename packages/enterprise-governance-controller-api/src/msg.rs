@@ -13,6 +13,7 @@ pub struct InstantiateMsg {
     pub dao_council_membership_contract: String,
     pub gov_config: GovConfig,
     pub council_gov_config: Option<CouncilGovConfig>,
+    // TODO: migrate proposal info and deposits?
 }
 
 #[cw_serde]

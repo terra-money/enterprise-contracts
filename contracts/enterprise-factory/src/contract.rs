@@ -234,11 +234,11 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                         enterprise_contract: enterprise_contract.to_string(),
                         initial_weights,
                         minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
-                    }, // TODO: supply initial weights?
+                    },
                     vec![],
-                    "Enterprise governance".to_string(),
+                    "Funds distributor".to_string(),
                 )?,
-                ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID,
+                FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID,
             );
 
             let enterprise_governance_submsg = SubMsg::reply_on_success(
@@ -258,12 +258,14 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     version_info.enterprise_governance_controller_code_id,
                     &enterprise_governance_controller_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
+                        dao_council_membership_contract: "".to_string(),
                         gov_config: create_dao_msg.gov_config,
+                        council_gov_config: None,
                     },
                     vec![],
                     "Enterprise governance controller".to_string(),
                 )?,
-                ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID,
+                ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID,
             );
 
             let enterprise_treasury_submsg = SubMsg::reply_on_success(
@@ -275,9 +277,9 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                         nft_whitelist: create_dao_msg.nft_whitelist,
                     },
                     vec![],
-                    "Enterprise governance controller".to_string(),
+                    "Enterprise treasury".to_string(),
                 )?,
-                ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID,
+                ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID,
             );
 
             let finalize_submsg = SubMsg::new(wasm_execute(
