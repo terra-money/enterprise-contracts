@@ -3,10 +3,7 @@ use crate::proposals::{
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
 use crate::state::{State, DAO_COUNCIL, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
-use crate::validate::{
-    apply_gov_config_changes, validate_dao_gov_config, validate_deposit,
-    validate_modify_multisig_membership, validate_proposal_actions,
-};
+use crate::validate::{apply_gov_config_changes, validate_dao_gov_config, validate_deposit, validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao};
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps,
@@ -429,10 +426,15 @@ fn end_proposal(
     proposal_type: ProposalType,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
-    let _poll = query_poll(&qctx, msg.proposal_id)?;
+    let poll = query_poll(&qctx, msg.proposal_id)?.poll;
 
-    // TODO: do we use the current or at some expiration time?
-    let total_available_votes = current_total_available_votes(ctx.deps.as_ref())?;
+    let ends_at = poll.ends_at;
+
+    let total_available_votes = if ends_at <= ctx.env.block.time {
+        total_available_votes_at_time(ctx.deps.as_ref(), ends_at)?
+    } else {
+        current_total_available_votes(ctx.deps.as_ref())?
+    };
 
     if total_available_votes == Uint128::zero() {
         return Err(NoVotesAvailable);
@@ -676,7 +678,7 @@ fn update_nft_whitelist(
 }
 
 fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> GovernanceControllerResult<Vec<SubMsg>> {
-    // TODO: validate upgrade DAO msg again?
+    validate_upgrade_dao(ctx.deps.as_ref(), &msg)?;
 
     let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
 

@@ -314,7 +314,7 @@ fn validate_nft_whitelist_changes(
     Ok(())
 }
 
-fn validate_upgrade_dao(_deps: Deps, _msg: &UpgradeDaoMsg) -> GovernanceControllerResult<()> {
+pub fn validate_upgrade_dao(_deps: Deps, _msg: &UpgradeDaoMsg) -> GovernanceControllerResult<()> {
     // TODO: we no longer need this, right? doesn't need to check for valid code IDs
     Ok(())
 }
