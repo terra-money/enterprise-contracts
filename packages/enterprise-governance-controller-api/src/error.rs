@@ -1,5 +1,6 @@
 use crate::api::ProposalActionType;
 use cosmwasm_std::{StdError, Uint128};
+use enterprise_protocol::error::DaoError;
 use poll_engine_api::error::PollError;
 use thiserror::Error;
 
@@ -12,6 +13,9 @@ pub enum GovernanceControllerError {
 
     #[error("{0}")]
     Poll(#[from] PollError),
+
+    #[error("{0}")]
+    Dao(#[from] DaoError),
 
     #[error("Unauthorized")]
     Unauthorized,

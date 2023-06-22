@@ -3,7 +3,10 @@ use crate::proposals::{
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
 use crate::state::{State, DAO_COUNCIL, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
-use crate::validate::{apply_gov_config_changes, validate_dao_gov_config, validate_deposit, validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao};
+use crate::validate::{
+    apply_gov_config_changes, validate_dao_gov_config, validate_deposit,
+    validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao,
+};
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps,

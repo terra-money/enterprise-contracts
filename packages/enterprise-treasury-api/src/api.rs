@@ -18,7 +18,7 @@ pub struct UpdateAssetWhitelistMsg {
 #[cw_serde]
 pub struct UpdateNftWhitelistMsg {
     /// New NFTs to add to the whitelist. Will ignore NFTs that are already whitelisted.
-    pub add: Vec<Addr>,
+    pub add: Vec<Addr>, // TODO: change to String
     /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
     pub remove: Vec<Addr>,
 }

@@ -1,4 +1,4 @@
-use crate::state::GOV_CONFIG;
+use crate::state::{ENTERPRISE_CONTRACT, GOV_CONFIG};
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, Uint128};
 use cw_asset::{AssetInfo, AssetInfoBase};
 use cw_utils::Duration;
@@ -21,7 +21,11 @@ use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
 };
 use enterprise_protocol::api::DaoType::{Multisig, Nft};
-use enterprise_protocol::api::{DaoType, UpgradeDaoMsg};
+use enterprise_protocol::api::{DaoInfoResponse, DaoType, UpgradeDaoMsg};
+use enterprise_protocol::error::DaoError::{InvalidMigrateMsgMap, MigratingToLowerVersion};
+use enterprise_protocol::msg::QueryMsg::DaoInfo;
+use serde_json::Value;
+use serde_json::Value::Object;
 use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{
     MinimumDepositNotAllowed, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
@@ -314,9 +318,28 @@ fn validate_nft_whitelist_changes(
     Ok(())
 }
 
-pub fn validate_upgrade_dao(_deps: Deps, _msg: &UpgradeDaoMsg) -> GovernanceControllerResult<()> {
-    // TODO: we no longer need this, right? doesn't need to check for valid code IDs
-    Ok(())
+pub fn validate_upgrade_dao(deps: Deps, msg: &UpgradeDaoMsg) -> GovernanceControllerResult<()> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
+    let info: DaoInfoResponse = deps
+        .querier
+        .query_wasm_smart(enterprise_contract.to_string(), &DaoInfo {})?;
+
+    if info.dao_version >= msg.new_version {
+        return Err(MigratingToLowerVersion {
+            current: info.dao_version,
+            target: msg.new_version.clone(),
+        }
+        .into());
+    }
+
+    let json: Value = serde_json::from_slice(msg.migrate_msg.as_slice())
+        .map_err(|e| StdError::generic_err(e.to_string()))?;
+
+    if let Object(_) = json {
+        Ok(())
+    } else {
+        Err(InvalidMigrateMsgMap.into())
+    }
 }
 
 fn validate_execute_msgs(msg: &ExecuteMsgsMsg) -> GovernanceControllerResult<()> {
@@ -380,7 +403,6 @@ pub fn validate_dao_council(
     }
 }
 
-// TODO: tests
 pub fn validate_distribute_funds(msg: &DistributeFundsMsg) -> GovernanceControllerResult<()> {
     for asset in &msg.funds {
         match asset.info {
