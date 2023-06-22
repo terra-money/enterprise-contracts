@@ -7,7 +7,7 @@ use poll_engine_api::api::{
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub enterprise_contract: String,
+    pub admin: String,
 }
 
 #[cw_serde]
@@ -36,4 +36,6 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub new_admin: String,
+}

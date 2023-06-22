@@ -1,7 +1,7 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
-use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
+use crate::state::{ADMIN, CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
 use crate::{cw20_distributions, native_distributions};
 use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
@@ -62,9 +62,9 @@ pub fn update_user_weights(
     ctx: &mut Context,
     msg: UpdateUserWeightsMsg,
 ) -> DistributorResult<Response> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let admin = ADMIN.load(ctx.deps.storage)?;
 
-    if ctx.info.sender != enterprise_contract {
+    if ctx.info.sender != admin {
         return Err(Unauthorized);
     }
 

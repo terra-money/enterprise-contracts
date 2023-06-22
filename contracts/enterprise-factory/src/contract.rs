@@ -366,7 +366,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 wasm_instantiate(
                     version_info.funds_distributor_code_id,
                     &funds_distributor_api::msg::InstantiateMsg {
-                        enterprise_contract: addr.to_string(),
+                        admin: addr.to_string(),
                         initial_weights,
                         minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
                     },
@@ -380,7 +380,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 wasm_instantiate(
                     version_info.enterprise_governance_code_id,
                     &enterprise_governance_api::msg::InstantiateMsg {
-                        enterprise_contract: addr.to_string(),
+                        admin: addr.to_string(),
                     },
                     vec![],
                     "Enterprise governance".to_string(),

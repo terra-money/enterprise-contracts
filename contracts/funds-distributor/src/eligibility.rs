@@ -1,6 +1,6 @@
 use crate::cw20_distributions::update_user_cw20_distributions;
 use crate::native_distributions::update_user_native_distributions;
-use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
+use crate::state::{ADMIN, TOTAL_WEIGHT};
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, DepsMut, Order, Response, StdResult, Uint128};
@@ -18,9 +18,9 @@ pub fn execute_update_minimum_eligible_weight(
     ctx: &mut Context,
     msg: UpdateMinimumEligibleWeightMsg,
 ) -> DistributorResult<Response> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let admin = ADMIN.load(ctx.deps.storage)?;
 
-    if ctx.info.sender != enterprise_contract {
+    if ctx.info.sender != admin {
         return Err(Unauthorized);
     }
 

@@ -8,10 +8,12 @@ use crate::state::{
 };
 use common::cw::Context;
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    wasm_execute, wasm_instantiate, Addr, Decimal, DepsMut, Env, Response, StdError, StdResult,
-    SubMsg, Uint128, Uint64,
+    to_binary, wasm_execute, wasm_instantiate, Addr, Decimal, DepsMut, Env, Response, StdError,
+    StdResult, SubMsg, Uint128, Uint64,
 };
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
@@ -21,6 +23,7 @@ use enterprise_governance_controller_api::api::{CouncilGovConfig, GovConfig, Pro
 use enterprise_protocol::api::DaoType;
 use enterprise_protocol::error::DaoError::{Std, Unauthorized};
 use enterprise_protocol::error::DaoResult;
+use enterprise_protocol::msg::ExecuteMsg::FinalizeMigration;
 use enterprise_treasury_api::api::UpdateConfigMsg;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use multisig_membership_api::api::UserWeight;
@@ -132,16 +135,23 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>>
 
     let membership_submsg = create_enterprise_membership_contract(
         deps.branch(),
-        env,
+        env.clone(),
         version_info.version.token_staking_membership_code_id,
         version_info.version.nft_staking_membership_code_id,
         version_info.version.multisig_membership_code_id,
     )?;
 
+    let finalize_migration_submsg = SubMsg::new(wasm_execute(
+        env.contract.address.to_string(),
+        &FinalizeMigration {},
+        vec![],
+    )?);
+
     Ok(vec![
         dao_council_membership_submsg,
         treasury_submsg,
         membership_submsg,
+        finalize_migration_submsg,
     ])
 }
 
@@ -409,6 +419,8 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
 
     let migration_info = MIGRATION_INFO.load(ctx.deps.storage)?;
 
+    let version_info = migration_info.version_info;
+
     let governance_controller_contract = migration_info
         .enterprise_governance_controller_contract
         .ok_or(Std(StdError::generic_err(
@@ -448,6 +460,24 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
     )?);
     // TODO: update membership contract admin?
 
+    let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
+    let migrate_funds_distributor = SubMsg::new(Wasm(Migrate {
+        contract_addr: funds_distributor.to_string(),
+        new_code_id: version_info.funds_distributor_code_id,
+        msg: to_binary(&funds_distributor_api::msg::MigrateMsg {
+            new_admin: governance_controller_contract.to_string(),
+        })?,
+    }));
+
+    let enterprise_governance = ENTERPRISE_GOVERNANCE_CONTRACT.load(ctx.deps.storage)?;
+    let migrate_enterprise_governance_submsg = SubMsg::new(Wasm(Migrate {
+        contract_addr: enterprise_governance.to_string(),
+        new_code_id: version_info.enterprise_governance_code_id,
+        msg: to_binary(&enterprise_governance_api::msg::MigrateMsg {
+            new_admin: governance_controller_contract.to_string(),
+        })?,
+    }));
+
     COMPONENT_CONTRACTS.save(
         ctx.deps.storage,
         &ComponentContracts {
@@ -480,5 +510,7 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
 
     Ok(Response::new()
         .add_submessage(update_treasury_admin_submsg)
-        .add_submessage(update_council_membership_admin_submsg))
+        .add_submessage(update_council_membership_admin_submsg)
+        .add_submessage(migrate_funds_distributor)
+        .add_submessage(migrate_enterprise_governance_submsg))
 }

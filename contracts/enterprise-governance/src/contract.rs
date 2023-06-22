@@ -1,4 +1,5 @@
-use crate::state::ENTERPRISE_CONTRACT;
+use crate::migration::migrate_to_v1_0_0;
+use crate::state::ADMIN;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
@@ -28,14 +29,16 @@ pub fn instantiate(
 ) -> PollResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
-    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
+    let admin = deps.api.addr_validate(&msg.admin)?;
+    ADMIN.save(deps.storage, &admin)?;
 
     let mut ctx = Context { deps, env, info };
 
     initialize_poll_engine(&mut ctx)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(Response::new()
+        .add_attribute("action", "instantiate")
+        .add_attribute("admin", admin.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -45,9 +48,9 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> PollResult<Response> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
+    let admin = ADMIN.load(deps.storage)?;
 
-    if info.sender != enterprise_contract {
+    if info.sender != admin {
         return Err(Unauthorized {});
     }
 
@@ -130,7 +133,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> PollResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> PollResult<Response> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> PollResult<Response> {
+    migrate_to_v1_0_0(deps.branch(), msg)?;
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))

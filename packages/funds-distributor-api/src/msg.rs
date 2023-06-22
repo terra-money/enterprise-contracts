@@ -8,7 +8,7 @@ use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub enterprise_contract: String,
+    pub admin: String,
     pub initial_weights: Vec<UserWeight>,
     /// Optional minimum weight that the user must have to be eligible for rewards distributions
     pub minimum_eligible_weight: Option<Uint128>,
@@ -39,5 +39,5 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct MigrateMsg {
-    pub minimum_eligible_weight: Option<Uint128>,
+    pub new_admin: String,
 }
