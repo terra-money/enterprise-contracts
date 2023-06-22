@@ -3,6 +3,8 @@ use cosmwasm_std::Addr;
 use std::fmt;
 
 #[cw_serde]
+// TODO: tests for this comparison
+#[derive(Ord, PartialOrd, Eq)]
 pub struct Version {
     pub major: u64,
     pub minor: u64,

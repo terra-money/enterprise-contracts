@@ -1,13 +1,16 @@
 use crate::migration::migrate_to_rewrite;
 use crate::state::{
     ComponentContracts, COMPONENT_CONTRACTS, DAO_CODE_VERSION, DAO_CREATION_DATE, DAO_METADATA,
-    DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT, IS_INSTANTIATION_FINALIZED,
+    DAO_TYPE, DAO_VERSION, ENTERPRISE_FACTORY_CONTRACT, ENTERPRISE_VERSIONING_CONTRACT,
+    IS_INSTANTIATION_FINALIZED,
 };
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
+use cosmwasm_std::CosmosMsg::Wasm;
+use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    SubMsg, WasmMsg,
+    SubMsg,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
@@ -15,9 +18,15 @@ use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, UpdateMetadataMsg,
     UpgradeDaoMsg,
 };
-use enterprise_protocol::error::DaoError::{AlreadyInitialized, Unauthorized};
+use enterprise_protocol::error::DaoError::{
+    AlreadyInitialized, InvalidMigrateMsgMap, Unauthorized,
+};
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use enterprise_versioning_api::api::{Version, VersionInfo, VersionsParams, VersionsResponse};
+use enterprise_versioning_api::msg::QueryMsg::Versions;
+use serde_json::json;
+use serde_json::Value::Object;
 
 pub const ENTERPRISE_TREASURY_REPLY_ID: u64 = 1;
 pub const ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID: u64 = 2;
@@ -46,6 +55,11 @@ pub fn instantiate(
     let enterprise_factory_contract = deps.api.addr_validate(&msg.enterprise_factory_contract)?;
     ENTERPRISE_FACTORY_CONTRACT.save(deps.storage, &enterprise_factory_contract)?;
 
+    let enterprise_versioning_contract = deps
+        .api
+        .addr_validate(&msg.enterprise_versioning_contract)?;
+    ENTERPRISE_VERSIONING_CONTRACT.save(deps.storage, &enterprise_versioning_contract)?;
+
     DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
     DAO_CODE_VERSION.save(deps.storage, &CODE_VERSION.into())?;
 
@@ -61,6 +75,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
     match msg {
         ExecuteMsg::FinalizeInstantiation(msg) => finalize_instantiation(ctx, msg),
         ExecuteMsg::UpdateMetadata(msg) => update_metadata(ctx, msg),
+        ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
     }
 }
 
@@ -164,13 +179,81 @@ fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Respo
     Ok(Response::new().add_attribute("action", "update_metadata"))
 }
 
-// TODO: there should be a message, and then this should dispatch to other contracts
-fn _upgrade_dao(env: Env, msg: UpgradeDaoMsg) -> DaoResult<Vec<SubMsg>> {
-    Ok(vec![SubMsg::new(WasmMsg::Migrate {
-        contract_addr: env.contract.address.to_string(),
-        new_code_id: msg.new_dao_code_id,
-        msg: msg.migrate_msg,
-    })])
+fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
+    let migrate_msg_json: serde_json::Value = serde_json::from_slice(msg.migrate_msg.as_slice())
+        .map_err(|e| DaoError::Std(StdError::generic_err(e.to_string())))?;
+
+    if let Object(migrate_msgs_map) = migrate_msg_json {
+        let versions = get_versions_between_current_and_target(ctx, msg.new_version.clone())?;
+
+        let mut submsgs = vec![];
+
+        for version in versions {
+            let msg = migrate_msgs_map.get(&version.version.to_string());
+            let migrate_msg = match msg {
+                Some(msg) => to_binary(msg)?,
+                None => to_binary(&json!({}))?, // if no msg was supplied, just use an empty one
+            };
+
+            submsgs.push(SubMsg::new(Wasm(Migrate {
+                contract_addr: ctx.env.contract.address.to_string(),
+                new_code_id: version.enterprise_code_id,
+                msg: migrate_msg,
+            })));
+        }
+
+        Ok(Response::new()
+            .add_attribute("action", "upgrade_dao")
+            .add_attribute("new_version", msg.new_version.to_string())
+            .add_submessages(submsgs))
+    } else {
+        Err(InvalidMigrateMsgMap)
+    }
+}
+
+fn get_versions_between_current_and_target(
+    ctx: &Context,
+    target_version: Version,
+) -> DaoResult<Vec<VersionInfo>> {
+    let current_version = DAO_VERSION.load(ctx.deps.storage)?;
+
+    let enterprise_versioning = ENTERPRISE_VERSIONING_CONTRACT.load(ctx.deps.storage)?;
+
+    let mut versions: Vec<VersionInfo> = vec![];
+    let mut last_version = Some(current_version);
+
+    loop {
+        let versions_response: VersionsResponse = ctx.deps.querier.query_wasm_smart(
+            enterprise_versioning.to_string(),
+            &Versions(VersionsParams {
+                start_after: last_version.clone(),
+                limit: None,
+            }),
+        )?;
+
+        if versions_response.versions.is_empty() {
+            break;
+        }
+
+        last_version = versions_response
+            .versions
+            .last()
+            .map(|info| info.version.clone());
+
+        for version in versions_response.versions {
+            if version.version > target_version {
+                break;
+            }
+
+            versions.push(version.clone());
+
+            if version.version == target_version {
+                break;
+            }
+        }
+    }
+
+    Ok(versions)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

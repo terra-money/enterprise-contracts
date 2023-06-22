@@ -11,6 +11,7 @@ path = "src/lib.rs"
 common = { path = "../common" }
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
+enterprise-versioning-api = { path = "../enterprise-versioning-api" }
 schemars = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_with = { version = "2", features = ["json", "macros"] }

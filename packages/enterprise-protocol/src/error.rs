@@ -28,6 +28,9 @@ pub enum DaoError {
 
     #[error("Zero initial DAO balance is not allowed upon DAO creation")]
     ZeroInitialDaoBalance,
+
+    #[error("Supplied migrate msg is not a map of (version, migrate msg for version)")]
+    InvalidMigrateMsgMap,
 }
 
 impl DaoError {

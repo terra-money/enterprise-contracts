@@ -1,6 +1,7 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Timestamp, Uint64};
+use enterprise_versioning_api::api::Version;
 use std::fmt;
 use strum_macros::Display;
 
@@ -67,7 +68,13 @@ pub struct UpdateMetadataMsg {
 
 #[cw_serde]
 pub struct UpgradeDaoMsg {
-    pub new_dao_code_id: u64,
+    pub new_version: Version,
+    /// Expects a map of (version, migrate msg for that version).
+    /// E.g.
+    /// {
+    ///   "1.0.2": { <MigrateMsg for 1.0.2> },
+    ///   "2.0.0": { <MigrateMsg for 2.0.0> }
+    /// }
     pub migrate_msg: Binary,
 }
 

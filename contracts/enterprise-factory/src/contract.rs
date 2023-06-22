@@ -106,6 +106,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
     let instantiate_enterprise_msg = enterprise_protocol::msg::InstantiateMsg {
         dao_metadata: msg.dao_metadata.clone(),
         enterprise_factory_contract: env.contract.address.to_string(),
+        enterprise_versioning_contract: config.enterprise_versioning.to_string(),
     };
     let create_dao_submsg = SubMsg::reply_on_success(
         WasmMsg::Instantiate {
