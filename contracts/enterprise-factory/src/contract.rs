@@ -11,10 +11,12 @@ use crate::token_membership::{
     import_cw20_membership, instantiate_new_cw20_membership,
     instantiate_token_staking_membership_contract,
 };
+use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_execute, wasm_instantiate, Addr, Binary, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint64, WasmMsg,
+    entry_point, to_binary, wasm_execute, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, SubMsg, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -112,7 +114,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         enterprise_versioning_contract: config.enterprise_versioning.to_string(),
     };
     let create_dao_submsg = SubMsg::reply_on_success(
-        WasmMsg::Instantiate {
+        Instantiate {
             admin: Some(env.contract.address.to_string()),
             code_id: enterprise_code_id,
             msg: to_binary(&instantiate_enterprise_msg)?,
@@ -214,17 +216,18 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             )?;
 
             let enterprise_governance_controller_submsg = SubMsg::reply_on_success(
-                wasm_instantiate(
-                    version_info.enterprise_governance_controller_code_id,
-                    &enterprise_governance_controller_api::msg::InstantiateMsg {
+                Wasm(Instantiate {
+                    admin: Some(enterprise_contract.to_string()),
+                    code_id: version_info.enterprise_governance_controller_code_id,
+                    msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
                         dao_council_membership_contract: "".to_string(),
                         gov_config: create_dao_msg.gov_config,
                         council_gov_config: None,
-                    },
-                    vec![],
-                    "Enterprise governance controller".to_string(),
-                )?,
+                    })?,
+                    funds: vec![],
+                    label: "Enterprise governance controller".to_string(),
+                }),
                 ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID,
             );
 
@@ -351,6 +354,8 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let create_dao_msg = dao_being_created.require_create_dao_msg()?;
             let version_info = dao_being_created.require_version_info()?;
 
+            let enterprise_contract = dao_being_created.require_enterprise_address()?;
+
             let initial_weights = dao_being_created
                 .initial_weights
                 .clone()
@@ -363,28 +368,30 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .collect();
 
             let funds_distributor_submsg = SubMsg::reply_on_success(
-                wasm_instantiate(
-                    version_info.funds_distributor_code_id,
-                    &funds_distributor_api::msg::InstantiateMsg {
+                Wasm(Instantiate {
+                    admin: Some(enterprise_contract.to_string()),
+                    code_id: version_info.funds_distributor_code_id,
+                    msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
                         admin: addr.to_string(),
                         initial_weights,
                         minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
-                    },
-                    vec![],
-                    "Funds distributor".to_string(),
-                )?,
+                    })?,
+                    funds: vec![],
+                    label: "Funds distributor".to_string(),
+                }),
                 FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID,
             );
 
             let enterprise_governance_submsg = SubMsg::reply_on_success(
-                wasm_instantiate(
-                    version_info.enterprise_governance_code_id,
-                    &enterprise_governance_api::msg::InstantiateMsg {
+                Wasm(Instantiate {
+                    admin: Some(enterprise_contract.to_string()),
+                    code_id: version_info.enterprise_governance_code_id,
+                    msg: to_binary(&enterprise_governance_api::msg::InstantiateMsg {
                         admin: addr.to_string(),
-                    },
-                    vec![],
-                    "Enterprise governance".to_string(),
-                )?,
+                    })?,
+                    funds: vec![],
+                    label: "Enterprise governance".to_string(),
+                }),
                 ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID,
             );
 
@@ -399,16 +406,17 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             }
 
             let enterprise_treasury_submsg = SubMsg::reply_on_success(
-                wasm_instantiate(
-                    version_info.enterprise_treasury_code_id,
-                    &enterprise_treasury_api::msg::InstantiateMsg {
+                Wasm(Instantiate {
+                    admin: Some(enterprise_contract.to_string()),
+                    code_id: version_info.enterprise_treasury_code_id,
+                    msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
                         admin: addr.to_string(),
                         asset_whitelist: Some(asset_whitelist),
                         nft_whitelist: Some(nft_whitelist),
-                    },
-                    vec![],
-                    "Enterprise treasury".to_string(),
-                )?,
+                    })?,
+                    funds: vec![],
+                    label: "Enterprise treasury".to_string(),
+                }),
                 ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID,
             );
 

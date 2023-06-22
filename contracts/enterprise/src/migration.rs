@@ -10,10 +10,10 @@ use common::cw::Context;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::WasmMsg::Migrate;
+use cosmwasm_std::WasmMsg::{Instantiate, Migrate};
 use cosmwasm_std::{
-    to_binary, wasm_execute, wasm_instantiate, Addr, Decimal, DepsMut, Env, Response, StdError,
-    StdResult, SubMsg, Uint128, Uint64,
+    to_binary, wasm_execute, Addr, Decimal, DepsMut, Env, Response, StdError, StdResult, SubMsg,
+    Uint128, Uint64,
 };
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
@@ -192,16 +192,17 @@ pub fn create_treasury_contract(
         .collect();
 
     let submsg = SubMsg::reply_on_success(
-        wasm_instantiate(
-            treasury_code_id,
-            &enterprise_treasury_api::msg::InstantiateMsg {
+        Wasm(Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id: treasury_code_id,
+            msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
                 admin: env.contract.address.to_string(),
                 asset_whitelist: Some(asset_whitelist),
                 nft_whitelist: Some(nft_whitelist),
-            },
-            vec![],
-            "Enterprise treasury".to_string(),
-        )?,
+            })?,
+            funds: vec![],
+            label: "Enterprise treasury".to_string(),
+        }),
         ENTERPRISE_TREASURY_REPLY_ID,
     );
 
@@ -240,15 +241,16 @@ pub fn create_dao_council_membership_contract(
         .collect();
 
     let instantiate_dao_council_membership = SubMsg::reply_on_success(
-        wasm_instantiate(
-            multisig_membership_code_id,
-            &multisig_membership_api::msg::InstantiateMsg {
+        Wasm(Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id: multisig_membership_code_id,
+            msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
                 admin: env.contract.address.to_string(),
                 initial_weights: Some(council_members),
-            },
-            vec![],
-            "Dao council membership".to_string(),
-        )?,
+            })?,
+            funds: vec![],
+            label: "Dao council membership".to_string(),
+        }),
         COUNCIL_MEMBERSHIP_REPLY_ID,
     );
 
@@ -283,10 +285,12 @@ pub fn create_governance_controller_contract(
     let version_info = MIGRATION_INFO.load(deps.storage)?.version_info;
     let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
     let dao_council = DAO_COUNCIL.load(deps.storage)?;
+
     let submsg = SubMsg::reply_on_success(
-        wasm_instantiate(
-            version_info.enterprise_governance_controller_code_id,
-            &enterprise_governance_controller_api::msg::InstantiateMsg {
+        Wasm(Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id: version_info.enterprise_governance_controller_code_id,
+            msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                 enterprise_contract: env.contract.address.to_string(),
                 dao_council_membership_contract: dao_council_membership_contract.to_string(),
                 gov_config: GovConfig {
@@ -303,10 +307,10 @@ pub fn create_governance_controller_contract(
                     quorum: council.quorum,
                     threshold: council.threshold,
                 }),
-            },
-            vec![],
-            "Enterprise governance controller".to_string(),
-        )?,
+            })?,
+            funds: vec![],
+            label: "Enterprise governance controller".to_string(),
+        }),
         ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID,
     );
 
@@ -344,29 +348,33 @@ pub fn create_enterprise_membership_contract(
     let msg = match dao_type {
         DaoType::Token => {
             let cw20_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
-            wasm_instantiate(
-                token_membership_code_id,
-                &token_staking_api::msg::InstantiateMsg {
+
+            Wasm(Instantiate {
+                admin: Some(env.contract.address.to_string()),
+                code_id: token_membership_code_id,
+                msg: to_binary(&token_staking_api::msg::InstantiateMsg {
                     admin: env.contract.address.to_string(),
                     token_contract: cw20_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
-                },
-                vec![],
-                "Token staking membership".to_string(), // TODO: unify with the name in enterprise factory
-            )?
+                })?,
+                funds: vec![],
+                label: "Token staking membership".to_string(),
+            })
         }
         DaoType::Nft => {
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
-            wasm_instantiate(
-                nft_membership_code_id,
-                &nft_staking_api::msg::InstantiateMsg {
+
+            Wasm(Instantiate {
+                admin: Some(env.contract.address.to_string()),
+                code_id: nft_membership_code_id,
+                msg: to_binary(&nft_staking_api::msg::InstantiateMsg {
                     admin: env.contract.address.to_string(),
                     nft_contract: cw721_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
-                },
-                vec![],
-                "NFT staking membership".to_string(), // TODO: unify with the name in enterprise factory
-            )?
+                })?,
+                funds: vec![],
+                label: "NFT staking membership".to_string(),
+            })
         }
         DaoType::Multisig => {
             let initial_weights = MULTISIG_MEMBERS
@@ -378,15 +386,17 @@ pub fn create_enterprise_membership_contract(
                     weight,
                 })
                 .collect();
-            wasm_instantiate(
-                multisig_membership_code_id,
-                &multisig_membership_api::msg::InstantiateMsg {
+
+            Wasm(Instantiate {
+                admin: Some(env.contract.address.to_string()),
+                code_id: multisig_membership_code_id,
+                msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
                     admin: env.contract.address.to_string(),
                     initial_weights: Some(initial_weights),
-                },
-                vec![],
-                "Multisig membership".to_string(), // TODO: unify with the name in enterprise factory
-            )?
+                })?,
+                funds: vec![],
+                label: "Multisig membership".to_string(),
+            })
         }
     };
 

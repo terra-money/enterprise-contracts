@@ -3,7 +3,9 @@ use crate::contract::{
 };
 use crate::state::{DaoBeingCreated, CONFIG, DAO_BEING_CREATED};
 use crate::validate::validate_existing_cw20_contract;
-use cosmwasm_std::{wasm_instantiate, Addr, DepsMut, StdResult, SubMsg, Uint128};
+use cosmwasm_std::CosmosMsg::Wasm;
+use cosmwasm_std::WasmMsg::Instantiate;
+use cosmwasm_std::{to_binary, Addr, DepsMut, StdResult, SubMsg, Uint128};
 use cw20::{Cw20Coin, Logo, MinterResponse};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{ImportCw20MembershipMsg, NewCw20MembershipMsg};
@@ -109,7 +111,13 @@ pub fn instantiate_new_cw20_membership(
     let cw20_code_id = CONFIG.load(deps.storage)?.cw20_code_id;
 
     let instantiate_dao_token_submsg = SubMsg::reply_on_success(
-        wasm_instantiate(cw20_code_id, &create_token_msg, vec![], msg.token_name)?,
+        Wasm(Instantiate {
+            admin: Some(enterprise_address.to_string()),
+            code_id: cw20_code_id,
+            msg: to_binary(&create_token_msg)?,
+            funds: vec![],
+            label: msg.token_name,
+        }),
         CW20_CONTRACT_INSTANTIATE_REPLY_ID,
     );
 
@@ -123,19 +131,21 @@ pub fn instantiate_token_staking_membership_contract(
     admin: String,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+    let enterprise_contract = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
 
     let submsg = SubMsg::reply_on_success(
-        wasm_instantiate(
-            version_info.token_staking_membership_code_id,
-            &InstantiateMsg {
+        Wasm(Instantiate {
+            admin: Some(enterprise_contract.to_string()),
+            code_id: version_info.token_staking_membership_code_id,
+            msg: to_binary(&InstantiateMsg {
                 admin,
                 token_contract: cw20_address.to_string(),
                 unlocking_period,
-            },
-            vec![],
-            "Token staking membership".to_string(),
-        )?,
+            })?,
+            funds: vec![],
+            label: "Token staking membership".to_string(),
+        }),
         MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     );
 

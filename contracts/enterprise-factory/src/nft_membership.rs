@@ -3,7 +3,9 @@ use crate::contract::{
 };
 use crate::state::{DaoBeingCreated, CONFIG, DAO_BEING_CREATED};
 use crate::validate::validate_existing_cw721_contract;
-use cosmwasm_std::{wasm_instantiate, Addr, DepsMut, StdResult, SubMsg};
+use cosmwasm_std::CosmosMsg::Wasm;
+use cosmwasm_std::WasmMsg::Instantiate;
+use cosmwasm_std::{to_binary, Addr, DepsMut, StdResult, SubMsg};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{ImportCw721MembershipMsg, NewCw721MembershipMsg};
 use enterprise_protocol::api::DaoType::Nft;
@@ -60,7 +62,13 @@ pub fn instantiate_new_cw721_membership(
     let cw721_code_id = CONFIG.load(deps.storage)?.cw721_code_id;
 
     let instantiate_dao_nft_submsg = SubMsg::reply_on_success(
-        wasm_instantiate(cw721_code_id, &instantiate_msg, vec![], msg.nft_name)?,
+        Wasm(Instantiate {
+            admin: Some(enterprise_address.to_string()),
+            code_id: cw721_code_id,
+            msg: to_binary(&instantiate_msg)?,
+            funds: vec![],
+            label: msg.nft_name,
+        }),
         CW721_CONTRACT_INSTANTIATE_REPLY_ID,
     );
 
@@ -75,19 +83,21 @@ pub fn instantiate_nft_staking_membership_contract(
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
+    let enterprise_contract = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
 
     let submsg = SubMsg::reply_on_success(
-        wasm_instantiate(
-            version_info.nft_staking_membership_code_id,
-            &InstantiateMsg {
+        Wasm(Instantiate {
+            admin: Some(enterprise_contract.to_string()),
+            code_id: version_info.nft_staking_membership_code_id,
+            msg: to_binary(&InstantiateMsg {
                 admin,
                 nft_contract: cw721_address.to_string(),
                 unlocking_period,
-            },
-            vec![],
-            "Nft staking membership".to_string(),
-        )?,
+            })?,
+            funds: vec![],
+            label: "Nft staking membership".to_string(),
+        }),
         MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     );
 

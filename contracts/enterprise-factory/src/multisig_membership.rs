@@ -1,7 +1,9 @@
 use crate::contract::MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID;
 use crate::state::{DaoBeingCreated, DAO_BEING_CREATED};
 use crate::validate::validate_existing_cw3_contract;
-use cosmwasm_std::{wasm_instantiate, DepsMut, StdResult, SubMsg};
+use cosmwasm_std::CosmosMsg::Wasm;
+use cosmwasm_std::WasmMsg::Instantiate;
+use cosmwasm_std::{to_binary, DepsMut, StdResult, SubMsg};
 use cw3::Cw3QueryMsg::ListVoters;
 use cw3::VoterListResponse;
 use enterprise_factory_api::api::{ImportCw3MembershipMsg, NewMultisigMembershipMsg};
@@ -79,6 +81,7 @@ pub fn instantiate_multisig_membership_contract(
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
+    let enterprise_contract = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
 
     DAO_BEING_CREATED.save(
@@ -90,15 +93,16 @@ pub fn instantiate_multisig_membership_contract(
     )?;
 
     let submsg = SubMsg::reply_on_success(
-        wasm_instantiate(
-            version_info.multisig_membership_code_id,
-            &InstantiateMsg {
+        Wasm(Instantiate {
+            admin: Some(enterprise_contract.to_string()),
+            code_id: version_info.multisig_membership_code_id,
+            msg: to_binary(&InstantiateMsg {
                 admin,
                 initial_weights: Some(initial_weights),
-            },
-            vec![],
-            "Multisig staking membership".to_string(),
-        )?,
+            })?,
+            funds: vec![],
+            label: "Multisig staking membership".to_string(),
+        }),
         MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     );
 
