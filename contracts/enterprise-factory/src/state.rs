@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdError};
+use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{Config, CreateDaoMsg};
@@ -25,6 +26,8 @@ pub struct DaoBeingCreated {
     // TODO continued: introducing a 'require_dao_being_created' function
     pub create_dao_msg: Option<CreateDaoMsg>,
     pub version_info: Option<VersionInfo>,
+    pub dao_asset: Option<AssetInfo>,
+    pub dao_nft: Option<Addr>,
     pub enterprise_address: Option<Addr>,
     // TODO: make this explicitly initialized for every membership type?
     pub initial_weights: Option<Vec<UserWeight>>,

@@ -17,6 +17,7 @@ use cosmwasm_std::{
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_factory_api::api::{
@@ -25,7 +26,7 @@ use enterprise_factory_api::api::{
 };
 use enterprise_factory_api::msg::ExecuteMsg::FinalizeDaoCreation;
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use enterprise_protocol::api::FinalizeInstantiationMsg;
+use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
@@ -91,6 +92,8 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         &DaoBeingCreated {
             create_dao_msg: Some(msg.clone()),
             version_info: Some(latest_version),
+            dao_asset: None,
+            dao_nft: None,
             enterprise_address: None,
             initial_weights: None,
             dao_type: None,
@@ -136,6 +139,8 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
         &DaoBeingCreated {
             create_dao_msg: None,
             version_info: None,
+            dao_asset: None,
+            dao_nft: None,
             enterprise_address: None,
             initial_weights: None,
             dao_type: None,
@@ -268,13 +273,23 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID,
             );
 
+            let mut asset_whitelist = create_dao_msg.asset_whitelist.unwrap_or_default();
+            if let Some(asset) = dao_being_created.dao_asset {
+                asset_whitelist.push(asset);
+            }
+
+            let mut nft_whitelist = create_dao_msg.nft_whitelist.unwrap_or_default();
+            if let Some(nft) = dao_being_created.dao_nft {
+                nft_whitelist.push(nft.to_string());
+            }
+
             let enterprise_treasury_submsg = SubMsg::reply_on_success(
                 wasm_instantiate(
                     version_info.enterprise_treasury_code_id,
                     &enterprise_treasury_api::msg::InstantiateMsg {
                         admin: enterprise_contract.to_string(),
-                        asset_whitelist: create_dao_msg.asset_whitelist,
-                        nft_whitelist: create_dao_msg.nft_whitelist,
+                        asset_whitelist: Some(asset_whitelist),
+                        nft_whitelist: Some(nft_whitelist),
                     },
                     vec![],
                     "Enterprise treasury".to_string(),
@@ -341,12 +356,26 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .contract_address;
             let addr = deps.api.addr_validate(&contract_address)?;
 
-            DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
-                Ok(DaoBeingCreated {
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+
+            let mut dao_asset: Option<AssetInfo> = None;
+            let mut dao_nft: Option<Addr> = None;
+
+            match dao_being_created.require_dao_type()? {
+                DaoType::Token => dao_asset = Some(AssetInfo::cw20(addr.clone())),
+                DaoType::Nft => dao_nft = Some(addr.clone()),
+                DaoType::Multisig => {} // no-op
+            }
+
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
                     membership_address: Some(addr),
-                    ..info
-                })
-            })?;
+                    dao_asset,
+                    dao_nft,
+                    ..dao_being_created
+                },
+            )?;
 
             Ok(Response::new())
         }
