@@ -1,6 +1,6 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Timestamp, Uint64};
+use cosmwasm_std::{Addr, Binary, Timestamp};
 use enterprise_versioning_api::api::Version;
 use std::fmt;
 use strum_macros::Display;
@@ -83,7 +83,7 @@ pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
     pub dao_type: DaoType,
-    pub dao_code_version: Uint64,
+    pub dao_version: Version,
 }
 
 #[cw_serde]

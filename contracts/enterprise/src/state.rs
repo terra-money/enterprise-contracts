@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Timestamp, Uint64};
+use cosmwasm_std::{Addr, Timestamp};
 use cw_storage_plus::Item;
 use enterprise_protocol::api::{DaoMetadata, DaoType};
 use enterprise_versioning_api::api::Version;
@@ -27,7 +27,5 @@ pub const ENTERPRISE_VERSIONING_CONTRACT: Item<Addr> = Item::new("enterprise_ver
 pub const IS_INSTANTIATION_FINALIZED: Item<bool> = Item::new("is_creation_finalized");
 
 pub const DAO_TYPE: Item<DaoType> = Item::new("dao_type");
-// TODO: store Version instead, and migrate properly
-pub const DAO_CODE_VERSION: Item<Uint64> = Item::new("dao_code_version");
 pub const DAO_VERSION: Item<Version> = Item::new("dao_version");
 pub const DAO_METADATA: Item<DaoMetadata> = Item::new(DAO_METADATA_KEY);

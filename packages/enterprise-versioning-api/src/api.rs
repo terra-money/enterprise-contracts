@@ -1,9 +1,10 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, StdError};
 use std::fmt;
+use std::str::FromStr;
 
+// TODO: tests for this for comparison and parsing?
 #[cw_serde]
-// TODO: tests for this comparison
 #[derive(Ord, PartialOrd, Eq)]
 pub struct Version {
     pub major: u64,
@@ -20,6 +21,36 @@ impl From<Version> for (u64, u64, u64) {
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+impl FromStr for Version {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split('.').collect();
+
+        if parts.len() != 3 {
+            return Err(StdError::generic_err(
+                "version string must have exactly two dots",
+            ));
+        }
+
+        let major = parts[0]
+            .parse::<u64>()
+            .map_err(|_| StdError::generic_err("major version is not a valid number"))?;
+        let minor = parts[1]
+            .parse::<u64>()
+            .map_err(|_| StdError::generic_err("minor version is not a valid number"))?;
+        let patch = parts[2]
+            .parse::<u64>()
+            .map_err(|_| StdError::generic_err("patch version is not a valid number"))?;
+
+        Ok(Version {
+            major,
+            minor,
+            patch,
+        })
     }
 }
 

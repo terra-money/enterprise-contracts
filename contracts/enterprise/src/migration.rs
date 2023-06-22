@@ -3,7 +3,7 @@ use crate::state::{ComponentContracts, COMPONENT_CONTRACTS, DAO_TYPE};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    wasm_instantiate, Addr, Decimal, DepsMut, Env, Order, StdResult, SubMsg, Uint128,
+    wasm_instantiate, Addr, Decimal, DepsMut, Env, Order, StdResult, SubMsg, Uint128, Uint64,
 };
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
@@ -22,6 +22,8 @@ const NFT_WHITELIST: Map<Addr, ()> = Map::new("nft_whitelist");
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 
 const DAO_MEMBERSHIP_CONTRACT: Item<Addr> = Item::new("dao_membership_contract");
+
+const DAO_CODE_VERSION: Item<Uint64> = Item::new("dao_code_version");
 
 const MULTISIG_MEMBERS: Map<Addr, Uint128> = Map::new("multisig_members");
 
@@ -62,6 +64,8 @@ pub fn migrate_to_rewrite(
     nft_membership_code_id: u64,
     multisig_membership_code_id: u64,
 ) -> DaoResult<Vec<SubMsg>> {
+    DAO_CODE_VERSION.remove(deps.storage);
+
     let enterprise_governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(deps.storage)?;
     let funds_distributor_contract = FUNDS_DISTRIBUTOR_CONTRACT.load(deps.storage)?;
     COMPONENT_CONTRACTS.save(
