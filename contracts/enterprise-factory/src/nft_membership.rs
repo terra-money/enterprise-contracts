@@ -10,7 +10,11 @@ use enterprise_protocol::api::DaoType::Nft;
 use enterprise_protocol::error::DaoResult;
 use nft_staking_api::msg::InstantiateMsg;
 
-pub fn import_cw721_membership(deps: DepsMut, msg: ImportCw721MembershipMsg) -> DaoResult<SubMsg> {
+pub fn import_cw721_membership(
+    deps: DepsMut,
+    msg: ImportCw721MembershipMsg,
+    admin: String,
+) -> DaoResult<SubMsg> {
     let cw721_address = deps.api.addr_validate(&msg.cw721_contract)?;
 
     validate_existing_cw721_contract(deps.as_ref(), cw721_address.as_ref())?;
@@ -23,7 +27,7 @@ pub fn import_cw721_membership(deps: DepsMut, msg: ImportCw721MembershipMsg) -> 
         })
     })?;
 
-    instantiate_nft_staking_membership_contract(deps, cw721_address, msg.unlocking_period)
+    instantiate_nft_staking_membership_contract(deps, cw721_address, msg.unlocking_period, admin)
 }
 
 pub fn instantiate_new_cw721_membership(
@@ -67,17 +71,17 @@ pub fn instantiate_nft_staking_membership_contract(
     deps: DepsMut,
     cw721_address: Addr,
     unlocking_period: Duration,
+    admin: String,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
-    let enterprise_address = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
 
     let submsg = SubMsg::reply_on_success(
         wasm_instantiate(
             version_info.nft_staking_membership_code_id,
             &InstantiateMsg {
-                admin: enterprise_address.to_string(),
+                admin,
                 nft_contract: cw721_address.to_string(),
                 unlocking_period,
             },

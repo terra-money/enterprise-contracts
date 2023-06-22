@@ -10,7 +10,11 @@ use enterprise_protocol::error::DaoResult;
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::msg::InstantiateMsg;
 
-pub fn import_cw3_membership(deps: DepsMut, msg: ImportCw3MembershipMsg) -> DaoResult<SubMsg> {
+pub fn import_cw3_membership(
+    deps: DepsMut,
+    msg: ImportCw3MembershipMsg,
+    admin: String,
+) -> DaoResult<SubMsg> {
     let cw3_address = deps.api.addr_validate(&msg.cw3_contract)?;
 
     validate_existing_cw3_contract(deps.as_ref(), cw3_address.as_ref())?;
@@ -50,12 +54,13 @@ pub fn import_cw3_membership(deps: DepsMut, msg: ImportCw3MembershipMsg) -> DaoR
         last_voter.is_some()
     } {}
 
-    instantiate_multisig_membership_contract(deps, initial_weights)
+    instantiate_multisig_membership_contract(deps, initial_weights, admin)
 }
 
 pub fn instantiate_new_multisig_membership(
     deps: DepsMut,
     msg: NewMultisigMembershipMsg,
+    admin: String,
 ) -> DaoResult<SubMsg> {
     DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
         Ok(DaoBeingCreated {
@@ -64,16 +69,16 @@ pub fn instantiate_new_multisig_membership(
         })
     })?;
 
-    instantiate_multisig_membership_contract(deps, msg.multisig_members)
+    instantiate_multisig_membership_contract(deps, msg.multisig_members, admin)
 }
 
 pub fn instantiate_multisig_membership_contract(
     deps: DepsMut,
     initial_weights: Vec<UserWeight>,
+    admin: String,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
-    let enterprise_address = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
 
     DAO_BEING_CREATED.save(
@@ -88,7 +93,7 @@ pub fn instantiate_multisig_membership_contract(
         wasm_instantiate(
             version_info.multisig_membership_code_id,
             &InstantiateMsg {
-                admin: enterprise_address.to_string(),
+                admin,
                 initial_weights: Some(initial_weights),
             },
             vec![],

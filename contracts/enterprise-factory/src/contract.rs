@@ -209,54 +209,9 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 deps.storage,
                 &DaoBeingCreated {
                     enterprise_address: Some(enterprise_contract.clone()),
-                    ..dao_being_created.clone()
+                    ..dao_being_created
                 },
             )?;
-
-            let membership_submsg = match create_dao_msg.dao_membership {
-                ImportCw20(msg) => import_cw20_membership(deps.branch(), msg)?,
-                NewCw20(msg) => instantiate_new_cw20_membership(deps.branch(), *msg)?,
-                ImportCw721(msg) => import_cw721_membership(deps.branch(), msg)?,
-                NewCw721(msg) => instantiate_new_cw721_membership(deps.branch(), msg)?,
-                ImportCw3(msg) => import_cw3_membership(deps.branch(), msg)?,
-                NewMultisig(msg) => instantiate_new_multisig_membership(deps.branch(), msg)?,
-            };
-
-            let initial_weights = dao_being_created
-                .initial_weights
-                .unwrap_or_default()
-                .iter()
-                .map(|user_weight| UserWeight {
-                    user: user_weight.user.clone(),
-                    weight: user_weight.weight,
-                })
-                .collect();
-
-            let funds_distributor_submsg = SubMsg::reply_on_success(
-                wasm_instantiate(
-                    version_info.funds_distributor_code_id,
-                    &funds_distributor_api::msg::InstantiateMsg {
-                        enterprise_contract: enterprise_contract.to_string(),
-                        initial_weights,
-                        minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
-                    },
-                    vec![],
-                    "Funds distributor".to_string(),
-                )?,
-                FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID,
-            );
-
-            let enterprise_governance_submsg = SubMsg::reply_on_success(
-                wasm_instantiate(
-                    version_info.enterprise_governance_code_id,
-                    &enterprise_governance_api::msg::InstantiateMsg {
-                        enterprise_contract: enterprise_contract.to_string(),
-                    }, // TODO: supply enterprise-governance-controller instead?
-                    vec![],
-                    "Enterprise governance".to_string(),
-                )?,
-                ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID,
-            );
 
             let enterprise_governance_controller_submsg = SubMsg::reply_on_success(
                 wasm_instantiate(
@@ -273,30 +228,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID,
             );
 
-            let mut asset_whitelist = create_dao_msg.asset_whitelist.unwrap_or_default();
-            if let Some(asset) = dao_being_created.dao_asset {
-                asset_whitelist.push(asset);
-            }
-
-            let mut nft_whitelist = create_dao_msg.nft_whitelist.unwrap_or_default();
-            if let Some(nft) = dao_being_created.dao_nft {
-                nft_whitelist.push(nft.to_string());
-            }
-
-            let enterprise_treasury_submsg = SubMsg::reply_on_success(
-                wasm_instantiate(
-                    version_info.enterprise_treasury_code_id,
-                    &enterprise_treasury_api::msg::InstantiateMsg {
-                        admin: enterprise_contract.to_string(),
-                        asset_whitelist: Some(asset_whitelist),
-                        nft_whitelist: Some(nft_whitelist),
-                    },
-                    vec![],
-                    "Enterprise treasury".to_string(),
-                )?,
-                ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID,
-            );
-
             let finalize_submsg = SubMsg::new(wasm_execute(
                 env.contract.address.to_string(),
                 &FinalizeDaoCreation {},
@@ -305,11 +236,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             Ok(Response::new()
                 .add_submessage(update_admin_msg)
-                .add_submessage(membership_submsg)
-                .add_submessage(funds_distributor_submsg)
-                .add_submessage(enterprise_governance_submsg)
                 .add_submessage(enterprise_governance_controller_submsg)
-                .add_submessage(enterprise_treasury_submsg)
                 .add_submessage(finalize_submsg)
                 .add_attribute("action", "instantiate_dao")
                 .add_attribute("dao_address", contract_address))
@@ -320,15 +247,17 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .contract_address;
             let addr = deps.api.addr_validate(&contract_address)?;
 
-            let unlocking_period = DAO_BEING_CREATED
-                .load(deps.storage)?
-                .require_unlocking_period()?;
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+            let unlocking_period = dao_being_created.require_unlocking_period()?;
+            let governance_controller =
+                dao_being_created.require_enterprise_governance_controller_address()?;
 
             Ok(
                 Response::new().add_submessage(instantiate_token_staking_membership_contract(
                     deps,
                     addr,
                     unlocking_period,
+                    governance_controller.to_string(),
                 )?),
             )
         }
@@ -338,15 +267,17 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .contract_address;
             let addr = deps.api.addr_validate(&contract_address)?;
 
-            let unlocking_period = DAO_BEING_CREATED
-                .load(deps.storage)?
-                .require_unlocking_period()?;
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+            let unlocking_period = dao_being_created.require_unlocking_period()?;
+            let governance_controller =
+                dao_being_created.require_enterprise_governance_controller_address()?;
 
             Ok(
                 Response::new().add_submessage(instantiate_nft_staking_membership_contract(
                     deps,
                     addr,
                     unlocking_period,
+                    governance_controller.to_string(),
                 )?),
             )
         }
@@ -415,14 +346,96 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .contract_address;
             let addr = deps.api.addr_validate(&contract_address)?;
 
-            DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
-                Ok(DaoBeingCreated {
-                    enterprise_governance_controller_address: Some(addr),
-                    ..info
-                })
-            })?;
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
-            Ok(Response::new())
+            let create_dao_msg = dao_being_created.require_create_dao_msg()?;
+            let version_info = dao_being_created.require_version_info()?;
+
+            let initial_weights = dao_being_created
+                .initial_weights
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(|user_weight| UserWeight {
+                    user: user_weight.user.clone(),
+                    weight: user_weight.weight,
+                })
+                .collect();
+
+            let funds_distributor_submsg = SubMsg::reply_on_success(
+                wasm_instantiate(
+                    version_info.funds_distributor_code_id,
+                    &funds_distributor_api::msg::InstantiateMsg {
+                        enterprise_contract: addr.to_string(),
+                        initial_weights,
+                        minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
+                    },
+                    vec![],
+                    "Funds distributor".to_string(),
+                )?,
+                FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID,
+            );
+
+            let enterprise_governance_submsg = SubMsg::reply_on_success(
+                wasm_instantiate(
+                    version_info.enterprise_governance_code_id,
+                    &enterprise_governance_api::msg::InstantiateMsg {
+                        enterprise_contract: addr.to_string(),
+                    },
+                    vec![],
+                    "Enterprise governance".to_string(),
+                )?,
+                ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID,
+            );
+
+            let mut asset_whitelist = create_dao_msg.asset_whitelist.unwrap_or_default();
+            if let Some(asset) = dao_being_created.dao_asset.clone() {
+                asset_whitelist.push(asset);
+            }
+
+            let mut nft_whitelist = create_dao_msg.nft_whitelist.unwrap_or_default();
+            if let Some(nft) = dao_being_created.dao_nft.clone() {
+                nft_whitelist.push(nft.to_string());
+            }
+
+            let enterprise_treasury_submsg = SubMsg::reply_on_success(
+                wasm_instantiate(
+                    version_info.enterprise_treasury_code_id,
+                    &enterprise_treasury_api::msg::InstantiateMsg {
+                        admin: addr.to_string(),
+                        asset_whitelist: Some(asset_whitelist),
+                        nft_whitelist: Some(nft_whitelist),
+                    },
+                    vec![],
+                    "Enterprise treasury".to_string(),
+                )?,
+                ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID,
+            );
+
+            let membership_submsg = match create_dao_msg.dao_membership {
+                ImportCw20(msg) => import_cw20_membership(deps.branch(), msg, addr.to_string())?,
+                NewCw20(msg) => instantiate_new_cw20_membership(deps.branch(), *msg)?,
+                ImportCw721(msg) => import_cw721_membership(deps.branch(), msg, addr.to_string())?,
+                NewCw721(msg) => instantiate_new_cw721_membership(deps.branch(), msg)?,
+                ImportCw3(msg) => import_cw3_membership(deps.branch(), msg, addr.to_string())?,
+                NewMultisig(msg) => {
+                    instantiate_new_multisig_membership(deps.branch(), msg, addr.to_string())?
+                }
+            };
+
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
+                    enterprise_governance_controller_address: Some(addr),
+                    ..dao_being_created
+                },
+            )?;
+
+            Ok(Response::new()
+                .add_submessage(funds_distributor_submsg)
+                .add_submessage(enterprise_governance_submsg)
+                .add_submessage(enterprise_treasury_submsg)
+                .add_submessage(membership_submsg))
         }
         ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
