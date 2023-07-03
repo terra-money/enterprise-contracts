@@ -7,7 +7,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration;
 use membership_common_api::api::{
     AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
-    UpdateAdminMsg, UserWeightParams, UserWeightResponse,
+    UpdateAdminMsg, UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
 };
 
 #[cw_serde]
@@ -24,6 +24,8 @@ pub enum ExecuteMsg {
     UpdateAdmin(UpdateAdminMsg),
     UpdateUnlockingPeriod(UpdateUnlockingPeriodMsg),
     Receive(Cw20ReceiveMsg),
+    AddWeightChangeHook(WeightChangeHookMsg),
+    RemoveWeightChangeHook(WeightChangeHookMsg),
 }
 
 #[cw_serde]

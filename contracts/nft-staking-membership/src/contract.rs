@@ -4,6 +4,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use membership_common::admin::update_admin;
+use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use nft_staking_impl::execute::{claim, receive_nft, unstake, update_unlocking_period};
@@ -47,6 +48,8 @@ pub fn execute(
         ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
         ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg)?,
         ExecuteMsg::ReceiveNft(msg) => receive_nft(ctx, msg)?,
+        ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
+        ExecuteMsg::RemoveWeightChangeHook(msg) => remove_weight_change_hook(ctx, msg)?,
     };
 
     Ok(response)

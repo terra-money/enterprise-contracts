@@ -11,6 +11,8 @@ use membership_common::member_weights::{
 use membership_common::total_weight::{
     decrement_total_weight, increment_total_weight, load_total_weight, save_total_weight,
 };
+use membership_common::weight_change_hooks::report_weight_change_submsgs;
+use membership_common_api::api::UserWeightChange;
 use std::ops::Not;
 use token_staking_api::api::{
     ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg, UserClaim, UserStake,
@@ -52,13 +54,24 @@ fn stake_token(
 ) -> TokenStakingResult<Response> {
     let user = ctx.deps.api.addr_validate(&user)?;
 
-    let new_user_stake = increment_member_weight(ctx.deps.storage, user, msg.amount)?;
+    let old_weight = get_member_weight(ctx.deps.storage, user.clone())?;
+    let new_weight = increment_member_weight(ctx.deps.storage, user.clone(), msg.amount)?;
     let new_total_staked = increment_total_weight(ctx, msg.amount)?;
+
+    let report_weight_change_submsgs = report_weight_change_submsgs(
+        ctx,
+        vec![UserWeightChange {
+            user: user.to_string(),
+            old_weight,
+            new_weight,
+        }],
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "stake")
-        .add_attribute("user_stake", new_user_stake.to_string())
-        .add_attribute("total_staked", new_total_staked.to_string()))
+        .add_attribute("user_stake", new_weight.to_string())
+        .add_attribute("total_staked", new_total_staked.to_string())
+        .add_submessages(report_weight_change_submsgs))
 }
 
 fn initialize_stakers(
@@ -130,17 +143,27 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> TokenStakingResult<Respons
 
     let unstaked_amount = msg.amount;
 
-    decrement_member_weight(ctx.deps.storage, user.clone(), unstaked_amount)?;
+    let new_weight = decrement_member_weight(ctx.deps.storage, user.clone(), unstaked_amount)?;
     let new_total_staked = decrement_total_weight(ctx, unstaked_amount)?;
 
     let release_at = calculate_release_at(ctx)?;
 
-    let claim = add_claim(ctx.deps.storage, user, unstaked_amount, release_at)?;
+    let claim = add_claim(ctx.deps.storage, user.clone(), unstaked_amount, release_at)?;
+
+    let report_weight_change_submsgs = report_weight_change_submsgs(
+        ctx,
+        vec![UserWeightChange {
+            user: user.to_string(),
+            old_weight: user_stake,
+            new_weight,
+        }],
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "unstake")
         .add_attribute("total_staked", new_total_staked.to_string())
-        .add_attribute("claim_id", claim.id.to_string()))
+        .add_attribute("claim_id", claim.id.to_string())
+        .add_submessages(report_weight_change_submsgs))
 }
 
 // TODO: move to common?

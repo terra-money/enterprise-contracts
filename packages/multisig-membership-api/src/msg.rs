@@ -2,7 +2,7 @@ use crate::api::{SetMembersMsg, UpdateMembersMsg, UserWeight};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use membership_common_api::api::{
     AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
-    UpdateAdminMsg, UserWeightParams, UserWeightResponse,
+    UpdateAdminMsg, UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
 };
 
 #[cw_serde]
@@ -16,9 +16,8 @@ pub enum ExecuteMsg {
     UpdateMembers(UpdateMembersMsg),
     SetMembers(SetMembersMsg),
     UpdateAdmin(UpdateAdminMsg),
-    // TODO: uncomment
-    // AddWeightChangeHook(WeightChangeHookMsg),
-    // RemoveWeightChangeHook(WeightChangeHookMsg),
+    AddWeightChangeHook(WeightChangeHookMsg),
+    RemoveWeightChangeHook(WeightChangeHookMsg),
 }
 
 #[cw_serde]

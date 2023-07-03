@@ -12,8 +12,10 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub struct WeightChangeHook {
-    weight_changes: Vec<UserWeightChange>,
+pub enum WeightChangeHook {
+    WeightChange {
+        weight_changes: Vec<UserWeightChange>,
+    },
 }
 
 #[cw_serde]

@@ -4,6 +4,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use membership_common::admin::update_admin;
+use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use multisig_membership_impl::execute::{set_members, update_members};
@@ -44,8 +45,8 @@ pub fn execute(
         ExecuteMsg::UpdateMembers(msg) => update_members(ctx, msg)?,
         ExecuteMsg::SetMembers(msg) => set_members(ctx, msg)?,
         ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
-        // ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
-        // ExecuteMsg::RemoveWeightChangeHook(msg) => remove_weight_change_hook(ctx, msg)?,
+        ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
+        ExecuteMsg::RemoveWeightChangeHook(msg) => remove_weight_change_hook(ctx, msg)?,
     };
 
     Ok(response)

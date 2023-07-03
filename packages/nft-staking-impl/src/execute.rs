@@ -6,8 +6,12 @@ use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint12
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::admin::{admin_caller_only, ADMIN};
-use membership_common::member_weights::{decrement_member_weight, increment_member_weight};
+use membership_common::member_weights::{
+    decrement_member_weight, get_member_weight, increment_member_weight,
+};
 use membership_common::total_weight::{decrement_total_weight, increment_total_weight};
+use membership_common::weight_change_hooks::report_weight_change_submsgs;
+use membership_common_api::api::UserWeightChange;
 use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
 use nft_staking_api::error::NftStakingError::{
     NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
@@ -59,13 +63,24 @@ fn stake_nft(ctx: &mut Context, msg: ReceiveNftMsg, user: String) -> NftStakingR
 
     save_nft_stake(ctx.deps.storage, &nft_stake)?;
 
-    let new_user_total_staked = increment_member_weight(ctx.deps.storage, user, Uint128::one())?;
+    let old_weight = get_member_weight(ctx.deps.storage, user.clone())?;
+    let new_weight = increment_member_weight(ctx.deps.storage, user.clone(), Uint128::one())?;
     let new_total_staked = increment_total_weight(ctx, Uint128::one())?;
+
+    let report_weight_change_submsgs = report_weight_change_submsgs(
+        ctx,
+        vec![UserWeightChange {
+            user: user.to_string(),
+            old_weight,
+            new_weight,
+        }],
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "stake")
-        .add_attribute("user_total_staked", new_user_total_staked.to_string())
-        .add_attribute("total_staked", new_total_staked.to_string()))
+        .add_attribute("user_total_staked", new_weight.to_string())
+        .add_attribute("total_staked", new_total_staked.to_string())
+        .add_submessages(report_weight_change_submsgs))
 }
 
 fn add_nft_claim(
@@ -92,6 +107,8 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> NftStakingResult<Response>
 
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
+    let old_weight = get_member_weight(ctx.deps.storage, user.clone())?;
+
     for token_id in &msg.nft_ids {
         let nft_stake = NFT_STAKES().may_load(ctx.deps.storage, token_id.to_string())?;
 
@@ -113,17 +130,28 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> NftStakingResult<Response>
 
     let unstaked_amount = Uint128::from(msg.nft_ids.len() as u128);
 
-    decrement_member_weight(ctx.deps.storage, user.clone(), unstaked_amount)?;
+    let new_weight = decrement_member_weight(ctx.deps.storage, user.clone(), unstaked_amount)?;
+
     let new_total_staked = decrement_total_weight(ctx, unstaked_amount)?;
 
     let release_at = calculate_release_at(ctx)?;
 
-    let claim = add_claim(ctx.deps.storage, user, msg.nft_ids, release_at)?;
+    let claim = add_claim(ctx.deps.storage, user.clone(), msg.nft_ids, release_at)?;
+
+    let report_weight_change_submsgs = report_weight_change_submsgs(
+        ctx,
+        vec![UserWeightChange {
+            user: user.to_string(),
+            old_weight,
+            new_weight,
+        }],
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "unstake")
         .add_attribute("total_staked", new_total_staked.to_string())
-        .add_attribute("claim_id", claim.id.to_string()))
+        .add_attribute("claim_id", claim.id.to_string())
+        .add_submessages(report_weight_change_submsgs))
 }
 
 // TODO: move to common?
