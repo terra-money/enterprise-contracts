@@ -3,7 +3,7 @@ use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{wasm_execute, Addr, Response, StdResult, SubMsg};
 use cw_storage_plus::Map;
-use membership_common_api::api::{UserWeightChange, WeightChangeHookMsg};
+use membership_common_api::api::{UserWeightChange, WeightChangeHookMsg, WeightsChangedMsg};
 use membership_common_api::error::MembershipResult;
 use membership_common_api::msg::WeightChangeHook;
 
@@ -48,7 +48,7 @@ pub fn report_weight_change_submsgs(
     ctx: &mut Context,
     weight_changes: Vec<UserWeightChange>,
 ) -> MembershipResult<Vec<SubMsg>> {
-    let hook_msg = WeightChangeHook::WeightChange { weight_changes };
+    let hook_msg = WeightChangeHook::WeightsChanged(WeightsChangedMsg { weight_changes });
 
     let hook_submsgs = WEIGHT_CHANGE_HOOKS
         .range(ctx.deps.storage, None, None, Ascending)

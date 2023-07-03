@@ -21,6 +21,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfoBase};
 use cw_utils::Expiration;
 use cw_utils::Expiration::Never;
+use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_controller_api::api::ProposalAction::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
@@ -51,13 +52,14 @@ use enterprise_protocol::api::{
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
 use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
 use enterprise_treasury_api::msg::ExecuteMsg::Spend;
-use funds_distributor_api::api::UpdateMinimumEligibleWeightMsg;
+use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
 use membership_common_api::api::{
-    TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse,
+    TotalWeightParams, TotalWeightResponse, UserWeightChange, UserWeightParams, UserWeightResponse,
+    WeightsChangedMsg,
 };
-use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg, UserWeight};
+use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg};
 use multisig_membership_api::msg::ExecuteMsg::{SetMembers, UpdateMembers};
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, Poll, PollId, PollParams, PollRejectionReason,
@@ -131,15 +133,16 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> GovernanceControllerResult<Response> {
     let sender = info.sender.clone();
-    let mut ctx = Context { deps, env, info };
+    let ctx = &mut Context { deps, env, info };
     match msg {
-        ExecuteMsg::CreateProposal(msg) => create_proposal(&mut ctx, msg, None, sender),
-        ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(&mut ctx, msg),
-        ExecuteMsg::CastVote(msg) => cast_vote(&mut ctx, msg),
-        ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(&mut ctx, msg),
-        ExecuteMsg::ExecuteProposal(msg) => execute_proposal(&mut ctx, msg),
-        ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(&mut ctx, msg),
-        ExecuteMsg::Receive(msg) => receive_cw20(&mut ctx, msg),
+        ExecuteMsg::CreateProposal(msg) => create_proposal(ctx, msg, None, sender),
+        ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(ctx, msg),
+        ExecuteMsg::CastVote(msg) => cast_vote(ctx, msg),
+        ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(ctx, msg),
+        ExecuteMsg::ExecuteProposal(msg) => execute_proposal(ctx, msg),
+        ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(ctx, msg),
+        ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
+        ExecuteMsg::WeightsChanged(msg) => weights_changed(ctx, msg),
     }
 }
 
@@ -715,7 +718,7 @@ fn update_council(
         .map(|council| council.members)
         .unwrap_or_default()
         .into_iter()
-        .map(|member| UserWeight {
+        .map(|member| multisig_membership_api::api::UserWeight {
             user: member,
             weight: Uint128::one(),
         })
@@ -887,23 +890,61 @@ pub fn receive_cw20(
     }
 }
 
-pub fn update_user_votes(
-    deps: Deps,
-    user: Addr,
-    new_amount: Uint128,
-) -> GovernanceControllerResult<SubMsg> {
-    let governance_contract = query_enterprise_governance_addr(deps)?;
+/// Callback invoked when membership weights change.
+/// We need to update governance votes and funds distributor weights.
+pub fn weights_changed(
+    ctx: &mut Context,
+    msg: WeightsChangedMsg,
+) -> GovernanceControllerResult<Response> {
+    let update_votes_submsgs = update_user_votes(ctx.deps.as_ref(), &msg.weight_changes)?;
 
-    let update_votes_submsg = SubMsg::new(wasm_execute(
-        governance_contract.to_string(),
-        &enterprise_governance_api::msg::ExecuteMsg::UpdateVotes(UpdateVotesParams {
-            voter: user.to_string(),
-            new_amount,
+    let new_user_weights = msg
+        .weight_changes
+        .into_iter()
+        .map(
+            |user_weight_change| funds_distributor_api::api::UserWeight {
+                user: user_weight_change.user,
+                weight: user_weight_change.new_weight,
+            },
+        )
+        .collect();
+
+    let update_funds_distributor_submsg = SubMsg::new(wasm_execute(
+        query_enterprise_components(ctx.deps.as_ref())?
+            .funds_distributor_contract
+            .to_string(),
+        &funds_distributor_api::msg::ExecuteMsg::UpdateUserWeights(UpdateUserWeightsMsg {
+            new_user_weights,
         }),
         vec![],
     )?);
 
-    Ok(update_votes_submsg)
+    Ok(Response::new()
+        .add_attribute("action", "weights_changed")
+        .add_submessages(update_votes_submsgs)
+        .add_submessage(update_funds_distributor_submsg))
+}
+
+pub fn update_user_votes(
+    deps: Deps,
+    user_weight_changes: &Vec<UserWeightChange>,
+) -> GovernanceControllerResult<Vec<SubMsg>> {
+    let governance_contract = query_enterprise_governance_addr(deps)?;
+
+    let mut update_votes_submsgs: Vec<SubMsg> = vec![];
+
+    for user_weight_change in user_weight_changes {
+        update_votes_submsgs.push(SubMsg::new(wasm_execute(
+            governance_contract.to_string(),
+            &UpdateVotes(UpdateVotesParams {
+                voter: user_weight_change.user.clone(),
+                new_amount: user_weight_change.new_weight,
+            }),
+            vec![],
+        )?));
+    }
+
+    Ok(update_votes_submsgs)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

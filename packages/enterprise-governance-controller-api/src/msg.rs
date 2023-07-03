@@ -6,6 +6,7 @@ use crate::api::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
+use membership_common_api::api::WeightsChangedMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -25,6 +26,7 @@ pub enum ExecuteMsg {
     ExecuteProposal(ExecuteProposalMsg),
     ExecuteProposalActions(ExecuteProposalMsg),
     Receive(Cw20ReceiveMsg),
+    WeightsChanged(WeightsChangedMsg),
 }
 
 #[cw_serde]

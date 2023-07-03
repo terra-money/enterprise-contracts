@@ -37,6 +37,11 @@ pub struct WeightChangeHookMsg {
     pub hook_addr: String,
 }
 
+#[cw_serde]
+pub struct WeightsChangedMsg {
+    pub weight_changes: Vec<UserWeightChange>,
+}
+
 ////// Responses
 
 #[cw_serde]
