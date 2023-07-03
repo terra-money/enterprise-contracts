@@ -4,7 +4,8 @@ use crate::total_weight::{load_total_weight, save_total_weight};
 use crate::validate::{admin_caller_only, dedup_user_weights};
 use common::cw::Context;
 use cosmwasm_std::{Response, Uint128};
-use multisig_membership_api::api::{SetMembersMsg, UpdateConfigMsg, UpdateMembersMsg};
+use membership_common::api::UpdateConfigMsg;
+use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg};
 use multisig_membership_api::error::MultisigMembershipResult;
 
 /// Update members' weights. Only the current admin can execute this.

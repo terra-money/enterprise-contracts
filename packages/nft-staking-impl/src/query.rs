@@ -10,10 +10,12 @@ use cosmwasm_std::{Addr, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
+use membership_common::api::{
+    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
+    UserWeightResponse,
+};
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, ConfigResponse, StakerWeight, StakersParams, StakersResponse,
-    TotalStakedAmountParams, TotalStakedAmountResponse, UserNftStakeParams, UserNftStakeResponse,
-    UserNftTotalStakeParams, UserNftTotalStakeResponse,
+    ClaimsParams, ClaimsResponse, ConfigResponse, UserNftStakeParams, UserNftStakeResponse,
 };
 use nft_staking_api::error::NftStakingResult;
 
@@ -61,33 +63,28 @@ pub fn query_user_nft_stake(
     })
 }
 
-pub fn query_user_total_stake(
+pub fn query_user_weight(
     qctx: &QueryContext,
-    params: UserNftTotalStakeParams,
-) -> NftStakingResult<UserNftTotalStakeResponse> {
+    params: UserWeightParams,
+) -> NftStakingResult<UserWeightResponse> {
     let user = qctx.deps.api.addr_validate(&params.user)?;
 
-    let total_user_stake = get_user_total_stake(qctx.deps.storage, user.clone())?;
+    let weight = get_user_total_stake(qctx.deps.storage, user.clone())?;
 
-    Ok(UserNftTotalStakeResponse {
-        user,
-        total_user_stake,
-    })
+    Ok(UserWeightResponse { user, weight })
 }
 
-pub fn query_total_staked_amount(
+pub fn query_total_weight(
     qctx: &QueryContext,
-    params: TotalStakedAmountParams,
-) -> NftStakingResult<TotalStakedAmountResponse> {
-    let total_staked_amount = match params.expiration {
+    params: TotalWeightParams,
+) -> NftStakingResult<TotalWeightResponse> {
+    let total_weight = match params.expiration {
         Expiration::AtHeight(height) => load_total_staked_at_height(qctx.deps.storage, height)?,
         Expiration::AtTime(time) => load_total_staked_at_time(qctx.deps.storage, time)?,
         Expiration::Never {} => load_total_staked(qctx.deps.storage)?,
     };
 
-    Ok(TotalStakedAmountResponse {
-        total_staked_amount,
-    })
+    Ok(TotalWeightResponse { total_weight })
 }
 
 pub fn query_claims(qctx: &QueryContext, params: ClaimsParams) -> NftStakingResult<ClaimsResponse> {
@@ -105,10 +102,10 @@ pub fn query_releasable_claims(
     get_releasable_claims(qctx.deps.storage, &qctx.env.block, user)
 }
 
-pub fn query_stakers(
+pub fn query_members(
     qctx: &QueryContext,
-    params: StakersParams,
-) -> NftStakingResult<StakersResponse> {
+    params: MembersParams,
+) -> NftStakingResult<MembersResponse> {
     let start_after = params
         .start_after
         .map(|addr| qctx.deps.api.addr_validate(&addr))
@@ -119,13 +116,13 @@ pub fn query_stakers(
         .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
         .min(MAX_QUERY_LIMIT as u32);
 
-    let stakers = USER_TOTAL_STAKED
+    let members = USER_TOTAL_STAKED
         .range(qctx.deps.storage, start_after, None, Ascending)
         .take(limit as usize)
         .collect::<StdResult<Vec<(Addr, Uint128)>>>()?
         .into_iter()
-        .map(|(staker, weight)| StakerWeight { staker, weight })
+        .map(|(user, weight)| UserWeightResponse { user, weight })
         .collect();
 
-    Ok(StakersResponse { stakers })
+    Ok(MembersResponse { members })
 }

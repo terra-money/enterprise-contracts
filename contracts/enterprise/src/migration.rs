@@ -462,8 +462,8 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
     )?);
     let update_council_membership_admin_submsg = SubMsg::new(wasm_execute(
         council_membership_contract.to_string(),
-        &multisig_membership_api::msg::ExecuteMsg::UpdateConfig(
-            multisig_membership_api::api::UpdateConfigMsg {
+        &membership_common::msg::ExecuteMsg::UpdateConfig(
+            membership_common::api::UpdateConfigMsg {
                 new_admin: Some(governance_controller_contract.to_string()),
             },
         ),

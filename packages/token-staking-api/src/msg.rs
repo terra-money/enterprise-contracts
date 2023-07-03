@@ -1,11 +1,14 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, StakersParams, StakersResponse,
-    TotalStakedAmountParams, TotalStakedAmountResponse, UnstakeMsg, UpdateConfigMsg, UserClaim,
-    UserStake, UserTokenStakeParams, UserTokenStakeResponse,
+    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, UnstakeMsg, UpdateConfigMsg, UserClaim,
+    UserStake,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration;
+use membership_common::api::{
+    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
+    UserWeightResponse,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -34,16 +37,16 @@ pub enum Cw20HookMsg {
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
-    #[returns(UserTokenStakeResponse)]
-    UserStake(UserTokenStakeParams),
-    #[returns(TotalStakedAmountResponse)]
-    TotalStakedAmount(TotalStakedAmountParams),
+    #[returns(UserWeightResponse)]
+    UserWeight(UserWeightParams),
+    #[returns(TotalWeightResponse)]
+    TotalWeight(TotalWeightParams),
     #[returns(ClaimsResponse)]
     Claims(ClaimsParams),
     #[returns(ClaimsResponse)]
     ReleasableClaims(ClaimsParams),
-    #[returns(StakersResponse)]
-    Stakers(StakersParams),
+    #[returns(MembersResponse)]
+    Members(MembersParams),
 }
 
 #[cw_serde]

@@ -8,7 +8,7 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
-use multisig_membership_api::api::{
+use membership_common::api::{
     ConfigResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
     UserWeightParams, UserWeightResponse,
 };

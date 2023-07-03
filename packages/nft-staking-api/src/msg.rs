@@ -1,12 +1,14 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, ReceiveNftMsg, StakersParams,
-    StakersResponse, TotalStakedAmountParams, TotalStakedAmountResponse, UnstakeMsg,
-    UpdateConfigMsg, UserNftStakeParams, UserNftStakeResponse, UserNftTotalStakeParams,
-    UserNftTotalStakeResponse,
+    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, ReceiveNftMsg, UnstakeMsg,
+    UpdateConfigMsg, UserNftStakeParams, UserNftStakeResponse,
 };
 use common::cw::ReleaseAt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
+use membership_common::api::{
+    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
+    UserWeightResponse,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -36,16 +38,16 @@ pub enum QueryMsg {
     Config {},
     #[returns(UserNftStakeResponse)]
     UserStake(UserNftStakeParams),
-    #[returns(UserNftTotalStakeResponse)]
-    UserTotalStake(UserNftTotalStakeParams),
-    #[returns(TotalStakedAmountResponse)]
-    TotalStakedAmount(TotalStakedAmountParams),
+    #[returns(UserWeightResponse)]
+    UserWeight(UserWeightParams),
+    #[returns(TotalWeightResponse)]
+    TotalWeight(TotalWeightParams),
     #[returns(ClaimsResponse)]
     Claims(ClaimsParams),
     #[returns(ClaimsResponse)]
     ReleasableClaims(ClaimsParams),
-    #[returns(StakersResponse)]
-    Stakers(StakersParams),
+    #[returns(MembersResponse)]
+    Members(MembersParams),
 }
 
 #[cw_serde]

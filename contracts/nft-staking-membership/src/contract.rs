@@ -7,8 +7,8 @@ use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use nft_staking_impl::execute::{claim, receive_nft, unstake, update_config};
 use nft_staking_impl::query::{
-    query_claims, query_config, query_releasable_claims, query_stakers, query_total_staked_amount,
-    query_user_nft_stake, query_user_total_stake,
+    query_claims, query_config, query_members, query_releasable_claims, query_total_weight,
+    query_user_nft_stake, query_user_weight,
 };
 
 // version info for migration info
@@ -60,13 +60,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
     let response = match msg {
         QueryMsg::Config {} => to_binary(&query_config(&qctx)?)?,
         QueryMsg::UserStake(params) => to_binary(&query_user_nft_stake(&qctx, params)?)?,
-        QueryMsg::UserTotalStake(params) => to_binary(&query_user_total_stake(&qctx, params)?)?,
-        QueryMsg::TotalStakedAmount(params) => {
-            to_binary(&query_total_staked_amount(&qctx, params)?)?
-        }
+        QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
+        QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,
         QueryMsg::Claims(params) => to_binary(&query_claims(&qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(&qctx, params)?)?,
-        QueryMsg::Stakers(params) => to_binary(&query_stakers(&qctx, params)?)?,
+        QueryMsg::Members(params) => to_binary(&query_members(&qctx, params)?)?,
     };
 
     Ok(response)

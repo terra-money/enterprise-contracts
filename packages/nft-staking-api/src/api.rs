@@ -1,7 +1,7 @@
 use common::cw::ReleaseAt;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
-use cw_utils::{Duration, Expiration};
+use cw_utils::Duration;
 
 pub type NftTokenId = String;
 
@@ -26,6 +26,7 @@ pub struct ClaimMsg {
     pub user: String,
 }
 
+// TODO: split into update admin and update unlocking period
 #[cw_serde]
 pub struct UpdateConfigMsg {
     pub new_admin: Option<String>,
@@ -40,18 +41,6 @@ pub struct UserNftStakeParams {
 }
 
 #[cw_serde]
-pub struct UserNftTotalStakeParams {
-    pub user: String,
-}
-
-#[cw_serde]
-pub struct TotalStakedAmountParams {
-    /// Denotes the moment at which we're interested in the total staked amount.
-    /// Expiration::Never is used for current total staked.
-    pub expiration: Expiration,
-}
-
-#[cw_serde]
 pub struct ClaimsParams {
     pub user: String,
 }
@@ -62,12 +51,6 @@ pub struct NftClaim {
     pub user: Addr,
     pub nft_ids: Vec<NftTokenId>,
     pub release_at: ReleaseAt,
-}
-
-#[cw_serde]
-pub struct StakersParams {
-    pub start_after: Option<String>,
-    pub limit: Option<u32>,
 }
 
 ////// Responses
@@ -87,28 +70,6 @@ pub struct UserNftStakeResponse {
 }
 
 #[cw_serde]
-pub struct UserNftTotalStakeResponse {
-    pub user: Addr,
-    pub total_user_stake: Uint128,
-}
-
-#[cw_serde]
 pub struct ClaimsResponse {
     pub claims: Vec<NftClaim>,
-}
-
-#[cw_serde]
-pub struct TotalStakedAmountResponse {
-    pub total_staked_amount: Uint128,
-}
-
-#[cw_serde]
-pub struct StakerWeight {
-    pub staker: Addr,
-    pub weight: Uint128,
-}
-
-#[cw_serde]
-pub struct StakersResponse {
-    pub stakers: Vec<StakerWeight>,
 }

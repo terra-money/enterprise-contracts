@@ -49,10 +49,7 @@ pub fn instantiate_new_cw721_membership(
         },
     )?;
 
-    let minter = match msg.minter {
-        None => enterprise_address.to_string(),
-        Some(minter) => minter,
-    };
+    let minter = msg.minter.unwrap_or(enterprise_address.to_string());
     let instantiate_msg = cw721_base::msg::InstantiateMsg {
         name: msg.nft_name.clone(),
         symbol: msg.nft_symbol,

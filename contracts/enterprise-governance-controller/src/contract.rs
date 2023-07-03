@@ -54,10 +54,10 @@ use enterprise_treasury_api::msg::ExecuteMsg::Spend;
 use funds_distributor_api::api::UpdateMinimumEligibleWeightMsg;
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
-use multisig_membership_api::api::{
-    SetMembersMsg, TotalWeightParams, UpdateMembersMsg, UserWeight, UserWeightParams,
-    UserWeightResponse,
+use membership_common::api::{
+    TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse,
 };
+use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg, UserWeight};
 use multisig_membership_api::msg::ExecuteMsg::{SetMembers, UpdateMembers};
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, Poll, PollId, PollParams, PollRejectionReason,
@@ -68,10 +68,6 @@ use poll_engine_api::api::{
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::ops::{Add, Sub};
-use token_staking_api::api::{
-    TotalStakedAmountParams, TotalStakedAmountResponse, UserTokenStakeParams,
-    UserTokenStakeResponse,
-};
 use DaoType::{Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
@@ -1237,14 +1233,12 @@ fn general_total_available_votes(
     expiration: Expiration,
 ) -> GovernanceControllerResult<Uint128> {
     let membership_contract = query_membership_addr(deps)?;
-    // TODO: unify the query properly by adding a lib containing msg structures for all 3, instead of like a pleb here
-    let response: TotalStakedAmountResponse = deps.querier.query_wasm_smart(
+
+    let response: TotalWeightResponse = deps.querier.query_wasm_smart(
         membership_contract,
-        &token_staking_api::msg::QueryMsg::TotalStakedAmount(TotalStakedAmountParams {
-            expiration,
-        }),
+        &membership_common::msg::QueryMsg::TotalWeight(TotalWeightParams { expiration }),
     )?;
-    Ok(response.total_staked_amount)
+    Ok(response.total_weight)
 }
 
 pub fn query_member_vote(
@@ -1294,15 +1288,14 @@ pub fn query_proposal_votes(
 fn get_user_available_votes(qctx: QueryContext, user: Addr) -> GovernanceControllerResult<Uint128> {
     let membership_contract = query_membership_addr(qctx.deps)?;
 
-    // TODO: unify in a lib for membership contracts
-    let response: UserTokenStakeResponse = qctx.deps.querier.query_wasm_smart(
+    let response: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
         membership_contract.to_string(),
-        &UserTokenStakeParams {
+        &membership_common::msg::QueryMsg::UserWeight(UserWeightParams {
             user: user.to_string(),
-        },
+        }),
     )?;
 
-    Ok(response.staked_amount)
+    Ok(response.weight)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

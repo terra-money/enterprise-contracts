@@ -1,5 +1,5 @@
 [package]
-name = "token-staking-impl"
+name = "membership-common"
 version = "0.1.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
@@ -9,12 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 common = { path = "../common" }
-membership-common = { path = "../membership-common" }
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
-cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
-cw20 = "1.0.1"
-token-staking-api = { path = "../token-staking-api" }
-itertools = "0.10.5"
 thiserror = "1"
