@@ -54,7 +54,7 @@ use enterprise_treasury_api::msg::ExecuteMsg::Spend;
 use funds_distributor_api::api::UpdateMinimumEligibleWeightMsg;
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
-use membership_common::api::{
+use membership_common_api::api::{
     TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse,
 };
 use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg, UserWeight};
@@ -1234,7 +1234,7 @@ fn general_total_available_votes(
 
     let response: TotalWeightResponse = deps.querier.query_wasm_smart(
         membership_contract,
-        &membership_common::msg::QueryMsg::TotalWeight(TotalWeightParams { expiration }),
+        &membership_common_api::msg::QueryMsg::TotalWeight(TotalWeightParams { expiration }),
     )?;
     Ok(response.total_weight)
 }
@@ -1288,7 +1288,7 @@ fn get_user_available_votes(qctx: QueryContext, user: Addr) -> GovernanceControl
 
     let response: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
         membership_contract.to_string(),
-        &membership_common::msg::QueryMsg::UserWeight(UserWeightParams {
+        &membership_common_api::msg::QueryMsg::UserWeight(UserWeightParams {
             user: user.to_string(),
         }),
     )?;

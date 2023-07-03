@@ -5,7 +5,6 @@ use cw_utils::Duration;
 
 #[cw_serde]
 pub struct Config {
-    pub admin: Addr,
     pub token_contract: Addr,
     pub unlocking_period: Duration,
 }

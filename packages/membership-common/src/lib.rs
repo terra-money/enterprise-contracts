@@ -1,2 +1,1 @@
-pub mod api;
-pub mod msg;
+pub mod admin;

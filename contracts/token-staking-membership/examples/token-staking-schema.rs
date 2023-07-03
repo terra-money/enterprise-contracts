@@ -1,7 +1,7 @@
 use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use membership_common::api::{MembersResponse, TotalWeightResponse, UserWeightResponse};
+use membership_common_api::api::{MembersResponse, TotalWeightResponse, UserWeightResponse};
 use token_staking_api::api::{ClaimsResponse, ConfigResponse};
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 

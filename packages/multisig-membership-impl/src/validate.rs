@@ -1,25 +1,9 @@
-use crate::config::CONFIG;
 use common::cw::Context;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use itertools::Itertools;
 use multisig_membership_api::api::UserWeight;
-use multisig_membership_api::error::MultisigMembershipError::Unauthorized;
 use multisig_membership_api::error::{MultisigMembershipError, MultisigMembershipResult};
 use MultisigMembershipError::DuplicateUserWeightFound;
-
-/// Assert that the caller is admin.
-/// If the validation succeeds, returns the admin address.
-pub fn admin_caller_only(ctx: &Context) -> MultisigMembershipResult<Addr> {
-    let config = CONFIG.load(ctx.deps.storage)?;
-    let admin = config.admin;
-
-    // only current admin can change the admin
-    if ctx.info.sender != admin {
-        return Err(Unauthorized);
-    }
-
-    Ok(admin)
-}
 
 /// Will validate each of the user addresses, and fail if there are any duplicate addresses found.
 /// Otherwise, returns a vector of (user Addr, weight).

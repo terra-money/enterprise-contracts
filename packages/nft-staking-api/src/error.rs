@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use membership_common_api::error::MembershipError;
 use thiserror::Error;
 
 pub type NftStakingResult<T> = Result<T, NftStakingError>;
@@ -7,6 +8,9 @@ pub type NftStakingResult<T> = Result<T, NftStakingError>;
 pub enum NftStakingError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Common(#[from] MembershipError),
 
     #[error("Unauthorized")]
     Unauthorized,

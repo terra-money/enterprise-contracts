@@ -5,7 +5,7 @@ use crate::api::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration;
-use membership_common::api::{
+use membership_common_api::api::{
     AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
     UpdateAdminMsg, UserWeightParams, UserWeightResponse,
 };

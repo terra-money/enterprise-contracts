@@ -3,9 +3,10 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+use membership_common::admin::update_admin;
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use multisig_membership_impl::execute::{set_members, update_config, update_members};
+use multisig_membership_impl::execute::{set_members, update_members};
 use multisig_membership_impl::query::{
     query_admin, query_members, query_total_weight, query_user_weight,
 };
@@ -39,11 +40,15 @@ pub fn execute(
 ) -> MultisigMembershipResult<Response> {
     let ctx = &mut Context { deps, env, info };
 
-    match msg {
-        ExecuteMsg::UpdateMembers(msg) => update_members(ctx, msg),
-        ExecuteMsg::SetMembers(msg) => set_members(ctx, msg),
-        ExecuteMsg::UpdateConfig(msg) => update_config(ctx, msg),
-    }
+    let response = match msg {
+        ExecuteMsg::UpdateMembers(msg) => update_members(ctx, msg)?,
+        ExecuteMsg::SetMembers(msg) => set_members(ctx, msg)?,
+        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
+        // ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
+        // ExecuteMsg::RemoveWeightChangeHook(msg) => remove_weight_change_hook(ctx, msg)?,
+    };
+
+    Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,10 +1,9 @@
-use crate::config::CONFIG;
 use crate::member_weights::MEMBER_WEIGHTS;
 use crate::total_weight::{load_total_weight, save_total_weight};
-use crate::validate::{admin_caller_only, dedup_user_weights};
+use crate::validate::dedup_user_weights;
 use common::cw::Context;
 use cosmwasm_std::{Response, Uint128};
-use membership_common::api::UpdateAdminMsg;
+use membership_common::admin::admin_caller_only;
 use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg};
 use multisig_membership_api::error::MultisigMembershipResult;
 
@@ -57,18 +56,37 @@ pub fn set_members(ctx: &mut Context, msg: SetMembersMsg) -> MultisigMembershipR
     Ok(Response::new().add_attribute("action", "set_members"))
 }
 
-/// Update the config. Only the current admin can execute this.
-pub fn update_config(ctx: &mut Context, msg: UpdateAdminMsg) -> MultisigMembershipResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
-
-    let mut config = CONFIG.load(ctx.deps.storage)?;
-
-    if let Some(new_admin) = msg.new_admin {
-        config.admin = ctx.deps.api.addr_validate(&new_admin)?;
-    }
-
-    CONFIG.save(ctx.deps.storage, &config)?;
-
-    Ok(Response::new().add_attribute("action", "update_config"))
-}
+// TODO: move to common
+// /// Add an address to which weight changes will be reported. Only the current admin can execute this.
+// pub fn add_weight_change_hook(
+//     ctx: &mut Context,
+//     msg: WeightChangeHookMsg,
+// ) -> MultisigMembershipResult<Response> {
+//     // only admin can execute this
+//     admin_caller_only(ctx)?;
+//
+//     let hook_addr = ctx.deps.api.addr_validate(&msg.hook_addr)?;
+//
+//     WEIGHT_CHANGE_HOOKS.save(ctx.deps.storage, hook_addr.clone(), &())?;
+//
+//     Ok(Response::new()
+//         .add_attribute("action", "add_weight_change_hook")
+//         .add_attribute("hook_addr", hook_addr.to_string()))
+// }
+//
+// /// Remove an address to which weight changes were being reported. Only the current admin can execute this.
+// pub fn remove_weight_change_hook(
+//     ctx: &mut Context,
+//     msg: WeightChangeHookMsg,
+// ) -> MultisigMembershipResult<Response> {
+//     // only admin can execute this
+//     admin_caller_only(ctx)?;
+//
+//     let hook_addr = ctx.deps.api.addr_validate(&msg.hook_addr)?;
+//
+//     WEIGHT_CHANGE_HOOKS.remove(ctx.deps.storage, hook_addr.clone());
+//
+//     Ok(Response::new()
+//         .add_attribute("action", "remove_weight_change_hook")
+//         .add_attribute("hook_addr", hook_addr.to_string()))
+// }

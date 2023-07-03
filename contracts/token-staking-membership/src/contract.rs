@@ -3,11 +3,10 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+use membership_common::admin::update_admin;
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use token_staking_impl::execute::{
-    claim, receive_cw20, unstake, update_admin, update_unlocking_period,
-};
+use token_staking_impl::execute::{claim, receive_cw20, unstake, update_unlocking_period};
 use token_staking_impl::query::{
     query_admin, query_claims, query_members, query_releasable_claims, query_token_config,
     query_total_weight, query_user_weight,
@@ -42,13 +41,15 @@ pub fn execute(
 ) -> TokenStakingResult<Response> {
     let ctx = &mut Context { deps, env, info };
 
-    match msg {
-        ExecuteMsg::Unstake(msg) => unstake(ctx, msg),
-        ExecuteMsg::Claim(msg) => claim(ctx, msg),
-        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg),
-        ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg),
-        ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
-    }
+    let response = match msg {
+        ExecuteMsg::Unstake(msg) => unstake(ctx, msg)?,
+        ExecuteMsg::Claim(msg) => claim(ctx, msg)?,
+        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
+        ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg)?,
+        ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg)?,
+    };
+
+    Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

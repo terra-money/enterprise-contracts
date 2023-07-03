@@ -462,9 +462,11 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
     )?);
     let update_council_membership_admin_submsg = SubMsg::new(wasm_execute(
         council_membership_contract.to_string(),
-        &membership_common::msg::ExecuteMsg::UpdateAdmin(membership_common::api::UpdateAdminMsg {
-            new_admin: Some(governance_controller_contract.to_string()),
-        }),
+        &membership_common_api::msg::ExecuteMsg::UpdateAdmin(
+            membership_common_api::api::UpdateAdminMsg {
+                new_admin: governance_controller_contract.to_string(),
+            },
+        ),
         vec![],
     )?);
     // TODO: update membership contract admin?

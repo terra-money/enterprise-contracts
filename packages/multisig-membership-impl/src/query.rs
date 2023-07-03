@@ -1,4 +1,3 @@
-use crate::config::CONFIG;
 use crate::member_weights::MEMBER_WEIGHTS;
 use crate::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
@@ -8,7 +7,8 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
-use membership_common::api::{
+use membership_common::admin::ADMIN;
+use membership_common_api::api::{
     AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
     UserWeightParams, UserWeightResponse,
 };
@@ -18,11 +18,9 @@ const DEFAULT_QUERY_LIMIT: u8 = 50;
 const MAX_QUERY_LIMIT: u8 = 100;
 
 pub fn query_admin(qctx: &QueryContext) -> MultisigMembershipResult<AdminResponse> {
-    let config = CONFIG.load(qctx.deps.storage)?;
+    let admin = ADMIN.load(qctx.deps.storage)?;
 
-    Ok(AdminResponse {
-        admin: config.admin,
-    })
+    Ok(AdminResponse { admin })
 }
 
 pub fn query_user_weight(

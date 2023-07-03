@@ -6,12 +6,11 @@ use crate::token_staking::{
 use crate::total_staked::{
     decrement_total_staked, increment_total_staked, load_total_staked, save_total_staked,
 };
-use crate::validate::admin_caller_only;
 use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
-use membership_common::api::UpdateAdminMsg;
+use membership_common::admin::{admin_caller_only, ADMIN};
 use std::ops::Not;
 use token_staking_api::api::{
     ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg, UserClaim, UserStake,
@@ -32,8 +31,9 @@ pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResul
         return Err(Unauthorized);
     }
 
+    let admin = ADMIN.load(ctx.deps.storage)?;
     // only admin should send the actual tokens, they'll tell us which user
-    if msg.sender != config.admin {
+    if msg.sender != admin {
         return Err(Unauthorized);
     }
 
@@ -152,22 +152,6 @@ fn calculate_release_at(ctx: &mut Context) -> TokenStakingResult<ReleaseAt> {
         Time(time) => ReleaseAt::Timestamp(ctx.env.block.time.plus_seconds(time)),
     };
     Ok(release_at)
-}
-
-/// Update the admin. Only the current admin can execute this.
-pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> TokenStakingResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
-
-    let mut config = CONFIG.load(ctx.deps.storage)?;
-
-    if let Some(new_admin) = msg.new_admin {
-        config.admin = ctx.deps.api.addr_validate(&new_admin)?;
-    }
-
-    CONFIG.save(ctx.deps.storage, &config)?;
-
-    Ok(Response::new().add_attribute("action", "update_admin"))
 }
 
 /// Update the unlocking period. Only the current admin can execute this.

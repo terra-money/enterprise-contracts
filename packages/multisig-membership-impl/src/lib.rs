@@ -1,4 +1,3 @@
-mod config;
 pub mod execute;
 pub mod instantiate;
 mod member_weights;

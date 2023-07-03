@@ -3,11 +3,10 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+use membership_common::admin::update_admin;
 use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use nft_staking_impl::execute::{
-    claim, receive_nft, unstake, update_admin, update_unlocking_period,
-};
+use nft_staking_impl::execute::{claim, receive_nft, unstake, update_unlocking_period};
 use nft_staking_impl::query::{
     query_admin, query_claims, query_members, query_nft_cnfig, query_releasable_claims,
     query_total_weight, query_user_nft_stake, query_user_weight,
@@ -42,13 +41,15 @@ pub fn execute(
 ) -> NftStakingResult<Response> {
     let ctx = &mut Context { deps, env, info };
 
-    match msg {
-        ExecuteMsg::Unstake(msg) => unstake(ctx, msg),
-        ExecuteMsg::Claim(msg) => claim(ctx, msg),
-        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg),
-        ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg),
-        ExecuteMsg::ReceiveNft(msg) => receive_nft(ctx, msg),
-    }
+    let response = match msg {
+        ExecuteMsg::Unstake(msg) => unstake(ctx, msg)?,
+        ExecuteMsg::Claim(msg) => claim(ctx, msg)?,
+        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
+        ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg)?,
+        ExecuteMsg::ReceiveNft(msg) => receive_nft(ctx, msg)?,
+    };
+
+    Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -10,7 +10,8 @@ use cosmwasm_std::{Addr, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
-use membership_common::api::{
+use membership_common::admin::ADMIN;
+use membership_common_api::api::{
     AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
     UserWeightParams, UserWeightResponse,
 };
@@ -23,11 +24,9 @@ const MAX_QUERY_LIMIT: u8 = 100;
 const DEFAULT_QUERY_LIMIT: u8 = 50;
 
 pub fn query_admin(qctx: &QueryContext) -> NftStakingResult<AdminResponse> {
-    let config = CONFIG.load(qctx.deps.storage)?;
+    let admin = ADMIN.load(qctx.deps.storage)?;
 
-    Ok(AdminResponse {
-        admin: config.admin,
-    })
+    Ok(AdminResponse { admin })
 }
 
 pub fn query_nft_cnfig(qctx: &QueryContext) -> NftStakingResult<NftConfigResponse> {

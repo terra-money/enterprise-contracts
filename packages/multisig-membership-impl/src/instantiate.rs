@@ -1,19 +1,16 @@
-use crate::config::{Config, CONFIG};
 use crate::member_weights::MEMBER_WEIGHTS;
 use crate::total_weight::{load_total_weight, save_total_weight};
 use crate::validate::dedup_user_weights;
 use common::cw::Context;
 use cosmwasm_std::Uint128;
+use membership_common::admin::ADMIN;
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::InstantiateMsg;
 
 pub fn instantiate(ctx: &mut Context, msg: InstantiateMsg) -> MultisigMembershipResult<()> {
     let admin = ctx.deps.api.addr_validate(&msg.admin)?;
-
-    let config = Config { admin };
-
-    CONFIG.save(ctx.deps.storage, &config)?;
+    ADMIN.save(ctx.deps.storage, &admin)?;
 
     if let Some(initial_weights) = msg.initial_weights {
         save_initial_weights(ctx, initial_weights)?;

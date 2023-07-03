@@ -1,4 +1,4 @@
-Membership common API
+Membership common functionalities
 =======
 
-Common structures to interface with membership contracts.
+Common functionalities of membership contracts, such as admin, hooks, etc.

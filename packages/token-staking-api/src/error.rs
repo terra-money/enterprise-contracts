@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use membership_common_api::error::MembershipError;
 use thiserror::Error;
 
 pub type TokenStakingResult<T> = Result<T, TokenStakingError>;
@@ -7,6 +8,9 @@ pub type TokenStakingResult<T> = Result<T, TokenStakingError>;
 pub enum TokenStakingError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Common(#[from] MembershipError),
 
     #[error("Unauthorized")]
     Unauthorized,

@@ -4,12 +4,11 @@ use crate::nft_staking::{
     decrement_user_total_staked, increment_user_total_staked, save_nft_stake, NftStake, NFT_STAKES,
 };
 use crate::total_staked::{decrement_total_staked, increment_total_staked};
-use crate::validate::admin_caller_only;
 use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
-use membership_common::api::UpdateAdminMsg;
+use membership_common::admin::{admin_caller_only, ADMIN};
 use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
 use nft_staking_api::error::NftStakingError::{
     NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
@@ -26,8 +25,9 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
         return Err(Unauthorized);
     }
 
+    let admin = ADMIN.load(ctx.deps.storage)?;
     // only admin should send the actual NFT, they'll tell us which user
-    if msg.sender != config.admin {
+    if msg.sender != admin {
         return Err(Unauthorized);
     }
 
@@ -138,23 +138,7 @@ fn calculate_release_at(ctx: &mut Context) -> NftStakingResult<ReleaseAt> {
     Ok(release_at)
 }
 
-/// Update the config. Only the current admin can execute this.
-pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> NftStakingResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
-
-    let mut config = CONFIG.load(ctx.deps.storage)?;
-
-    if let Some(new_admin) = msg.new_admin {
-        config.admin = ctx.deps.api.addr_validate(&new_admin)?;
-    }
-
-    CONFIG.save(ctx.deps.storage, &config)?;
-
-    Ok(Response::new().add_attribute("action", "update_admin"))
-}
-
-/// Update the config. Only the current admin can execute this.
+/// Update the unlocking period. Only the current admin can execute this.
 pub fn update_unlocking_period(
     ctx: &mut Context,
     msg: UpdateUnlockingPeriodMsg,
