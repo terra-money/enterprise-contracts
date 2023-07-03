@@ -39,6 +39,7 @@ use enterprise_versioning_api::api::VersionResponse;
 use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
+use membership_common_api::api::WeightChangeHookMsg;
 use CreateDaoMembershipMsg::{ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewMultisig};
 use ExecuteMsg::CreateDao;
 
@@ -309,6 +310,17 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 DaoType::Multisig => {} // no-op
             }
 
+            let governance_controller =
+                dao_being_created.require_enterprise_governance_controller_address()?;
+
+            let add_weight_change_hook_submsg = SubMsg::new(wasm_execute(
+                addr.to_string(),
+                &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
+                    hook_addr: governance_controller.to_string(),
+                }),
+                vec![],
+            )?);
+
             DAO_BEING_CREATED.save(
                 deps.storage,
                 &DaoBeingCreated {
@@ -319,7 +331,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 },
             )?;
 
-            Ok(Response::new())
+            Ok(Response::new().add_submessage(add_weight_change_hook_submsg))
         }
         COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
@@ -329,6 +341,17 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
+            let governance_controller =
+                dao_being_created.require_enterprise_governance_controller_address()?;
+
+            let add_weight_change_hook_submsg = SubMsg::new(wasm_execute(
+                addr.to_string(),
+                &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
+                    hook_addr: governance_controller.to_string(),
+                }),
+                vec![],
+            )?);
+
             DAO_BEING_CREATED.save(
                 deps.storage,
                 &DaoBeingCreated {
@@ -337,7 +360,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 },
             )?;
 
-            Ok(Response::new())
+            Ok(Response::new().add_submessage(add_weight_change_hook_submsg))
         }
         FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
