@@ -1,13 +1,13 @@
 use crate::member_weights::MEMBER_WEIGHTS;
-use crate::total_weight::{
-    load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
-};
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use membership_common::admin::ADMIN;
+use membership_common::total_weight::{
+    load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
+};
 use membership_common_api::api::{
     AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
     UserWeightParams, UserWeightResponse,

@@ -3,14 +3,14 @@ use crate::config::CONFIG;
 use crate::token_staking::{
     decrement_user_total_staked, get_user_stake, increment_user_stake, set_user_stake,
 };
-use crate::total_staked::{
-    decrement_total_staked, increment_total_staked, load_total_staked, save_total_staked,
-};
 use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::admin::{admin_caller_only, ADMIN};
+use membership_common::total_weight::{
+    decrement_total_weight, increment_total_weight, load_total_weight, save_total_weight,
+};
 use std::ops::Not;
 use token_staking_api::api::{
     ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg, UserClaim, UserStake,
@@ -53,7 +53,7 @@ fn stake_token(
     let user = ctx.deps.api.addr_validate(&user)?;
 
     let new_user_stake = increment_user_stake(ctx.deps.storage, user, msg.amount)?;
-    let new_total_staked = increment_total_staked(ctx, msg.amount)?;
+    let new_total_staked = increment_total_weight(ctx, msg.amount)?;
 
     Ok(Response::new()
         .add_attribute("action", "stake")
@@ -66,7 +66,7 @@ fn initialize_stakers(
     msg: Cw20ReceiveMsg,
     stakers: Vec<UserStake>,
 ) -> TokenStakingResult<Response> {
-    let total_staked = load_total_staked(ctx.deps.storage)?;
+    let total_staked = load_total_weight(ctx.deps.storage)?;
 
     if total_staked.is_zero().not() {
         return Err(StakesAlreadyInitialized);
@@ -86,7 +86,7 @@ fn initialize_stakers(
         return Err(IncorrectStakesInitializationAmount);
     }
 
-    save_total_staked(ctx.deps.storage, &user_stakes_sum, &ctx.env.block)?;
+    save_total_weight(ctx.deps.storage, &user_stakes_sum, &ctx.env.block)?;
 
     Ok(Response::new()
         .add_attribute("action", "initialize_stakes")
@@ -131,7 +131,7 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> TokenStakingResult<Respons
     let unstaked_amount = msg.amount;
 
     decrement_user_total_staked(ctx.deps.storage, user.clone(), unstaked_amount)?;
-    let new_total_staked = decrement_total_staked(ctx, unstaked_amount)?;
+    let new_total_staked = decrement_total_weight(ctx, unstaked_amount)?;
 
     let release_at = calculate_release_at(ctx)?;
 

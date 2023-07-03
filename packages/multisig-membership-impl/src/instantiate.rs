@@ -1,9 +1,9 @@
 use crate::member_weights::MEMBER_WEIGHTS;
-use crate::total_weight::{load_total_weight, save_total_weight};
 use crate::validate::dedup_user_weights;
 use common::cw::Context;
 use cosmwasm_std::Uint128;
 use membership_common::admin::ADMIN;
+use membership_common::total_weight::{load_total_weight, save_total_weight};
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::InstantiateMsg;

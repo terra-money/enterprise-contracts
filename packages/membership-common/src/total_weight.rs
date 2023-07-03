@@ -1,5 +1,22 @@
+use common::cw::Context;
 use cosmwasm_std::{BlockInfo, StdResult, Storage, Timestamp, Uint128};
 use cw_storage_plus::{SnapshotItem, Strategy};
+
+pub fn increment_total_weight(ctx: &mut Context, amount: Uint128) -> StdResult<Uint128> {
+    let total_weight = load_total_weight(ctx.deps.storage)?;
+    let new_total_weight = total_weight + amount;
+    save_total_weight(ctx.deps.storage, &new_total_weight, &ctx.env.block)?;
+
+    Ok(new_total_weight)
+}
+
+pub fn decrement_total_weight(ctx: &mut Context, amount: Uint128) -> StdResult<Uint128> {
+    let total_weight = load_total_weight(ctx.deps.storage)?;
+    let new_total_weight = total_weight - amount;
+    save_total_weight(ctx.deps.storage, &new_total_weight, &ctx.env.block)?;
+
+    Ok(new_total_weight)
+}
 
 const TOTAL_WEIGHT_HEIGHT_SNAPSHOT: SnapshotItem<Uint128> = SnapshotItem::new(
     "total_weight_block_height_snapshot",

@@ -1,15 +1,15 @@
 use crate::claims::{get_claims, get_releasable_claims};
 use crate::config::CONFIG;
 use crate::token_staking::{get_user_stake, USER_STAKES};
-use crate::total_staked::{
-    load_total_staked, load_total_staked_at_height, load_total_staked_at_time,
-};
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use membership_common::admin::ADMIN;
+use membership_common::total_weight::{
+    load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
+};
 use membership_common_api::api::{
     AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
     UserWeightParams, UserWeightResponse,
@@ -54,9 +54,9 @@ pub fn query_total_weight(
     params: TotalWeightParams,
 ) -> TokenStakingResult<TotalWeightResponse> {
     let total_staked_amount = match params.expiration {
-        Expiration::AtHeight(height) => load_total_staked_at_height(qctx.deps.storage, height)?,
-        Expiration::AtTime(time) => load_total_staked_at_time(qctx.deps.storage, time)?,
-        Expiration::Never {} => load_total_staked(qctx.deps.storage)?,
+        Expiration::AtHeight(height) => load_total_weight_at_height(qctx.deps.storage, height)?,
+        Expiration::AtTime(time) => load_total_weight_at_time(qctx.deps.storage, time)?,
+        Expiration::Never {} => load_total_weight(qctx.deps.storage)?,
     };
 
     Ok(TotalWeightResponse {
