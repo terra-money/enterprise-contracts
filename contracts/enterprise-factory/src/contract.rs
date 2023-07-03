@@ -1,5 +1,8 @@
 use crate::migration::migrate_config;
-use crate::multisig_membership::{import_cw3_membership, instantiate_new_multisig_membership};
+use crate::multisig_membership::{
+    import_cw3_membership, instantiate_multisig_membership_contract,
+    instantiate_new_multisig_membership,
+};
 use crate::nft_membership::{
     import_cw721_membership, instantiate_new_cw721_membership,
     instantiate_nft_staking_membership_contract,
@@ -16,7 +19,7 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
     entry_point, to_binary, wasm_execute, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg, Uint64, WasmMsg,
+    Response, StdError, StdResult, SubMsg, Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -50,10 +53,11 @@ pub const ENTERPRISE_INSTANTIATE_REPLY_ID: u64 = 1;
 pub const CW20_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
 pub const CW721_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 4;
-pub const FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID: u64 = 5;
-pub const ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID: u64 = 6;
-pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 7;
-pub const ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID: u64 = 8;
+pub const COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 5;
+pub const FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID: u64 = 6;
+pub const ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID: u64 = 7;
+pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 8;
+pub const ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID: u64 = 9;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -101,6 +105,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
             dao_type: None,
             unlocking_period: None,
             membership_address: None,
+            council_membership_address: None,
             funds_distributor_address: None,
             enterprise_governance_address: None,
             enterprise_governance_controller_address: None,
@@ -148,6 +153,7 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
             dao_type: None,
             unlocking_period: None,
             membership_address: None,
+            council_membership_address: None,
             funds_distributor_address: None,
             enterprise_governance_address: None,
             enterprise_governance_controller_address: None,
@@ -171,6 +177,9 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
                 .require_funds_distributor_address()?
                 .to_string(),
             membership_contract: dao_being_created.require_membership_address()?.to_string(),
+            council_membership_contract: dao_being_created
+                .require_council_membership_address()?
+                .to_string(),
             dao_type: dao_being_created.require_dao_type()?,
         }),
         vec![],
@@ -221,7 +230,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     code_id: version_info.enterprise_governance_controller_code_id,
                     msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
-                        dao_council_membership_contract: "".to_string(),
                         gov_config: create_dao_msg.gov_config,
                         council_gov_config: None,
                     })?,
@@ -307,6 +315,24 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     membership_address: Some(addr),
                     dao_asset,
                     dao_nft,
+                    ..dao_being_created
+                },
+            )?;
+
+            Ok(Response::new())
+        }
+        COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let addr = deps.api.addr_validate(&contract_address)?;
+
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
+                    council_membership_address: Some(addr),
                     ..dao_being_created
                 },
             )?;
@@ -432,6 +458,23 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 }
             };
 
+            let council_members = create_dao_msg
+                .dao_council
+                .map(|council| council.members)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|member| multisig_membership_api::api::UserWeight {
+                    user: member,
+                    weight: Uint128::one(),
+                })
+                .collect();
+            let council_membership_submsg = instantiate_multisig_membership_contract(
+                deps.branch(),
+                council_members,
+                addr.to_string(),
+                COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+            )?;
+
             DAO_BEING_CREATED.save(
                 deps.storage,
                 &DaoBeingCreated {
@@ -444,7 +487,8 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_submessage(funds_distributor_submsg)
                 .add_submessage(enterprise_governance_submsg)
                 .add_submessage(enterprise_treasury_submsg)
-                .add_submessage(membership_submsg))
+                .add_submessage(membership_submsg)
+                .add_submessage(council_membership_submsg))
         }
         ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)

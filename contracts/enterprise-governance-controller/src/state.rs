@@ -16,5 +16,4 @@ pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract");
 
 pub const GOV_CONFIG: Item<GovConfig> = Item::new("gov_config");
 
-pub const COUNCIL_MEMBERSHIP_CONTRACT: Item<Addr> = Item::new("council_membership_contract");
 pub const COUNCIL_GOV_CONFIG: Item<Option<CouncilGovConfig>> = Item::new("council_gov_config");

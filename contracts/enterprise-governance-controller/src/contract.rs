@@ -2,9 +2,7 @@ use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo,
     PROPOSAL_INFOS, TOTAL_DEPOSITS,
 };
-use crate::state::{
-    State, COUNCIL_GOV_CONFIG, COUNCIL_MEMBERSHIP_CONTRACT, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
-};
+use crate::state::{State, COUNCIL_GOV_CONFIG, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
 use crate::validate::{
     apply_gov_config_changes, validate_council_gov_config, validate_dao_council,
     validate_dao_gov_config, validate_deposit, validate_modify_multisig_membership,
@@ -114,13 +112,6 @@ pub fn instantiate(
 
     validate_council_gov_config(&msg.council_gov_config)?;
     COUNCIL_GOV_CONFIG.save(deps.storage, &msg.council_gov_config)?;
-
-    COUNCIL_MEMBERSHIP_CONTRACT.save(
-        deps.storage,
-        &deps
-            .api
-            .addr_validate(&msg.dao_council_membership_contract)?,
-    )?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
@@ -711,7 +702,7 @@ fn update_council(
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
     let dao_council = validate_dao_council(ctx.deps.as_ref(), msg.dao_council.clone())?;
 
-    let dao_council_membership_contract = COUNCIL_MEMBERSHIP_CONTRACT.load(ctx.deps.storage)?;
+    let dao_council_membership_contract = query_council_membership_addr(ctx.deps.as_ref())?;
 
     let new_members = msg
         .dao_council
@@ -1066,7 +1057,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> GovernanceControllerResult<
 
 pub fn query_gov_config(qctx: QueryContext) -> GovernanceControllerResult<GovConfigResponse> {
     let gov_config = GOV_CONFIG.load(qctx.deps.storage)?;
-    let dao_council_membership = COUNCIL_MEMBERSHIP_CONTRACT.load(qctx.deps.storage)?;
+    let dao_council_membership = query_council_membership_addr(qctx.deps)?;
 
     let membership_contract = query_membership_addr(qctx.deps)?;
 
@@ -1374,8 +1365,12 @@ fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.membership_contract)
 }
 
+fn query_council_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
+    Ok(query_enterprise_components(deps)?.council_membership_contract)
+}
+
 fn query_council_member_weight(deps: Deps, member: String) -> GovernanceControllerResult<Uint128> {
-    let dao_council_membership = COUNCIL_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+    let dao_council_membership = query_council_membership_addr(deps)?;
 
     let member_weight: UserWeightResponse = deps.querier.query_wasm_smart(
         dao_council_membership.to_string(),
@@ -1389,7 +1384,7 @@ fn query_council_total_weight(
     deps: Deps,
     expiration: Expiration,
 ) -> GovernanceControllerResult<Uint128> {
-    let dao_council_membership = COUNCIL_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+    let dao_council_membership = query_council_membership_addr(deps)?;
 
     let member_weight: UserWeightResponse = deps.querier.query_wasm_smart(
         dao_council_membership.to_string(),

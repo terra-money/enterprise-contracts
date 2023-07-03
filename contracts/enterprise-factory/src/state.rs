@@ -34,6 +34,7 @@ pub struct DaoBeingCreated {
     pub dao_type: Option<DaoType>,
     pub unlocking_period: Option<Duration>,
     pub membership_address: Option<Addr>,
+    pub council_membership_address: Option<Addr>,
     pub funds_distributor_address: Option<Addr>,
     pub enterprise_governance_address: Option<Addr>,
     pub enterprise_governance_controller_address: Option<Addr>,
@@ -80,6 +81,14 @@ impl DaoBeingCreated {
             .clone()
             .ok_or(Std(StdError::generic_err(
                 "invalid state - membership address not present when expected",
+            )))
+    }
+
+    pub fn require_council_membership_address(&self) -> DaoResult<Addr> {
+        self.council_membership_address
+            .clone()
+            .ok_or(Std(StdError::generic_err(
+                "invalid state - council membership address not present when expected",
             )))
     }
 

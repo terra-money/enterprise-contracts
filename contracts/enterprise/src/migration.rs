@@ -267,22 +267,17 @@ pub fn council_membership_contract_created(
     MIGRATION_INFO.save(
         deps.storage,
         &MigrationInfo {
-            council_membership_contract: Some(council_membership_contract.clone()),
+            council_membership_contract: Some(council_membership_contract),
             ..migration_info
         },
     )?;
 
-    let create_governance_controller_submsg =
-        create_governance_controller_contract(deps, env, council_membership_contract)?;
+    let create_governance_controller_submsg = create_governance_controller_contract(deps, env)?;
 
     Ok(Response::new().add_submessage(create_governance_controller_submsg))
 }
 
-pub fn create_governance_controller_contract(
-    deps: DepsMut,
-    env: Env,
-    dao_council_membership_contract: Addr,
-) -> DaoResult<SubMsg> {
+pub fn create_governance_controller_contract(deps: DepsMut, env: Env) -> DaoResult<SubMsg> {
     let version_info = MIGRATION_INFO.load(deps.storage)?.version_info;
     let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
     let dao_council = DAO_COUNCIL.load(deps.storage)?;
@@ -293,7 +288,6 @@ pub fn create_governance_controller_contract(
             code_id: version_info.enterprise_governance_controller_code_id,
             msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                 enterprise_contract: env.contract.address.to_string(),
-                dao_council_membership_contract: dao_council_membership_contract.to_string(),
                 gov_config: GovConfig {
                     quorum: gov_config.quorum,
                     threshold: gov_config.threshold,
@@ -497,6 +491,7 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
             enterprise_treasury_contract: treasury_contract,
             funds_distributor_contract,
             membership_contract,
+            council_membership_contract,
         },
     )?;
 

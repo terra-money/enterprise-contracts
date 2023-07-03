@@ -56,7 +56,12 @@ pub fn import_cw3_membership(
         last_voter.is_some()
     } {}
 
-    instantiate_multisig_membership_contract(deps, initial_weights, admin)
+    instantiate_multisig_membership_contract(
+        deps,
+        initial_weights,
+        admin,
+        MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+    )
 }
 
 pub fn instantiate_new_multisig_membership(
@@ -71,13 +76,19 @@ pub fn instantiate_new_multisig_membership(
         })
     })?;
 
-    instantiate_multisig_membership_contract(deps, msg.multisig_members, admin)
+    instantiate_multisig_membership_contract(
+        deps,
+        msg.multisig_members,
+        admin,
+        MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+    )
 }
 
 pub fn instantiate_multisig_membership_contract(
     deps: DepsMut,
     initial_weights: Vec<UserWeight>,
     admin: String,
+    reply_id: u64,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
@@ -103,7 +114,7 @@ pub fn instantiate_multisig_membership_contract(
             funds: vec![],
             label: "Multisig staking membership".to_string(),
         }),
-        MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+        reply_id,
     );
 
     Ok(submsg)

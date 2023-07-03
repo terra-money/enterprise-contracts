@@ -52,6 +52,7 @@ pub struct FinalizeInstantiationMsg {
     pub enterprise_governance_controller_contract: String,
     pub funds_distributor_contract: String,
     pub membership_contract: String,
+    pub council_membership_contract: String,
     pub dao_type: DaoType,
 }
 
@@ -94,4 +95,5 @@ pub struct ComponentContractsResponse {
     pub enterprise_treasury_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub membership_contract: Addr,
+    pub council_membership_contract: Addr,
 }

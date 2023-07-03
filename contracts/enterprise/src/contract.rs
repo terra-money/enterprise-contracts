@@ -116,6 +116,10 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
             .api
             .addr_validate(&msg.funds_distributor_contract)?,
         membership_contract: ctx.deps.api.addr_validate(&msg.membership_contract)?,
+        council_membership_contract: ctx
+            .deps
+            .api
+            .addr_validate(&msg.council_membership_contract)?,
     };
 
     COMPONENT_CONTRACTS.save(ctx.deps.storage, &component_contracts)?;
@@ -358,6 +362,7 @@ pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContr
         enterprise_treasury_contract: component_contracts.enterprise_treasury_contract,
         funds_distributor_contract: component_contracts.funds_distributor_contract,
         membership_contract: component_contracts.membership_contract,
+        council_membership_contract: component_contracts.council_membership_contract,
     })
 }
 

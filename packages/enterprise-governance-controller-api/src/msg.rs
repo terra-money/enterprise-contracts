@@ -11,7 +11,6 @@ use membership_common_api::api::WeightsChangedMsg;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub enterprise_contract: String,
-    pub dao_council_membership_contract: String,
     pub gov_config: GovConfig,
     pub council_gov_config: Option<CouncilGovConfig>,
     // TODO: migrate proposal info and deposits?
