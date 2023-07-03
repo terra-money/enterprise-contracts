@@ -1,6 +1,6 @@
 use crate::contract::{
     COUNCIL_MEMBERSHIP_REPLY_ID, ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID,
-    ENTERPRISE_TREASURY_REPLY_ID,
+    ENTERPRISE_TREASURY_REPLY_ID, MEMBERSHIP_REPLY_ID,
 };
 use crate::state::{
     ComponentContracts, COMPONENT_CONTRACTS, DAO_TYPE, ENTERPRISE_FACTORY_CONTRACT,
@@ -26,6 +26,7 @@ use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::FinalizeMigration;
 use enterprise_treasury_api::api::UpdateConfigMsg;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
+use membership_common_api::api::WeightChangeHookMsg;
 use multisig_membership_api::api::UserWeight;
 
 const NATIVE_ASSET_WHITELIST: Map<String, ()> = Map::new("native_asset_whitelist");
@@ -121,6 +122,9 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>>
         },
     )?;
 
+    let governance_controller_submsg =
+        create_governance_controller_contract(deps.branch(), env.clone())?;
+
     let treasury_submsg = create_treasury_contract(
         deps.branch(),
         env.clone(),
@@ -148,6 +152,7 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> DaoResult<Vec<SubMsg>>
     )?);
 
     Ok(vec![
+        governance_controller_submsg,
         dao_council_membership_submsg,
         treasury_submsg,
         membership_submsg,
@@ -260,7 +265,6 @@ pub fn create_dao_council_membership_contract(
 
 pub fn council_membership_contract_created(
     deps: DepsMut,
-    env: Env,
     council_membership_contract: Addr,
 ) -> DaoResult<Response> {
     let migration_info = MIGRATION_INFO.load(deps.storage)?;
@@ -272,9 +276,7 @@ pub fn council_membership_contract_created(
         },
     )?;
 
-    let create_governance_controller_submsg = create_governance_controller_contract(deps, env)?;
-
-    Ok(Response::new().add_submessage(create_governance_controller_submsg))
+    Ok(Response::new())
 }
 
 pub fn create_governance_controller_contract(deps: DepsMut, env: Env) -> DaoResult<SubMsg> {
@@ -395,7 +397,7 @@ pub fn create_enterprise_membership_contract(
         }
     };
 
-    let submsg = SubMsg::reply_on_success(msg, ENTERPRISE_GOVERNANCE_CONTROLLER_REPLY_ID);
+    let submsg = SubMsg::reply_on_success(msg, MEMBERSHIP_REPLY_ID);
 
     Ok(submsg)
 }
@@ -454,6 +456,15 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
         }),
         vec![],
     )?);
+    let update_membership_admin_submsg = SubMsg::new(wasm_execute(
+        membership_contract.to_string(),
+        &membership_common_api::msg::ExecuteMsg::UpdateAdmin(
+            membership_common_api::api::UpdateAdminMsg {
+                new_admin: governance_controller_contract.to_string(),
+            },
+        ),
+        vec![],
+    )?);
     let update_council_membership_admin_submsg = SubMsg::new(wasm_execute(
         council_membership_contract.to_string(),
         &membership_common_api::msg::ExecuteMsg::UpdateAdmin(
@@ -463,7 +474,21 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
         ),
         vec![],
     )?);
-    // TODO: update membership contract admin?
+
+    let add_membership_weight_change_hook_submsg = SubMsg::new(wasm_execute(
+        membership_contract.to_string(),
+        &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
+            hook_addr: governance_controller_contract.to_string(),
+        }),
+        vec![],
+    )?);
+    let add_council_membership_weight_change_hook_submsg = SubMsg::new(wasm_execute(
+        council_membership_contract.to_string(),
+        &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
+            hook_addr: governance_controller_contract.to_string(),
+        }),
+        vec![],
+    )?);
 
     let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
     let migrate_funds_distributor = SubMsg::new(Wasm(Migrate {
@@ -516,7 +541,10 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
 
     Ok(Response::new()
         .add_submessage(update_treasury_admin_submsg)
+        .add_submessage(update_membership_admin_submsg)
         .add_submessage(update_council_membership_admin_submsg)
+        .add_submessage(add_membership_weight_change_hook_submsg)
+        .add_submessage(add_council_membership_weight_change_hook_submsg)
         .add_submessage(migrate_funds_distributor)
         .add_submessage(migrate_enterprise_governance_submsg))
 }

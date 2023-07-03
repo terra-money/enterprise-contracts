@@ -288,7 +288,7 @@ fn get_versions_between_current_and_target(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
     match msg.id {
         ENTERPRISE_TREASURY_REPLY_ID => {
             let addr = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
@@ -303,7 +303,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
         COUNCIL_MEMBERSHIP_REPLY_ID => {
             let addr = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
 
-            council_membership_contract_created(deps, env, addr)
+            council_membership_contract_created(deps, addr)
         }
         MEMBERSHIP_REPLY_ID => {
             let addr = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
