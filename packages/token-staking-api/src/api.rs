@@ -28,8 +28,7 @@ pub struct ClaimMsg {
 }
 
 #[cw_serde]
-pub struct UpdateConfigMsg {
-    pub new_admin: Option<String>,
+pub struct UpdateUnlockingPeriodMsg {
     pub new_unlocking_period: Option<Duration>,
 }
 
@@ -54,8 +53,7 @@ pub struct ClaimsResponse {
 }
 
 #[cw_serde]
-pub struct ConfigResponse {
-    pub admin: Addr,
+pub struct TokenConfigResponse {
     pub token_contract: Addr,
     pub unlocking_period: Duration,
 }

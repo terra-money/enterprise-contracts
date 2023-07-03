@@ -9,7 +9,8 @@ use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
-use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateConfigMsg};
+use membership_common::api::UpdateAdminMsg;
+use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
 use nft_staking_api::error::NftStakingError::{
     NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
 };
@@ -138,7 +139,7 @@ fn calculate_release_at(ctx: &mut Context) -> NftStakingResult<ReleaseAt> {
 }
 
 /// Update the config. Only the current admin can execute this.
-pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> NftStakingResult<Response> {
+pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> NftStakingResult<Response> {
     // only admin can execute this
     admin_caller_only(ctx)?;
 
@@ -148,13 +149,28 @@ pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> NftStakingResul
         config.admin = ctx.deps.api.addr_validate(&new_admin)?;
     }
 
+    CONFIG.save(ctx.deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("action", "update_admin"))
+}
+
+/// Update the config. Only the current admin can execute this.
+pub fn update_unlocking_period(
+    ctx: &mut Context,
+    msg: UpdateUnlockingPeriodMsg,
+) -> NftStakingResult<Response> {
+    // only admin can execute this
+    admin_caller_only(ctx)?;
+
+    let mut config = CONFIG.load(ctx.deps.storage)?;
+
     if let Some(new_unlocking_period) = msg.new_unlocking_period {
         config.unlocking_period = new_unlocking_period;
     }
 
     CONFIG.save(ctx.deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("action", "update_config"))
+    Ok(Response::new().add_attribute("action", "update_unlocking_period"))
 }
 
 /// Claim any unstaked items that are ready to be released.

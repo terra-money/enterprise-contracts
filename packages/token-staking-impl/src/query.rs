@@ -10,20 +10,27 @@ use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use membership_common::api::{
-    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
-    UserWeightResponse,
+    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
+    UserWeightParams, UserWeightResponse,
 };
-use token_staking_api::api::{ClaimsParams, ClaimsResponse, ConfigResponse};
+use token_staking_api::api::{ClaimsParams, ClaimsResponse, TokenConfigResponse};
 use token_staking_api::error::TokenStakingResult;
 
 const MAX_QUERY_LIMIT: u8 = 100;
 const DEFAULT_QUERY_LIMIT: u8 = 50;
 
-pub fn query_config(qctx: &QueryContext) -> TokenStakingResult<ConfigResponse> {
+pub fn query_admin(qctx: &QueryContext) -> TokenStakingResult<AdminResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
 
-    Ok(ConfigResponse {
+    Ok(AdminResponse {
         admin: config.admin,
+    })
+}
+
+pub fn query_token_config(qctx: &QueryContext) -> TokenStakingResult<TokenConfigResponse> {
+    let config = CONFIG.load(qctx.deps.storage)?;
+
+    Ok(TokenConfigResponse {
         token_contract: config.token_contract,
         unlocking_period: config.unlocking_period,
     })

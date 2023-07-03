@@ -9,7 +9,7 @@ use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use membership_common::api::{
-    ConfigResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
+    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
     UserWeightParams, UserWeightResponse,
 };
 use multisig_membership_api::error::MultisigMembershipResult;
@@ -17,10 +17,10 @@ use multisig_membership_api::error::MultisigMembershipResult;
 const DEFAULT_QUERY_LIMIT: u8 = 50;
 const MAX_QUERY_LIMIT: u8 = 100;
 
-pub fn query_config(qctx: &QueryContext) -> MultisigMembershipResult<ConfigResponse> {
+pub fn query_admin(qctx: &QueryContext) -> MultisigMembershipResult<AdminResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
 
-    Ok(ConfigResponse {
+    Ok(AdminResponse {
         admin: config.admin,
     })
 }

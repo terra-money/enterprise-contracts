@@ -7,7 +7,7 @@ use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use multisig_membership_impl::execute::{set_members, update_config, update_members};
 use multisig_membership_impl::query::{
-    query_config, query_members, query_total_weight, query_user_weight,
+    query_admin, query_members, query_total_weight, query_user_weight,
 };
 
 // version info for migration info
@@ -56,7 +56,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> MultisigMembershipResult<Bi
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Config {} => to_binary(&query_config(&qctx)?)?,
+        QueryMsg::Admin {} => to_binary(&query_admin(&qctx)?)?,
         QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,
         QueryMsg::Members(params) => to_binary(&query_members(&qctx, params)?)?,

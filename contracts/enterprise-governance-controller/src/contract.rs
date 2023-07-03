@@ -679,9 +679,8 @@ fn update_gov_config(
         match dao_info.dao_type {
             Token => submsgs.push(SubMsg::new(wasm_execute(
                 component_contracts.membership_contract.to_string(),
-                &token_staking_api::msg::ExecuteMsg::UpdateConfig(
-                    token_staking_api::api::UpdateConfigMsg {
-                        new_admin: None,
+                &token_staking_api::msg::ExecuteMsg::UpdateUnlockingPeriod(
+                    token_staking_api::api::UpdateUnlockingPeriodMsg {
                         new_unlocking_period: Some(new_unlocking_period),
                     },
                 ),
@@ -689,9 +688,8 @@ fn update_gov_config(
             )?)),
             Nft => submsgs.push(SubMsg::new(wasm_execute(
                 component_contracts.membership_contract.to_string(),
-                &nft_staking_api::msg::ExecuteMsg::UpdateConfig(
-                    nft_staking_api::api::UpdateConfigMsg {
-                        new_admin: None,
+                &nft_staking_api::msg::ExecuteMsg::UpdateUnlockingPeriod(
+                    nft_staking_api::api::UpdateUnlockingPeriodMsg {
                         new_unlocking_period: Some(new_unlocking_period),
                     },
                 ),

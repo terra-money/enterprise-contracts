@@ -11,22 +11,29 @@ use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
 use membership_common::api::{
-    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
-    UserWeightResponse,
+    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
+    UserWeightParams, UserWeightResponse,
 };
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, ConfigResponse, UserNftStakeParams, UserNftStakeResponse,
+    ClaimsParams, ClaimsResponse, NftConfigResponse, UserNftStakeParams, UserNftStakeResponse,
 };
 use nft_staking_api::error::NftStakingResult;
 
 const MAX_QUERY_LIMIT: u8 = 100;
 const DEFAULT_QUERY_LIMIT: u8 = 50;
 
-pub fn query_config(qctx: &QueryContext) -> NftStakingResult<ConfigResponse> {
+pub fn query_admin(qctx: &QueryContext) -> NftStakingResult<AdminResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
 
-    Ok(ConfigResponse {
+    Ok(AdminResponse {
         admin: config.admin,
+    })
+}
+
+pub fn query_nft_cnfig(qctx: &QueryContext) -> NftStakingResult<NftConfigResponse> {
+    let config = CONFIG.load(qctx.deps.storage)?;
+
+    Ok(NftConfigResponse {
         nft_contract: config.nft_contract,
         unlocking_period: config.unlocking_period,
     })

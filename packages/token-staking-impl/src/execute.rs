@@ -11,8 +11,11 @@ use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
+use membership_common::api::UpdateAdminMsg;
 use std::ops::Not;
-use token_staking_api::api::{ClaimMsg, UnstakeMsg, UpdateConfigMsg, UserClaim, UserStake};
+use token_staking_api::api::{
+    ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg, UserClaim, UserStake,
+};
 use token_staking_api::error::TokenStakingError::{
     IncorrectClaimsAmountReceived, IncorrectStakesInitializationAmount, InsufficientStake,
     StakesAlreadyInitialized, Unauthorized,
@@ -151,8 +154,8 @@ fn calculate_release_at(ctx: &mut Context) -> TokenStakingResult<ReleaseAt> {
     Ok(release_at)
 }
 
-/// Update the config. Only the current admin can execute this.
-pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> TokenStakingResult<Response> {
+/// Update the admin. Only the current admin can execute this.
+pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> TokenStakingResult<Response> {
     // only admin can execute this
     admin_caller_only(ctx)?;
 
@@ -162,13 +165,28 @@ pub fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> TokenStakingRes
         config.admin = ctx.deps.api.addr_validate(&new_admin)?;
     }
 
+    CONFIG.save(ctx.deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("action", "update_admin"))
+}
+
+/// Update the unlocking period. Only the current admin can execute this.
+pub fn update_unlocking_period(
+    ctx: &mut Context,
+    msg: UpdateUnlockingPeriodMsg,
+) -> TokenStakingResult<Response> {
+    // only admin can execute this
+    admin_caller_only(ctx)?;
+
+    let mut config = CONFIG.load(ctx.deps.storage)?;
+
     if let Some(new_unlocking_period) = msg.new_unlocking_period {
         config.unlocking_period = new_unlocking_period;
     }
 
     CONFIG.save(ctx.deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("action", "update_config"))
+    Ok(Response::new().add_attribute("action", "update_unlocking_period"))
 }
 
 /// Claim any unstaked tokens that are ready to be released.

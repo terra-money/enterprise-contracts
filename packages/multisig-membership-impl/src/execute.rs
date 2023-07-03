@@ -4,7 +4,7 @@ use crate::total_weight::{load_total_weight, save_total_weight};
 use crate::validate::{admin_caller_only, dedup_user_weights};
 use common::cw::Context;
 use cosmwasm_std::{Response, Uint128};
-use membership_common::api::UpdateConfigMsg;
+use membership_common::api::UpdateAdminMsg;
 use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg};
 use multisig_membership_api::error::MultisigMembershipResult;
 
@@ -58,10 +58,7 @@ pub fn set_members(ctx: &mut Context, msg: SetMembersMsg) -> MultisigMembershipR
 }
 
 /// Update the config. Only the current admin can execute this.
-pub fn update_config(
-    ctx: &mut Context,
-    msg: UpdateConfigMsg,
-) -> MultisigMembershipResult<Response> {
+pub fn update_config(ctx: &mut Context, msg: UpdateAdminMsg) -> MultisigMembershipResult<Response> {
     // only admin can execute this
     admin_caller_only(ctx)?;
 

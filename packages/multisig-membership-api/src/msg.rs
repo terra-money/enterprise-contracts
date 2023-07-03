@@ -1,8 +1,8 @@
 use crate::api::{SetMembersMsg, UpdateMembersMsg, UserWeight};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use membership_common::api::{
-    ConfigResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
-    UpdateConfigMsg, UserWeightParams, UserWeightResponse,
+    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
+    UpdateAdminMsg, UserWeightParams, UserWeightResponse,
 };
 
 #[cw_serde]
@@ -15,14 +15,14 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateMembers(UpdateMembersMsg),
     SetMembers(SetMembersMsg),
-    UpdateConfig(UpdateConfigMsg),
+    UpdateConfig(UpdateAdminMsg),
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(ConfigResponse)]
-    Config {},
+    #[returns(AdminResponse)]
+    Admin {},
     #[returns(UserWeightResponse)]
     UserWeight(UserWeightParams),
     #[returns(TotalWeightResponse)]

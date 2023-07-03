@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_utils::Expiration;
 
 #[cw_serde]
-pub struct UpdateConfigMsg {
+pub struct UpdateAdminMsg {
     pub new_admin: Option<String>,
 }
 
@@ -28,7 +28,7 @@ pub struct MembersParams {
 ////// Responses
 
 #[cw_serde]
-pub struct ConfigResponse {
+pub struct AdminResponse {
     pub admin: Addr,
 }
 

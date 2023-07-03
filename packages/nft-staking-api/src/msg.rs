@@ -1,13 +1,13 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, ConfigResponse, ReceiveNftMsg, UnstakeMsg,
-    UpdateConfigMsg, UserNftStakeParams, UserNftStakeResponse,
+    ClaimMsg, ClaimsParams, ClaimsResponse, NftConfigResponse, ReceiveNftMsg, UnstakeMsg,
+    UpdateUnlockingPeriodMsg, UserNftStakeParams, UserNftStakeResponse,
 };
 use common::cw::ReleaseAt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
 use membership_common::api::{
-    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
-    UserWeightResponse,
+    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
+    UpdateAdminMsg, UserWeightParams, UserWeightResponse,
 };
 
 #[cw_serde]
@@ -21,7 +21,8 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Unstake(UnstakeMsg),
     Claim(ClaimMsg),
-    UpdateConfig(UpdateConfigMsg),
+    UpdateAdmin(UpdateAdminMsg),
+    UpdateUnlockingPeriod(UpdateUnlockingPeriodMsg),
     ReceiveNft(ReceiveNftMsg),
 }
 
@@ -34,8 +35,10 @@ pub enum Cw721HookMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(ConfigResponse)]
-    Config {},
+    #[returns(AdminResponse)]
+    Admin {},
+    #[returns(NftConfigResponse)]
+    NftConfig {},
     #[returns(UserNftStakeResponse)]
     UserStake(UserNftStakeParams),
     #[returns(UserWeightResponse)]

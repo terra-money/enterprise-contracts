@@ -26,10 +26,8 @@ pub struct ClaimMsg {
     pub user: String,
 }
 
-// TODO: split into update admin and update unlocking period
 #[cw_serde]
-pub struct UpdateConfigMsg {
-    pub new_admin: Option<String>,
+pub struct UpdateUnlockingPeriodMsg {
     pub new_unlocking_period: Option<Duration>,
 }
 
@@ -56,8 +54,7 @@ pub struct NftClaim {
 ////// Responses
 
 #[cw_serde]
-pub struct ConfigResponse {
-    pub admin: Addr,
+pub struct NftConfigResponse {
     pub nft_contract: Addr,
     pub unlocking_period: Duration,
 }
