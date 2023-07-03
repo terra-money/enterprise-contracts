@@ -1,12 +1,12 @@
 use crate::claims::{get_claims, get_releasable_claims};
 use crate::config::CONFIG;
-use crate::token_staking::{get_user_stake, USER_STAKES};
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use membership_common::admin::ADMIN;
+use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
 };
@@ -41,7 +41,7 @@ pub fn query_user_weight(
 ) -> TokenStakingResult<UserWeightResponse> {
     let user = qctx.deps.api.addr_validate(&params.user)?;
 
-    let user_stake = get_user_stake(qctx.deps.storage, user.clone())?;
+    let user_stake = get_member_weight(qctx.deps.storage, user.clone())?;
 
     Ok(UserWeightResponse {
         user,
@@ -96,7 +96,7 @@ pub fn query_members(
         .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
         .min(MAX_QUERY_LIMIT as u32);
 
-    let stakers = USER_STAKES
+    let stakers = MEMBER_WEIGHTS
         .range(qctx.deps.storage, start_after, None, Ascending)
         .take(limit as usize)
         .collect::<StdResult<Vec<(Addr, Uint128)>>>()?

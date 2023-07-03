@@ -1,39 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
-use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
+use cosmwasm_std::{Addr, StdResult, Storage};
+use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use nft_staking_api::api::NftTokenId;
-
-pub const USER_TOTAL_STAKED: Map<Addr, Uint128> = Map::new("user_total_staked");
-
-pub fn get_user_total_stake(storage: &dyn Storage, user: Addr) -> StdResult<Uint128> {
-    Ok(USER_TOTAL_STAKED
-        .may_load(storage, user)?
-        .unwrap_or_default())
-}
-
-pub fn increment_user_total_staked(storage: &mut dyn Storage, user: Addr) -> StdResult<Uint128> {
-    let user_total_staked = USER_TOTAL_STAKED
-        .may_load(storage, user.clone())?
-        .unwrap_or_default();
-    let new_user_total_staked = user_total_staked + Uint128::one();
-    USER_TOTAL_STAKED.save(storage, user, &(new_user_total_staked))?;
-
-    Ok(new_user_total_staked)
-}
-
-pub fn decrement_user_total_staked(
-    storage: &mut dyn Storage,
-    user: Addr,
-    amount: Uint128,
-) -> StdResult<Uint128> {
-    let user_total_staked = USER_TOTAL_STAKED
-        .may_load(storage, user.clone())?
-        .unwrap_or_default();
-    let new_user_total_staked = user_total_staked - amount;
-    USER_TOTAL_STAKED.save(storage, user, &(new_user_total_staked))?;
-
-    Ok(new_user_total_staked)
-}
 
 #[cw_serde]
 pub struct NftStake {

@@ -1,8 +1,8 @@
-use crate::member_weights::MEMBER_WEIGHTS;
 use crate::validate::dedup_user_weights;
 use common::cw::Context;
 use cosmwasm_std::Uint128;
 use membership_common::admin::ADMIN;
+use membership_common::member_weights::{get_member_weight, set_member_weight};
 use membership_common::total_weight::{load_total_weight, save_total_weight};
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::error::MultisigMembershipResult;
@@ -30,10 +30,8 @@ fn save_initial_weights(
     let mut total_weight = load_total_weight(ctx.deps.storage)?;
 
     for (user, weight) in deduped_weights {
-        let existing_weight = MEMBER_WEIGHTS
-            .may_load(ctx.deps.storage, user.clone())?
-            .unwrap_or_default();
-        MEMBER_WEIGHTS.save(ctx.deps.storage, user, &weight)?;
+        let existing_weight = get_member_weight(ctx.deps.storage, user.clone())?;
+        set_member_weight(ctx.deps.storage, user, weight)?;
 
         total_weight = total_weight - existing_weight + weight;
     }

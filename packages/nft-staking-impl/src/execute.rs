@@ -1,13 +1,12 @@
 use crate::claims::{add_claim, get_releasable_claims, NFT_CLAIMS};
 use crate::config::CONFIG;
-use crate::nft_staking::{
-    decrement_user_total_staked, increment_user_total_staked, save_nft_stake, NftStake, NFT_STAKES,
-};
+use crate::nft_staking::{save_nft_stake, NftStake, NFT_STAKES};
 use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::admin::{admin_caller_only, ADMIN};
+use membership_common::member_weights::{decrement_member_weight, increment_member_weight};
 use membership_common::total_weight::{decrement_total_weight, increment_total_weight};
 use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
 use nft_staking_api::error::NftStakingError::{
@@ -60,7 +59,7 @@ fn stake_nft(ctx: &mut Context, msg: ReceiveNftMsg, user: String) -> NftStakingR
 
     save_nft_stake(ctx.deps.storage, &nft_stake)?;
 
-    let new_user_total_staked = increment_user_total_staked(ctx.deps.storage, user)?;
+    let new_user_total_staked = increment_member_weight(ctx.deps.storage, user, Uint128::one())?;
     let new_total_staked = increment_total_weight(ctx, Uint128::one())?;
 
     Ok(Response::new()
@@ -114,7 +113,7 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> NftStakingResult<Response>
 
     let unstaked_amount = Uint128::from(msg.nft_ids.len() as u128);
 
-    decrement_user_total_staked(ctx.deps.storage, user.clone(), unstaked_amount)?;
+    decrement_member_weight(ctx.deps.storage, user.clone(), unstaked_amount)?;
     let new_total_staked = decrement_total_weight(ctx, unstaked_amount)?;
 
     let release_at = calculate_release_at(ctx)?;

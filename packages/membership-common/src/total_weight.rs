@@ -19,15 +19,15 @@ pub fn decrement_total_weight(ctx: &mut Context, amount: Uint128) -> StdResult<U
 }
 
 const TOTAL_WEIGHT_HEIGHT_SNAPSHOT: SnapshotItem<Uint128> = SnapshotItem::new(
-    "total_weight_block_height_snapshot",
-    "total_weight_block_height_checkpoints",
-    "total_weight_block_height_changelog",
+    "membership_common__total_weight_block_height_snapshot",
+    "membership_common__total_weight_block_height_checkpoints",
+    "membership_common__total_weight_block_height_changelog",
     Strategy::EveryBlock,
 );
 const TOTAL_WEIGHT_SECONDS_SNAPSHOT: SnapshotItem<Uint128> = SnapshotItem::new(
-    "total_weight_time_seconds_snapshot",
-    "total_weight_time_seconds_checkpoints",
-    "total_weight_time_seconds_changelog",
+    "membership_common__total_weight_time_seconds_snapshot",
+    "membership_common__total_weight_time_seconds_checkpoints",
+    "membership_common__total_weight_time_seconds_changelog",
     Strategy::EveryBlock,
 );
 

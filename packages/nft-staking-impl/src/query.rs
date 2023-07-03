@@ -1,6 +1,6 @@
 use crate::claims::{get_claims, get_releasable_claims};
 use crate::config::CONFIG;
-use crate::nft_staking::{get_user_total_stake, NftStake, NFT_STAKES, USER_TOTAL_STAKED};
+use crate::nft_staking::{NftStake, NFT_STAKES};
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, Order, StdResult, Uint128};
@@ -8,6 +8,7 @@ use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
 use membership_common::admin::ADMIN;
+use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
 };
@@ -59,7 +60,7 @@ pub fn query_user_nft_stake(
         .map_ok(|(_, stake)| stake)
         .collect::<StdResult<Vec<NftStake>>>()?;
 
-    let total_user_stake = get_user_total_stake(qctx.deps.storage, user.clone())?;
+    let total_user_stake = get_member_weight(qctx.deps.storage, user.clone())?;
     let tokens = user_stake.into_iter().map(|stake| stake.token_id).collect();
 
     Ok(UserNftStakeResponse {
@@ -75,7 +76,7 @@ pub fn query_user_weight(
 ) -> NftStakingResult<UserWeightResponse> {
     let user = qctx.deps.api.addr_validate(&params.user)?;
 
-    let weight = get_user_total_stake(qctx.deps.storage, user.clone())?;
+    let weight = get_member_weight(qctx.deps.storage, user.clone())?;
 
     Ok(UserWeightResponse { user, weight })
 }
@@ -122,7 +123,7 @@ pub fn query_members(
         .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
         .min(MAX_QUERY_LIMIT as u32);
 
-    let members = USER_TOTAL_STAKED
+    let members = MEMBER_WEIGHTS
         .range(qctx.deps.storage, start_after, None, Ascending)
         .take(limit as usize)
         .collect::<StdResult<Vec<(Addr, Uint128)>>>()?

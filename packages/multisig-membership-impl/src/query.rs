@@ -1,10 +1,10 @@
-use crate::member_weights::MEMBER_WEIGHTS;
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use membership_common::admin::ADMIN;
+use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
 };
@@ -29,9 +29,7 @@ pub fn query_user_weight(
 ) -> MultisigMembershipResult<UserWeightResponse> {
     let user = qctx.deps.api.addr_validate(&params.user)?;
 
-    let user_weight = MEMBER_WEIGHTS
-        .may_load(qctx.deps.storage, user.clone())?
-        .unwrap_or_default();
+    let user_weight = get_member_weight(qctx.deps.storage, user.clone())?;
 
     Ok(UserWeightResponse {
         user,
