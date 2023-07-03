@@ -12,6 +12,6 @@ common = { path = "../common" }
 membership-common-api = { path = "../membership-common-api" }
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
-cw-storage-plus = "1.1.0"
+cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
 thiserror = "1"
