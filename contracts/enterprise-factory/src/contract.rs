@@ -232,7 +232,8 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
                         gov_config: create_dao_msg.gov_config,
-                        council_gov_config: None,
+                        council_gov_config: create_dao_msg.dao_council,
+                        proposal_infos: None, // no proposal infos to migrate, it's a fresh DAO
                     })?,
                     funds: vec![],
                     label: "Enterprise governance controller".to_string(),

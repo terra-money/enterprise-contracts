@@ -1,8 +1,8 @@
 use crate::api::{
-    CastVoteMsg, CouncilGovConfig, CreateProposalMsg, ExecuteProposalMsg, GovConfig,
-    GovConfigResponse, MemberVoteParams, MemberVoteResponse, ProposalParams, ProposalResponse,
-    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse,
+    CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, ExecuteProposalMsg, GovConfig,
+    GovConfigResponse, MemberVoteParams, MemberVoteResponse, ProposalId, ProposalInfo,
+    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
@@ -12,8 +12,8 @@ use membership_common_api::api::WeightsChangedMsg;
 pub struct InstantiateMsg {
     pub enterprise_contract: String,
     pub gov_config: GovConfig,
-    pub council_gov_config: Option<CouncilGovConfig>,
-    // TODO: migrate proposal info and deposits?
+    pub council_gov_config: Option<DaoCouncilSpec>,
+    pub proposal_infos: Option<Vec<(ProposalId, ProposalInfo)>>,
 }
 
 #[cw_serde]

@@ -1,12 +1,11 @@
 use crate::proposals::{
-    get_proposal_actions, is_proposal_executed, set_proposal_executed, ProposalInfo,
-    PROPOSAL_INFOS, TOTAL_DEPOSITS,
+    get_proposal_actions, is_proposal_executed, set_proposal_executed, PROPOSAL_INFOS,
+    TOTAL_DEPOSITS,
 };
 use crate::state::{State, COUNCIL_GOV_CONFIG, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
 use crate::validate::{
-    apply_gov_config_changes, validate_council_gov_config, validate_dao_council,
-    validate_dao_gov_config, validate_deposit, validate_modify_multisig_membership,
-    validate_proposal_actions, validate_upgrade_dao,
+    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
+    validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao,
 };
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
@@ -30,10 +29,11 @@ use enterprise_governance_controller_api::api::{
     CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
     GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
     ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
-    ProposalId, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
-    ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
-    ProposalVotesResponse, ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg,
-    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
+    ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    RequestFundingFromDaoMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
+    UpdateMinimumWeightForRewardsMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil, NoSuchProposal,
@@ -110,8 +110,12 @@ pub fn instantiate(
     validate_dao_gov_config(&dao_info.dao_type, &msg.gov_config)?;
     GOV_CONFIG.save(deps.storage, &msg.gov_config)?;
 
-    validate_council_gov_config(&msg.council_gov_config)?;
-    COUNCIL_GOV_CONFIG.save(deps.storage, &msg.council_gov_config)?;
+    let council_gov_config = validate_dao_council(deps.as_ref(), msg.council_gov_config)?;
+    COUNCIL_GOV_CONFIG.save(deps.storage, &council_gov_config)?;
+
+    for (proposal_id, proposal_info) in msg.proposal_infos.unwrap_or_default() {
+        PROPOSAL_INFOS.save(deps.storage, proposal_id, &proposal_info)?;
+    }
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }

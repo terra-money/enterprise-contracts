@@ -1,6 +1,6 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::Asset;
 use cw_utils::{Duration, Expiration};
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
@@ -12,6 +12,14 @@ use std::collections::BTreeMap;
 use strum_macros::Display;
 
 pub type ProposalId = u64;
+
+#[cw_serde]
+pub struct ProposalInfo {
+    pub proposal_type: ProposalType,
+    pub executed_at: Option<BlockInfo>,
+    pub proposal_deposit: Option<ProposalDeposit>,
+    pub proposal_actions: Vec<ProposalAction>,
+}
 
 #[cw_serde]
 pub struct GovConfig {

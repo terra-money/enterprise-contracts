@@ -402,24 +402,6 @@ pub fn validate_dao_council(
     }
 }
 
-pub fn validate_council_gov_config(
-    council_gov_config: &Option<CouncilGovConfig>,
-) -> GovernanceControllerResult<()> {
-    match council_gov_config {
-        None => Ok(()),
-        Some(council_gov_config) => {
-            validate_allowed_council_proposal_types(Some(
-                council_gov_config.allowed_proposal_action_types.clone(),
-            ))?;
-
-            validate_quorum_value(council_gov_config.quorum)?;
-            validate_threshold_value(council_gov_config.threshold)?;
-
-            Ok(())
-        }
-    }
-}
-
 pub fn validate_distribute_funds(msg: &DistributeFundsMsg) -> GovernanceControllerResult<()> {
     for asset in &msg.funds {
         match asset.info {

@@ -19,7 +19,9 @@ use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
-use enterprise_governance_controller_api::api::{CouncilGovConfig, GovConfig, ProposalActionType};
+use enterprise_governance_controller_api::api::{
+    DaoCouncilSpec, GovConfig, ProposalActionType, ProposalId, ProposalInfo,
+};
 use enterprise_protocol::api::DaoType;
 use enterprise_protocol::error::DaoError::{Std, Unauthorized};
 use enterprise_protocol::error::DaoResult;
@@ -46,6 +48,8 @@ const MULTISIG_MEMBERS: Map<Addr, Uint128> = Map::new("multisig_members");
 
 const ENTERPRISE_GOVERNANCE_CONTRACT: Item<Addr> = Item::new("enterprise_governance_contract");
 const FUNDS_DISTRIBUTOR_CONTRACT: Item<Addr> = Item::new("funds_distributor_contract");
+
+const PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> = Map::new("proposal_infos");
 
 #[cw_serde]
 struct MigrationInfo {
@@ -284,6 +288,12 @@ pub fn create_governance_controller_contract(deps: DepsMut, env: Env) -> DaoResu
     let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
     let dao_council = DAO_COUNCIL.load(deps.storage)?;
 
+    let proposal_infos = PROPOSAL_INFOS
+        .range(deps.storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(ProposalId, ProposalInfo)>>>()?;
+
+    PROPOSAL_INFOS.clear(deps.storage);
+
     let submsg = SubMsg::reply_on_success(
         Wasm(Instantiate {
             admin: Some(env.contract.address.to_string()),
@@ -299,11 +309,13 @@ pub fn create_governance_controller_contract(deps: DepsMut, env: Env) -> DaoResu
                     minimum_deposit: gov_config.minimum_deposit,
                     allow_early_proposal_execution: gov_config.allow_early_proposal_execution,
                 },
-                council_gov_config: dao_council.map(|council| CouncilGovConfig {
-                    allowed_proposal_action_types: council.allowed_proposal_action_types,
+                council_gov_config: dao_council.map(|council| DaoCouncilSpec {
+                    members: vec![], // TODO: this works, but we really shouldn't have this field when it's meaningless
+                    allowed_proposal_action_types: Some(council.allowed_proposal_action_types),
                     quorum: council.quorum,
                     threshold: council.threshold,
                 }),
+                proposal_infos: Some(proposal_infos),
             })?,
             funds: vec![],
             label: "Enterprise governance controller".to_string(),

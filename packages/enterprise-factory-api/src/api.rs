@@ -1,9 +1,9 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, Uint128, Uint64};
+use cosmwasm_std::{Addr, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::AssetInfo;
 use cw_utils::Duration;
-use enterprise_governance_controller_api::api::{GovConfig, ProposalActionType};
+use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig};
 use enterprise_protocol::api::DaoMetadata;
 use multisig_membership_api::api::UserWeight;
 
@@ -12,24 +12,6 @@ pub struct Config {
     pub enterprise_versioning: Addr,
     pub cw20_code_id: u64,
     pub cw721_code_id: u64,
-}
-
-#[cw_serde]
-pub struct DaoCouncilSpec {
-    /// Addresses of council members. Each member has equal voting power.
-    pub members: Vec<String>,
-    /// Portion of total available votes cast in a proposal to consider it valid
-    /// e.g. quorum of 30% means that 30% of all available votes have to be cast in the proposal,
-    /// otherwise it fails automatically when it expires
-    pub quorum: Decimal,
-    /// Portion of votes assigned to a single option from all the votes cast in the given proposal
-    /// required to determine the 'winning' option
-    /// e.g. 51% threshold means that an option has to have at least 51% of the cast votes to win
-    pub threshold: Decimal,
-    /// Proposal action types allowed in proposals that are voted on by the council.
-    /// Effectively defines what types of actions council can propose and vote on.
-    /// If None, will default to a predefined set of actions.
-    pub allowed_proposal_action_types: Option<Vec<ProposalActionType>>,
 }
 
 #[cw_serde]
