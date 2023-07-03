@@ -15,7 +15,7 @@ use cosmwasm_std::{
     to_binary, wasm_execute, Addr, Decimal, DepsMut, Env, Response, StdError, StdResult, SubMsg,
     Uint128, Uint64,
 };
-use cw_asset::AssetInfo;
+use cw_asset::{Asset, AssetInfo};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
@@ -23,6 +23,7 @@ use enterprise_governance_controller_api::api::{
     DaoCouncilSpec, GovConfig, ProposalActionType, ProposalId, ProposalInfo,
 };
 use enterprise_protocol::api::DaoType;
+use enterprise_protocol::api::DaoType::Token;
 use enterprise_protocol::error::DaoError::{Std, Unauthorized};
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::FinalizeMigration;
@@ -292,8 +293,6 @@ pub fn create_governance_controller_contract(deps: DepsMut, env: Env) -> DaoResu
         .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(ProposalId, ProposalInfo)>>>()?;
 
-    PROPOSAL_INFOS.clear(deps.storage);
-
     let submsg = SubMsg::reply_on_success(
         Wasm(Instantiate {
             admin: Some(env.contract.address.to_string()),
@@ -335,12 +334,32 @@ pub fn governance_controller_contract_created(
     MIGRATION_INFO.save(
         deps.storage,
         &MigrationInfo {
-            enterprise_governance_controller_contract: Some(governance_controller_contract),
+            enterprise_governance_controller_contract: Some(governance_controller_contract.clone()),
             ..migration_info
         },
     )?;
 
-    Ok(Response::new())
+    let dao_type = DAO_TYPE.load(deps.storage)?;
+    let response = if dao_type == Token {
+        let deposit_amount: Uint128 = PROPOSAL_INFOS
+            .range(deps.storage, None, None, Ascending)
+            .collect::<StdResult<Vec<(ProposalId, ProposalInfo)>>>()?
+            .into_iter()
+            .filter_map(|(_, proposal_info)| proposal_info.proposal_deposit)
+            .map(|deposit| deposit.amount)
+            .sum();
+
+        let dao_token = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+
+        let send_deposits_submsg = Asset::cw20(dao_token, deposit_amount)
+            .transfer_msg(governance_controller_contract.to_string())?;
+
+        Response::new().add_submessage(SubMsg::new(send_deposits_submsg))
+    } else {
+        Response::new()
+    };
+
+    Ok(response)
 }
 
 pub fn create_enterprise_membership_contract(
@@ -548,6 +567,8 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
     DAO_MEMBERSHIP_CONTRACT.remove(ctx.deps.storage);
     ENTERPRISE_GOVERNANCE_CONTRACT.remove(ctx.deps.storage);
     FUNDS_DISTRIBUTOR_CONTRACT.remove(ctx.deps.storage);
+
+    PROPOSAL_INFOS.clear(ctx.deps.storage);
 
     MIGRATION_INFO.remove(ctx.deps.storage);
 
