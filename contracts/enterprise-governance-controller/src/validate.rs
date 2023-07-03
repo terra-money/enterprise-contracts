@@ -288,12 +288,12 @@ struct AssetInfoHashSets {
 
 fn validate_nft_whitelist_changes(
     deps: Deps,
-    add: &Vec<Addr>,
+    add: &Vec<String>,
     remove: &Vec<Addr>,
 ) -> GovernanceControllerResult<()> {
     let mut add_nfts: HashSet<Addr> = HashSet::new();
     for nft in add {
-        let nft = deps.api.addr_validate(nft.as_ref())?;
+        let nft = deps.api.addr_validate(nft)?;
         if add_nfts.contains(&nft) {
             return Err(GovernanceControllerError::DuplicateNftFound);
         } else {

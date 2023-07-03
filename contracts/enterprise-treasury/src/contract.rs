@@ -121,11 +121,7 @@ fn update_nft_whitelist(
     admin_only(ctx)?;
 
     for add in msg.add {
-        NFT_WHITELIST.save(
-            ctx.deps.storage,
-            ctx.deps.api.addr_validate(add.as_ref())?,
-            &(),
-        )?;
+        NFT_WHITELIST.save(ctx.deps.storage, ctx.deps.api.addr_validate(&add)?, &())?;
     }
     for remove in msg.remove {
         NFT_WHITELIST.remove(
