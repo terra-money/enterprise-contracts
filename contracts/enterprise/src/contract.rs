@@ -27,6 +27,10 @@ use enterprise_protocol::error::DaoError::{
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use enterprise_protocol::response::{
+    execute_finalize_instantiation_response, execute_update_metadata_response,
+    execute_upgrade_dao_response, instantiate_response,
+};
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionsParams, VersionsResponse};
 use enterprise_versioning_api::msg::QueryMsg::Versions;
 use serde_json::json;
@@ -70,7 +74,7 @@ pub fn instantiate(
 
     IS_INSTANTIATION_FINALIZED.save(deps.storage, &false)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(instantiate_response())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -128,32 +132,17 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
 
     IS_INSTANTIATION_FINALIZED.save(ctx.deps.storage, &true)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "finalize_instantiation")
-        .add_attribute(
-            "enterprise_governance_contract",
-            component_contracts
-                .enterprise_governance_contract
-                .to_string(),
-        )
-        .add_attribute(
-            "enterprise_governance_controller_contract",
-            component_contracts
-                .enterprise_governance_controller_contract
-                .to_string(),
-        )
-        .add_attribute(
-            "enterprise_treasury_contract",
-            component_contracts.enterprise_treasury_contract.to_string(),
-        )
-        .add_attribute(
-            "funds_distributor_contract",
-            component_contracts.funds_distributor_contract.to_string(),
-        )
-        .add_attribute(
-            "membership_contract",
-            component_contracts.membership_contract.to_string(),
-        ))
+    Ok(execute_finalize_instantiation_response(
+        component_contracts
+            .enterprise_governance_contract
+            .to_string(),
+        component_contracts
+            .enterprise_governance_controller_contract
+            .to_string(),
+        component_contracts.enterprise_treasury_contract.to_string(),
+        component_contracts.funds_distributor_contract.to_string(),
+        component_contracts.membership_contract.to_string(),
+    ))
 }
 
 fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Response> {
@@ -192,7 +181,7 @@ fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Respo
 
     DAO_METADATA.save(ctx.deps.storage, &metadata)?;
 
-    Ok(Response::new().add_attribute("action", "update_metadata"))
+    Ok(execute_update_metadata_response())
 }
 
 fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
@@ -234,10 +223,7 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
             })));
         }
 
-        Ok(Response::new()
-            .add_attribute("action", "upgrade_dao")
-            .add_attribute("new_version", msg.new_version.to_string())
-            .add_submessages(submsgs))
+        Ok(execute_upgrade_dao_response(msg.new_version.to_string()).add_submessages(submsgs))
     } else {
         Err(InvalidMigrateMsgMap)
     }
