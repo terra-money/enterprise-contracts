@@ -1,7 +1,7 @@
 use crate::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
-    ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SpendMsg,
-    UpdateAssetWhitelistMsg, UpdateConfigMsg, UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SetAdminMsg, SpendMsg,
+    UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_asset::AssetInfoUnchecked;
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateConfig(UpdateConfigMsg),
+    SetAdmin(SetAdminMsg),
     UpdateAssetWhitelist(UpdateAssetWhitelistMsg),
     UpdateNftWhitelist(UpdateNftWhitelistMsg),
     Spend(SpendMsg),

@@ -18,8 +18,8 @@ use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use enterprise_treasury_api::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
-    ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SpendMsg,
-    UpdateAssetWhitelistMsg, UpdateConfigMsg, UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SetAdminMsg, SpendMsg,
+    UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::error::EnterpriseTreasuryError::{InvalidCosmosMessage, Std};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
@@ -76,7 +76,7 @@ pub fn execute(
     let ctx = &mut Context { deps, env, info };
 
     match msg {
-        ExecuteMsg::UpdateConfig(msg) => update_config(ctx, msg),
+        ExecuteMsg::SetAdmin(msg) => set_admin(ctx, msg),
         ExecuteMsg::UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx, msg),
         ExecuteMsg::UpdateNftWhitelist(msg) => update_nft_whitelist(ctx, msg),
         ExecuteMsg::Spend(msg) => spend(ctx, msg),
@@ -85,7 +85,7 @@ pub fn execute(
     }
 }
 
-fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> EnterpriseTreasuryResult<Response> {
+fn set_admin(ctx: &mut Context, msg: SetAdminMsg) -> EnterpriseTreasuryResult<Response> {
     admin_only(ctx)?;
 
     let new_admin = ctx.deps.api.addr_validate(&msg.new_admin)?;
@@ -98,7 +98,7 @@ fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> EnterpriseTreasuryR
     )?;
 
     Ok(Response::new()
-        .add_attribute("action", "update_config")
+        .add_attribute("action", "set_admin")
         .add_attribute("new_admin", new_admin.to_string()))
 }
 

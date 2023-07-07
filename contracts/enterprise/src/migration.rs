@@ -27,7 +27,7 @@ use enterprise_protocol::api::DaoType::Token;
 use enterprise_protocol::error::DaoError::{Std, Unauthorized};
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::ExecuteMsg::FinalizeMigration;
-use enterprise_treasury_api::api::UpdateConfigMsg;
+use enterprise_treasury_api::api::SetAdminMsg;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use membership_common_api::api::WeightChangeHookMsg;
 use multisig_membership_api::api::UserWeight;
@@ -482,7 +482,7 @@ pub fn finalize_migration(ctx: &mut Context) -> DaoResult<Response> {
 
     let update_treasury_admin_submsg = SubMsg::new(wasm_execute(
         treasury_contract.to_string(),
-        &enterprise_treasury_api::msg::ExecuteMsg::UpdateConfig(UpdateConfigMsg {
+        &enterprise_treasury_api::msg::ExecuteMsg::SetAdmin(SetAdminMsg {
             new_admin: governance_controller_contract.to_string(),
         }),
         vec![],

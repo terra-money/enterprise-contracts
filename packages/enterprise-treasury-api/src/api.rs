@@ -3,7 +3,7 @@ use cosmwasm_std::Addr;
 use cw_asset::{AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 
 #[cw_serde]
-pub struct UpdateConfigMsg {
+pub struct SetAdminMsg {
     pub new_admin: String,
 }
 
