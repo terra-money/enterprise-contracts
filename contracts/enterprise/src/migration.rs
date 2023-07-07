@@ -15,7 +15,7 @@ use cosmwasm_std::{
     to_binary, wasm_execute, Addr, Decimal, DepsMut, Env, Response, StdError, StdResult, SubMsg,
     Uint128, Uint64,
 };
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
@@ -174,22 +174,22 @@ pub fn create_treasury_contract(
         .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(String, ())>>>()?
         .into_iter()
-        .map(|(denom, _)| AssetInfo::native(denom))
-        .collect::<Vec<AssetInfo>>();
+        .map(|(denom, _)| AssetInfoUnchecked::native(denom))
+        .collect::<Vec<AssetInfoUnchecked>>();
 
     let mut cw20_asset_whitelist = CW20_ASSET_WHITELIST
         .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(Addr, ())>>>()?
         .into_iter()
-        .map(|(addr, _)| AssetInfo::cw20(addr))
-        .collect::<Vec<AssetInfo>>();
+        .map(|(addr, _)| AssetInfoUnchecked::cw20(addr.to_string()))
+        .collect::<Vec<AssetInfoUnchecked>>();
 
     let mut cw1155_asset_whitelist = CW1155_ASSET_WHITELIST
         .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<((Addr, String), ())>>>()?
         .into_iter()
-        .map(|((addr, token_id), _)| AssetInfo::cw1155(addr, token_id))
-        .collect::<Vec<AssetInfo>>();
+        .map(|((addr, token_id), _)| AssetInfoUnchecked::cw1155(addr.to_string(), token_id))
+        .collect::<Vec<AssetInfoUnchecked>>();
 
     asset_whitelist.append(&mut cw20_asset_whitelist);
     asset_whitelist.append(&mut cw1155_asset_whitelist);

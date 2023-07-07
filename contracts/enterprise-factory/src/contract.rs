@@ -447,7 +447,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let mut asset_whitelist = create_dao_msg.asset_whitelist.unwrap_or_default();
             if let Some(asset) = dao_being_created.dao_asset.clone() {
-                asset_whitelist.push(asset);
+                asset_whitelist.push(asset.into());
             }
 
             let mut nft_whitelist = create_dao_msg.nft_whitelist.unwrap_or_default();

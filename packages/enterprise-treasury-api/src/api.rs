@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::{AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 
 #[cw_serde]
 pub struct UpdateConfigMsg {
@@ -10,9 +10,9 @@ pub struct UpdateConfigMsg {
 #[cw_serde]
 pub struct UpdateAssetWhitelistMsg {
     /// New assets to add to the whitelist. Will ignore assets that are already whitelisted.
-    pub add: Vec<AssetInfo>,
+    pub add: Vec<AssetInfoUnchecked>,
     /// Assets to remove from the whitelist. Will ignore assets that are not already whitelisted.
-    pub remove: Vec<AssetInfo>,
+    pub remove: Vec<AssetInfoUnchecked>,
 }
 
 #[cw_serde]
@@ -20,18 +20,18 @@ pub struct UpdateNftWhitelistMsg {
     /// New NFTs to add to the whitelist. Will ignore NFTs that are already whitelisted.
     pub add: Vec<String>,
     /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
-    pub remove: Vec<Addr>,
+    pub remove: Vec<String>,
 }
 
 #[cw_serde]
 pub struct SpendMsg {
     pub recipient: String,
-    pub assets: Vec<Asset>,
+    pub assets: Vec<AssetUnchecked>,
 }
 
 #[cw_serde]
 pub struct DistributeFundsMsg {
-    pub funds: Vec<Asset>,
+    pub funds: Vec<AssetUnchecked>,
 }
 
 #[cw_serde]
@@ -42,7 +42,7 @@ pub struct ExecuteCosmosMsgsMsg {
 
 #[cw_serde]
 pub struct AssetWhitelistParams {
-    pub start_after: Option<AssetInfo>,
+    pub start_after: Option<AssetInfoUnchecked>,
     pub limit: Option<u32>,
 }
 

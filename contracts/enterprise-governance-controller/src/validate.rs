@@ -1,7 +1,7 @@
 use crate::state::{ENTERPRISE_CONTRACT, GOV_CONFIG};
 use common::commons::ModifyValue::Change;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, Uint128};
-use cw_asset::{AssetInfo, AssetInfoBase};
+use cw_asset::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 use cw_utils::Duration;
 use enterprise_governance_controller_api::api::ProposalAction::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
@@ -174,9 +174,10 @@ pub fn apply_gov_config_changes(gov_config: GovConfig, msg: &UpdateGovConfigMsg)
     gov_config
 }
 
+// TODO: this is never called, remove? first search where it should be used
 pub fn normalize_asset_whitelist(
     deps: Deps,
-    asset_whitelist: &Vec<AssetInfo>,
+    asset_whitelist: &Vec<AssetInfoUnchecked>,
 ) -> GovernanceControllerResult<Vec<AssetInfo>> {
     let mut normalized_asset_whitelist: Vec<AssetInfo> = vec![];
 
@@ -199,8 +200,8 @@ pub fn normalize_asset_whitelist(
 
 fn validate_asset_whitelist_changes(
     deps: Deps,
-    add: &Vec<AssetInfo>,
-    remove: &Vec<AssetInfo>,
+    add: &Vec<AssetInfoUnchecked>,
+    remove: &Vec<AssetInfoUnchecked>,
 ) -> GovernanceControllerResult<()> {
     let add_asset_hashsets = split_asset_hashsets(deps, add)?;
     let remove_asset_hashsets = split_asset_hashsets(deps, remove)?;
@@ -235,21 +236,21 @@ fn validate_asset_whitelist_changes(
 
 fn split_asset_hashsets(
     deps: Deps,
-    assets: &Vec<AssetInfo>,
+    assets: &Vec<AssetInfoUnchecked>,
 ) -> GovernanceControllerResult<AssetInfoHashSets> {
     let mut native_assets: HashSet<String> = HashSet::new();
     let mut cw20_assets: HashSet<Addr> = HashSet::new();
     let mut cw1155_assets: HashSet<(Addr, String)> = HashSet::new();
     for asset in assets {
         match asset {
-            AssetInfo::Native(denom) => {
+            AssetInfoUnchecked::Native(denom) => {
                 if native_assets.contains(denom) {
                     return Err(GovernanceControllerError::DuplicateAssetFound);
                 } else {
                     native_assets.insert(denom.clone());
                 }
             }
-            AssetInfo::Cw20(addr) => {
+            AssetInfoUnchecked::Cw20(addr) => {
                 let addr = deps.api.addr_validate(addr.as_ref())?;
                 if cw20_assets.contains(&addr) {
                     return Err(GovernanceControllerError::DuplicateAssetFound);
@@ -257,7 +258,7 @@ fn split_asset_hashsets(
                     cw20_assets.insert(addr);
                 }
             }
-            AssetInfo::Cw1155(addr, id) => {
+            AssetInfoUnchecked::Cw1155(addr, id) => {
                 let addr = deps.api.addr_validate(addr.as_ref())?;
                 if cw1155_assets.contains(&(addr.clone(), id.to_string())) {
                     return Err(GovernanceControllerError::DuplicateAssetFound);
@@ -289,7 +290,7 @@ struct AssetInfoHashSets {
 fn validate_nft_whitelist_changes(
     deps: Deps,
     add: &Vec<String>,
-    remove: &Vec<Addr>,
+    remove: &Vec<String>,
 ) -> GovernanceControllerResult<()> {
     let mut add_nfts: HashSet<Addr> = HashSet::new();
     for nft in add {
@@ -303,7 +304,7 @@ fn validate_nft_whitelist_changes(
 
     let mut remove_nfts: HashSet<Addr> = HashSet::new();
     for nft in remove {
-        let nft = deps.api.addr_validate(nft.as_ref())?;
+        let nft = deps.api.addr_validate(nft)?;
         if remove_nfts.contains(&nft) {
             return Err(GovernanceControllerError::DuplicateNftFound);
         } else {

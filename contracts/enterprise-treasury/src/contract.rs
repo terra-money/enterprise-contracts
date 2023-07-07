@@ -12,7 +12,7 @@ use cosmwasm_std::{
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
-use cw_asset::{AssetInfo, AssetInfoBase};
+use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_storage_plus::Bound;
 use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::ComponentContracts;
@@ -140,7 +140,11 @@ fn spend(ctx: &mut Context, msg: SpendMsg) -> EnterpriseTreasuryResult<Response>
     let spend_submsgs = msg
         .assets
         .into_iter()
-        .map(|asset| asset.transfer_msg(msg.recipient.clone()))
+        .map(|asset_unchecked| asset_unchecked.check(ctx.deps.api, None))
+        .map(|asset_res| match asset_res {
+            Ok(asset) => asset.transfer_msg(msg.recipient.clone()),
+            Err(e) => Err(e),
+        })
         .collect::<StdResult<Vec<CosmosMsg>>>()?
         .into_iter()
         .map(SubMsg::new)
@@ -169,11 +173,18 @@ fn distribute_funds(
 
     for asset in msg.funds {
         match asset.info {
-            AssetInfoBase::Native(denom) => native_funds.push(coin(asset.amount.u128(), denom)),
-            AssetInfoBase::Cw20(_) => submsgs.push(SubMsg::new(
-                asset.send_msg(funds_distributor.to_string(), to_binary(&Distribute {})?)?,
-            )),
-            AssetInfoBase::Cw1155(_, _) => {
+            AssetInfoUnchecked::Native(denom) => {
+                native_funds.push(coin(asset.amount.u128(), denom))
+            }
+            AssetInfoUnchecked::Cw20(addr) => {
+                let addr = ctx.deps.api.addr_validate(&addr)?;
+                let asset = Asset::cw20(addr, asset.amount);
+                submsgs.push(SubMsg::new(asset.send_msg(
+                    funds_distributor.to_string(),
+                    to_binary(&Distribute {})?,
+                )?))
+            }
+            AssetInfoUnchecked::Cw1155(_, _) => {
                 return Err(Std(StdError::generic_err(
                     "cw1155 assets are not supported at this time",
                 )))
@@ -247,14 +258,14 @@ pub fn query_asset_whitelist(
 
     let assets = if let Some(start_after) = params.start_after {
         match start_after {
-            AssetInfo::Native(denom) => {
+            AssetInfoUnchecked::Native(denom) => {
                 get_whitelisted_assets_starting_with_native(qctx, Some(denom), limit)?
             }
-            AssetInfo::Cw20(addr) => {
+            AssetInfoUnchecked::Cw20(addr) => {
                 let addr = qctx.deps.api.addr_validate(addr.as_ref())?;
                 get_whitelisted_assets_starting_with_cw20(qctx, Some(addr), limit)?
             }
-            AssetInfo::Cw1155(addr, id) => {
+            AssetInfoUnchecked::Cw1155(addr, id) => {
                 let addr = qctx.deps.api.addr_validate(addr.as_ref())?;
                 get_whitelisted_assets_starting_with_cw1155(qctx, Some((addr, id)), limit)?
             }

@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
-use cw_asset::AssetInfo;
+use cw_asset::AssetInfoUnchecked;
 use cw_utils::Duration;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig};
 use enterprise_protocol::api::DaoMetadata;
@@ -27,7 +27,7 @@ pub struct CreateDaoMsg {
     pub dao_council: Option<DaoCouncilSpec>,
     pub dao_membership: CreateDaoMembershipMsg,
     /// assets that are allowed to show in DAO's treasury
-    pub asset_whitelist: Option<Vec<AssetInfo>>,
+    pub asset_whitelist: Option<Vec<AssetInfoUnchecked>>,
     /// NFTs that are allowed to show in DAO's treasury
     pub nft_whitelist: Option<Vec<String>>,
     /// Minimum weight that a user should have in order to qualify for rewards.

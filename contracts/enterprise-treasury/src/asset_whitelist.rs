@@ -1,7 +1,7 @@
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, DepsMut, StdError, StdResult};
-use cw_asset::AssetInfo;
+use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use cw_storage_plus::{Bound, Map};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
 
@@ -11,16 +11,18 @@ pub const CW1155_ASSET_WHITELIST: Map<(Addr, String), ()> = Map::new("cw1155_ass
 
 pub fn add_whitelisted_assets(
     deps: DepsMut,
-    assets: Vec<AssetInfo>,
+    assets: Vec<AssetInfoUnchecked>,
 ) -> EnterpriseTreasuryResult<()> {
     for asset in assets {
         match asset {
-            AssetInfo::Native(denom) => NATIVE_ASSET_WHITELIST.save(deps.storage, denom, &())?,
-            AssetInfo::Cw20(addr) => {
+            AssetInfoUnchecked::Native(denom) => {
+                NATIVE_ASSET_WHITELIST.save(deps.storage, denom, &())?
+            }
+            AssetInfoUnchecked::Cw20(addr) => {
                 let addr = deps.api.addr_validate(addr.as_ref())?;
                 CW20_ASSET_WHITELIST.save(deps.storage, addr, &())?;
             }
-            AssetInfo::Cw1155(addr, id) => {
+            AssetInfoUnchecked::Cw1155(addr, id) => {
                 let addr = deps.api.addr_validate(addr.as_ref())?;
                 CW1155_ASSET_WHITELIST.save(deps.storage, (addr, id), &())?;
             }
@@ -33,16 +35,16 @@ pub fn add_whitelisted_assets(
 
 pub fn remove_whitelisted_assets(
     deps: DepsMut,
-    assets: Vec<AssetInfo>,
+    assets: Vec<AssetInfoUnchecked>,
 ) -> EnterpriseTreasuryResult<()> {
     for asset in assets {
         match asset {
-            AssetInfo::Native(denom) => NATIVE_ASSET_WHITELIST.remove(deps.storage, denom),
-            AssetInfo::Cw20(addr) => {
+            AssetInfoUnchecked::Native(denom) => NATIVE_ASSET_WHITELIST.remove(deps.storage, denom),
+            AssetInfoUnchecked::Cw20(addr) => {
                 let addr = deps.api.addr_validate(addr.as_ref())?;
                 CW20_ASSET_WHITELIST.remove(deps.storage, addr);
             }
-            AssetInfo::Cw1155(addr, id) => {
+            AssetInfoUnchecked::Cw1155(addr, id) => {
                 let addr = deps.api.addr_validate(addr.as_ref())?;
                 CW1155_ASSET_WHITELIST.remove(deps.storage, (addr, id));
             }
