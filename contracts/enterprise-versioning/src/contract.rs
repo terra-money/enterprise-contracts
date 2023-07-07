@@ -15,6 +15,7 @@ use enterprise_versioning_api::error::EnterpriseVersioningError::{
 };
 use enterprise_versioning_api::error::EnterpriseVersioningResult;
 use enterprise_versioning_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use enterprise_versioning_api::response::{execute_add_version_response, instantiate_response};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-versioning";
@@ -35,9 +36,7 @@ pub fn instantiate(
     let admin = deps.api.addr_validate(&msg.admin)?;
     ADMIN.save(deps.storage, &admin)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "instantiate")
-        .add_attribute("admin", admin.to_string()))
+    Ok(instantiate_response(admin.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -70,9 +69,7 @@ fn add_version(ctx: &mut Context, msg: AddVersionMsg) -> EnterpriseVersioningRes
 
     VERSIONS.save(ctx.deps.storage, version_key, &msg.version)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "add_version")
-        .add_attribute("version", version.to_string()))
+    Ok(execute_add_version_response(version.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
