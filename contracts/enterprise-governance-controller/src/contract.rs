@@ -44,6 +44,12 @@ use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use enterprise_governance_controller_api::msg::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
+use enterprise_governance_controller_api::response::{
+    execute_cast_council_vote_response, execute_cast_vote_response,
+    execute_create_council_proposal_response, execute_create_proposal_response,
+    execute_execute_proposal_response, execute_weights_changed_response, instantiate_response,
+    reply_create_poll_response,
+};
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, DaoType, UpdateMetadataMsg, UpgradeDaoMsg,
 };
@@ -117,7 +123,7 @@ pub fn instantiate(
         PROPOSAL_INFOS.save(deps.storage, proposal_id, &proposal_info)?;
     }
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(instantiate_response())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -168,12 +174,12 @@ fn create_proposal(
 
     let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General, proposer)?;
 
-    let response = Response::new()
-        .add_attribute("action", "create_proposal")
-        .add_attribute("dao_address", ctx.env.contract.address.to_string())
-        .add_submessage(create_poll_submsg);
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
 
-    Ok(response)
+    Ok(
+        execute_create_proposal_response(enterprise_contract.to_string())
+            .add_submessage(create_poll_submsg),
+    )
 }
 
 fn create_council_proposal(
@@ -229,10 +235,12 @@ fn create_council_proposal(
                 ctx.info.sender.clone(),
             )?;
 
-            Ok(Response::new()
-                .add_attribute("action", "create_council_proposal")
-                .add_attribute("dao_address", ctx.env.contract.address.to_string())
-                .add_submessage(create_poll_submsg))
+            let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+            Ok(
+                execute_create_council_proposal_response(enterprise_contract.to_string())
+                    .add_submessage(create_poll_submsg),
+            )
         }
     }
 }
@@ -334,14 +342,16 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
         vec![],
     )?);
 
-    Ok(Response::new()
-        .add_attribute("action", "cast_vote")
-        .add_attribute("dao_address", ctx.env.contract.address.to_string())
-        .add_attribute("proposal_id", msg.proposal_id.to_string())
-        .add_attribute("voter", ctx.info.sender.clone().to_string())
-        .add_attribute("outcome", msg.outcome.to_string())
-        .add_attribute("amount", user_available_votes.to_string())
-        .add_submessage(cast_vote_submessage))
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    Ok(execute_cast_vote_response(
+        enterprise_contract.to_string(),
+        msg.proposal_id,
+        ctx.info.sender.to_string(),
+        msg.outcome,
+        user_available_votes,
+    )
+    .add_submessage(cast_vote_submessage))
 }
 
 fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
@@ -380,14 +390,16 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControlle
                 vec![],
             )?);
 
-            Ok(Response::new()
-                .add_attribute("action", "cast_vote")
-                .add_attribute("dao_address", ctx.env.contract.address.to_string())
-                .add_attribute("proposal_id", msg.proposal_id.to_string())
-                .add_attribute("voter", ctx.info.sender.clone().to_string())
-                .add_attribute("outcome", msg.outcome.to_string())
-                .add_attribute("amount", 1u8.to_string())
-                .add_submessage(cast_vote_submessage))
+            let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+            Ok(execute_cast_council_vote_response(
+                enterprise_contract.to_string(),
+                msg.proposal_id,
+                ctx.info.sender.to_string(),
+                msg.outcome,
+                1u8.into(),
+            )
+            .add_submessage(cast_vote_submessage))
         }
     }
 }
@@ -406,12 +418,14 @@ fn execute_proposal(
 
     let submsgs = end_proposal(ctx, &msg, proposal_info.proposal_type.clone())?;
 
-    Ok(Response::new()
-        .add_submessages(submsgs)
-        .add_attribute("action", "execute_proposal")
-        .add_attribute("dao_address", ctx.env.contract.address.to_string())
-        .add_attribute("proposal_id", msg.proposal_id.to_string())
-        .add_attribute("proposal_type", proposal_info.proposal_type.to_string()))
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    Ok(execute_execute_proposal_response(
+        enterprise_contract.to_string(),
+        msg.proposal_id,
+        proposal_info.proposal_type,
+    )
+    .add_submessages(submsgs))
 }
 
 fn return_proposal_deposit_submsgs(
@@ -914,8 +928,7 @@ pub fn weights_changed(
         vec![],
     )?);
 
-    Ok(Response::new()
-        .add_attribute("action", "weights_changed")
+    Ok(execute_weights_changed_response()
         .add_submessages(update_votes_submsgs)
         .add_submessage(update_funds_distributor_submsg))
 }
@@ -970,7 +983,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
                 })?;
             }
 
-            Ok(Response::new().add_attribute("proposal_id", poll_id.to_string()))
+            Ok(reply_create_poll_response(poll_id))
         }
         END_POLL_REPLY_ID => {
             let info = MessageInfo {
@@ -995,11 +1008,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
 
             let execute_submsgs = resolve_ended_proposal(ctx, proposal_id)?;
 
-            Ok(Response::new()
-                .add_attribute("action", "execute_proposal")
-                .add_attribute("dao_address", ctx.env.contract.address.to_string())
-                .add_attribute("proposal_id", proposal_id.to_string())
-                .add_submessages(execute_submsgs))
+            Ok(Response::new().add_submessages(execute_submsgs))
         }
         EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
             // no actions, regardless of the result
