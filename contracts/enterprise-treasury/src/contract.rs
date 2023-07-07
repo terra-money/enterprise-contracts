@@ -142,13 +142,10 @@ fn spend(ctx: &mut Context, msg: SpendMsg) -> EnterpriseTreasuryResult<Response>
         .into_iter()
         .map(|asset_unchecked| asset_unchecked.check(ctx.deps.api, None))
         .map(|asset_res| match asset_res {
-            Ok(asset) => asset.transfer_msg(msg.recipient.clone()),
+            Ok(asset) => asset.transfer_msg(msg.recipient.clone()).map(SubMsg::new),
             Err(e) => Err(e),
         })
-        .collect::<StdResult<Vec<CosmosMsg>>>()?
-        .into_iter()
-        .map(SubMsg::new)
-        .collect::<Vec<SubMsg>>();
+        .collect::<StdResult<Vec<SubMsg>>>()?;
 
     Ok(Response::new()
         .add_attribute("action", "spend")
