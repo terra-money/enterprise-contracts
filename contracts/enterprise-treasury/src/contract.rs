@@ -24,6 +24,11 @@ use enterprise_treasury_api::api::{
 use enterprise_treasury_api::error::EnterpriseTreasuryError::{InvalidCosmosMessage, Std};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
 use enterprise_treasury_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use enterprise_treasury_api::response::{
+    execute_distribute_funds_response, execute_execute_cosmos_msgs_response,
+    execute_set_admin_response, execute_spend_response, execute_update_asset_whitelist_response,
+    execute_update_nft_whitelist_response, instantiate_response,
+};
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
 
@@ -61,9 +66,7 @@ pub fn instantiate(
         NFT_WHITELIST.save(deps.storage, nft_addr, &())?;
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "instantiate")
-        .add_attribute("admin", admin.to_string()))
+    Ok(instantiate_response(admin.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -97,9 +100,7 @@ fn set_admin(ctx: &mut Context, msg: SetAdminMsg) -> EnterpriseTreasuryResult<Re
         },
     )?;
 
-    Ok(Response::new()
-        .add_attribute("action", "set_admin")
-        .add_attribute("new_admin", new_admin.to_string()))
+    Ok(execute_set_admin_response(new_admin.to_string()))
 }
 
 fn update_asset_whitelist(
@@ -111,7 +112,7 @@ fn update_asset_whitelist(
     add_whitelisted_assets(ctx.deps.branch(), msg.add)?;
     remove_whitelisted_assets(ctx.deps.branch(), msg.remove)?;
 
-    Ok(Response::new().add_attribute("action", "update_asset_whitelist"))
+    Ok(execute_update_asset_whitelist_response())
 }
 
 fn update_nft_whitelist(
@@ -130,7 +131,7 @@ fn update_nft_whitelist(
         );
     }
 
-    Ok(Response::new().add_attribute("action", "update_nft_whitelist"))
+    Ok(execute_update_nft_whitelist_response())
 }
 
 fn spend(ctx: &mut Context, msg: SpendMsg) -> EnterpriseTreasuryResult<Response> {
@@ -147,9 +148,7 @@ fn spend(ctx: &mut Context, msg: SpendMsg) -> EnterpriseTreasuryResult<Response>
         })
         .collect::<StdResult<Vec<SubMsg>>>()?;
 
-    Ok(Response::new()
-        .add_attribute("action", "spend")
-        .add_submessages(spend_submsgs))
+    Ok(execute_spend_response().add_submessages(spend_submsgs))
 }
 
 fn distribute_funds(
@@ -196,7 +195,7 @@ fn distribute_funds(
         native_funds,
     )?));
 
-    Ok(Response::new().add_attribute("action", "distribute_funds"))
+    Ok(execute_distribute_funds_response())
 }
 
 fn execute_cosmos_msgs(
@@ -213,9 +212,7 @@ fn execute_cosmos_msgs(
         ))
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "execute_cosmos_msgs")
-        .add_submessages(submsgs))
+    Ok(execute_execute_cosmos_msgs_response().add_submessages(submsgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
