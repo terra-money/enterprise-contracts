@@ -31,6 +31,9 @@ use enterprise_factory_api::api::{
 };
 use enterprise_factory_api::msg::ExecuteMsg::FinalizeDaoCreation;
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use enterprise_factory_api::response::{
+    execute_create_dao_response, execute_finalize_dao_creation_response, instantiate_response,
+};
 use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
@@ -72,7 +75,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &msg.config)?;
     DAO_ID_COUNTER.save(deps.storage, &1u64)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(instantiate_response())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -130,9 +133,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         ENTERPRISE_INSTANTIATE_REPLY_ID,
     );
 
-    Ok(Response::new()
-        .add_attribute("action", "create_dao")
-        .add_submessage(create_dao_submsg))
+    Ok(execute_create_dao_response().add_submessage(create_dao_submsg))
 }
 
 fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResult<Response> {
@@ -186,9 +187,13 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
         vec![],
     )?);
 
-    Ok(Response::new()
-        .add_attribute("action", "finalize_dao_creation")
-        .add_submessage(finalize_creation_submsg))
+    Ok(execute_finalize_dao_creation_response(
+        dao_being_created.require_enterprise_address()?.to_string(),
+        dao_being_created
+            .require_enterprise_treasury_address()?
+            .to_string(),
+    )
+    .add_submessage(finalize_creation_submsg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -12,6 +12,9 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     CreateDao(Box<CreateDaoMsg>),
+
+    /// Executed only by this contract itself to finalize creation of a DAO.
+    /// Not part of the public interface.
     FinalizeDaoCreation {},
 }
 
