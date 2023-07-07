@@ -8,6 +8,7 @@ use cosmwasm_std::{Response, SubMsg, Uint128};
 use cw_asset::Asset;
 use funds_distributor_api::api::ClaimRewardsMsg;
 use funds_distributor_api::error::DistributorResult;
+use funds_distributor_api::response::execute_claim_rewards_response;
 
 /// Attempt to claim rewards for the given parameters.
 ///
@@ -87,8 +88,5 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
         )?;
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "claim_rewards")
-        .add_attribute("user", user.to_string())
-        .add_submessages(submsgs))
+    Ok(execute_claim_rewards_response(user.to_string()).add_submessages(submsgs))
 }

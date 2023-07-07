@@ -16,6 +16,7 @@ use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use funds_distributor_api::response::instantiate_response;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:funds-distributor";
@@ -40,9 +41,7 @@ pub fn instantiate(
 
     save_initial_weights(&mut ctx, msg.initial_weights, minimum_eligible_weight)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "instantiate")
-        .add_attribute("admin", admin.to_string()))
+    Ok(instantiate_response(admin.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

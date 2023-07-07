@@ -8,6 +8,7 @@ use cw_storage_plus::Item;
 use funds_distributor_api::api::{MinimumEligibleWeightResponse, UpdateMinimumEligibleWeightMsg};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
+use funds_distributor_api::response::execute_update_minimum_eligible_weight_response;
 use itertools::Itertools;
 use std::ops::Range;
 
@@ -29,10 +30,10 @@ pub fn execute_update_minimum_eligible_weight(
 
     update_minimum_eligible_weight(ctx.deps.branch(), old_minimum_weight, new_minimum_weight)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "update_minimum_eligible_weight")
-        .add_attribute("old_minimum_weight", old_minimum_weight.to_string())
-        .add_attribute("new_minimum_weight", new_minimum_weight.to_string()))
+    Ok(execute_update_minimum_eligible_weight_response(
+        old_minimum_weight,
+        new_minimum_weight,
+    ))
 }
 
 /// Update minimum eligible weight for rewards by going through all the users

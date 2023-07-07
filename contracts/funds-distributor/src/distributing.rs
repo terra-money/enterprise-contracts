@@ -5,6 +5,9 @@ use cosmwasm_std::{Decimal, Response, Uint128};
 use cw20::Cw20ReceiveMsg;
 use funds_distributor_api::error::DistributorError::ZeroTotalWeight;
 use funds_distributor_api::error::DistributorResult;
+use funds_distributor_api::response::{
+    cw20_hook_distribute_cw20_response, execute_distribute_native_response,
+};
 use std::ops::Add;
 
 /// Distributes new rewards for a native asset, using funds found in MessageInfo.
@@ -33,9 +36,7 @@ pub fn distribute_native(ctx: &mut Context) -> DistributorResult<Response> {
         )?;
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "distribute_native")
-        .add_attribute("total_weight", total_weight.to_string()))
+    Ok(execute_distribute_native_response(total_weight))
 }
 
 /// Distributes new rewards for a CW20 asset.
@@ -62,9 +63,9 @@ pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> Distribut
         &global_index.add(global_index_increment),
     )?;
 
-    Ok(Response::new()
-        .add_attribute("action", "distribute_cw20")
-        .add_attribute("total_weight", total_weight.to_string())
-        .add_attribute("cw20_asset", cw20_asset.to_string())
-        .add_attribute("amount_distributed", cw20_msg.amount.to_string()))
+    Ok(cw20_hook_distribute_cw20_response(
+        total_weight,
+        cw20_asset.to_string(),
+        cw20_msg.amount,
+    ))
 }

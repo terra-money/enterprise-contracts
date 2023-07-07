@@ -11,6 +11,7 @@ use cw_storage_plus::Map;
 use funds_distributor_api::api::{UpdateUserWeightsMsg, UserWeight};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
+use funds_distributor_api::response::execute_update_user_weights_response;
 use native_distributions::update_user_native_distributions;
 use DistributorError::DuplicateInitialWeight;
 
@@ -114,7 +115,7 @@ pub fn update_user_weights(
 
     TOTAL_WEIGHT.save(ctx.deps.storage, &total_weight)?;
 
-    Ok(Response::new().add_attribute("action", "update_user_weights"))
+    Ok(execute_update_user_weights_response())
 }
 
 /// Calculate user's effective rewards weight, given their actual weight and minimum weight for
