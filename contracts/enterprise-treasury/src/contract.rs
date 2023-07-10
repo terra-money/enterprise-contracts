@@ -3,6 +3,10 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
+use crate::migration::{
+    council_membership_contract_created, enterprise_contract_created, finalize_migration,
+    governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
+};
 use crate::state::{Config, CONFIG, ENTERPRISE_CONTRACT, NFT_WHITELIST};
 use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
@@ -14,6 +18,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_storage_plus::Bound;
+use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use enterprise_treasury_api::api::{
@@ -35,6 +40,11 @@ use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-treasury";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub const ENTERPRISE_INSTANTIATE_REPLY_ID: u64 = 1;
+pub const MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
+pub const COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
+pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 4;
 
 const DEFAULT_QUERY_LIMIT: u8 = 30;
 const MAX_QUERY_LIMIT: u8 = 100;
@@ -85,6 +95,7 @@ pub fn execute(
         ExecuteMsg::Spend(msg) => spend(ctx, msg),
         ExecuteMsg::DistributeFunds(msg) => distribute_funds(ctx, msg),
         ExecuteMsg::ExecuteCosmosMsgs(msg) => execute_cosmos_msgs(ctx, msg),
+        ExecuteMsg::FinalizeMigration {} => finalize_migration(ctx),
     }
 }
 
@@ -216,8 +227,40 @@ fn execute_cosmos_msgs(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> EnterpriseTreasuryResult<Response> {
-    Ok(Response::new())
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> EnterpriseTreasuryResult<Response> {
+    match msg.id {
+        ENTERPRISE_INSTANTIATE_REPLY_ID => {
+            let enterprise_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
+
+            enterprise_contract_created(deps, env, enterprise_contract)
+        }
+        ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID => {
+            let governance_controller_contract =
+                parse_instantiated_contract_addr(deps.as_ref(), msg)?;
+
+            governance_controller_contract_created(deps, governance_controller_contract)
+        }
+        COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let council_membership_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
+
+            council_membership_contract_created(deps, council_membership_contract)
+        }
+        MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
+            let membership_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
+
+            membership_contract_created(deps, membership_contract)
+        }
+        _ => Err(Std(StdError::generic_err("No such reply ID found"))),
+    }
+}
+
+fn parse_instantiated_contract_addr(deps: Deps, msg: Reply) -> EnterpriseTreasuryResult<Addr> {
+    let contract_address = parse_reply_instantiate_data(msg)
+        .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+        .contract_address;
+    let addr = deps.api.addr_validate(&contract_address)?;
+
+    Ok(addr)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -299,8 +342,16 @@ pub fn query_nft_whitelist(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> EnterpriseTreasuryResult<Response> {
+pub fn migrate(
+    mut deps: DepsMut,
+    env: Env,
+    _msg: MigrateMsg,
+) -> EnterpriseTreasuryResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    Ok(Response::new().add_attribute("action", "migrate"))
+    let submsgs = migrate_to_rewrite(deps.branch(), env)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_submessages(submsgs))
 }

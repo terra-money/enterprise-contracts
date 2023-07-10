@@ -10,20 +10,28 @@ pub const CW20_ASSET_WHITELIST: Map<Addr, ()> = Map::new("cw20_asset_whitelist")
 pub const CW1155_ASSET_WHITELIST: Map<(Addr, String), ()> = Map::new("cw1155_asset_whitelist");
 
 pub fn add_whitelisted_assets(
-    deps: DepsMut,
+    mut deps: DepsMut,
     assets: Vec<AssetInfoUnchecked>,
+) -> EnterpriseTreasuryResult<()> {
+    let checked_assets = assets
+        .into_iter()
+        .map(|asset| asset.check(deps.api, None))
+        .collect::<StdResult<Vec<AssetInfo>>>()?;
+
+    add_whitelisted_assets_checked(deps.branch(), checked_assets)
+}
+
+pub fn add_whitelisted_assets_checked(
+    deps: DepsMut,
+    assets: Vec<AssetInfo>,
 ) -> EnterpriseTreasuryResult<()> {
     for asset in assets {
         match asset {
-            AssetInfoUnchecked::Native(denom) => {
-                NATIVE_ASSET_WHITELIST.save(deps.storage, denom, &())?
-            }
-            AssetInfoUnchecked::Cw20(addr) => {
-                let addr = deps.api.addr_validate(addr.as_ref())?;
+            AssetInfo::Native(denom) => NATIVE_ASSET_WHITELIST.save(deps.storage, denom, &())?,
+            AssetInfo::Cw20(addr) => {
                 CW20_ASSET_WHITELIST.save(deps.storage, addr, &())?;
             }
-            AssetInfoUnchecked::Cw1155(addr, id) => {
-                let addr = deps.api.addr_validate(addr.as_ref())?;
+            AssetInfo::Cw1155(addr, id) => {
                 CW1155_ASSET_WHITELIST.save(deps.storage, (addr, id), &())?;
             }
             _ => return Err(StdError::generic_err("unknown asset type").into()),

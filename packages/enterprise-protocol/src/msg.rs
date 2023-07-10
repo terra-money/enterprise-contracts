@@ -18,7 +18,6 @@ pub enum ExecuteMsg {
 
     // called by this contract itself
     FinalizeInstantiation(FinalizeInstantiationMsg),
-    FinalizeMigration {},
 }
 
 #[cw_serde]

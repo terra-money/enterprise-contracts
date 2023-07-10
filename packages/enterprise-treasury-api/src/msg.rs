@@ -22,6 +22,9 @@ pub enum ExecuteMsg {
     Spend(SpendMsg),
     DistributeFunds(DistributeFundsMsg),
     ExecuteCosmosMsgs(ExecuteCosmosMsgsMsg),
+
+    /// Called by self to finalize migration. Not part of the public API!
+    FinalizeMigration {},
 }
 
 #[cw_serde]
