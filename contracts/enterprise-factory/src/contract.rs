@@ -34,7 +34,7 @@ use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryM
 use enterprise_factory_api::response::{
     execute_create_dao_response, execute_finalize_dao_creation_response, instantiate_response,
 };
-use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
+use enterprise_protocol::api::FinalizeInstantiationMsg;
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
@@ -213,8 +213,8 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             // Update the admin of the DAO contract to be the DAO itself
             let update_admin_msg = SubMsg::new(WasmMsg::UpdateAdmin {
-                contract_addr: contract_address.clone(),
-                admin: contract_address.clone(),
+                contract_addr: enterprise_contract.to_string(),
+                admin: enterprise_contract.to_string(),
             });
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
@@ -257,23 +257,31 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_submessage(enterprise_governance_controller_submsg)
                 .add_submessage(finalize_submsg)
                 .add_attribute("action", "instantiate_dao")
-                .add_attribute("dao_address", contract_address))
+                .add_attribute("dao_address", enterprise_contract.to_string()))
         }
         CW20_CONTRACT_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let cw20_address = deps.api.addr_validate(&contract_address)?;
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
             let unlocking_period = dao_being_created.require_unlocking_period()?;
             let governance_controller =
                 dao_being_created.require_enterprise_governance_controller_address()?;
 
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
+                    dao_asset: Some(AssetInfo::cw20(cw20_address.clone())),
+                    ..dao_being_created
+                },
+            )?;
+
             Ok(
                 Response::new().add_submessage(instantiate_token_staking_membership_contract(
                     deps,
-                    addr,
+                    cw20_address,
                     unlocking_period,
                     governance_controller.to_string(),
                 )?),
@@ -283,17 +291,25 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let cw721_address = deps.api.addr_validate(&contract_address)?;
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
             let unlocking_period = dao_being_created.require_unlocking_period()?;
             let governance_controller =
                 dao_being_created.require_enterprise_governance_controller_address()?;
 
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
+                    dao_nft: Some(cw721_address.clone()),
+                    ..dao_being_created
+                },
+            )?;
+
             Ok(
                 Response::new().add_submessage(instantiate_nft_staking_membership_contract(
                     deps,
-                    addr,
+                    cw721_address,
                     unlocking_period,
                     governance_controller.to_string(),
                 )?),
@@ -303,24 +319,15 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let membership_contract = deps.api.addr_validate(&contract_address)?;
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
-
-            let mut dao_asset: Option<AssetInfo> = None;
-            let mut dao_nft: Option<Addr> = None;
-
-            match dao_being_created.require_dao_type()? {
-                DaoType::Token => dao_asset = Some(AssetInfo::cw20(addr.clone())),
-                DaoType::Nft => dao_nft = Some(addr.clone()),
-                DaoType::Multisig => {} // no-op
-            }
 
             let governance_controller =
                 dao_being_created.require_enterprise_governance_controller_address()?;
 
             let add_weight_change_hook_submsg = SubMsg::new(wasm_execute(
-                addr.to_string(),
+                membership_contract.to_string(),
                 &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
                     hook_addr: governance_controller.to_string(),
                 }),
@@ -330,9 +337,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             DAO_BEING_CREATED.save(
                 deps.storage,
                 &DaoBeingCreated {
-                    membership_address: Some(addr),
-                    dao_asset,
-                    dao_nft,
+                    membership_address: Some(membership_contract),
                     ..dao_being_created
                 },
             )?;
@@ -343,7 +348,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let council_membership_contract = deps.api.addr_validate(&contract_address)?;
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
@@ -351,7 +356,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 dao_being_created.require_enterprise_governance_controller_address()?;
 
             let add_weight_change_hook_submsg = SubMsg::new(wasm_execute(
-                addr.to_string(),
+                council_membership_contract.to_string(),
                 &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
                     hook_addr: governance_controller.to_string(),
                 }),
@@ -361,7 +366,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             DAO_BEING_CREATED.save(
                 deps.storage,
                 &DaoBeingCreated {
-                    council_membership_address: Some(addr),
+                    council_membership_address: Some(council_membership_contract),
                     ..dao_being_created
                 },
             )?;
@@ -372,11 +377,11 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let funds_distributor_contract = deps.api.addr_validate(&contract_address)?;
 
             DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
                 Ok(DaoBeingCreated {
-                    funds_distributor_address: Some(addr),
+                    funds_distributor_address: Some(funds_distributor_contract),
                     ..info
                 })
             })?;
@@ -387,11 +392,11 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let enterprise_governance_contract = deps.api.addr_validate(&contract_address)?;
 
             DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
                 Ok(DaoBeingCreated {
-                    enterprise_governance_address: Some(addr),
+                    enterprise_governance_address: Some(enterprise_governance_contract),
                     ..info
                 })
             })?;
@@ -402,7 +407,8 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let enterprise_governance_controller_contract =
+                deps.api.addr_validate(&contract_address)?;
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
@@ -427,7 +433,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.funds_distributor_code_id,
                     msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
-                        admin: addr.to_string(),
+                        admin: enterprise_governance_controller_contract.to_string(),
                         initial_weights,
                         minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
                     })?,
@@ -442,7 +448,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.enterprise_governance_code_id,
                     msg: to_binary(&enterprise_governance_api::msg::InstantiateMsg {
-                        admin: addr.to_string(),
+                        admin: enterprise_governance_controller_contract.to_string(),
                     })?,
                     funds: vec![],
                     label: "Enterprise governance".to_string(),
@@ -465,7 +471,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.enterprise_treasury_code_id,
                     msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
-                        admin: addr.to_string(),
+                        admin: enterprise_governance_controller_contract.to_string(),
                         enterprise_contract: enterprise_contract.to_string(),
                         asset_whitelist: Some(asset_whitelist),
                         nft_whitelist: Some(nft_whitelist),
@@ -477,14 +483,28 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             );
 
             let membership_submsg = match create_dao_msg.dao_membership {
-                ImportCw20(msg) => import_cw20_membership(deps.branch(), msg, addr.to_string())?,
+                ImportCw20(msg) => import_cw20_membership(
+                    deps.branch(),
+                    msg,
+                    enterprise_governance_controller_contract.to_string(),
+                )?,
                 NewCw20(msg) => instantiate_new_cw20_membership(deps.branch(), *msg)?,
-                ImportCw721(msg) => import_cw721_membership(deps.branch(), msg, addr.to_string())?,
+                ImportCw721(msg) => import_cw721_membership(
+                    deps.branch(),
+                    msg,
+                    enterprise_governance_controller_contract.to_string(),
+                )?,
                 NewCw721(msg) => instantiate_new_cw721_membership(deps.branch(), msg)?,
-                ImportCw3(msg) => import_cw3_membership(deps.branch(), msg, addr.to_string())?,
-                NewMultisig(msg) => {
-                    instantiate_new_multisig_membership(deps.branch(), msg, addr.to_string())?
-                }
+                ImportCw3(msg) => import_cw3_membership(
+                    deps.branch(),
+                    msg,
+                    enterprise_governance_controller_contract.to_string(),
+                )?,
+                NewMultisig(msg) => instantiate_new_multisig_membership(
+                    deps.branch(),
+                    msg,
+                    enterprise_governance_controller_contract.to_string(),
+                )?,
             };
 
             let council_members = create_dao_msg
@@ -500,14 +520,16 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let council_membership_submsg = instantiate_multisig_membership_contract(
                 deps.branch(),
                 council_members,
-                addr.to_string(),
+                enterprise_governance_controller_contract.to_string(),
                 COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             )?;
 
             DAO_BEING_CREATED.save(
                 deps.storage,
                 &DaoBeingCreated {
-                    enterprise_governance_controller_address: Some(addr),
+                    enterprise_governance_controller_address: Some(
+                        enterprise_governance_controller_contract,
+                    ),
                     ..dao_being_created
                 },
             )?;
@@ -523,11 +545,11 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let contract_address = parse_reply_instantiate_data(msg)
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
-            let addr = deps.api.addr_validate(&contract_address)?;
+            let enterprise_treasury_contract = deps.api.addr_validate(&contract_address)?;
 
             DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
                 Ok(DaoBeingCreated {
-                    enterprise_treasury_address: Some(addr),
+                    enterprise_treasury_address: Some(enterprise_treasury_contract),
                     ..info
                 })
             })?;
