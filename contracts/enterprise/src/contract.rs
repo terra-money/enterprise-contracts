@@ -8,6 +8,9 @@ use crate::state::{
     DAO_VERSION, ENTERPRISE_FACTORY_CONTRACT, ENTERPRISE_VERSIONING_CONTRACT,
     IS_INSTANTIATION_FINALIZED,
 };
+use crate::validate::{
+    enterprise_factory_caller_only, enterprise_governance_controller_caller_only,
+};
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
@@ -23,7 +26,7 @@ use enterprise_protocol::api::{
     UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
-    AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion, Unauthorized,
+    AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -96,11 +99,7 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
         return Err(AlreadyInitialized);
     }
 
-    let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(ctx.deps.storage)?;
-
-    if ctx.info.sender != enterprise_factory {
-        return Err(Unauthorized);
-    }
+    enterprise_factory_caller_only(ctx)?;
 
     let component_contracts = ComponentContracts {
         enterprise_governance_contract: ctx
@@ -146,11 +145,7 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
 }
 
 fn update_metadata(ctx: &mut Context, msg: UpdateMetadataMsg) -> DaoResult<Response> {
-    let component_contracts = COMPONENT_CONTRACTS.load(ctx.deps.storage)?;
-
-    if component_contracts.enterprise_governance_controller_contract != ctx.info.sender {
-        return Err(Unauthorized);
-    }
+    enterprise_governance_controller_caller_only(ctx)?;
 
     let mut metadata = DAO_METADATA.load(ctx.deps.storage)?;
 
@@ -194,11 +189,7 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
         });
     }
 
-    let component_contracts = COMPONENT_CONTRACTS.load(ctx.deps.storage)?;
-
-    if component_contracts.enterprise_governance_controller_contract != ctx.info.sender {
-        return Err(Unauthorized);
-    }
+    enterprise_governance_controller_caller_only(ctx)?;
 
     let migrate_msg_json: serde_json::Value = serde_json::from_slice(msg.migrate_msg.as_slice())
         .map_err(|e| DaoError::Std(StdError::generic_err(e.to_string())))?;
