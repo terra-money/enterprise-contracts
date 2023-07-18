@@ -36,7 +36,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             continue;
         }
 
-        let reward = calculate_user_reward(global_index, distribution, user_weight);
+        let reward = calculate_user_reward(global_index, distribution, user_weight)?;
 
         if !reward.is_zero() {
             let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
@@ -69,7 +69,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             continue;
         }
 
-        let reward = calculate_user_reward(global_index, distribution, user_weight);
+        let reward = calculate_user_reward(global_index, distribution, user_weight)?;
 
         if !reward.is_zero() {
             let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;

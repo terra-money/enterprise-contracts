@@ -8,7 +8,6 @@ use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::{
     cw20_hook_distribute_cw20_response, execute_distribute_native_response,
 };
-use std::ops::Add;
 
 /// Distributes new rewards for a native asset, using funds found in MessageInfo.
 /// Will increase global index for each of the assets being distributed.
@@ -32,7 +31,7 @@ pub fn distribute_native(ctx: &mut Context) -> DistributorResult<Response> {
         NATIVE_GLOBAL_INDICES.save(
             ctx.deps.storage,
             fund.denom,
-            &global_index.add(index_increment),
+            &global_index.checked_add(index_increment)?,
         )?;
     }
 
@@ -60,7 +59,7 @@ pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> Distribut
     CW20_GLOBAL_INDICES.save(
         ctx.deps.storage,
         cw20_asset.clone(),
-        &global_index.add(global_index_increment),
+        &global_index.checked_add(global_index_increment)?,
     )?;
 
     Ok(cw20_hook_distribute_cw20_response(

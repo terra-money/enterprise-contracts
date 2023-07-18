@@ -65,7 +65,7 @@ pub fn update_user_native_distributions(
         let distribution =
             NATIVE_DISTRIBUTIONS().may_load(deps.storage, (user.clone(), denom.clone()))?;
 
-        let reward = calculate_user_reward(global_index, distribution, old_user_weight);
+        let reward = calculate_user_reward(global_index, distribution, old_user_weight)?;
 
         NATIVE_DISTRIBUTIONS().save(
             deps.storage,

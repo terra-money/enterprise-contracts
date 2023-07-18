@@ -65,7 +65,7 @@ pub fn update_user_cw20_distributions(
         let distribution =
             CW20_DISTRIBUTIONS().may_load(deps.storage, (user.clone(), cw20_asset.clone()))?;
 
-        let reward = calculate_user_reward(global_index, distribution, old_user_weight);
+        let reward = calculate_user_reward(global_index, distribution, old_user_weight)?;
 
         CW20_DISTRIBUTIONS().save(
             deps.storage,

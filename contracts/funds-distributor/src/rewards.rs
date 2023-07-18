@@ -3,13 +3,12 @@ use crate::native_distributions::NATIVE_DISTRIBUTIONS;
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
 use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
 use common::cw::QueryContext;
-use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, Fraction, StdResult, Uint128};
 use funds_distributor_api::api::{
     Cw20Reward, NativeReward, UserRewardsParams, UserRewardsResponse,
 };
 use funds_distributor_api::error::DistributorResult;
 use std::collections::HashSet;
-use std::ops::{Add, Mul, Sub};
 
 /// Calculates user's currently available rewards for an asset, given its current global index
 /// and user's weight.
@@ -17,11 +16,14 @@ pub fn calculate_user_reward(
     global_index: Decimal,
     distribution: Option<impl Into<(Decimal, Uint128)>>,
     user_weight: Uint128,
-) -> Uint128 {
+) -> DistributorResult<Uint128> {
     let (user_index, pending_rewards) =
         distribution.map_or((Decimal::zero(), Uint128::zero()), |it| it.into());
 
-    calculate_new_user_reward(global_index, user_index, user_weight).add(pending_rewards)
+    let user_reward = calculate_new_user_reward(global_index, user_index, user_weight)?
+        .checked_add(pending_rewards)?;
+
+    Ok(user_reward)
 }
 
 /// Calculates reward accrued for the given asset since the last update to the user's reward
@@ -30,8 +32,12 @@ pub fn calculate_new_user_reward(
     global_index: Decimal,
     user_index: Decimal,
     user_weight: Uint128,
-) -> Uint128 {
-    global_index.sub(user_index).mul(user_weight)
+) -> DistributorResult<Uint128> {
+    let user_index_diff = global_index.checked_sub(user_index)?;
+    let new_user_reward = user_weight
+        .checked_multiply_ratio(user_index_diff.numerator(), user_index_diff.denominator())?;
+
+    Ok(new_user_reward)
 }
 
 pub fn query_user_rewards(
@@ -56,7 +62,7 @@ pub fn query_user_rewards(
         let distribution =
             NATIVE_DISTRIBUTIONS().may_load(qctx.deps.storage, (user.clone(), denom.clone()))?;
 
-        let reward = calculate_user_reward(global_index, distribution, user_weight);
+        let reward = calculate_user_reward(global_index, distribution, user_weight)?;
 
         native_rewards.push(NativeReward {
             denom,
@@ -76,7 +82,7 @@ pub fn query_user_rewards(
         let distribution =
             CW20_DISTRIBUTIONS().may_load(qctx.deps.storage, (user.clone(), asset.clone()))?;
 
-        let reward = calculate_user_reward(global_index, distribution, user_weight);
+        let reward = calculate_user_reward(global_index, distribution, user_weight)?;
 
         cw20_rewards.push(Cw20Reward {
             asset: asset.to_string(),

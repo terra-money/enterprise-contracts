@@ -1,4 +1,5 @@
-use cosmwasm_std::StdError;
+use crate::error::DistributorError::Std;
+use cosmwasm_std::{CheckedMultiplyRatioError, OverflowError, StdError};
 use thiserror::Error;
 
 pub type DistributorResult<T> = Result<T, DistributorError>;
@@ -16,6 +17,18 @@ pub enum DistributorError {
 
     #[error("Duplicate initial user weight found")]
     DuplicateInitialWeight,
+}
+
+impl From<OverflowError> for DistributorError {
+    fn from(e: OverflowError) -> Self {
+        Std(StdError::generic_err(e.to_string()))
+    }
+}
+
+impl From<CheckedMultiplyRatioError> for DistributorError {
+    fn from(e: CheckedMultiplyRatioError) -> Self {
+        Std(StdError::generic_err(e.to_string()))
+    }
 }
 
 impl DistributorError {
