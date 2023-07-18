@@ -65,18 +65,18 @@ pub fn validate_dao_gov_config(
 }
 
 fn validate_quorum_value(quorum: Decimal) -> GovernanceControllerResult<()> {
-    if quorum > Decimal::one() || quorum == Decimal::zero() {
-        return Err(InvalidArgument {
-            msg: "Invalid quorum, must be 0 < quorum <= 1".to_string(),
-        });
-    }
-    Ok(())
+    validate_gt_zero_lte_one(quorum, "quorum".to_string())
 }
 
 fn validate_threshold_value(threshold: Decimal) -> GovernanceControllerResult<()> {
-    if threshold > Decimal::one() || threshold == Decimal::zero() {
+    validate_gt_zero_lte_one(threshold, "threshold".to_string())
+}
+
+/// Validate that the value is in the range (0, 1].
+fn validate_gt_zero_lte_one(value: Decimal, value_name: String) -> GovernanceControllerResult<()> {
+    if value > Decimal::one() || value == Decimal::zero() {
         return Err(InvalidArgument {
-            msg: "Invalid threshold, must be 0 < threshold <= 1".to_string(),
+            msg: format!("Invalid {0}, must be 0 < {0} <= 1", value_name),
         });
     }
 
