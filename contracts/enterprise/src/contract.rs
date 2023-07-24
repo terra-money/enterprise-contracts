@@ -1,10 +1,11 @@
 use crate::state::{
-    ComponentContracts, COMPONENT_CONTRACTS, DAO_CREATION_DATE, DAO_METADATA, DAO_TYPE,
-    DAO_VERSION, ENTERPRISE_FACTORY_CONTRACT, ENTERPRISE_VERSIONING_CONTRACT,
-    IS_INSTANTIATION_FINALIZED,
+    ComponentContracts, COMPONENT_CONTRACTS, CROSS_CHAIN_TREASURIES, DAO_CREATION_DATE,
+    DAO_METADATA, DAO_TYPE, DAO_VERSION, ENTERPRISE_FACTORY_CONTRACT,
+    ENTERPRISE_VERSIONING_CONTRACT, IS_INSTANTIATION_FINALIZED,
 };
 use crate::validate::{
     enterprise_factory_caller_only, enterprise_governance_controller_caller_only,
+    validate_and_dedup_edit_treasuries,
 };
 use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
 use attestation_api::msg::QueryMsg::HasUserSigned;
@@ -13,13 +14,16 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_instantiate, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg,
+    entry_point, to_binary, wasm_instantiate, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+    Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
+use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, IsRestrictedUserParams,
+    ComponentContractsResponse, CrossChainTreasuriesParams, CrossChainTreasuriesResponse,
+    DaoInfoResponse, EditCrossChainTreasuriesMsg, FinalizeInstantiationMsg,
+    IsCrossChainTreasuryParams, IsCrossChainTreasuryResponse, IsRestrictedUserParams,
     IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
@@ -28,9 +32,9 @@ use enterprise_protocol::error::DaoError::{
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::response::{
-    execute_finalize_instantiation_response, execute_remove_attestation_response,
-    execute_set_attestation_response, execute_update_metadata_response,
-    execute_upgrade_dao_response, instantiate_response,
+    execute_edit_cross_chain_treasuries_response, execute_finalize_instantiation_response,
+    execute_remove_attestation_response, execute_set_attestation_response,
+    execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
 };
 use enterprise_versioning_api::api::{
     Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
@@ -88,6 +92,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
         ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
         ExecuteMsg::RemoveAttestation {} => remove_attestation(ctx),
+        ExecuteMsg::EditCrossChainTreasuries(msg) => edit_cross_chain_treasuries(ctx, msg),
     }
 }
 
@@ -309,6 +314,25 @@ fn remove_attestation(ctx: &mut Context) -> DaoResult<Response> {
     Ok(execute_remove_attestation_response())
 }
 
+fn edit_cross_chain_treasuries(
+    ctx: &mut Context,
+    msg: EditCrossChainTreasuriesMsg,
+) -> DaoResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
+    let validated_treasury_edits = validate_and_dedup_edit_treasuries(ctx.deps.as_ref(), msg)?;
+
+    for treasury in validated_treasury_edits.add_treasuries {
+        CROSS_CHAIN_TREASURIES.save(ctx.deps.storage, treasury, &())?;
+    }
+
+    for treasury in validated_treasury_edits.remove_treasuries {
+        CROSS_CHAIN_TREASURIES.remove(ctx.deps.storage, treasury);
+    }
+
+    Ok(execute_edit_cross_chain_treasuries_response())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
     match msg.id {
@@ -343,6 +367,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::DaoInfo {} => to_binary(&query_dao_info(qctx)?)?,
         QueryMsg::ComponentContracts {} => to_binary(&query_dao_info(qctx)?)?,
         QueryMsg::IsRestrictedUser(params) => to_binary(&query_is_restricted_user(qctx, params)?)?,
+        QueryMsg::CrossChainTreasuries(params) => {
+            to_binary(&query_cross_chain_treasuries(qctx, params)?)?
+        }
+        QueryMsg::IsCrossChainTreasury(params) => {
+            to_binary(&query_is_cross_chain_treasury(qctx, params)?)?
+        }
     };
     Ok(response)
 }
@@ -401,6 +431,44 @@ pub fn query_is_restricted_user(
     };
 
     Ok(IsRestrictedUserResponse { is_restricted })
+}
+
+fn query_cross_chain_treasuries(
+    qctx: QueryContext,
+    params: CrossChainTreasuriesParams,
+) -> DaoResult<CrossChainTreasuriesResponse> {
+    let start_after = params
+        .start_after
+        .map(|addr| qctx.deps.api.addr_validate(&addr))
+        .transpose()?
+        .map(Bound::exclusive);
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
+
+    let treasuries = CROSS_CHAIN_TREASURIES
+        .range(qctx.deps.storage, start_after, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|res| res.map(|(addr, _)| addr))
+        .collect::<StdResult<Vec<Addr>>>()?;
+
+    Ok(CrossChainTreasuriesResponse { treasuries })
+}
+
+fn query_is_cross_chain_treasury(
+    qctx: QueryContext,
+    params: IsCrossChainTreasuryParams,
+) -> DaoResult<IsCrossChainTreasuryResponse> {
+    let treasury_addr = qctx.deps.api.addr_validate(&params.treasury)?;
+
+    let is_cross_chain_treasury =
+        CROSS_CHAIN_TREASURIES.has(qctx.deps.storage, treasury_addr.clone());
+
+    Ok(IsCrossChainTreasuryResponse {
+        is_cross_chain_treasury,
+        treasury_addr,
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

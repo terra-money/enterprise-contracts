@@ -35,6 +35,9 @@ pub enum DaoError {
 
     #[error("Supplied migrate msg is not a map of (version, migrate msg for version)")]
     InvalidMigrateMsgMap,
+
+    #[error("One of treasury addresses appears multiple times in the edit lists")]
+    EditingTreasuryAddressMultipleTimes,
 }
 
 impl DaoError {

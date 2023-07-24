@@ -43,3 +43,7 @@ pub fn execute_set_attestation_response() -> Response {
 pub fn execute_remove_attestation_response() -> Response {
     Response::new().add_attribute("action", "remove_attestation")
 }
+
+pub fn execute_edit_cross_chain_treasuries_response() -> Response {
+    Response::new().add_attribute("action", "edit_cross_chain_treasuries")
+}
