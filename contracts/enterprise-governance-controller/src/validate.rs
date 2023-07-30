@@ -30,6 +30,7 @@ use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{
     MinimumDepositNotAllowed, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
 };
+use ProposalAction::AddAttestation;
 
 pub fn validate_dao_gov_config(
     dao_type: &DaoType,
@@ -131,7 +132,10 @@ pub fn validate_proposal_actions(
 
                 validate_dao_gov_config(&dao_type, &updated_gov_config)?;
             }
-            UpdateMetadata(_) | RequestFundingFromDao(_) | UpdateMinimumWeightForRewards(_) => {
+            UpdateMetadata(_)
+            | RequestFundingFromDao(_)
+            | UpdateMinimumWeightForRewards(_)
+            | AddAttestation(_) => {
                 // no-op
             }
         }
@@ -457,7 +461,8 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::ExecuteMsgs
                     | ProposalActionType::ModifyMultisigMembership
                     | ProposalActionType::DistributeFunds
-                    | ProposalActionType::UpdateMinimumWeightForRewards => {
+                    | ProposalActionType::UpdateMinimumWeightForRewards
+                    | ProposalActionType::AddAttestation => {
                         return Err(UnsupportedCouncilProposalAction {
                             action: action_type,
                         });

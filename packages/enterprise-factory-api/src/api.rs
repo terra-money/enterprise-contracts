@@ -34,6 +34,9 @@ pub struct CreateDaoMsg {
     /// E.g. a value of 3 here means that a user in token or NFT DAO needs at least 3 staked
     /// DAO assets, or a weight of 3 in multisig DAO, to be eligible for rewards.
     pub minimum_weight_for_rewards: Option<Uint128>,
+    /// Optional text that users will have to attest to before being able to participate in DAO's
+    /// governance and certain other functions.
+    pub attestation_text: Option<String>,
 }
 
 #[cw_serde]

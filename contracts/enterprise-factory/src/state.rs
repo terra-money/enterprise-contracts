@@ -39,6 +39,7 @@ pub struct DaoBeingCreated {
     pub enterprise_governance_address: Option<Addr>,
     pub enterprise_governance_controller_address: Option<Addr>,
     pub enterprise_treasury_address: Option<Addr>,
+    pub attestation_addr: Option<Addr>,
 }
 
 impl DaoBeingCreated {

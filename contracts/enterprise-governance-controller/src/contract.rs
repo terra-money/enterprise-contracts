@@ -20,14 +20,14 @@ use cw_utils::Expiration;
 use cw_utils::Expiration::Never;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_controller_api::api::ProposalAction::{
-    DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
+    AddAttestation, DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
 use enterprise_governance_controller_api::api::{
-    CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
-    GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
+    AddAttestationMsg, CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteMsgsMsg,
+    ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
     ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
     ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
     ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
@@ -51,7 +51,8 @@ use enterprise_governance_controller_api::response::{
     reply_create_poll_response,
 };
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, DaoType, UpdateMetadataMsg, UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoType, SetAttestationMsg, UpdateMetadataMsg,
+    UpgradeDaoMsg,
 };
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
 use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
@@ -258,6 +259,7 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         ModifyMultisigMembership(_) => ProposalActionType::ModifyMultisigMembership,
         DistributeFunds(_) => ProposalActionType::DistributeFunds,
         UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
+        AddAttestation(_) => ProposalActionType::AddAttestation,
     }
 }
 
@@ -623,6 +625,7 @@ fn execute_proposal_actions_submsgs(
             }
             DistributeFunds(msg) => distribute_funds(ctx, msg)?,
             UpdateMinimumWeightForRewards(msg) => update_minimum_weight_for_rewards(ctx, msg)?,
+            AddAttestation(msg) => add_attestation(ctx, msg)?,
         };
         submsgs.append(&mut actions)
     }
@@ -876,6 +879,23 @@ fn update_minimum_weight_for_rewards(
                 minimum_eligible_weight: msg.minimum_weight_for_rewards,
             },
         ),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
+}
+
+fn add_attestation(
+    ctx: &mut Context,
+    msg: AddAttestationMsg,
+) -> GovernanceControllerResult<Vec<SubMsg>> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    let submsg = SubMsg::new(wasm_execute(
+        enterprise_contract.to_string(),
+        &enterprise_protocol::msg::ExecuteMsg::SetAttestation(SetAttestationMsg {
+            attestation_text: msg.attestation_text,
+        }),
         vec![],
     )?);
 

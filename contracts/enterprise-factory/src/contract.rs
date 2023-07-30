@@ -19,8 +19,8 @@ use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_execute, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg, Uint128, Uint64, WasmMsg,
+    entry_point, to_binary, wasm_execute, wasm_instantiate, Addr, Binary, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -65,6 +65,7 @@ pub const FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID: u64 = 6;
 pub const ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID: u64 = 7;
 pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 8;
 pub const ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID: u64 = 9;
+pub const ATTESTATION_INSTANTIATE_REPLY_ID: u64 = 10;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -117,6 +118,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
             enterprise_governance_address: None,
             enterprise_governance_controller_address: None,
             enterprise_treasury_address: None,
+            attestation_addr: None,
         },
     )?;
 
@@ -163,6 +165,7 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
             enterprise_governance_address: None,
             enterprise_governance_controller_address: None,
             enterprise_treasury_address: None,
+            attestation_addr: None,
         },
     )?;
 
@@ -185,6 +188,10 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
             council_membership_contract: dao_being_created
                 .require_council_membership_address()?
                 .to_string(),
+            attestation_contract: dao_being_created
+                .attestation_addr
+                .as_ref()
+                .map(|addr| addr.to_string()),
             dao_type: dao_being_created.require_dao_type()?,
         }),
         vec![],
@@ -543,12 +550,27 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 },
             )?;
 
-            Ok(Response::new()
+            let response = Response::new()
                 .add_submessage(funds_distributor_submsg)
                 .add_submessage(enterprise_governance_submsg)
                 .add_submessage(enterprise_treasury_submsg)
                 .add_submessage(membership_submsg)
-                .add_submessage(council_membership_submsg))
+                .add_submessage(council_membership_submsg);
+
+            let response = match create_dao_msg.attestation_text {
+                Some(attestation_text) => response.add_submessage(SubMsg::reply_on_success(
+                    wasm_instantiate(
+                        version_info.attestation_code_id,
+                        &attestation_api::msg::InstantiateMsg { attestation_text },
+                        vec![],
+                        "Attestation contract".to_string(),
+                    )?,
+                    ATTESTATION_INSTANTIATE_REPLY_ID,
+                )),
+                None => response,
+            };
+
+            Ok(response)
         }
         ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
@@ -559,6 +581,21 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
                 Ok(DaoBeingCreated {
                     enterprise_treasury_address: Some(enterprise_treasury_contract),
+                    ..info
+                })
+            })?;
+
+            Ok(Response::new())
+        }
+        ATTESTATION_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let attestation_contract = deps.api.addr_validate(&contract_address)?;
+
+            DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
+                Ok(DaoBeingCreated {
+                    attestation_addr: Some(attestation_contract),
                     ..info
                 })
             })?;

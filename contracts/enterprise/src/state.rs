@@ -19,6 +19,7 @@ pub struct ComponentContracts {
     pub funds_distributor_contract: Addr,
     pub membership_contract: Addr,
     pub council_membership_contract: Addr,
+    pub attestation_contract: Option<Addr>,
 }
 
 pub const COMPONENT_CONTRACTS: Item<ComponentContracts> = Item::new("component_contracts");

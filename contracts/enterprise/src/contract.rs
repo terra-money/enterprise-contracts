@@ -11,13 +11,14 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    SubMsg,
+    entry_point, to_binary, wasm_instantiate, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
+use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, UpdateMetadataMsg,
-    UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, SetAttestationMsg,
+    UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion,
@@ -25,16 +26,18 @@ use enterprise_protocol::error::DaoError::{
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::response::{
-    execute_finalize_instantiation_response, execute_update_metadata_response,
-    execute_upgrade_dao_response, instantiate_response,
+    execute_finalize_instantiation_response, execute_set_attestation_response,
+    execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
 };
-use enterprise_versioning_api::api::{Version, VersionInfo, VersionsParams, VersionsResponse};
+use enterprise_versioning_api::api::{
+    Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
+};
 use enterprise_versioning_api::msg::QueryMsg::Versions;
 use serde_json::json;
 use serde_json::Value::Object;
 use std::str::FromStr;
 
-pub const MEMBERSHIP_REPLY_ID: u64 = 4;
+pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise";
@@ -79,6 +82,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::FinalizeInstantiation(msg) => finalize_instantiation(ctx, msg),
         ExecuteMsg::UpdateMetadata(msg) => update_metadata(ctx, msg),
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
+        ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
     }
 }
 
@@ -113,6 +117,10 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
             .deps
             .api
             .addr_validate(&msg.council_membership_contract)?,
+        attestation_contract: msg
+            .attestation_contract
+            .map(|addr| ctx.deps.api.addr_validate(&addr))
+            .transpose()?,
     };
 
     COMPONENT_CONTRACTS.save(ctx.deps.storage, &component_contracts)?;
@@ -254,9 +262,56 @@ fn get_versions_between_current_and_target(
     Ok(versions)
 }
 
+fn set_attestation(ctx: &mut Context, msg: SetAttestationMsg) -> DaoResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
+    let versioning_contract = ENTERPRISE_VERSIONING_CONTRACT.load(ctx.deps.storage)?;
+    let version = DAO_VERSION.load(ctx.deps.storage)?;
+
+    let version_response: VersionResponse = ctx.deps.querier.query_wasm_smart(
+        versioning_contract.to_string(),
+        &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams { version }),
+    )?;
+
+    let instantiate_attestation_submsg = SubMsg::reply_on_success(
+        wasm_instantiate(
+            version_response.version.attestation_code_id,
+            &attestation_api::msg::InstantiateMsg {
+                attestation_text: msg.attestation_text,
+            },
+            vec![],
+            "Attestation contract".to_string(),
+        )?,
+        INSTANTIATE_ATTESTATION_REPLY_ID,
+    );
+
+    Ok(execute_set_attestation_response().add_submessage(instantiate_attestation_submsg))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> DaoResult<Response> {
-    Ok(Response::new())
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
+    match msg.id {
+        INSTANTIATE_ATTESTATION_REPLY_ID => {
+            let attestation_addr = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+
+            let attestation_addr = deps.api.addr_validate(&attestation_addr)?;
+
+            COMPONENT_CONTRACTS.update(
+                deps.storage,
+                |components| -> StdResult<ComponentContracts> {
+                    Ok(ComponentContracts {
+                        attestation_contract: Some(attestation_addr),
+                        ..components
+                    })
+                },
+            )?;
+
+            Ok(Response::new())
+        }
+        _ => Err(StdError::generic_err(format!("unknown reply ID: {}", msg.id)).into()),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -297,6 +352,7 @@ pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContr
         funds_distributor_contract: component_contracts.funds_distributor_contract,
         membership_contract: component_contracts.membership_contract,
         council_membership_contract: component_contracts.council_membership_contract,
+        attestation_contract: component_contracts.attestation_contract,
     })
 }
 

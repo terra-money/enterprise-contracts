@@ -202,6 +202,7 @@ pub enum ProposalActionType {
     ModifyMultisigMembership,
     DistributeFunds,
     UpdateMinimumWeightForRewards,
+    AddAttestation,
 }
 
 #[cw_serde]

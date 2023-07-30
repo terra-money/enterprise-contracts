@@ -591,6 +591,7 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
             funds_distributor_contract: funds_distributor.to_string(),
             membership_contract: membership_contract.to_string(),
             council_membership_contract: council_membership_contract.to_string(),
+            attestation_contract: None,
             dao_type,
         }),
         vec![],

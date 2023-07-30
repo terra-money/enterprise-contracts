@@ -1,6 +1,6 @@
 use crate::api::{
     ComponentContractsResponse, DaoInfoResponse, DaoMetadata, FinalizeInstantiationMsg,
-    UpdateMetadataMsg, UpgradeDaoMsg,
+    SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
@@ -15,6 +15,8 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateMetadata(UpdateMetadataMsg),
     UpgradeDao(UpgradeDaoMsg),
+
+    SetAttestation(SetAttestationMsg),
 
     // called by this contract itself
     FinalizeInstantiation(FinalizeInstantiationMsg),

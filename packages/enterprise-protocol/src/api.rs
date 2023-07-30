@@ -54,6 +54,7 @@ pub struct FinalizeInstantiationMsg {
     pub funds_distributor_contract: String,
     pub membership_contract: String,
     pub council_membership_contract: String,
+    pub attestation_contract: Option<String>,
     pub dao_type: DaoType,
 }
 
@@ -81,6 +82,13 @@ pub struct UpgradeDaoMsg {
 }
 
 #[cw_serde]
+pub struct SetAttestationMsg {
+    pub attestation_text: String,
+}
+
+// Responses
+
+#[cw_serde]
 pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
@@ -97,4 +105,5 @@ pub struct ComponentContractsResponse {
     pub funds_distributor_contract: Addr,
     pub membership_contract: Addr,
     pub council_membership_contract: Addr,
+    pub attestation_contract: Option<Addr>,
 }
