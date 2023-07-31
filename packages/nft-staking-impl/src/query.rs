@@ -7,6 +7,7 @@ use cosmwasm_std::{Addr, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
+use membership_common::enterprise_contract::ENTERPRISE_CONTRACT;
 use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
@@ -24,10 +25,13 @@ use nft_staking_api::error::NftStakingResult;
 const MAX_QUERY_LIMIT: u8 = 100;
 const DEFAULT_QUERY_LIMIT: u8 = 50;
 
-pub fn query_nft_cnfig(qctx: &QueryContext) -> NftStakingResult<NftConfigResponse> {
+pub fn query_nft_config(qctx: &QueryContext) -> NftStakingResult<NftConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
 
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
+
     Ok(NftConfigResponse {
+        enterprise_contract,
         nft_contract: config.nft_contract,
         unlocking_period: config.unlocking_period,
     })

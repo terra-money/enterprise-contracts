@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 common = { path = "../common" }
 membership-common-api = { path = "../membership-common-api" }
+enterprise-protocol = { path = "../enterprise-protocol" }
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
 cw-storage-plus = "1.0.1"

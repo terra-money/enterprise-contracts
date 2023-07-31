@@ -15,7 +15,7 @@ use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 use itertools::Itertools;
 
-const ENTERPRISE_CONTRACT: &str = "enterprise_contract";
+const ENTERPRISE_CONTRACT: &str = "enterprise_contract.rs";
 
 const LUNA: &str = "uluna";
 const CW20_TOKEN: &str = "cw20_token";

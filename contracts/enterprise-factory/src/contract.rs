@@ -277,8 +277,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
             let unlocking_period = dao_being_created.require_unlocking_period()?;
-            let governance_controller =
-                dao_being_created.require_enterprise_governance_controller_address()?;
 
             DAO_BEING_CREATED.save(
                 deps.storage,
@@ -293,7 +291,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     deps,
                     cw20_address,
                     unlocking_period,
-                    governance_controller.to_string(),
                 )?),
             )
         }
@@ -305,8 +302,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
             let unlocking_period = dao_being_created.require_unlocking_period()?;
-            let governance_controller =
-                dao_being_created.require_enterprise_governance_controller_address()?;
 
             DAO_BEING_CREATED.save(
                 deps.storage,
@@ -321,7 +316,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     deps,
                     cw721_address,
                     unlocking_period,
-                    governance_controller.to_string(),
                 )?),
             )
         }
@@ -498,30 +492,13 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     deps.branch(),
                     msg.denom,
                     msg.unlocking_period,
-                    enterprise_governance_controller_contract.to_string(),
                 )?,
-                ImportCw20(msg) => import_cw20_membership(
-                    deps.branch(),
-                    msg,
-                    enterprise_governance_controller_contract.to_string(),
-                )?,
+                ImportCw20(msg) => import_cw20_membership(deps.branch(), msg)?,
                 NewCw20(msg) => instantiate_new_cw20_membership(deps.branch(), *msg)?,
-                ImportCw721(msg) => import_cw721_membership(
-                    deps.branch(),
-                    msg,
-                    enterprise_governance_controller_contract.to_string(),
-                )?,
+                ImportCw721(msg) => import_cw721_membership(deps.branch(), msg)?,
                 NewCw721(msg) => instantiate_new_cw721_membership(deps.branch(), msg)?,
-                ImportCw3(msg) => import_cw3_membership(
-                    deps.branch(),
-                    msg,
-                    enterprise_governance_controller_contract.to_string(),
-                )?,
-                NewMultisig(msg) => instantiate_new_multisig_membership(
-                    deps.branch(),
-                    msg,
-                    enterprise_governance_controller_contract.to_string(),
-                )?,
+                ImportCw3(msg) => import_cw3_membership(deps.branch(), msg)?,
+                NewMultisig(msg) => instantiate_new_multisig_membership(deps.branch(), msg)?,
             };
 
             let council_members = create_dao_msg
@@ -537,7 +514,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let council_membership_submsg = instantiate_multisig_membership_contract(
                 deps.branch(),
                 council_members,
-                enterprise_governance_controller_contract.to_string(),
                 COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
             )?;
 

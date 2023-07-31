@@ -54,6 +54,7 @@ pub struct ClaimsResponse {
 
 #[cw_serde]
 pub struct TokenConfigResponse {
+    pub enterprise_contract: Addr,
     pub token_contract: Addr,
     pub unlocking_period: Duration,
 }

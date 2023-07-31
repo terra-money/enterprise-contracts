@@ -12,7 +12,7 @@ pub struct State {
 
 pub const STATE: Item<State> = Item::new("state");
 
-pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract");
+pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract.rs");
 
 pub const GOV_CONFIG: Item<GovConfig> = Item::new("gov_config");
 

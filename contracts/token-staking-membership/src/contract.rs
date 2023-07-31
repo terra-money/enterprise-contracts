@@ -3,7 +3,6 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
-use membership_common::admin::{query_admin, update_admin};
 use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -45,7 +44,6 @@ pub fn execute(
     let response = match msg {
         ExecuteMsg::Unstake(msg) => unstake(ctx, msg)?,
         ExecuteMsg::Claim(msg) => claim(ctx, msg)?,
-        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
         ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg)?,
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg)?,
         ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
@@ -65,7 +63,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> TokenStakingResult<Binary> 
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Admin {} => to_binary(&query_admin(&qctx)?)?,
         QueryMsg::TokenConfig {} => to_binary(&query_token_config(&qctx)?)?,
         QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,

@@ -4,12 +4,14 @@ use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
-use membership_common::admin::{admin_caller_only, ADMIN};
 use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight, set_member_weight,
 };
 use membership_common::total_weight::{
     decrement_total_weight, increment_total_weight, load_total_weight, save_total_weight,
+};
+use membership_common::validate::{
+    enterprise_governance_controller_only, validate_user_not_restricted,
 };
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
@@ -33,11 +35,8 @@ pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResul
         return Err(Unauthorized);
     }
 
-    let admin = ADMIN.load(ctx.deps.storage)?;
-    // only admin should send the actual tokens, they'll tell us which user
-    if msg.sender != admin {
-        return Err(Unauthorized);
-    }
+    // only enterprise governance should send the actual tokens, they'll tell us which user
+    enterprise_governance_controller_only(ctx, Some(msg.sender.clone()))?;
 
     match from_binary(&msg.msg) {
         Ok(Cw20HookMsg::Stake { user }) => stake_token(ctx, msg, user),
@@ -52,6 +51,8 @@ fn stake_token(
     msg: Cw20ReceiveMsg,
     user: String,
 ) -> TokenStakingResult<Response> {
+    validate_user_not_restricted(ctx.deps.as_ref(), user.clone())?;
+
     let user = ctx.deps.api.addr_validate(&user)?;
 
     let old_weight = get_member_weight(ctx.deps.storage, user.clone())?;
@@ -130,8 +131,8 @@ fn add_token_claims(
 
 /// Unstake tokens. Only admin can perform this on behalf of a user.
 pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> TokenStakingResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
@@ -182,8 +183,8 @@ pub fn update_unlocking_period(
     ctx: &mut Context,
     msg: UpdateUnlockingPeriodMsg,
 ) -> TokenStakingResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let mut config = CONFIG.load(ctx.deps.storage)?;
 

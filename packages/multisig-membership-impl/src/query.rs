@@ -3,6 +3,7 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
+use membership_common::enterprise_contract::ENTERPRISE_CONTRACT;
 use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
@@ -11,10 +12,19 @@ use membership_common_api::api::{
     MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
     UserWeightResponse,
 };
+use multisig_membership_api::api::ConfigResponse;
 use multisig_membership_api::error::MultisigMembershipResult;
 
 const DEFAULT_QUERY_LIMIT: u8 = 50;
 const MAX_QUERY_LIMIT: u8 = 100;
+
+pub fn query_config(qctx: &QueryContext) -> MultisigMembershipResult<ConfigResponse> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
+
+    Ok(ConfigResponse {
+        enterprise_contract,
+    })
+}
 
 pub fn query_user_weight(
     qctx: &QueryContext,

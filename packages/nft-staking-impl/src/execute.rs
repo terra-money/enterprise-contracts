@@ -5,11 +5,13 @@ use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_binary, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
-use membership_common::admin::{admin_caller_only, ADMIN};
 use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight,
 };
 use membership_common::total_weight::{decrement_total_weight, increment_total_weight};
+use membership_common::validate::{
+    enterprise_governance_controller_only, validate_user_not_restricted,
+};
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
 use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
@@ -28,13 +30,8 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
         return Err(Unauthorized);
     }
 
-    let admin = ADMIN.load(ctx.deps.storage)?;
-    // only admin should send the actual NFT, they'll tell us which user
-    if msg.sender != admin {
-        return Err(Unauthorized);
-    }
-
-    // only admin can execute this
+    // only enterprise governance should send the actual NFT, they'll tell us which user
+    enterprise_governance_controller_only(ctx, Some(msg.sender.clone()))?;
 
     match from_binary(&msg.msg) {
         Ok(Cw721HookMsg::Stake { user }) => stake_nft(ctx, msg, user),
@@ -46,6 +43,8 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
 }
 
 fn stake_nft(ctx: &mut Context, msg: ReceiveNftMsg, user: String) -> NftStakingResult<Response> {
+    validate_user_not_restricted(ctx.deps.as_ref(), user.clone())?;
+
     let token_id = msg.token_id;
 
     let existing_stake = NFT_STAKES().may_load(ctx.deps.storage, token_id.clone())?;
@@ -102,8 +101,8 @@ fn add_nft_claim(
 
 /// Unstake NFTs. Only admin can perform this on behalf of a user.
 pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> NftStakingResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
@@ -170,8 +169,8 @@ pub fn update_unlocking_period(
     ctx: &mut Context,
     msg: UpdateUnlockingPeriodMsg,
 ) -> NftStakingResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let mut config = CONFIG.load(ctx.deps.storage)?;
 

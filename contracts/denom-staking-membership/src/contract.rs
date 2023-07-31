@@ -10,7 +10,6 @@ use denom_staking_impl::query::{
     query_claims, query_denom_config, query_members, query_releasable_claims, query_total_weight,
     query_user_weight,
 };
-use membership_common::admin::{query_admin, update_admin};
 use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 
 // version info for migration info
@@ -45,7 +44,6 @@ pub fn execute(
     let response = match msg {
         ExecuteMsg::Unstake(msg) => unstake(ctx, msg)?,
         ExecuteMsg::Claim(msg) => claim(ctx, msg)?,
-        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
         ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg)?,
         ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
         ExecuteMsg::RemoveWeightChangeHook(msg) => remove_weight_change_hook(ctx, msg)?,
@@ -65,7 +63,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DenomStakingResult<Binary> 
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Admin {} => to_binary(&query_admin(&qctx)?)?,
         QueryMsg::DenomConfig {} => to_binary(&query_denom_config(&qctx)?)?,
         QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,

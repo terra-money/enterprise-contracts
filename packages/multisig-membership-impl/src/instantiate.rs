@@ -1,7 +1,7 @@
 use crate::validate::dedup_user_weights;
 use common::cw::Context;
 use cosmwasm_std::Uint128;
-use membership_common::admin::ADMIN;
+use membership_common::enterprise_contract::set_enterprise_contract;
 use membership_common::member_weights::{get_member_weight, set_member_weight};
 use membership_common::total_weight::{load_total_weight, save_total_weight};
 use multisig_membership_api::api::UserWeight;
@@ -9,8 +9,7 @@ use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::InstantiateMsg;
 
 pub fn instantiate(ctx: &mut Context, msg: InstantiateMsg) -> MultisigMembershipResult<()> {
-    let admin = ctx.deps.api.addr_validate(&msg.admin)?;
-    ADMIN.save(ctx.deps.storage, &admin)?;
+    set_enterprise_contract(ctx.deps.branch(), msg.enterprise_contract)?;
 
     if let Some(initial_weights) = msg.initial_weights {
         save_initial_weights(ctx, initial_weights)?;

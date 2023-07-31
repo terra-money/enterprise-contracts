@@ -5,6 +5,7 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
+use membership_common::enterprise_contract::ENTERPRISE_CONTRACT;
 use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
@@ -22,7 +23,10 @@ const DEFAULT_QUERY_LIMIT: u8 = 50;
 pub fn query_token_config(qctx: &QueryContext) -> TokenStakingResult<TokenConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
 
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
+
     Ok(TokenConfigResponse {
+        enterprise_contract,
         token_contract: config.token_contract,
         unlocking_period: config.unlocking_period,
     })

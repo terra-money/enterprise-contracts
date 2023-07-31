@@ -7,6 +7,7 @@ use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use denom_staking_api::api::{ClaimsParams, ClaimsResponse, DenomConfigResponse};
 use denom_staking_api::error::DenomStakingResult;
+use membership_common::enterprise_contract::ENTERPRISE_CONTRACT;
 use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
@@ -21,8 +22,10 @@ const DEFAULT_QUERY_LIMIT: u8 = 50;
 
 pub fn query_denom_config(qctx: &QueryContext) -> DenomStakingResult<DenomConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
 
     Ok(DenomConfigResponse {
+        enterprise_contract,
         denom: config.denom,
         unlocking_period: config.unlocking_period,
     })

@@ -6,13 +6,13 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration;
 use membership_common_api::api::{
-    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
-    UpdateAdminMsg, UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
+    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
+    UserWeightResponse, WeightChangeHookMsg,
 };
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub admin: String,
+    pub enterprise_contract: String,
     pub token_contract: String,
     pub unlocking_period: Duration,
 }
@@ -21,7 +21,6 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Unstake(UnstakeMsg),
     Claim(ClaimMsg),
-    UpdateAdmin(UpdateAdminMsg),
     UpdateUnlockingPeriod(UpdateUnlockingPeriodMsg),
     Receive(Cw20ReceiveMsg),
     AddWeightChangeHook(WeightChangeHookMsg),
@@ -38,8 +37,6 @@ pub enum Cw20HookMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AdminResponse)]
-    Admin {},
     #[returns(TokenConfigResponse)]
     TokenConfig {},
     #[returns(UserWeightResponse)]

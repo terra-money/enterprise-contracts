@@ -1,4 +1,4 @@
-use crate::admin::admin_caller_only;
+use crate::validate::enterprise_governance_controller_only;
 use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{wasm_execute, Addr, Response, StdResult, SubMsg};
@@ -14,8 +14,8 @@ pub fn add_weight_change_hook(
     ctx: &mut Context,
     msg: WeightChangeHookMsg,
 ) -> MembershipResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let hook_addr = ctx.deps.api.addr_validate(&msg.hook_addr)?;
 
@@ -31,8 +31,8 @@ pub fn remove_weight_change_hook(
     ctx: &mut Context,
     msg: WeightChangeHookMsg,
 ) -> MembershipResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let hook_addr = ctx.deps.api.addr_validate(&msg.hook_addr)?;
 

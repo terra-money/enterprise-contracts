@@ -5,13 +5,13 @@ use crate::api::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
 use membership_common_api::api::{
-    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
-    UpdateAdminMsg, UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
+    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
+    UserWeightResponse, WeightChangeHookMsg,
 };
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub admin: String,
+    pub enterprise_contract: String,
     pub denom: String,
     pub unlocking_period: Duration,
 }
@@ -21,7 +21,6 @@ pub enum ExecuteMsg {
     Stake {},
     Unstake(UnstakeMsg),
     Claim(ClaimMsg),
-    UpdateAdmin(UpdateAdminMsg),
     UpdateUnlockingPeriod(UpdateUnlockingPeriodMsg),
     AddWeightChangeHook(WeightChangeHookMsg),
     RemoveWeightChangeHook(WeightChangeHookMsg),
@@ -30,8 +29,6 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AdminResponse)]
-    Admin {},
     #[returns(DenomConfigResponse)]
     DenomConfig {},
     #[returns(UserWeightResponse)]

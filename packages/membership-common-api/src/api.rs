@@ -3,11 +3,6 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_utils::Expiration;
 
 #[cw_serde]
-pub struct UpdateAdminMsg {
-    pub new_admin: String,
-}
-
-#[cw_serde]
 pub struct UserWeightParams {
     pub user: String,
 }

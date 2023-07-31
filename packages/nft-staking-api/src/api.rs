@@ -61,6 +61,7 @@ pub struct StakedNftsParams {
 
 #[cw_serde]
 pub struct NftConfigResponse {
+    pub enterprise_contract: Addr,
     pub nft_contract: Addr,
     pub unlocking_period: Duration,
 }

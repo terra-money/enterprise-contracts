@@ -14,6 +14,6 @@ pub fn execute_finalize_dao_creation_response(
 ) -> Response {
     Response::new()
         .add_attribute("action", "finalize_dao_creation")
-        .add_attribute("enterprise_contract", enterprise_contract)
+        .add_attribute("enterprise_contract.rs", enterprise_contract)
         .add_attribute("enterprise_treasury_contract", enterprise_treasury_contract)
 }

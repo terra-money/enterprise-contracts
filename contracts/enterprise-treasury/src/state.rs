@@ -10,4 +10,4 @@ pub struct Config {
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
-pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract");
+pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract.rs");

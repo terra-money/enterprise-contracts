@@ -10,6 +10,9 @@ pub enum MembershipError {
 
     #[error("Unauthorized")]
     Unauthorized,
+
+    #[error("User did not sign the attestation, and they're restricted from this functionality")]
+    RestrictedUser,
 }
 
 impl MembershipError {

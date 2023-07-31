@@ -54,6 +54,7 @@ pub struct ClaimsResponse {
 
 #[cw_serde]
 pub struct DenomConfigResponse {
+    pub enterprise_contract: Addr,
     pub denom: String,
     pub unlocking_period: Duration,
 }

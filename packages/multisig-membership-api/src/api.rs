@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub struct UserWeight {
@@ -19,4 +19,11 @@ pub struct UpdateMembersMsg {
 pub struct SetMembersMsg {
     /// All existing members will be removed, and replaced with the given members and their weights.
     pub new_members: Vec<UserWeight>,
+}
+
+// Responses
+
+#[cw_serde]
+pub struct ConfigResponse {
+    pub enterprise_contract: Addr,
 }

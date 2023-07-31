@@ -270,7 +270,6 @@ pub fn create_dao_council_membership_contract(
     deps: DepsMut,
     multisig_membership_code_id: u64,
     enterprise_contract: Addr,
-    governance_controller_contract: Addr,
 ) -> EnterpriseTreasuryResult<SubMsg> {
     let dao_council = DAO_COUNCIL.load(deps.storage)?;
 
@@ -289,7 +288,7 @@ pub fn create_dao_council_membership_contract(
             admin: Some(enterprise_contract.to_string()),
             code_id: multisig_membership_code_id,
             msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
-                admin: governance_controller_contract.to_string(),
+                enterprise_contract: enterprise_contract.to_string(),
                 initial_weights: Some(council_members),
             })?,
             funds: vec![],
@@ -409,7 +408,6 @@ pub fn governance_controller_contract_created(
         deps.branch(),
         version_info.multisig_membership_code_id,
         enterprise_contract.clone(),
-        governance_controller_contract.clone(),
     )?;
 
     let membership_submsg = create_enterprise_membership_contract(
@@ -418,7 +416,6 @@ pub fn governance_controller_contract_created(
         version_info.nft_staking_membership_code_id,
         version_info.multisig_membership_code_id,
         enterprise_contract,
-        governance_controller_contract,
     )?;
 
     Ok(response
@@ -432,7 +429,6 @@ pub fn create_enterprise_membership_contract(
     nft_membership_code_id: u64,
     multisig_membership_code_id: u64,
     enterprise_contract: Addr,
-    governance_controller_contract: Addr,
 ) -> EnterpriseTreasuryResult<SubMsg> {
     let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
 
@@ -451,7 +447,7 @@ pub fn create_enterprise_membership_contract(
                 admin: Some(enterprise_contract.to_string()),
                 code_id: token_membership_code_id,
                 msg: to_binary(&token_staking_api::msg::InstantiateMsg {
-                    admin: governance_controller_contract.to_string(),
+                    enterprise_contract: enterprise_contract.to_string(),
                     token_contract: cw20_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
                 })?,
@@ -466,7 +462,7 @@ pub fn create_enterprise_membership_contract(
                 admin: Some(enterprise_contract.to_string()),
                 code_id: nft_membership_code_id,
                 msg: to_binary(&nft_staking_api::msg::InstantiateMsg {
-                    admin: governance_controller_contract.to_string(),
+                    enterprise_contract: enterprise_contract.to_string(),
                     nft_contract: cw721_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
                 })?,
@@ -489,7 +485,7 @@ pub fn create_enterprise_membership_contract(
                 admin: Some(enterprise_contract.to_string()),
                 code_id: multisig_membership_code_id,
                 msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
-                    admin: governance_controller_contract.to_string(),
+                    enterprise_contract: enterprise_contract.to_string(),
                     initial_weights: Some(initial_weights),
                 })?,
                 funds: vec![],

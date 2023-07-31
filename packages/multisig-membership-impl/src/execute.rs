@@ -1,9 +1,9 @@
 use crate::validate::dedup_user_weights;
 use common::cw::Context;
 use cosmwasm_std::{Addr, Order, Response, StdResult, Uint128};
-use membership_common::admin::admin_caller_only;
 use membership_common::member_weights::{get_member_weight, set_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{load_total_weight, save_total_weight};
+use membership_common::validate::enterprise_governance_controller_only;
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
 use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg};
@@ -15,8 +15,8 @@ pub fn update_members(
     ctx: &mut Context,
     msg: UpdateMembersMsg,
 ) -> MultisigMembershipResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let deduped_edit_members = dedup_user_weights(ctx, msg.update_members)?;
 
@@ -49,8 +49,8 @@ pub fn update_members(
 
 /// Clear existing members and replace with the given members' weights. Only the current admin can execute this.
 pub fn set_members(ctx: &mut Context, msg: SetMembersMsg) -> MultisigMembershipResult<Response> {
-    // only admin can execute this
-    admin_caller_only(ctx)?;
+    // only governance controller can execute this
+    enterprise_governance_controller_only(ctx, None)?;
 
     let old_member_weights = MEMBER_WEIGHTS
         .range(ctx.deps.storage, None, None, Order::Ascending)

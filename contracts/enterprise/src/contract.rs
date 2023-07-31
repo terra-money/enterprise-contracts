@@ -6,6 +6,8 @@ use crate::state::{
 use crate::validate::{
     enterprise_factory_caller_only, enterprise_governance_controller_caller_only,
 };
+use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
+use attestation_api::msg::QueryMsg::HasUserSigned;
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
@@ -17,8 +19,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, SetAttestationMsg,
-    UpdateMetadataMsg, UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, IsRestrictedUserParams,
+    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion,
@@ -36,6 +38,7 @@ use enterprise_versioning_api::api::{
 use enterprise_versioning_api::msg::QueryMsg::Versions;
 use serde_json::json;
 use serde_json::Value::Object;
+use std::ops::Not;
 use std::str::FromStr;
 
 pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
@@ -339,6 +342,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
     let response = match msg {
         QueryMsg::DaoInfo {} => to_binary(&query_dao_info(qctx)?)?,
         QueryMsg::ComponentContracts {} => to_binary(&query_dao_info(qctx)?)?,
+        QueryMsg::IsRestrictedUser(params) => to_binary(&query_is_restricted_user(qctx, params)?)?,
     };
     Ok(response)
 }
@@ -372,6 +376,31 @@ pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContr
         council_membership_contract: component_contracts.council_membership_contract,
         attestation_contract: component_contracts.attestation_contract,
     })
+}
+
+/// Query whether a user should be restricted from certain DAO actions, such as governance and
+/// rewards claiming.
+/// Is determined by checking if there is an attestation, and if the user has signed it or not.
+pub fn query_is_restricted_user(
+    qctx: QueryContext,
+    params: IsRestrictedUserParams,
+) -> DaoResult<IsRestrictedUserResponse> {
+    let component_contracts = COMPONENT_CONTRACTS.load(qctx.deps.storage)?;
+
+    let is_restricted = match component_contracts.attestation_contract {
+        None => false,
+        Some(attestation_contract) => {
+            let has_user_signed_response: HasUserSignedResponse =
+                qctx.deps.querier.query_wasm_smart(
+                    attestation_contract.to_string(),
+                    &HasUserSigned(HasUserSignedParams { user: params.user }),
+                )?;
+
+            has_user_signed_response.has_signed.not()
+        }
+    };
+
+    Ok(IsRestrictedUserResponse { is_restricted })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

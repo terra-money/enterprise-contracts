@@ -12,11 +12,7 @@ use enterprise_protocol::api::DaoType::Nft;
 use enterprise_protocol::error::DaoResult;
 use nft_staking_api::msg::InstantiateMsg;
 
-pub fn import_cw721_membership(
-    deps: DepsMut,
-    msg: ImportCw721MembershipMsg,
-    admin: String,
-) -> DaoResult<SubMsg> {
+pub fn import_cw721_membership(deps: DepsMut, msg: ImportCw721MembershipMsg) -> DaoResult<SubMsg> {
     let cw721_address = deps.api.addr_validate(&msg.cw721_contract)?;
 
     validate_existing_cw721_contract(deps.as_ref(), cw721_address.as_ref())?;
@@ -29,7 +25,7 @@ pub fn import_cw721_membership(
         })
     })?;
 
-    instantiate_nft_staking_membership_contract(deps, cw721_address, msg.unlocking_period, admin)
+    instantiate_nft_staking_membership_contract(deps, cw721_address, msg.unlocking_period)
 }
 
 pub fn instantiate_new_cw721_membership(
@@ -76,7 +72,6 @@ pub fn instantiate_nft_staking_membership_contract(
     deps: DepsMut,
     cw721_address: Addr,
     unlocking_period: Duration,
-    admin: String,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
@@ -88,7 +83,7 @@ pub fn instantiate_nft_staking_membership_contract(
             admin: Some(enterprise_contract.to_string()),
             code_id: version_info.nft_staking_membership_code_id,
             msg: to_binary(&InstantiateMsg {
-                admin,
+                enterprise_contract: enterprise_contract.to_string(),
                 nft_contract: cw721_address.to_string(),
                 unlocking_period,
             })?,

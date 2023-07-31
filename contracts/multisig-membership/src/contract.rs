@@ -3,12 +3,13 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
-use membership_common::admin::{query_admin, update_admin};
 use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use multisig_membership_impl::execute::{set_members, update_members};
-use multisig_membership_impl::query::{query_members, query_total_weight, query_user_weight};
+use multisig_membership_impl::query::{
+    query_config, query_members, query_total_weight, query_user_weight,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:multisig-membership";
@@ -42,7 +43,6 @@ pub fn execute(
     let response = match msg {
         ExecuteMsg::UpdateMembers(msg) => update_members(ctx, msg)?,
         ExecuteMsg::SetMembers(msg) => set_members(ctx, msg)?,
-        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg)?,
         ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
         ExecuteMsg::RemoveWeightChangeHook(msg) => remove_weight_change_hook(ctx, msg)?,
     };
@@ -60,7 +60,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> MultisigMembershipResult<Bi
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Admin {} => to_binary(&query_admin(&qctx)?)?,
+        QueryMsg::Config {} => to_binary(&query_config(&qctx)?)?,
         QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,
         QueryMsg::Members(params) => to_binary(&query_members(&qctx, params)?)?,
