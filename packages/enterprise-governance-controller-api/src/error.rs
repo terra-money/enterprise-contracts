@@ -20,6 +20,9 @@ pub enum GovernanceControllerError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error("The user has not signed the DAO's attestation and is not allowed to use most of DAO's functions")]
+    RestrictedUser,
+
     #[error("The DAO does not have a council specified")]
     NoDaoCouncil,
 

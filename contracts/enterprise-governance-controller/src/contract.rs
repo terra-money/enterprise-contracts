@@ -7,6 +7,7 @@ use crate::validate::{
     apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
     validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao,
 };
+use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
@@ -37,7 +38,7 @@ use enterprise_governance_controller_api::api::{
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil, NoSuchProposal,
-    NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted, Std, Unauthorized,
+    NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted, RestrictedUser, Std, Unauthorized,
     UnsupportedCouncilProposalAction, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
@@ -74,7 +75,7 @@ use poll_engine_api::api::{
 };
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
-use std::ops::{Add, Sub};
+use std::ops::{Add, Not, Sub};
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
@@ -154,6 +155,8 @@ fn create_proposal(
     deposit: Option<ProposalDeposit>,
     proposer: Addr,
 ) -> GovernanceControllerResult<Response> {
+    unrestricted_users_only(ctx.deps.as_ref(), proposer.to_string())?;
+
     let gov_config = GOV_CONFIG.load(ctx.deps.storage)?;
 
     let qctx = QueryContext {
@@ -187,6 +190,8 @@ fn create_council_proposal(
     ctx: &mut Context,
     msg: CreateProposalMsg,
 ) -> GovernanceControllerResult<Response> {
+    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
+
     let dao_council = COUNCIL_GOV_CONFIG.load(ctx.deps.storage)?;
 
     match dao_council {
@@ -317,6 +322,8 @@ fn create_poll(
 }
 
 fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
+    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
+
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
     let user_available_votes = get_user_available_votes(qctx, ctx.info.sender.clone())?;
 
@@ -358,6 +365,8 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
 }
 
 fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
+    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
+
     let dao_council = COUNCIL_GOV_CONFIG.load(ctx.deps.storage)?;
 
     match dao_council {
@@ -411,6 +420,8 @@ fn execute_proposal(
     ctx: &mut Context,
     msg: ExecuteProposalMsg,
 ) -> GovernanceControllerResult<Response> {
+    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
+
     let proposal_info = PROPOSAL_INFOS
         .may_load(ctx.deps.storage, msg.proposal_id)?
         .ok_or(NoSuchProposal)?;
@@ -1451,4 +1462,30 @@ fn query_council_total_weight(
     )?;
 
     Ok(member_weight.weight)
+}
+
+/// Checks whether the user should be restricted from participating, i.e. there is an attestation
+/// that they didn't sign.
+fn is_restricted_user(deps: Deps, user: String) -> GovernanceControllerResult<bool> {
+    let attestation_contract = query_enterprise_components(deps)?.attestation_contract;
+
+    match attestation_contract {
+        None => Ok(false),
+        Some(attestation_addr) => {
+            let has_user_signed_response: HasUserSignedResponse = deps.querier.query_wasm_smart(
+                attestation_addr.to_string(),
+                &attestation_api::msg::QueryMsg::HasUserSigned(HasUserSignedParams { user }),
+            )?;
+
+            Ok(has_user_signed_response.has_signed.not())
+        }
+    }
+}
+
+fn unrestricted_users_only(deps: Deps, user: String) -> GovernanceControllerResult<()> {
+    if is_restricted_user(deps, user)? {
+        return Err(RestrictedUser);
+    }
+
+    Ok(())
 }
