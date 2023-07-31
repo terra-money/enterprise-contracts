@@ -444,6 +444,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     code_id: version_info.funds_distributor_code_id,
                     msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
                         admin: enterprise_governance_controller_contract.to_string(),
+                        enterprise_contract: enterprise_contract.to_string(),
                         initial_weights,
                         minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
                     })?,

@@ -41,4 +41,6 @@ cw2 = "1.0.1"
 cw20 = "1.0.1"
 cw-asset = "2.4.0"
 itertools = "0.10.5"
+attestation-api = { path = "../../packages/attestation-api" }
+enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }

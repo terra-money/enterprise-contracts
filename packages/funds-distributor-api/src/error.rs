@@ -12,6 +12,11 @@ pub enum DistributorError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error(
+        "The user is restricted from receiving rewards, due to not signing the DAO's attestation"
+    )]
+    RestrictedUser,
+
     #[error("Cannot distribute - total weight of all users is 0")]
     ZeroTotalWeight,
 

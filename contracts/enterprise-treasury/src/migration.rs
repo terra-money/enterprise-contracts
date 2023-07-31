@@ -569,6 +569,7 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         new_code_id: version_info.funds_distributor_code_id,
         msg: to_binary(&funds_distributor_api::msg::MigrateMsg {
             new_admin: governance_controller_contract.to_string(),
+            new_enterprise_contract: enterprise_contract.to_string(),
         })?,
     }));
 

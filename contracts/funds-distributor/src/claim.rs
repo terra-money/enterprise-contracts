@@ -1,14 +1,20 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::calculate_user_reward;
-use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
+use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES};
 use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
+use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
+use attestation_api::msg::QueryMsg::HasUserSigned;
 use common::cw::Context;
-use cosmwasm_std::{Response, SubMsg, Uint128};
+use cosmwasm_std::{Deps, Response, SubMsg, Uint128};
 use cw_asset::Asset;
+use enterprise_protocol::api::ComponentContractsResponse;
+use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use funds_distributor_api::api::ClaimRewardsMsg;
-use funds_distributor_api::error::DistributorResult;
+use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_claim_rewards_response;
+use std::ops::Not;
+use DistributorError::RestrictedUser;
 
 /// Attempt to claim rewards for the given parameters.
 ///
@@ -16,6 +22,10 @@ use funds_distributor_api::response::execute_claim_rewards_response;
 ///
 /// Returns a Response containing submessages that will send available rewards to the user.
 pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResult<Response> {
+    if is_restricted_user(ctx.deps.as_ref(), msg.user.clone())? {
+        return Err(RestrictedUser);
+    }
+
     let user = ctx.deps.api.addr_validate(&msg.user)?;
 
     let user_weight = EFFECTIVE_USER_WEIGHTS
@@ -89,4 +99,24 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
     }
 
     Ok(execute_claim_rewards_response(user.to_string()).add_submessages(submsgs))
+}
+
+fn is_restricted_user(deps: Deps, user: String) -> DistributorResult<bool> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
+
+    let component_contracts_response: ComponentContractsResponse = deps
+        .querier
+        .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
+
+    match component_contracts_response.attestation_contract {
+        None => Ok(false),
+        Some(attestation_contract) => {
+            let has_user_signed: HasUserSignedResponse = deps.querier.query_wasm_smart(
+                attestation_contract.to_string(),
+                &HasUserSigned(HasUserSignedParams { user }),
+            )?;
+
+            Ok(has_user_signed.has_signed.not())
+        }
+    }
 }

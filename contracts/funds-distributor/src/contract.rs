@@ -5,7 +5,7 @@ use crate::eligibility::{
 };
 use crate::migration::migrate_to_v1_0_0;
 use crate::rewards::query_user_rewards;
-use crate::state::ADMIN;
+use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
@@ -33,6 +33,9 @@ pub fn instantiate(
 
     let admin = deps.api.addr_validate(&msg.admin)?;
     ADMIN.save(deps.storage, &admin)?;
+
+    let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
+    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
     let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
