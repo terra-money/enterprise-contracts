@@ -17,6 +17,7 @@ pub enum ExecuteMsg {
     UpgradeDao(UpgradeDaoMsg),
 
     SetAttestation(SetAttestationMsg),
+    RemoveAttestation {},
 
     // called by this contract itself
     FinalizeInstantiation(FinalizeInstantiationMsg),

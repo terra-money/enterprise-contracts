@@ -203,6 +203,7 @@ pub enum ProposalActionType {
     DistributeFunds,
     UpdateMinimumWeightForRewards,
     AddAttestation,
+    RemoveAttestation,
 }
 
 #[cw_serde]

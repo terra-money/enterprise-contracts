@@ -4,8 +4,8 @@ use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, Uint128};
 use cw_asset::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 use cw_utils::Duration;
 use enterprise_governance_controller_api::api::ProposalAction::{
-    DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
-    UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
+    DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RemoveAttestation,
+    RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::{
@@ -135,7 +135,8 @@ pub fn validate_proposal_actions(
             UpdateMetadata(_)
             | RequestFundingFromDao(_)
             | UpdateMinimumWeightForRewards(_)
-            | AddAttestation(_) => {
+            | AddAttestation(_)
+            | RemoveAttestation {} => {
                 // no-op
             }
         }
@@ -470,7 +471,8 @@ pub fn validate_allowed_council_proposal_types(
                     ProposalActionType::UpdateMetadata
                     | ProposalActionType::UpdateAssetWhitelist
                     | ProposalActionType::UpdateNftWhitelist
-                    | ProposalActionType::UpgradeDao => {
+                    | ProposalActionType::UpgradeDao
+                    | ProposalActionType::RemoveAttestation => {
                         // allowed proposal action types
                     }
                 }

@@ -26,8 +26,9 @@ use enterprise_protocol::error::DaoError::{
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::response::{
-    execute_finalize_instantiation_response, execute_set_attestation_response,
-    execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
+    execute_finalize_instantiation_response, execute_remove_attestation_response,
+    execute_set_attestation_response, execute_update_metadata_response,
+    execute_upgrade_dao_response, instantiate_response,
 };
 use enterprise_versioning_api::api::{
     Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
@@ -83,6 +84,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::UpdateMetadata(msg) => update_metadata(ctx, msg),
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
         ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
+        ExecuteMsg::RemoveAttestation {} => remove_attestation(ctx),
     }
 }
 
@@ -286,6 +288,22 @@ fn set_attestation(ctx: &mut Context, msg: SetAttestationMsg) -> DaoResult<Respo
     );
 
     Ok(execute_set_attestation_response().add_submessage(instantiate_attestation_submsg))
+}
+
+fn remove_attestation(ctx: &mut Context) -> DaoResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
+    COMPONENT_CONTRACTS.update(
+        ctx.deps.storage,
+        |components| -> StdResult<ComponentContracts> {
+            Ok(ComponentContracts {
+                attestation_contract: None,
+                ..components
+            })
+        },
+    )?;
+
+    Ok(execute_remove_attestation_response())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

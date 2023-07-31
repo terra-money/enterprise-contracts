@@ -110,6 +110,7 @@ pub enum ProposalActionType {
     DistributeFunds,
     UpdateMinimumWeightForRewards,
     AddAttestation,
+    RemoveAttestation,
 }
 
 #[cw_serde]
@@ -126,6 +127,7 @@ pub enum ProposalAction {
     DistributeFunds(DistributeFundsMsg),
     UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
     AddAttestation(AddAttestationMsg),
+    RemoveAttestation {},
 }
 
 #[cw_serde]

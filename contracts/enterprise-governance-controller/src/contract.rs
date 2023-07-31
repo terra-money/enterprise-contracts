@@ -20,8 +20,8 @@ use cw_utils::Expiration;
 use cw_utils::Expiration::Never;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_controller_api::api::ProposalAction::{
-    AddAttestation, DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
-    UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
+    AddAttestation, DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RemoveAttestation,
+    RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
@@ -260,6 +260,7 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         DistributeFunds(_) => ProposalActionType::DistributeFunds,
         UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
         AddAttestation(_) => ProposalActionType::AddAttestation,
+        RemoveAttestation {} => ProposalActionType::RemoveAttestation,
     }
 }
 
@@ -626,6 +627,7 @@ fn execute_proposal_actions_submsgs(
             DistributeFunds(msg) => distribute_funds(ctx, msg)?,
             UpdateMinimumWeightForRewards(msg) => update_minimum_weight_for_rewards(ctx, msg)?,
             AddAttestation(msg) => add_attestation(ctx, msg)?,
+            RemoveAttestation {} => remove_attestation(ctx)?,
         };
         submsgs.append(&mut actions)
     }
@@ -896,6 +898,18 @@ fn add_attestation(
         &enterprise_protocol::msg::ExecuteMsg::SetAttestation(SetAttestationMsg {
             attestation_text: msg.attestation_text,
         }),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
+}
+
+fn remove_attestation(ctx: &mut Context) -> GovernanceControllerResult<Vec<SubMsg>> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    let submsg = SubMsg::new(wasm_execute(
+        enterprise_contract.to_string(),
+        &enterprise_protocol::msg::ExecuteMsg::RemoveAttestation {},
         vec![],
     )?);
 

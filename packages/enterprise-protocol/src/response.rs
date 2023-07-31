@@ -39,3 +39,7 @@ pub fn execute_upgrade_dao_response(new_dao_version: String) -> Response {
 pub fn execute_set_attestation_response() -> Response {
     Response::new().add_attribute("action", "set_attestation")
 }
+
+pub fn execute_remove_attestation_response() -> Response {
+    Response::new().add_attribute("action", "remove_attestation")
+}
