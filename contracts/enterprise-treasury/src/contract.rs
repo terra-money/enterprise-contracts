@@ -278,9 +278,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseTreasuryResult<Bi
 
 pub fn query_config(qctx: QueryContext) -> EnterpriseTreasuryResult<ConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
 
     Ok(ConfigResponse {
         admin: config.admin,
+        enterprise_contract,
     })
 }
 
