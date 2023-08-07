@@ -1074,8 +1074,11 @@ pub fn query_gov_config(qctx: QueryContext) -> GovernanceControllerResult<GovCon
 
     let membership_contract = query_membership_addr(qctx.deps)?;
 
+    let council_gov_config = COUNCIL_GOV_CONFIG.load(qctx.deps.storage)?;
+
     Ok(GovConfigResponse {
         gov_config,
+        council_gov_config,
         dao_membership_contract: membership_contract,
         dao_council_contract: dao_council_membership,
     })

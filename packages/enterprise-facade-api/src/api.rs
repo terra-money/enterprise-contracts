@@ -1,8 +1,10 @@
+use common::commons::ModifyValue;
+use common::cw::ReleaseAt;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Decimal, StdError, StdResult, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw721::TokensResponse;
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use cw_utils::{Duration, Expiration};
 use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
@@ -12,12 +14,6 @@ use strum_macros::Display;
 
 pub type ProposalId = u64;
 pub type NftTokenId = String;
-
-#[cw_serde]
-pub enum ModifyValue<T> {
-    Change(T),
-    NoChange,
-}
 
 #[cw_serde]
 #[derive(Display)]
@@ -309,7 +305,6 @@ pub struct CastVoteMsg {
 
 #[cw_serde]
 pub struct ExecuteProposalMsg {
-    pub contract: Addr,
     pub proposal_id: ProposalId,
 }
 
@@ -360,12 +355,6 @@ pub struct Cw721ClaimAsset {
 }
 
 #[cw_serde]
-pub enum ReleaseAt {
-    Timestamp(Timestamp),
-    Height(Uint64),
-}
-
-#[cw_serde]
 pub struct QueryMemberInfoMsg {
     pub member_address: String,
 }
@@ -396,7 +385,7 @@ pub struct DaoInfoResponse {
 
 #[cw_serde]
 pub struct AssetWhitelistParams {
-    pub start_after: Option<AssetInfo>,
+    pub start_after: Option<AssetInfoUnchecked>,
     pub limit: Option<u32>,
 }
 
@@ -548,10 +537,11 @@ pub struct Proposal {
     // pub quorum: Decimal,
 }
 
-// TODO: pagination for NFTs?
 #[cw_serde]
 pub struct UserStakeParams {
     pub user: String,
+    pub start_after: Option<NftTokenId>,
+    pub limit: Option<u32>,
 }
 
 #[cw_serde]

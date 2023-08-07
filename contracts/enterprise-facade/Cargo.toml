@@ -37,7 +37,11 @@ common = { path = "../../packages/common" }
 cosmwasm-schema = "1.1.9"
 cosmwasm-std = "1"
 cw2 = "1.0.1"
+cw-utils = "1.0.1"
+token-staking-api = { path = "../../packages/token-staking-api" }
+nft-staking-api = { path = "../../packages/nft-staking-api" }
 enterprise-facade-api = { path = "../../packages/enterprise-facade-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
+membership-common-api = { path = "../../packages/membership-common-api" }

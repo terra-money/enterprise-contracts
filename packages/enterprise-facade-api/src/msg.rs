@@ -1,53 +1,96 @@
 use crate::api::{
-    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    CreateProposalMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
-    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, ReceiveNftMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    AssetWhitelistParams, AssetWhitelistResponse, ClaimsParams, ClaimsResponse, DaoInfoResponse,
+    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
+    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
+    UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 
 #[cw_serde]
 pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    ExecuteProposal(ExecuteProposalMsg),
+    ExecuteProposal {
+        contract: Addr,
+        msg: ExecuteProposalMsg,
+    },
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(DaoInfoResponse)]
-    DaoInfo {},
+    DaoInfo { contract: Addr },
     #[returns(MemberInfoResponse)]
-    MemberInfo(QueryMemberInfoMsg),
+    MemberInfo {
+        contract: Addr,
+        msg: QueryMemberInfoMsg,
+    },
     #[returns(MultisigMembersResponse)]
-    ListMultisigMembers(ListMultisigMembersMsg),
+    ListMultisigMembers {
+        contract: Addr,
+        msg: ListMultisigMembersMsg,
+    },
     #[returns(AssetWhitelistResponse)]
-    AssetWhitelist(AssetWhitelistParams),
+    AssetWhitelist {
+        contract: Addr,
+        params: AssetWhitelistParams,
+    },
     #[returns(NftWhitelistResponse)]
-    NftWhitelist(NftWhitelistParams),
+    NftWhitelist {
+        contract: Addr,
+        params: NftWhitelistParams,
+    },
     #[returns(ProposalResponse)]
-    Proposal(ProposalParams),
+    Proposal {
+        contract: Addr,
+        params: ProposalParams,
+    },
     #[returns(ProposalsResponse)]
-    Proposals(ProposalsParams),
+    Proposals {
+        contract: Addr,
+        params: ProposalsParams,
+    },
     #[returns(ProposalStatusResponse)]
-    ProposalStatus(ProposalStatusParams),
+    ProposalStatus {
+        contract: Addr,
+        params: ProposalStatusParams,
+    },
     #[returns(MemberVoteResponse)]
-    MemberVote(MemberVoteParams),
+    MemberVote {
+        contract: Addr,
+        params: MemberVoteParams,
+    },
     #[returns(ProposalVotesResponse)]
-    ProposalVotes(ProposalVotesParams),
+    ProposalVotes {
+        contract: Addr,
+        params: ProposalVotesParams,
+    },
     #[returns(UserStakeResponse)]
-    UserStake(UserStakeParams),
+    UserStake {
+        contract: Addr,
+        params: UserStakeParams,
+    },
     #[returns(TotalStakedAmountResponse)]
-    TotalStakedAmount {},
+    TotalStakedAmount { contract: Addr },
     #[returns(StakedNftsResponse)]
-    StakedNfts(StakedNftsParams),
+    StakedNfts {
+        contract: Addr,
+        params: StakedNftsParams,
+    },
     #[returns(ClaimsResponse)]
-    Claims(ClaimsParams),
+    Claims {
+        contract: Addr,
+        params: ClaimsParams,
+    },
     #[returns(ClaimsResponse)]
-    ReleasableClaims(ClaimsParams),
+    ReleasableClaims {
+        contract: Addr,
+        params: ClaimsParams,
+    },
 }
