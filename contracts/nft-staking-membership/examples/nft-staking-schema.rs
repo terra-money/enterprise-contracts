@@ -18,10 +18,11 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(MigrateMsg), &out_dir);
     export_schema(&schema_for!(TotalWeightResponse), &out_dir);
-    export_schema(&schema_for!(ConfigResponse), &out_dir);
     export_schema(&schema_for!(AdminResponse), &out_dir);
-    export_schema(&schema_for!(NftConfigResponse), &out_dir);
-    export_schema(&schema_for!(UserWeightResponse), &out_dir);
-    export_schema(&schema_for!(UserNftTotalStakeResponse), &out_dir);
     export_schema(&schema_for!(MembersResponse), &out_dir);
+    export_schema(&schema_for!(TotalWeightResponse), &out_dir);
+    export_schema(&schema_for!(UserWeightResponse), &out_dir);
+    export_schema(&schema_for!(ClaimsResponse), &out_dir);
+    export_schema(&schema_for!(NftConfigResponse), &out_dir);
+    export_schema(&schema_for!(UserNftStakeResponse), &out_dir);
 }

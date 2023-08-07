@@ -1,8 +1,10 @@
 use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use membership_common_api::api::{MembersResponse, TotalWeightResponse, UserWeightResponse};
-use token_staking_api::api::{ClaimsResponse, ConfigResponse};
+use membership_common_api::api::{
+    AdminResponse, MembersResponse, TotalWeightResponse, UserWeightResponse,
+};
+use token_staking_api::api::ClaimsResponse;
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
@@ -15,9 +17,9 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(MigrateMsg), &out_dir);
-    export_schema(&schema_for!(ClaimsResponse), &out_dir);
-    export_schema(&schema_for!(ConfigResponse), &out_dir);
+    export_schema(&schema_for!(AdminResponse), &out_dir);
+    export_schema(&schema_for!(MembersResponse), &out_dir);
     export_schema(&schema_for!(TotalWeightResponse), &out_dir);
     export_schema(&schema_for!(UserWeightResponse), &out_dir);
-    export_schema(&schema_for!(MembersResponse), &out_dir);
+    export_schema(&schema_for!(ClaimsResponse), &out_dir);
 }
