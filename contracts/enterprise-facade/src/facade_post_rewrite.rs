@@ -1,5 +1,4 @@
 use crate::facade::EnterpriseFacade;
-use common::commons::ModifyValue;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{wasm_execute, Addr, Decimal, Deps, Response, SubMsg, Uint128, Uint64};
 use cw_utils::Expiration::Never;
@@ -8,12 +7,11 @@ use enterprise_facade_api::api::{
     Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil, DaoGovConfig, DaoInfoResponse, DaoMetadata,
     DaoSocialData, DaoType, ExecuteProposalMsg, ListMultisigMembersMsg, Logo, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake,
-    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalAction, ProposalActionType,
-    ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalActionType, ProposalParams,
+    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
-    TokenUserStake, TotalStakedAmountResponse, UpdateMetadataMsg, UserStake, UserStakeParams,
-    UserStakeResponse,
+    TokenUserStake, TotalStakedAmountResponse, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -453,7 +451,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
 
                 let total_weight: TotalWeightResponse = qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
-                    &membership_common_api::msg::QueryMsg::TotalWeight(TotalWeightParams {
+                    &TotalWeight(TotalWeightParams {
                         expiration: Never {},
                     }),
                 )?;
@@ -641,21 +639,6 @@ fn map_proposal_action_type(
     }
 }
 
-// TODO:
-fn map_proposal_action(
-    _action: enterprise_governance_controller_api::api::ProposalAction,
-) -> ProposalAction {
-    ProposalAction::UpdateMetadata(UpdateMetadataMsg {
-        name: ModifyValue::NoChange,
-        description: ModifyValue::NoChange,
-        logo: ModifyValue::NoChange,
-        github_username: ModifyValue::NoChange,
-        discord_username: ModifyValue::NoChange,
-        twitter_username: ModifyValue::NoChange,
-        telegram_username: ModifyValue::NoChange,
-    })
-}
-
 fn map_proposal_status(
     status: enterprise_governance_controller_api::api::ProposalStatus,
 ) -> ProposalStatus {
@@ -703,11 +686,7 @@ fn map_proposal(proposal: enterprise_governance_controller_api::api::Proposal) -
         status: map_proposal_status(proposal.status),
         started_at: proposal.started_at,
         expires: proposal.expires,
-        proposal_actions: proposal
-            .proposal_actions
-            .into_iter()
-            .map(map_proposal_action)
-            .collect(),
+        proposal_actions: proposal.proposal_actions,
     }
 }
 

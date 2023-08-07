@@ -16,6 +16,7 @@ cw721 = "0.16.0"
 cw-asset = "2.4.0"
 cw-utils = "1.0.1"
 poll-engine-api = { path = "../poll-engine-api" }
+enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
 serde_with = { version = "2", features = ["json", "macros"] }
 strum_macros = "0.24"
 thiserror = "1"

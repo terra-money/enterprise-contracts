@@ -6,6 +6,7 @@ use cw20::{Cw20Coin, MinterResponse};
 use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use cw_utils::{Duration, Expiration};
+use enterprise_governance_controller_api::api::ProposalAction;
 use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
@@ -201,21 +202,6 @@ pub enum ProposalActionType {
     ModifyMultisigMembership,
     DistributeFunds,
     UpdateMinimumWeightForRewards,
-}
-
-#[cw_serde]
-pub enum ProposalAction {
-    UpdateMetadata(UpdateMetadataMsg),
-    UpdateGovConfig(UpdateGovConfigMsg),
-    UpdateCouncil(UpdateCouncilMsg),
-    UpdateAssetWhitelist(UpdateAssetWhitelistMsg),
-    UpdateNftWhitelist(UpdateNftWhitelistMsg),
-    RequestFundingFromDao(RequestFundingFromDaoMsg),
-    UpgradeDao(UpgradeDaoMsg),
-    ExecuteMsgs(ExecuteMsgsMsg),
-    ModifyMultisigMembership(ModifyMultisigMembershipMsg),
-    DistributeFunds(DistributeFundsMsg),
-    UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
 }
 
 #[cw_serde]
