@@ -1080,7 +1080,7 @@ pub fn query_gov_config(qctx: QueryContext) -> GovernanceControllerResult<GovCon
         gov_config,
         council_gov_config,
         dao_membership_contract: membership_contract,
-        dao_council_contract: dao_council_membership,
+        dao_council_membership_contract: dao_council_membership,
     })
 }
 

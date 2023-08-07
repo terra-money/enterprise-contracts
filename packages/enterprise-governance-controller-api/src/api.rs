@@ -188,7 +188,7 @@ pub struct GovConfigResponse {
     pub gov_config: GovConfig,
     pub council_gov_config: Option<CouncilGovConfig>,
     pub dao_membership_contract: Addr,
-    pub dao_council_contract: Addr,
+    pub dao_council_membership_contract: Addr,
 }
 
 #[serde_as]

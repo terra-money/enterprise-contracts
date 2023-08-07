@@ -25,7 +25,7 @@ use membership_common_api::api::{
     MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
     UserWeightResponse,
 };
-use membership_common_api::msg::QueryMsg::{TotalWeight, UserWeight};
+use membership_common_api::msg::QueryMsg::{Members, TotalWeight, UserWeight};
 use nft_staking_api::api::{NftConfigResponse, UserNftStakeParams, UserNftStakeResponse};
 use nft_staking_api::msg::QueryMsg::NftConfig;
 use token_staking_api::api::TokenConfigResponse;
@@ -104,6 +104,19 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             }
         };
 
+        let council_members_response: MembersResponse = qctx.deps.querier.query_wasm_smart(
+            gov_config.dao_council_membership_contract.to_string(),
+            &Members(MembersParams {
+                start_after: None,
+                limit: Some(1000u32),
+            }),
+        )?;
+        let council_members = council_members_response
+            .members
+            .into_iter()
+            .map(|user_weight| user_weight.user)
+            .collect();
+
         let dao_council = gov_config.council_gov_config.map(|config| {
             let allowed_proposal_action_types = config
                 .allowed_proposal_action_types
@@ -112,7 +125,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
                 .collect();
 
             DaoCouncil {
-                members: vec![], // TODO: query from council membership contract
+                members: council_members,
                 allowed_proposal_action_types,
                 quorum: config.quorum,
                 threshold: config.threshold,
@@ -169,7 +182,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         let component_contracts = self.component_contracts(qctx.deps)?;
         let user_weight: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
             component_contracts.membership_contract.to_string(),
-            &UserWeight(UserWeightParams {
+            &membership_common_api::msg::QueryMsg::UserWeight(UserWeightParams {
                 user: msg.member_address,
             }),
         )?;
