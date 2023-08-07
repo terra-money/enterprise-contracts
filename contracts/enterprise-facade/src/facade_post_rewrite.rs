@@ -1,7 +1,7 @@
 use crate::facade::EnterpriseFacade;
 use common::commons::ModifyValue;
 use common::cw::{Context, QueryContext};
-use cosmwasm_std::{wasm_execute, Addr, Decimal, Deps, Response, SubMsg, Uint128};
+use cosmwasm_std::{wasm_execute, Addr, Decimal, Deps, Response, SubMsg, Uint128, Uint64};
 use cw_utils::Expiration::Never;
 use enterprise_facade_api::api::{
     AssetWhitelistParams, AssetWhitelistResponse, Claim, ClaimAsset, ClaimsParams, ClaimsResponse,
@@ -121,6 +121,15 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             }
         });
 
+        // Map DAO version to version code, formula: 100*100*(major) + 100*(minor) + (patch)
+        let version = dao_info.dao_version;
+        let major_component = Uint64::from(version.major).checked_mul(10_000u64.into())?;
+        let minor_component = Uint64::from(version.minor).checked_mul(100u64.into())?;
+        let patch_component = Uint64::from(version.patch);
+        let dao_code_version = major_component
+            .checked_add(minor_component)?
+            .checked_add(patch_component)?;
+
         Ok(DaoInfoResponse {
             creation_date: dao_info.creation_date,
             metadata: DaoMetadata {
@@ -150,7 +159,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             dao_membership_contract,
             enterprise_factory_contract: component_contracts.enterprise_factory_contract,
             funds_distributor_contract: component_contracts.funds_distributor_contract,
-            dao_code_version: Default::default(), // TODO: what do we say here? nothing really makes sense
+            dao_code_version,
         })
     }
 

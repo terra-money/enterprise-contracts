@@ -1,6 +1,6 @@
 use crate::api::{NftTokenId, ProposalActionType};
 use crate::error::EnterpriseFacadeError::Std;
-use cosmwasm_std::{CheckedFromRatioError, StdError, Uint128};
+use cosmwasm_std::{CheckedFromRatioError, OverflowError, StdError, Uint128};
 use poll_engine_api::error::PollError;
 use thiserror::Error;
 
@@ -27,6 +27,12 @@ impl EnterpriseFacadeError {
 
 impl From<CheckedFromRatioError> for EnterpriseFacadeError {
     fn from(e: CheckedFromRatioError) -> Self {
+        Std(StdError::generic_err(e.to_string()))
+    }
+}
+
+impl From<OverflowError> for EnterpriseFacadeError {
+    fn from(e: OverflowError) -> Self {
         Std(StdError::generic_err(e.to_string()))
     }
 }
