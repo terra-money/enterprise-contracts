@@ -17,7 +17,8 @@ use membership_common_api::api::{
     UserWeightParams, UserWeightResponse,
 };
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, NftConfigResponse, UserNftStakeParams, UserNftStakeResponse,
+    ClaimsParams, ClaimsResponse, NftConfigResponse, NftTokenId, StakedNftsParams,
+    StakedNftsResponse, UserNftStakeParams, UserNftStakeResponse,
 };
 use nft_staking_api::error::NftStakingResult;
 
@@ -132,4 +133,23 @@ pub fn query_members(
         .collect();
 
     Ok(MembersResponse { members })
+}
+
+pub fn query_staked_nfts(
+    qctx: &QueryContext,
+    params: StakedNftsParams,
+) -> NftStakingResult<StakedNftsResponse> {
+    let start_after = params.start_after.map(Bound::exclusive);
+    let limit = params
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
+        .min(MAX_QUERY_LIMIT as u32);
+
+    let nfts = NFT_STAKES()
+        .range(qctx.deps.storage, start_after, None, Ascending)
+        .take(limit as usize)
+        .map(|res| res.map(|(_, nft_stake)| nft_stake.token_id))
+        .collect::<StdResult<Vec<NftTokenId>>>()?;
+
+    Ok(StakedNftsResponse { nfts })
 }

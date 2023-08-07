@@ -469,17 +469,27 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
     fn query_staked_nfts(
         &self,
         qctx: QueryContext,
-        _params: StakedNftsParams,
+        params: StakedNftsParams,
     ) -> EnterpriseFacadeResult<StakedNftsResponse> {
         let dao_type = self.get_dao_type(qctx.deps)?;
 
         match dao_type {
             DaoType::Nft => {
-                // TODO: add a query for this to the NFT staking memberhsip contract
-                let _nft_membership_contract =
+                let nft_membership_contract =
                     self.component_contracts(qctx.deps)?.membership_contract;
 
-                Ok(StakedNftsResponse { nfts: vec![] })
+                let staked_nfts_response: nft_staking_api::api::StakedNftsResponse =
+                    qctx.deps.querier.query_wasm_smart(
+                        nft_membership_contract.to_string(),
+                        &nft_staking_api::api::StakedNftsParams {
+                            start_after: params.start_after,
+                            limit: params.limit,
+                        },
+                    )?;
+
+                Ok(StakedNftsResponse {
+                    nfts: staked_nfts_response.nfts,
+                })
             }
             DaoType::Token | DaoType::Multisig => Ok(StakedNftsResponse { nfts: vec![] }),
         }

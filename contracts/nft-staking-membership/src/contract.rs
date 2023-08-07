@@ -10,7 +10,7 @@ use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use nft_staking_impl::execute::{claim, receive_nft, unstake, update_unlocking_period};
 use nft_staking_impl::query::{
     query_admin, query_claims, query_members, query_nft_cnfig, query_releasable_claims,
-    query_total_weight, query_user_nft_stake, query_user_weight,
+    query_staked_nfts, query_total_weight, query_user_nft_stake, query_user_weight,
 };
 
 // version info for migration info
@@ -73,6 +73,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
         QueryMsg::Claims(params) => to_binary(&query_claims(&qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(&qctx, params)?)?,
         QueryMsg::Members(params) => to_binary(&query_members(&qctx, params)?)?,
+        QueryMsg::StakedNfts(params) => to_binary(&query_staked_nfts(&qctx, params)?)?,
     };
 
     Ok(response)

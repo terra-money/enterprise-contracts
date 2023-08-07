@@ -51,6 +51,12 @@ pub struct NftClaim {
     pub release_at: ReleaseAt,
 }
 
+#[cw_serde]
+pub struct StakedNftsParams {
+    pub start_after: Option<NftTokenId>,
+    pub limit: Option<u32>,
+}
+
 ////// Responses
 
 #[cw_serde]
@@ -69,4 +75,9 @@ pub struct UserNftStakeResponse {
 #[cw_serde]
 pub struct ClaimsResponse {
     pub claims: Vec<NftClaim>,
+}
+
+#[cw_serde]
+pub struct StakedNftsResponse {
+    pub nfts: Vec<NftTokenId>,
 }
