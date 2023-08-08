@@ -24,7 +24,7 @@ pub struct UnstakeMsg {
 
 #[cw_serde]
 pub struct ClaimMsg {
-    pub user: String,
+    pub user: Option<String>,
 }
 
 #[cw_serde]

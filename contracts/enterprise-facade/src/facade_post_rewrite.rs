@@ -5,9 +5,9 @@ use cw_utils::Expiration::Never;
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimAsset,
     ClaimsParams, ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
-    DaoGovConfig, DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, ExecuteProposalMsg,
-    ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
-    MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
+    DaoGovConfig, DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomUserStake,
+    ExecuteProposalMsg, ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
     NftWhitelistResponse, Proposal, ProposalActionType, ProposalParams, ProposalResponse,
     ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
     ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
@@ -85,6 +85,10 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
 
         // get the membership contract, which actually used to mean the CW20 / CW721 contract, not the new membership contracts
         let dao_membership_contract = match dao_type {
+            DaoType::Denom => {
+                // doesn't make too much sense, but kept for backwards-compatibility since this best fits what was the previous behavior
+                self.enterprise_address.clone()
+            }
             DaoType::Token => {
                 let token_config: TokenConfigResponse = qctx.deps.querier.query_wasm_smart(
                     gov_config.dao_membership_contract.to_string(),
@@ -420,6 +424,18 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
         match self.get_dao_type(qctx.deps)? {
+            DaoType::Denom => {
+                let denom_stake: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
+                    membership_contract.to_string(),
+                    &UserWeight(UserWeightParams { user: params.user }),
+                )?;
+
+                Ok(UserStakeResponse {
+                    user_stake: UserStake::Denom(DenomUserStake {
+                        amount: denom_stake.weight,
+                    }),
+                })
+            }
             DaoType::Token => {
                 let token_stake: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
@@ -460,7 +476,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         qctx: QueryContext,
     ) -> EnterpriseFacadeResult<TotalStakedAmountResponse> {
         match self.get_dao_type(qctx.deps)? {
-            DaoType::Token | DaoType::Nft => {
+            DaoType::Denom | DaoType::Token | DaoType::Nft => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
                 let total_weight: TotalWeightResponse = qctx.deps.querier.query_wasm_smart(
@@ -505,7 +521,9 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
                     nfts: staked_nfts_response.nfts,
                 })
             }
-            DaoType::Token | DaoType::Multisig => Ok(StakedNftsResponse { nfts: vec![] }),
+            DaoType::Denom | DaoType::Token | DaoType::Multisig => {
+                Ok(StakedNftsResponse { nfts: vec![] })
+            }
         }
     }
 
@@ -517,6 +535,19 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         let dao_type = self.get_dao_type(qctx.deps)?;
 
         match dao_type {
+            DaoType::Denom => {
+                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+
+                let response: token_staking_api::api::ClaimsResponse =
+                    qctx.deps.querier.query_wasm_smart(
+                        membership_contract.to_string(),
+                        &denom_staking_api::msg::QueryMsg::Claims(
+                            denom_staking_api::api::ClaimsParams { user: params.owner },
+                        ),
+                    )?;
+
+                Ok(map_token_claims_response(response))
+            }
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
@@ -555,6 +586,19 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         let dao_type = self.get_dao_type(qctx.deps)?;
 
         match dao_type {
+            DaoType::Denom => {
+                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+
+                let response: token_staking_api::api::ClaimsResponse =
+                    qctx.deps.querier.query_wasm_smart(
+                        membership_contract.to_string(),
+                        &denom_staking_api::msg::QueryMsg::ReleasableClaims(
+                            denom_staking_api::api::ClaimsParams { user: params.owner },
+                        ),
+                    )?;
+
+                Ok(map_token_claims_response(response))
+            }
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
@@ -714,6 +758,16 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         let dao_type = self.get_dao_type(qctx.deps)?;
 
         match dao_type {
+            DaoType::Denom => {
+                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+
+                Ok(AdapterResponse {
+                    target_contract: membership_contract,
+                    msg: serde_json::to_string(&denom_staking_api::msg::ExecuteMsg::Claim(
+                        denom_staking_api::api::ClaimMsg { user: None },
+                    ))?,
+                })
+            }
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 

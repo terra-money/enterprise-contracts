@@ -124,7 +124,11 @@ pub fn update_unlocking_period(
 
 /// Claim any unstaked denoms that are ready to be released.
 pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> DenomStakingResult<Response> {
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    let user = msg
+        .user
+        .map(|user| ctx.deps.api.addr_validate(&user))
+        .transpose()?
+        .unwrap_or_else(|| ctx.info.sender.clone());
 
     let releasable_claims =
         get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;

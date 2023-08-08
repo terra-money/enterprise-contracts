@@ -18,6 +18,7 @@ pub type NftTokenId = String;
 #[cw_serde]
 #[derive(Display)]
 pub enum DaoType {
+    Denom,
     Token,
     Nft,
     Multisig,
@@ -542,9 +543,15 @@ pub struct UserStakeResponse {
 
 #[cw_serde]
 pub enum UserStake {
+    Denom(DenomUserStake),
     Token(TokenUserStake),
     Nft(NftUserStake),
     None,
+}
+
+#[cw_serde]
+pub struct DenomUserStake {
+    pub amount: Uint128,
 }
 
 #[cw_serde]
