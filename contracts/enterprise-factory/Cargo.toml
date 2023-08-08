@@ -53,6 +53,7 @@ enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 token-staking-api = { path = "../../packages/token-staking-api" }
+denom-staking-api = { path = "../../packages/denom-staking-api" }
 multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }
 nft-staking-api = { path = "../../packages/nft-staking-api" }

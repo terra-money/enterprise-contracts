@@ -439,6 +439,11 @@ pub fn create_enterprise_membership_contract(
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
     let msg = match dao_type {
+        DaoType::Denom => {
+            return Err(Std(StdError::generic_err(
+                "Denom membership was not supported prior to this migration!",
+            )))
+        }
         DaoType::Token => {
             let cw20_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 

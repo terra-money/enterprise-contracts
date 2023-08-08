@@ -854,6 +854,7 @@ fn map_nft_claims_response(response: nft_staking_api::api::ClaimsResponse) -> Cl
 
 fn map_dao_type(dao_type: enterprise_protocol::api::DaoType) -> DaoType {
     match dao_type {
+        enterprise_protocol::api::DaoType::Denom => DaoType::Denom,
         enterprise_protocol::api::DaoType::Token => DaoType::Token,
         enterprise_protocol::api::DaoType::Nft => DaoType::Nft,
         enterprise_protocol::api::DaoType::Multisig => DaoType::Multisig,

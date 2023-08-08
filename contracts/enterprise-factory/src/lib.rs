@@ -1,6 +1,7 @@
 extern crate core;
 
 pub mod contract;
+pub mod denom_membership;
 pub mod migration;
 pub mod multisig_membership;
 pub mod nft_membership;

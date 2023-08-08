@@ -65,6 +65,7 @@ pub struct VersionInfo {
     pub enterprise_treasury_code_id: u64,
     pub funds_distributor_code_id: u64,
     pub token_staking_membership_code_id: u64,
+    pub denom_staking_membership_code_id: u64,
     pub nft_staking_membership_code_id: u64,
     pub multisig_membership_code_id: u64,
 }

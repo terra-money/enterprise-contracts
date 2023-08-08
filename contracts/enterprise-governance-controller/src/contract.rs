@@ -74,7 +74,7 @@ use poll_engine_api::api::{
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::ops::{Add, Sub};
-use DaoType::{Multisig, Nft, Token};
+use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
 
@@ -689,6 +689,15 @@ fn update_gov_config(
 
     if let Change(new_unlocking_period) = msg.unlocking_period {
         match dao_info.dao_type {
+            Denom => submsgs.push(SubMsg::new(wasm_execute(
+                component_contracts.membership_contract.to_string(),
+                &denom_staking_api::msg::ExecuteMsg::UpdateUnlockingPeriod(
+                    denom_staking_api::api::UpdateUnlockingPeriodMsg {
+                        new_unlocking_period: Some(new_unlocking_period),
+                    },
+                ),
+                vec![],
+            )?)),
             Token => submsgs.push(SubMsg::new(wasm_execute(
                 component_contracts.membership_contract.to_string(),
                 &token_staking_api::msg::ExecuteMsg::UpdateUnlockingPeriod(

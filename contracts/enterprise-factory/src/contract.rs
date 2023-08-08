@@ -1,3 +1,4 @@
+use crate::denom_membership::instantiate_denom_staking_membership_contract;
 use crate::migration::migrate_config;
 use crate::multisig_membership::{
     import_cw3_membership, instantiate_multisig_membership_contract,
@@ -43,7 +44,9 @@ use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
 use membership_common_api::api::WeightChangeHookMsg;
-use CreateDaoMembershipMsg::{ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewMultisig};
+use CreateDaoMembershipMsg::{
+    ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewDenom, NewMultisig,
+};
 use ExecuteMsg::CreateDao;
 
 // version info for migration info
@@ -483,6 +486,12 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             );
 
             let membership_submsg = match create_dao_msg.dao_membership {
+                NewDenom(msg) => instantiate_denom_staking_membership_contract(
+                    deps.branch(),
+                    msg.denom,
+                    msg.unlocking_period,
+                    enterprise_governance_controller_contract.to_string(),
+                )?,
                 ImportCw20(msg) => import_cw20_membership(
                     deps.branch(),
                     msg,

@@ -38,6 +38,7 @@ pub struct CreateDaoMsg {
 
 #[cw_serde]
 pub enum CreateDaoMembershipMsg {
+    NewDenom(NewDenomMembershipMsg),
     ImportCw20(ImportCw20MembershipMsg),
     NewCw20(Box<NewCw20MembershipMsg>),
     ImportCw721(ImportCw721MembershipMsg),
@@ -64,6 +65,12 @@ pub struct NewCw20MembershipMsg {
     pub initial_dao_balance: Option<Uint128>,
     pub token_mint: Option<MinterResponse>,
     pub token_marketing: Option<TokenMarketingInfo>,
+    pub unlocking_period: Duration,
+}
+
+#[cw_serde]
+pub struct NewDenomMembershipMsg {
+    pub denom: String,
     pub unlocking_period: Duration,
 }
 

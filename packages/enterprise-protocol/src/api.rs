@@ -8,6 +8,7 @@ use strum_macros::Display;
 #[cw_serde]
 #[derive(Display)]
 pub enum DaoType {
+    Denom,
     Token,
     Nft,
     Multisig,
