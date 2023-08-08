@@ -3,14 +3,14 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
-use membership_common::admin::update_admin;
+use membership_common::admin::{query_admin, update_admin};
 use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use token_staking_impl::execute::{claim, receive_cw20, unstake, update_unlocking_period};
 use token_staking_impl::query::{
-    query_admin, query_claims, query_members, query_releasable_claims, query_token_config,
-    query_total_weight, query_user_weight,
+    query_claims, query_members, query_releasable_claims, query_token_config, query_total_weight,
+    query_user_weight,
 };
 
 // version info for migration info

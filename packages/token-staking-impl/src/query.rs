@@ -5,26 +5,19 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
-use membership_common::admin::ADMIN;
 use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
 };
 use membership_common_api::api::{
-    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
-    UserWeightParams, UserWeightResponse,
+    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
+    UserWeightResponse,
 };
 use token_staking_api::api::{ClaimsParams, ClaimsResponse, TokenConfigResponse};
 use token_staking_api::error::TokenStakingResult;
 
 const MAX_QUERY_LIMIT: u8 = 100;
 const DEFAULT_QUERY_LIMIT: u8 = 50;
-
-pub fn query_admin(qctx: &QueryContext) -> TokenStakingResult<AdminResponse> {
-    let admin = ADMIN.load(qctx.deps.storage)?;
-
-    Ok(AdminResponse { admin })
-}
 
 pub fn query_token_config(qctx: &QueryContext) -> TokenStakingResult<TokenConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;

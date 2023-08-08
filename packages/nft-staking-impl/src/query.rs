@@ -7,14 +7,13 @@ use cosmwasm_std::{Addr, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use cw_utils::Expiration;
 use itertools::Itertools;
-use membership_common::admin::ADMIN;
 use membership_common::member_weights::{get_member_weight, MEMBER_WEIGHTS};
 use membership_common::total_weight::{
     load_total_weight, load_total_weight_at_height, load_total_weight_at_time,
 };
 use membership_common_api::api::{
-    AdminResponse, MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse,
-    UserWeightParams, UserWeightResponse,
+    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
+    UserWeightResponse,
 };
 use nft_staking_api::api::{
     ClaimsParams, ClaimsResponse, NftConfigResponse, NftTokenId, StakedNftsParams,
@@ -24,12 +23,6 @@ use nft_staking_api::error::NftStakingResult;
 
 const MAX_QUERY_LIMIT: u8 = 100;
 const DEFAULT_QUERY_LIMIT: u8 = 50;
-
-pub fn query_admin(qctx: &QueryContext) -> NftStakingResult<AdminResponse> {
-    let admin = ADMIN.load(qctx.deps.storage)?;
-
-    Ok(AdminResponse { admin })
-}
 
 pub fn query_nft_cnfig(qctx: &QueryContext) -> NftStakingResult<NftConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;

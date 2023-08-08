@@ -1,7 +1,7 @@
-use common::cw::Context;
+use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, Response};
 use cw_storage_plus::Item;
-use membership_common_api::api::UpdateAdminMsg;
+use membership_common_api::api::{AdminResponse, UpdateAdminMsg};
 use membership_common_api::error::MembershipError::Unauthorized;
 use membership_common_api::error::MembershipResult;
 
@@ -29,4 +29,10 @@ pub fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> MembershipResult<
     ADMIN.save(ctx.deps.storage, &new_admin)?;
 
     Ok(Response::new().add_attribute("action", "update_admin"))
+}
+
+pub fn query_admin(qctx: &QueryContext) -> MembershipResult<AdminResponse> {
+    let admin = ADMIN.load(qctx.deps.storage)?;
+
+    Ok(AdminResponse { admin })
 }
