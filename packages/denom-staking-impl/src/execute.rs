@@ -16,7 +16,7 @@ use membership_common::total_weight::{decrement_total_weight, increment_total_we
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
 
-fn stake_denom(ctx: &mut Context, user: Option<String>) -> DenomStakingResult<Response> {
+pub fn stake_denom(ctx: &mut Context, user: Option<String>) -> DenomStakingResult<Response> {
     if ctx.info.funds.len() != 1 {
         return Err(MultipleDenomsBeingStaked);
     }
