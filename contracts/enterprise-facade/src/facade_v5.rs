@@ -1,4 +1,7 @@
 use crate::facade::EnterpriseFacade;
+use crate::facade_v5::ExecuteV5Msg::{
+    CastCouncilVote, CastVote, Claim, CreateCouncilProposal, CreateProposal, Unstake,
+};
 use crate::facade_v5::QueryV5Msg::{
     AssetWhitelist, Claims, DaoInfo, ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist,
     Proposal, ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
@@ -9,13 +12,13 @@ use cosmwasm_schema::serde::de::DeserializeOwned;
 use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{wasm_execute, Addr, Deps, Response, SubMsg};
 use enterprise_facade_api::api::{
-    AssetWhitelistParams, AssetWhitelistResponse, ClaimsParams, ClaimsResponse, DaoInfoResponse,
-    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    UserStakeParams, UserStakeResponse,
+    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
+    ClaimsResponse, CreateProposalMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
+    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
+    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
+    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
+    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use QueryV5Msg::ProposalStatus;
@@ -156,6 +159,68 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
     ) -> EnterpriseFacadeResult<ClaimsResponse> {
         self.query_enterprise_contract(qctx.deps, &ReleasableClaims(params))
     }
+
+    fn adapt_create_proposal(
+        &self,
+        _: QueryContext,
+        params: CreateProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Ok(AdapterResponse {
+            target_contract: self.enterprise_address.clone(),
+            msg: serde_json::to_string(&CreateProposal(params))?,
+        })
+    }
+
+    fn adapt_create_council_proposal(
+        &self,
+        _: QueryContext,
+        params: CreateProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Ok(AdapterResponse {
+            target_contract: self.enterprise_address.clone(),
+            msg: serde_json::to_string(&CreateCouncilProposal(params))?,
+        })
+    }
+
+    fn adapt_cast_vote(
+        &self,
+        _: QueryContext,
+        params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Ok(AdapterResponse {
+            target_contract: self.enterprise_address.clone(),
+            msg: serde_json::to_string(&CastVote(params))?,
+        })
+    }
+
+    fn adapt_cast_council_vote(
+        &self,
+        _: QueryContext,
+        params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Ok(AdapterResponse {
+            target_contract: self.enterprise_address.clone(),
+            msg: serde_json::to_string(&CastCouncilVote(params))?,
+        })
+    }
+
+    fn adapt_unstake(
+        &self,
+        _: QueryContext,
+        params: UnstakeMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Ok(AdapterResponse {
+            target_contract: self.enterprise_address.clone(),
+            msg: serde_json::to_string(&Unstake(params))?,
+        })
+    }
+
+    fn adapt_claim(&self, _: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
+        Ok(AdapterResponse {
+            target_contract: self.enterprise_address.clone(),
+            msg: serde_json::to_string(&Claim {})?,
+        })
+    }
 }
 
 impl EnterpriseFacadeV5 {
@@ -170,11 +235,23 @@ impl EnterpriseFacadeV5 {
     }
 }
 
+/// This is what execute messages for Enterprise contract looked like for v5.
 #[cw_serde]
 enum ExecuteV5Msg {
+    // facaded part
     ExecuteProposal(ExecuteProposalMsg),
+    // adapted part
+    CreateProposal(CreateProposalMsg),
+    CreateCouncilProposal(CreateProposalMsg),
+    CastVote(CastVoteMsg),
+    CastCouncilVote(CastVoteMsg),
+    Unstake(UnstakeMsg),
+    Claim {},
 }
 
+/// This is what query messages for Enterprise contract looked like for v5.
+/// Looks almost the same as the API for enterprise-facade, but the facade also takes target
+/// Enterprise contract address in each of the queries.
 #[cw_serde]
 pub enum QueryV5Msg {
     DaoInfo {},

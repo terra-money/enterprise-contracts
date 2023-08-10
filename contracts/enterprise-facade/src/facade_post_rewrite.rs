@@ -3,15 +3,16 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::{wasm_execute, Addr, Decimal, Deps, Response, SubMsg, Uint128, Uint64};
 use cw_utils::Expiration::Never;
 use enterprise_facade_api::api::{
-    AssetWhitelistParams, AssetWhitelistResponse, Claim, ClaimAsset, ClaimsParams, ClaimsResponse,
-    Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil, DaoGovConfig, DaoInfoResponse, DaoMetadata,
-    DaoSocialData, DaoType, ExecuteProposalMsg, ListMultisigMembersMsg, Logo, MemberInfoResponse,
-    MemberVoteParams, MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake,
-    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalActionType, ProposalParams,
-    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
-    TokenUserStake, TotalStakedAmountResponse, UserStake, UserStakeParams, UserStakeResponse,
+    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimAsset,
+    ClaimsParams, ClaimsResponse, CreateProposalMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
+    DaoGovConfig, DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, ExecuteProposalMsg,
+    ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
+    MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
+    NftWhitelistResponse, Proposal, ProposalActionType, ProposalParams, ProposalResponse,
+    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
+    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse, TokenUserStake,
+    TotalStakedAmountResponse, UnstakeMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -182,7 +183,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         let component_contracts = self.component_contracts(qctx.deps)?;
         let user_weight: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
             component_contracts.membership_contract.to_string(),
-            &membership_common_api::msg::QueryMsg::UserWeight(UserWeightParams {
+            &UserWeight(UserWeightParams {
                 user: msg.member_address,
             }),
         )?;
@@ -221,7 +222,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
 
                 let members_response: MembersResponse = qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
-                    &membership_common_api::msg::QueryMsg::Members(MembersParams {
+                    &Members(MembersParams {
                         start_after: msg.start_after,
                         limit: msg.limit,
                     }),
@@ -581,6 +582,167 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
                 Ok(map_nft_claims_response(response))
             }
             DaoType::Multisig => Ok(ClaimsResponse { claims: vec![] }),
+        }
+    }
+
+    fn adapt_create_proposal(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let governance_controller = self
+            .component_contracts(qctx.deps)?
+            .enterprise_governance_controller_contract;
+
+        Ok(AdapterResponse {
+            target_contract: governance_controller,
+            msg: serde_json::to_string(
+                &enterprise_governance_controller_api::msg::ExecuteMsg::CreateProposal(
+                    enterprise_governance_controller_api::api::CreateProposalMsg {
+                        title: params.title,
+                        description: params.description,
+                        proposal_actions: params.proposal_actions,
+                    },
+                ),
+            )?,
+        })
+    }
+
+    fn adapt_create_council_proposal(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let governance_controller = self
+            .component_contracts(qctx.deps)?
+            .enterprise_governance_controller_contract;
+
+        Ok(AdapterResponse {
+            target_contract: governance_controller,
+            msg: serde_json::to_string(
+                &enterprise_governance_controller_api::msg::ExecuteMsg::CreateCouncilProposal(
+                    enterprise_governance_controller_api::api::CreateProposalMsg {
+                        title: params.title,
+                        description: params.description,
+                        proposal_actions: params.proposal_actions,
+                    },
+                ),
+            )?,
+        })
+    }
+
+    fn adapt_cast_vote(
+        &self,
+        qctx: QueryContext,
+        params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let governance_controller = self
+            .component_contracts(qctx.deps)?
+            .enterprise_governance_controller_contract;
+
+        Ok(AdapterResponse {
+            target_contract: governance_controller,
+            msg: serde_json::to_string(
+                &enterprise_governance_controller_api::msg::ExecuteMsg::CastVote(
+                    enterprise_governance_controller_api::api::CastVoteMsg {
+                        proposal_id: params.proposal_id,
+                        outcome: params.outcome,
+                    },
+                ),
+            )?,
+        })
+    }
+
+    fn adapt_cast_council_vote(
+        &self,
+        qctx: QueryContext,
+        params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let governance_controller = self
+            .component_contracts(qctx.deps)?
+            .enterprise_governance_controller_contract;
+
+        Ok(AdapterResponse {
+            target_contract: governance_controller,
+            msg: serde_json::to_string(
+                &enterprise_governance_controller_api::msg::ExecuteMsg::CastCouncilVote(
+                    enterprise_governance_controller_api::api::CastVoteMsg {
+                        proposal_id: params.proposal_id,
+                        outcome: params.outcome,
+                    },
+                ),
+            )?,
+        })
+    }
+
+    fn adapt_unstake(
+        &self,
+        qctx: QueryContext,
+        params: UnstakeMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+
+        match params {
+            UnstakeMsg::Cw20(msg) => {
+                // TODO: send user as None after we add support
+                Ok(AdapterResponse {
+                    target_contract: membership_contract,
+                    msg: serde_json::to_string(&token_staking_api::msg::ExecuteMsg::Unstake(
+                        token_staking_api::api::UnstakeMsg {
+                            user: "".to_string(),
+                            amount: msg.amount,
+                        },
+                    ))?,
+                })
+            }
+            UnstakeMsg::Cw721(msg) => {
+                // TODO: send user as None after we add support
+                Ok(AdapterResponse {
+                    target_contract: membership_contract,
+                    msg: serde_json::to_string(&nft_staking_api::msg::ExecuteMsg::Unstake(
+                        nft_staking_api::api::UnstakeMsg {
+                            user: "".to_string(),
+                            nft_ids: msg.tokens,
+                        },
+                    ))?,
+                })
+            }
+        }
+    }
+
+    fn adapt_claim(&self, qctx: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
+        let dao_type = self.get_dao_type(qctx.deps)?;
+
+        match dao_type {
+            DaoType::Token => {
+                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+
+                // TODO: send user as None after we add support
+                Ok(AdapterResponse {
+                    target_contract: membership_contract,
+                    msg: serde_json::to_string(&token_staking_api::msg::ExecuteMsg::Claim(
+                        token_staking_api::api::ClaimMsg {
+                            user: "".to_string(),
+                        },
+                    ))?,
+                })
+            }
+            DaoType::Nft => {
+                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+
+                // TODO: send user as None after we add support
+                Ok(AdapterResponse {
+                    target_contract: membership_contract,
+                    msg: serde_json::to_string(&nft_staking_api::msg::ExecuteMsg::Claim(
+                        nft_staking_api::api::ClaimMsg {
+                            user: "".to_string(),
+                        },
+                    ))?,
+                })
+            }
+            DaoType::Multisig => Err(Dao(UnsupportedOperationForDaoType {
+                dao_type: dao_type.to_string(),
+            })),
         }
     }
 }

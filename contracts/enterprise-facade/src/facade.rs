@@ -4,13 +4,13 @@ use crate::facade_v5::QueryV5Msg::DaoInfo;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, Deps, Response, StdResult};
 use enterprise_facade_api::api::{
-    AssetWhitelistParams, AssetWhitelistResponse, ClaimsParams, ClaimsResponse, DaoInfoResponse,
-    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    UserStakeParams, UserStakeResponse,
+    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
+    ClaimsResponse, CreateProposalMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
+    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
+    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
+    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
+    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeError::CannotCreateFacade;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
@@ -108,6 +108,38 @@ pub trait EnterpriseFacade {
         qctx: QueryContext,
         params: ClaimsParams,
     ) -> EnterpriseFacadeResult<ClaimsResponse>;
+
+    fn adapt_create_proposal(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_create_council_proposal(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_cast_vote(
+        &self,
+        qctx: QueryContext,
+        params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_cast_council_vote(
+        &self,
+        qctx: QueryContext,
+        params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_unstake(
+        &self,
+        qctx: QueryContext,
+        params: UnstakeMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_claim(&self, qctx: QueryContext) -> EnterpriseFacadeResult<AdapterResponse>;
 }
 
 /// Get the correct facade implementation for the given address.

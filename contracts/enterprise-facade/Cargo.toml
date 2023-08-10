@@ -45,3 +45,4 @@ enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }
+serde_json = "1.0"

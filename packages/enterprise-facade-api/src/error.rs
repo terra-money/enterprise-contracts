@@ -37,6 +37,12 @@ impl From<OverflowError> for EnterpriseFacadeError {
     }
 }
 
+impl From<serde_json::Error> for EnterpriseFacadeError {
+    fn from(e: serde_json::Error) -> Self {
+        Std(StdError::generic_err(e.to_string()))
+    }
+}
+
 /// Old Enterprise versions used this error.
 #[derive(Error, Debug, PartialEq)]
 pub enum DaoError {

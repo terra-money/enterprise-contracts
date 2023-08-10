@@ -1,9 +1,8 @@
 use common::commons::ModifyValue;
 use common::cw::ReleaseAt;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Decimal, StdError, StdResult, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
-use cw721::TokensResponse;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_governance_controller_api::api::ProposalAction;
@@ -579,24 +578,11 @@ pub struct ClaimsParams {
     pub owner: String,
 }
 
-/// Used as an alternative to CW721 spec's TokensResponse, because Talis doesn't actually
-/// implement it correctly (they return 'ids' instead of 'tokens').
+/// Used to enable adapter-like behavior, where this contract can tell its consumers what call to
+/// make with which pre-compiled message in order to achieve desired behavior, regardless of
+/// Enterprise version being used.
 #[cw_serde]
-pub struct TalisFriendlyTokensResponse {
-    pub tokens: Option<Vec<String>>,
-    pub ids: Option<Vec<String>>,
-}
-
-impl TalisFriendlyTokensResponse {
-    pub fn to_tokens_response(self) -> StdResult<TokensResponse> {
-        match self.tokens {
-            None => match self.ids {
-                None => Err(StdError::generic_err(
-                    "Invalid CW721 TokensResponse, neither 'tokens' nor 'ids' field found",
-                )),
-                Some(ids) => Ok(TokensResponse { tokens: ids }),
-            },
-            Some(tokens) => Ok(TokensResponse { tokens }),
-        }
-    }
+pub struct AdapterResponse {
+    pub target_contract: Addr,
+    pub msg: String,
 }

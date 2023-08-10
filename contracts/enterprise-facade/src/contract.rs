@@ -111,6 +111,30 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.query_releasable_claims(qctx, params)?)?
         }
+        QueryMsg::CreateProposalAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_create_proposal(qctx, params)?)?
+        }
+        QueryMsg::CreateCouncilProposalAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_create_council_proposal(qctx, params)?)?
+        }
+        QueryMsg::CastVote { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_cast_vote(qctx, params)?)?
+        }
+        QueryMsg::CastCouncilVote { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_cast_council_vote(qctx, params)?)?
+        }
+        QueryMsg::Unstake { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_unstake(qctx, params)?)?
+        }
+        QueryMsg::Claim { contract } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_claim(qctx)?)?
+        }
     };
     Ok(response)
 }

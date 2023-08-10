@@ -1,11 +1,11 @@
 use crate::api::{
-    AssetWhitelistParams, AssetWhitelistResponse, ClaimsParams, ClaimsResponse, DaoInfoResponse,
-    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    UserStakeParams, UserStakeResponse,
+    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
+    ClaimsResponse, CreateProposalMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
+    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
+    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
+    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
+    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
@@ -93,4 +93,30 @@ pub enum QueryMsg {
         contract: Addr,
         params: ClaimsParams,
     },
+
+    // Adapter queries - those are designed to be called to determine which contract should be
+    // called with which message to achieve the desired result
+    #[returns(AdapterResponse)]
+    CreateProposalAdapted {
+        contract: Addr,
+        params: CreateProposalMsg,
+    },
+
+    #[returns(AdapterResponse)]
+    CreateCouncilProposalAdapted {
+        contract: Addr,
+        params: CreateProposalMsg,
+    },
+
+    #[returns(AdapterResponse)]
+    CastVote { contract: Addr, params: CastVoteMsg },
+
+    #[returns(AdapterResponse)]
+    CastCouncilVote { contract: Addr, params: CastVoteMsg },
+
+    #[returns(AdapterResponse)]
+    Unstake { contract: Addr, params: UnstakeMsg },
+
+    #[returns(AdapterResponse)]
+    Claim { contract: Addr },
 }
