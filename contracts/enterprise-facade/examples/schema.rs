@@ -7,11 +7,7 @@ use enterprise_facade_api::api::{
     ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, StakedNftsResponse,
     TotalStakedAmountResponse, UserStakeResponse,
 };
-use enterprise_governance_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use poll_engine_api::api::{
-    PollResponse, PollStatusResponse, PollVoterResponse, PollVotersResponse, PollsResponse,
-    VoterResponse,
-};
+use enterprise_facade_api::msg::{InstantiateMsg, ExecuteMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -22,7 +18,6 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(MigrateMsg), &out_dir);
     export_schema(&schema_for!(AdapterResponse), &out_dir);
     export_schema(&schema_for!(StakedNftsResponse), &out_dir);
     export_schema(&schema_for!(MultisigMembersResponse), &out_dir);
