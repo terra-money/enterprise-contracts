@@ -7,7 +7,6 @@ use crate::validate::{
     apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
     validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao,
 };
-use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
@@ -52,10 +51,10 @@ use enterprise_governance_controller_api::response::{
     reply_create_poll_response,
 };
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, DaoType, SetAttestationMsg, UpdateMetadataMsg,
-    UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoType, IsRestrictedUserParams,
+    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
-use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
+use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
 use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
 use enterprise_treasury_api::msg::ExecuteMsg::Spend;
 use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
@@ -75,7 +74,7 @@ use poll_engine_api::api::{
 };
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
-use std::ops::{Add, Not, Sub};
+use std::ops::{Add, Sub};
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
@@ -1467,19 +1466,14 @@ fn query_council_total_weight(
 /// Checks whether the user should be restricted from participating, i.e. there is an attestation
 /// that they didn't sign.
 fn is_restricted_user(deps: Deps, user: String) -> GovernanceControllerResult<bool> {
-    let attestation_contract = query_enterprise_components(deps)?.attestation_contract;
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
 
-    match attestation_contract {
-        None => Ok(false),
-        Some(attestation_addr) => {
-            let has_user_signed_response: HasUserSignedResponse = deps.querier.query_wasm_smart(
-                attestation_addr.to_string(),
-                &attestation_api::msg::QueryMsg::HasUserSigned(HasUserSignedParams { user }),
-            )?;
+    let is_restricted_user: IsRestrictedUserResponse = deps.querier.query_wasm_smart(
+        enterprise_contract.to_string(),
+        &IsRestrictedUser(IsRestrictedUserParams { user }),
+    )?;
 
-            Ok(has_user_signed_response.has_signed.not())
-        }
-    }
+    Ok(is_restricted_user.is_restricted)
 }
 
 fn unrestricted_users_only(deps: Deps, user: String) -> GovernanceControllerResult<()> {

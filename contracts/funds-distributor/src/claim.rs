@@ -3,17 +3,14 @@ use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::calculate_user_reward;
 use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES};
 use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
-use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
-use attestation_api::msg::QueryMsg::HasUserSigned;
 use common::cw::Context;
 use cosmwasm_std::{Deps, Response, SubMsg, Uint128};
 use cw_asset::Asset;
-use enterprise_protocol::api::ComponentContractsResponse;
-use enterprise_protocol::msg::QueryMsg::ComponentContracts;
+use enterprise_protocol::api::{IsRestrictedUserParams, IsRestrictedUserResponse};
+use enterprise_protocol::msg::QueryMsg::IsRestrictedUser;
 use funds_distributor_api::api::ClaimRewardsMsg;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_claim_rewards_response;
-use std::ops::Not;
 use DistributorError::RestrictedUser;
 
 /// Attempt to claim rewards for the given parameters.
@@ -104,19 +101,10 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
 fn is_restricted_user(deps: Deps, user: String) -> DistributorResult<bool> {
     let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
 
-    let component_contracts_response: ComponentContractsResponse = deps
-        .querier
-        .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
+    let is_restricted_user: IsRestrictedUserResponse = deps.querier.query_wasm_smart(
+        enterprise_contract.to_string(),
+        &IsRestrictedUser(IsRestrictedUserParams { user }),
+    )?;
 
-    match component_contracts_response.attestation_contract {
-        None => Ok(false),
-        Some(attestation_contract) => {
-            let has_user_signed: HasUserSignedResponse = deps.querier.query_wasm_smart(
-                attestation_contract.to_string(),
-                &HasUserSigned(HasUserSignedParams { user }),
-            )?;
-
-            Ok(has_user_signed.has_signed.not())
-        }
-    }
+    Ok(is_restricted_user.is_restricted)
 }
