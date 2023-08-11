@@ -18,13 +18,12 @@ pub struct UserClaim {
 
 #[cw_serde]
 pub struct UnstakeMsg {
-    pub user: String,
     pub amount: Uint128,
 }
 
 #[cw_serde]
 pub struct ClaimMsg {
-    pub user: String,
+    pub user: Option<String>,
 }
 
 #[cw_serde]

@@ -17,13 +17,12 @@ pub struct ReceiveNftMsg {
 
 #[cw_serde]
 pub struct UnstakeMsg {
-    pub user: String,
     pub nft_ids: Vec<NftTokenId>,
 }
 
 #[cw_serde]
 pub struct ClaimMsg {
-    pub user: String,
+    pub user: Option<String>,
 }
 
 #[cw_serde]

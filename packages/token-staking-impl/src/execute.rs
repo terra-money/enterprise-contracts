@@ -129,12 +129,9 @@ fn add_token_claims(
     Ok(Response::new().add_attribute("action", "add_claims"))
 }
 
-/// Unstake tokens. Only admin can perform this on behalf of a user.
+/// Unstake tokens previously staked by the sender.
 pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> TokenStakingResult<Response> {
-    // only governance controller can execute this
-    enterprise_governance_controller_only(ctx, None)?;
-
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    let user = ctx.info.sender.clone();
 
     let user_stake = get_member_weight(ctx.deps.storage, user.clone())?;
 
@@ -199,7 +196,11 @@ pub fn update_unlocking_period(
 
 /// Claim any unstaked tokens that are ready to be released.
 pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> TokenStakingResult<Response> {
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    let user = msg
+        .user
+        .map(|user| ctx.deps.api.addr_validate(&user))
+        .transpose()?
+        .unwrap_or(ctx.info.sender.clone());
 
     let releasable_claims =
         get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;

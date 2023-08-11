@@ -99,12 +99,9 @@ fn add_nft_claim(
         .add_attribute("claim_id", claim.id.to_string()))
 }
 
-/// Unstake NFTs. Only admin can perform this on behalf of a user.
+/// Unstake NFTs staked by the sender.
 pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> NftStakingResult<Response> {
-    // only governance controller can execute this
-    enterprise_governance_controller_only(ctx, None)?;
-
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    let user = ctx.info.sender.clone();
 
     let old_weight = get_member_weight(ctx.deps.storage, user.clone())?;
 
@@ -185,7 +182,11 @@ pub fn update_unlocking_period(
 
 /// Claim any unstaked items that are ready to be released.
 pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> NftStakingResult<Response> {
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    let user = msg
+        .user
+        .map(|user| ctx.deps.api.addr_validate(&user))
+        .transpose()?
+        .unwrap_or(ctx.info.sender.clone());
 
     let releasable_claims =
         get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;

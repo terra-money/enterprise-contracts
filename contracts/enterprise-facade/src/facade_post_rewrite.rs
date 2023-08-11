@@ -727,30 +727,20 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
         match params {
-            UnstakeMsg::Cw20(msg) => {
-                // TODO: send user as None after we add support
-                Ok(AdapterResponse {
-                    target_contract: membership_contract,
-                    msg: serde_json::to_string(&token_staking_api::msg::ExecuteMsg::Unstake(
-                        token_staking_api::api::UnstakeMsg {
-                            user: "".to_string(),
-                            amount: msg.amount,
-                        },
-                    ))?,
-                })
-            }
-            UnstakeMsg::Cw721(msg) => {
-                // TODO: send user as None after we add support
-                Ok(AdapterResponse {
-                    target_contract: membership_contract,
-                    msg: serde_json::to_string(&nft_staking_api::msg::ExecuteMsg::Unstake(
-                        nft_staking_api::api::UnstakeMsg {
-                            user: "".to_string(),
-                            nft_ids: msg.tokens,
-                        },
-                    ))?,
-                })
-            }
+            UnstakeMsg::Cw20(msg) => Ok(AdapterResponse {
+                target_contract: membership_contract,
+                msg: serde_json::to_string(&token_staking_api::msg::ExecuteMsg::Unstake(
+                    token_staking_api::api::UnstakeMsg { amount: msg.amount },
+                ))?,
+            }),
+            UnstakeMsg::Cw721(msg) => Ok(AdapterResponse {
+                target_contract: membership_contract,
+                msg: serde_json::to_string(&nft_staking_api::msg::ExecuteMsg::Unstake(
+                    nft_staking_api::api::UnstakeMsg {
+                        nft_ids: msg.tokens,
+                    },
+                ))?,
+            }),
         }
     }
 
@@ -771,13 +761,10 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
-                // TODO: send user as None after we add support
                 Ok(AdapterResponse {
                     target_contract: membership_contract,
                     msg: serde_json::to_string(&token_staking_api::msg::ExecuteMsg::Claim(
-                        token_staking_api::api::ClaimMsg {
-                            user: "".to_string(),
-                        },
+                        token_staking_api::api::ClaimMsg { user: None },
                     ))?,
                 })
             }
@@ -788,9 +775,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
                 Ok(AdapterResponse {
                     target_contract: membership_contract,
                     msg: serde_json::to_string(&nft_staking_api::msg::ExecuteMsg::Claim(
-                        nft_staking_api::api::ClaimMsg {
-                            user: "".to_string(),
-                        },
+                        nft_staking_api::api::ClaimMsg { user: None },
                     ))?,
                 })
             }

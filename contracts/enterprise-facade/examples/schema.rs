@@ -7,7 +7,7 @@ use enterprise_facade_api::api::{
     ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, StakedNftsResponse,
     TotalStakedAmountResponse, UserStakeResponse,
 };
-use enterprise_facade_api::msg::{InstantiateMsg, ExecuteMsg, QueryMsg};
+use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
