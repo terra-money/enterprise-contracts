@@ -10,12 +10,12 @@ use crate::validate::{
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
-    coin, entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64,
+    entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
-use cw_asset::{Asset, AssetInfoBase};
+use cw_asset::Asset;
 use cw_utils::Expiration;
 use cw_utils::Expiration::Never;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
@@ -58,8 +58,6 @@ use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrict
 use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
 use enterprise_treasury_api::msg::ExecuteMsg::Spend;
 use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
-use funds_distributor_api::msg::Cw20HookMsg::Distribute;
-use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
 use membership_common_api::api::{
     TotalWeightParams, TotalWeightResponse, UserWeightChange, UserWeightParams, UserWeightResponse,
     WeightsChangedMsg,
@@ -847,34 +845,24 @@ fn distribute_funds(
     ctx: &mut Context,
     msg: DistributeFundsMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let mut native_funds: Vec<Coin> = vec![];
-    let mut submsgs: Vec<SubMsg> = vec![];
+    let enterprise_components = query_enterprise_components(ctx.deps.as_ref())?;
 
-    let funds_distributor =
-        query_enterprise_components(ctx.deps.as_ref())?.funds_distributor_contract;
+    let submsg = SubMsg::new(wasm_execute(
+        enterprise_components
+            .enterprise_treasury_contract
+            .to_string(),
+        &enterprise_treasury_api::msg::ExecuteMsg::DistributeFunds(
+            enterprise_treasury_api::api::DistributeFundsMsg {
+                funds: msg.funds,
+                funds_distributor_contract: enterprise_components
+                    .funds_distributor_contract
+                    .to_string(),
+            },
+        ),
+        vec![],
+    )?);
 
-    for asset in msg.funds {
-        match asset.info {
-            AssetInfoBase::Native(denom) => native_funds.push(coin(asset.amount.u128(), denom)),
-            AssetInfoBase::Cw20(_) => submsgs.push(SubMsg::new(
-                asset.send_msg(funds_distributor.to_string(), to_binary(&Distribute {})?)?,
-            )),
-            AssetInfoBase::Cw1155(_, _) => {
-                return Err(Std(StdError::generic_err(
-                    "cw1155 assets are not supported at this time",
-                )))
-            }
-            _ => return Err(Std(StdError::generic_err("unknown asset type"))),
-        }
-    }
-
-    submsgs.push(SubMsg::new(wasm_execute(
-        funds_distributor.to_string(),
-        &DistributeNative {},
-        native_funds,
-    )?));
-
-    Ok(submsgs)
+    Ok(vec![submsg])
 }
 
 fn update_minimum_weight_for_rewards(

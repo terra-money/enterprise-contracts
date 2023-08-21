@@ -124,7 +124,7 @@ pub fn validate_proposal_actions(
             UpdateCouncil(msg) => {
                 validate_dao_council(deps, msg.dao_council.clone())?;
             }
-            DistributeFunds(msg) => validate_distribute_funds(msg)?,
+            DistributeFunds(msg) => validate_distribute_funds(deps, msg)?,
             UpdateGovConfig(msg) => {
                 let gov_config = GOV_CONFIG.load(deps.storage)?;
 
@@ -408,11 +408,17 @@ pub fn validate_dao_council(
     }
 }
 
-pub fn validate_distribute_funds(msg: &DistributeFundsMsg) -> GovernanceControllerResult<()> {
+pub fn validate_distribute_funds(
+    deps: Deps,
+    msg: &DistributeFundsMsg,
+) -> GovernanceControllerResult<()> {
     for asset in &msg.funds {
-        match asset.info {
-            AssetInfoBase::Native(_) | AssetInfoBase::Cw20(_) => {
-                // no action, those assets are supported
+        match &asset.info {
+            AssetInfoBase::Native(_) => {
+                // no action, native assets are supported
+            }
+            AssetInfoBase::Cw20(addr) => {
+                deps.api.addr_validate(addr)?;
             }
             AssetInfoBase::Cw1155(_, _) => {
                 return Err(Std(StdError::generic_err(

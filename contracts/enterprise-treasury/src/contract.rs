@@ -19,8 +19,6 @@ use cw2::set_contract_version;
 use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
-use enterprise_protocol::api::ComponentContractsResponse;
-use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use enterprise_treasury_api::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
     ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SetAdminMsg, SpendMsg,
@@ -168,12 +166,10 @@ fn distribute_funds(
 ) -> EnterpriseTreasuryResult<Response> {
     admin_only(ctx)?;
 
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
-    let component_contracts: ComponentContractsResponse = ctx
+    let funds_distributor = ctx
         .deps
-        .querier
-        .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
-    let funds_distributor = component_contracts.funds_distributor_contract;
+        .api
+        .addr_validate(&msg.funds_distributor_contract)?;
 
     let mut native_funds: Vec<Coin> = vec![];
     let mut submsgs: Vec<SubMsg> = vec![];

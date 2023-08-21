@@ -1,7 +1,7 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128, Uint64};
-use cw_asset::{Asset, AssetUnchecked};
+use cw_asset::AssetUnchecked;
 use cw_utils::{Duration, Expiration};
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
 use enterprise_treasury_api::api::{UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
@@ -168,7 +168,7 @@ pub struct ModifyMultisigMembershipMsg {
 
 #[cw_serde]
 pub struct DistributeFundsMsg {
-    pub funds: Vec<Asset>,
+    pub funds: Vec<AssetUnchecked>,
 }
 
 #[cw_serde]

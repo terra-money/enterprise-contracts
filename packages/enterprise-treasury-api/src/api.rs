@@ -32,6 +32,7 @@ pub struct SpendMsg {
 #[cw_serde]
 pub struct DistributeFundsMsg {
     pub funds: Vec<AssetUnchecked>,
+    pub funds_distributor_contract: String,
 }
 
 #[cw_serde]
