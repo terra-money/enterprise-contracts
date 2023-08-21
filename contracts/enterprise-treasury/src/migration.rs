@@ -4,7 +4,7 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
     MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
-use crate::state::{Config, CONFIG, ENTERPRISE_CONTRACT};
+use crate::state::{Config, CONFIG};
 use common::cw::Context;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::CosmosMsg::Wasm;
@@ -228,8 +228,6 @@ pub fn enterprise_contract_created(
             ..migration_info
         },
     )?;
-
-    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
     // update enterprise's admin to itself
     let update_enterprise_admin = UpdateAdmin {

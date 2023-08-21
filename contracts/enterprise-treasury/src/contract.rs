@@ -7,7 +7,7 @@ use crate::migration::{
     council_membership_contract_created, enterprise_contract_created, finalize_migration,
     governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
 };
-use crate::state::{Config, CONFIG, ENTERPRISE_CONTRACT, NFT_WHITELIST};
+use crate::state::{Config, CONFIG, NFT_WHITELIST};
 use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::Order::Ascending;
@@ -63,9 +63,6 @@ pub fn instantiate(
             admin: admin.clone(),
         },
     )?;
-
-    let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
-    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
     add_whitelisted_assets(deps.branch(), msg.asset_whitelist.unwrap_or_default())?;
 
@@ -274,11 +271,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseTreasuryResult<Bi
 
 pub fn query_config(qctx: QueryContext) -> EnterpriseTreasuryResult<ConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
 
     Ok(ConfigResponse {
         admin: config.admin,
-        enterprise_contract,
     })
 }
 

@@ -159,16 +159,19 @@ pub fn get_facade(deps: Deps, address: Addr) -> EnterpriseFacadeResult<Box<dyn E
         }))
     } else {
         // if the query failed, this should be the post-rewrite Enterprise treasury, but let's check
-        let treasury_config: StdResult<ConfigResponse> = deps
+        let treasury_config: ConfigResponse = deps
             .querier
-            .query_wasm_smart(address.to_string(), &Config {});
+            .query_wasm_smart(address.to_string(), &Config {})
+            .map_err(|_| CannotCreateFacade)?;
 
-        match treasury_config {
-            Ok(config) => Ok(Box::new(EnterpriseFacadePostRewrite {
-                enterprise_treasury_address: address,
-                enterprise_address: config.enterprise_contract,
-            })),
-            Err(_) => Err(CannotCreateFacade),
-        }
+        let governance_controller_config: enterprise_governance_controller_api::api::ConfigResponse = deps
+            .querier
+            .query_wasm_smart(treasury_config.admin.to_string(), &enterprise_governance_controller_api::msg::QueryMsg::Config {})
+            .map_err(|_| CannotCreateFacade)?;
+
+        Ok(Box::new(EnterpriseFacadePostRewrite {
+            enterprise_treasury_address: address,
+            enterprise_address: governance_controller_config.enterprise_contract,
+        }))
     }
 }

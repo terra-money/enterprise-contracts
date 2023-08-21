@@ -58,7 +58,6 @@ pub struct NftWhitelistParams {
 #[cw_serde]
 pub struct ConfigResponse {
     pub admin: Addr,
-    pub enterprise_contract: Addr,
 }
 
 #[cw_serde]

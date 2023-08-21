@@ -193,6 +193,11 @@ pub struct ExecuteProposalMsg {
 }
 
 #[cw_serde]
+pub struct ConfigResponse {
+    pub enterprise_contract: Addr,
+}
+
+#[cw_serde]
 pub struct GovConfigResponse {
     pub gov_config: GovConfig,
     pub council_gov_config: Option<CouncilGovConfig>,

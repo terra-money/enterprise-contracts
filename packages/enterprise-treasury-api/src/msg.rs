@@ -9,7 +9,6 @@ use cw_asset::AssetInfoUnchecked;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: String,
-    pub enterprise_contract: String,
     pub asset_whitelist: Option<Vec<AssetInfoUnchecked>>,
     pub nft_whitelist: Option<Vec<String>>,
 }

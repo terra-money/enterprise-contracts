@@ -26,10 +26,10 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
 use enterprise_governance_controller_api::api::{
-    AddAttestationMsg, CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteMsgsMsg,
-    ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
-    ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
-    ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
+    AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg, DistributeFundsMsg,
+    ExecuteMsgsMsg, ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams,
+    MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType,
+    ProposalDeposit, ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
     ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
     RequestFundingFromDaoMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
@@ -1099,6 +1099,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> GovernanceControllerResult<
     let qctx = QueryContext::from(deps, env);
 
     let response = match msg {
+        QueryMsg::Config {} => to_binary(&query_gov_config(qctx)?)?,
         QueryMsg::GovConfig {} => to_binary(&query_gov_config(qctx)?)?,
         QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params)?)?,
         QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params)?)?,
@@ -1107,6 +1108,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> GovernanceControllerResult<
         QueryMsg::ProposalVotes(params) => to_binary(&query_proposal_votes(qctx, params)?)?,
     };
     Ok(response)
+}
+
+pub fn query_config(qctx: QueryContext) -> GovernanceControllerResult<ConfigResponse> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
+
+    Ok(ConfigResponse {
+        enterprise_contract,
+    })
 }
 
 pub fn query_gov_config(qctx: QueryContext) -> GovernanceControllerResult<GovConfigResponse> {

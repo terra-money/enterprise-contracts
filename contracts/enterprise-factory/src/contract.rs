@@ -477,7 +477,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     code_id: version_info.enterprise_treasury_code_id,
                     msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
                         admin: enterprise_governance_controller_contract.to_string(),
-                        enterprise_contract: enterprise_contract.to_string(),
                         asset_whitelist: Some(asset_whitelist),
                         nft_whitelist: Some(nft_whitelist),
                     })?,

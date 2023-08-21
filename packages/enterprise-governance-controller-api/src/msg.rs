@@ -1,5 +1,5 @@
 use crate::api::{
-    CastVoteMsg, CreateProposalMsg, DaoCouncilSpec, ExecuteProposalMsg, GovConfig,
+    CastVoteMsg, ConfigResponse, CreateProposalMsg, DaoCouncilSpec, ExecuteProposalMsg, GovConfig,
     GovConfigResponse, MemberVoteParams, MemberVoteResponse, ProposalId, ProposalInfo,
     ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
@@ -41,6 +41,8 @@ pub struct MigrateMsg {}
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(ConfigResponse)]
+    Config {},
     #[returns(GovConfigResponse)]
     GovConfig {},
     #[returns(ProposalResponse)]
