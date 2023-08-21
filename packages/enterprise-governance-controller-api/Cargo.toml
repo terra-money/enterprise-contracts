@@ -21,4 +21,5 @@ multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 poll-engine-api = { path = "../poll-engine-api"}
 serde_with = { version = "2", features = ["json", "macros"] }
 strum_macros = "0.24"
+serde-json-wasm = "0.5.0"
 thiserror = "1"

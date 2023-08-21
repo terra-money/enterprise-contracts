@@ -204,6 +204,7 @@ pub enum ProposalActionType {
     UpdateMinimumWeightForRewards,
     AddAttestation,
     RemoveAttestation,
+    DeployCrossChainTreasury,
 }
 
 #[cw_serde]

@@ -863,6 +863,7 @@ fn map_proposal_action_type(
         enterprise_governance_controller_api::api::ProposalActionType::UpdateMinimumWeightForRewards => ProposalActionType::UpdateMinimumWeightForRewards,
         enterprise_governance_controller_api::api::ProposalActionType::AddAttestation => ProposalActionType::AddAttestation,
         enterprise_governance_controller_api::api::ProposalActionType::RemoveAttestation => ProposalActionType::RemoveAttestation,
+        enterprise_governance_controller_api::api::ProposalActionType::DeployCrossChainTreasury => ProposalActionType::DeployCrossChainTreasury,
     }
 }
 

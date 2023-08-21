@@ -1,7 +1,7 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128, Uint64};
-use cw_asset::AssetUnchecked;
+use cosmwasm_std::{Addr, Binary, BlockInfo, Decimal, Event, Timestamp, Uint128, Uint64};
+use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
 use enterprise_treasury_api::api::{UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
@@ -111,6 +111,7 @@ pub enum ProposalActionType {
     UpdateMinimumWeightForRewards,
     AddAttestation,
     RemoveAttestation,
+    DeployCrossChainTreasury,
 }
 
 #[cw_serde]
@@ -128,6 +129,7 @@ pub enum ProposalAction {
     UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
     AddAttestation(AddAttestationMsg),
     RemoveAttestation {},
+    DeployCrossChainTreasury(DeployCrossChainTreasuryMsg),
 }
 
 #[cw_serde]
@@ -179,6 +181,37 @@ pub struct UpdateMinimumWeightForRewardsMsg {
 #[cw_serde]
 pub struct AddAttestationMsg {
     pub attestation_text: String,
+}
+
+#[cw_serde]
+pub struct DeployCrossChainTreasuryMsg {
+    pub cross_chain_msg_spec: CrossChainMsgSpec,
+    pub asset_whitelist: Option<Vec<AssetInfoUnchecked>>,
+    pub nft_whitelist: Option<Vec<String>>,
+    pub ics_proxy_code_id: u64,
+    pub enterprise_treasury_code_id: u64,
+}
+
+#[cw_serde]
+pub struct CrossChainMsgSpec {
+    /// Proxy contract serving globally for the given chain, with no specific permission model.
+    pub chain_global_proxy: String,
+    pub chain_id: String,
+    pub src_ibc_port: String,
+    pub src_ibc_channel: String,
+    pub dest_ibc_port: String,
+    pub dest_ibc_channel: String,
+    /// uluna IBC denom on the remote chain. Currently, can be calculated as 'ibc/' + uppercase(sha256('{port}/{channel}/uluna'))
+    pub uluna_denom: String,
+    /// Optional timeout for the cross-chain messages. Formatted in nanoseconds.
+    pub timeout_nanos: Option<u64>,
+}
+
+#[cw_serde]
+pub struct ExecuteMsgReplyCallbackMsg {
+    pub callback_id: u32,
+    pub events: Vec<Event>,
+    pub data: Option<Binary>,
 }
 
 #[cw_serde]

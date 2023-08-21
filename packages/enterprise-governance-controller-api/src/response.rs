@@ -69,3 +69,7 @@ pub fn execute_execute_proposal_response(
 pub fn execute_weights_changed_response() -> Response {
     Response::new().add_attribute("action", "weights_changed")
 }
+
+pub fn execute_execute_msg_reply_callback_response() -> Response {
+    Response::new().add_attribute("action", "execute_msg_reply_callback")
+}

@@ -1,8 +1,9 @@
 use crate::api::{
-    CastVoteMsg, ConfigResponse, CreateProposalMsg, DaoCouncilSpec, ExecuteProposalMsg, GovConfig,
-    GovConfigResponse, MemberVoteParams, MemberVoteResponse, ProposalId, ProposalInfo,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    CastVoteMsg, ConfigResponse, CreateProposalMsg, DaoCouncilSpec, ExecuteMsgReplyCallbackMsg,
+    ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
+    ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatusParams,
+    ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
+    ProposalsResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
@@ -28,6 +29,9 @@ pub enum ExecuteMsg {
 
     /// Only executable by the contract itself. Not part of the public API.
     ExecuteProposalActions(ExecuteProposalMsg),
+
+    /// Callback from the ICS proxy contract.
+    ExecuteMsgReplyCallback(ExecuteMsgReplyCallbackMsg),
 }
 
 #[cw_serde]

@@ -1,7 +1,9 @@
 use crate::api::ProposalActionType;
 use cosmwasm_std::{StdError, Uint128};
+use cw_utils::ParseReplyError;
 use enterprise_protocol::error::DaoError;
 use poll_engine_api::error::PollError;
+use serde_json_wasm::ser::Error;
 use thiserror::Error;
 
 pub type GovernanceControllerResult<T> = Result<T, GovernanceControllerError>;
@@ -91,6 +93,18 @@ pub enum GovernanceControllerError {
 
     #[error("Invalid argument: {msg}")]
     InvalidArgument { msg: String },
+}
+
+impl From<serde_json_wasm::ser::Error> for GovernanceControllerError {
+    fn from(value: Error) -> Self {
+        GovernanceControllerError::Std(StdError::generic_err(value.to_string()))
+    }
+}
+
+impl From<ParseReplyError> for GovernanceControllerError {
+    fn from(value: ParseReplyError) -> Self {
+        GovernanceControllerError::Std(StdError::generic_err(value.to_string()))
+    }
 }
 
 impl GovernanceControllerError {

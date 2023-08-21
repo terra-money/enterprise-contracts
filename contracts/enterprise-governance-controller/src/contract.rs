@@ -1,3 +1,4 @@
+use crate::ibc_hooks::{ibc_hooks_msg_to_ics_proxy_contract, ICS_PROXY_CALLBACKS};
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, PROPOSAL_INFOS,
     TOTAL_DEPOSITS,
@@ -9,15 +10,17 @@ use crate::validate::{
 };
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
+use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, SubMsgResponse, SubMsgResult,
+    Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::Asset;
-use cw_utils::Expiration;
 use cw_utils::Expiration::Never;
+use cw_utils::{parse_reply_instantiate_data, Expiration};
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_controller_api::api::ProposalAction::{
     AddAttestation, DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RemoveAttestation,
@@ -26,14 +29,14 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
 use enterprise_governance_controller_api::api::{
-    AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg, DistributeFundsMsg,
-    ExecuteMsgsMsg, ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams,
-    MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType,
-    ProposalDeposit, ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
-    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    RequestFundingFromDaoMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
-    UpdateMinimumWeightForRewardsMsg,
+    AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg, DeployCrossChainTreasuryMsg,
+    DistributeFundsMsg, ExecuteMsgReplyCallbackMsg, ExecuteMsgsMsg, ExecuteProposalMsg, GovConfig,
+    GovConfigResponse, MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal,
+    ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalInfo, ProposalParams,
+    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg, UpdateCouncilMsg,
+    UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil, NoSuchProposal,
@@ -47,8 +50,8 @@ use enterprise_governance_controller_api::msg::{
 use enterprise_governance_controller_api::response::{
     execute_cast_council_vote_response, execute_cast_vote_response,
     execute_create_council_proposal_response, execute_create_proposal_response,
-    execute_execute_proposal_response, execute_weights_changed_response, instantiate_response,
-    reply_create_poll_response,
+    execute_execute_msg_reply_callback_response, execute_execute_proposal_response,
+    execute_weights_changed_response, instantiate_response, reply_create_poll_response,
 };
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, DaoType, IsRestrictedUserParams,
@@ -76,6 +79,8 @@ use std::ops::{Add, Sub};
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
+use ProposalAction::DeployCrossChainTreasury;
+use WasmMsg::Instantiate;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-governance-controller";
@@ -84,6 +89,9 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const CREATE_POLL_REPLY_ID: u64 = 1;
 pub const END_POLL_REPLY_ID: u64 = 2;
 pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 3;
+
+pub const INSTANTIATE_CROSS_CHAIN_ICS_PROXY_CALLBACK_ID: u32 = 1001;
+pub const INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID: u32 = 1002;
 
 pub const DEFAULT_QUERY_LIMIT: u8 = 50;
 pub const MAX_QUERY_LIMIT: u8 = 100;
@@ -143,6 +151,7 @@ pub fn execute(
         ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::WeightsChanged(msg) => weights_changed(ctx, msg),
+        ExecuteMsg::ExecuteMsgReplyCallback(msg) => execute_msg_reply_callback(ctx, msg),
     }
 }
 
@@ -263,6 +272,7 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
         AddAttestation(_) => ProposalActionType::AddAttestation,
         RemoveAttestation {} => ProposalActionType::RemoveAttestation,
+        DeployCrossChainTreasury(_) => ProposalActionType::DeployCrossChainTreasury,
     }
 }
 
@@ -636,6 +646,7 @@ fn execute_proposal_actions_submsgs(
             UpdateMinimumWeightForRewards(msg) => update_minimum_weight_for_rewards(ctx, msg)?,
             AddAttestation(msg) => add_attestation(ctx, msg)?,
             RemoveAttestation {} => remove_attestation(ctx)?,
+            DeployCrossChainTreasury(msg) => deploy_cross_chain_treasury(ctx, msg)?,
         };
         submsgs.append(&mut actions)
     }
@@ -914,6 +925,53 @@ fn remove_attestation(ctx: &mut Context) -> GovernanceControllerResult<Vec<SubMs
     Ok(vec![submsg])
 }
 
+fn deploy_cross_chain_treasury(
+    ctx: &mut Context,
+    msg: DeployCrossChainTreasuryMsg,
+) -> GovernanceControllerResult<Vec<SubMsg>> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    // TODO: load if there is already a proxy or treasury for the given chain
+    let proxy_contract = Some("whatevs".to_string());
+
+    match proxy_contract {
+        Some(proxy_contract) => {
+            let callback_id = INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID;
+
+            let proxy_address = ctx.deps.api.addr_canonicalize(&proxy_contract)?;
+
+            ICS_PROXY_CALLBACKS.save(
+                ctx.deps.storage,
+                (callback_id, proxy_address.to_string()),
+                &(),
+            )?;
+
+            let instantiate_treasury_msg = ibc_hooks_msg_to_ics_proxy_contract(
+                &ctx.env,
+                Wasm(Instantiate {
+                    admin: Some(proxy_contract.clone()),
+                    code_id: msg.enterprise_treasury_code_id,
+                    msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
+                        admin: proxy_contract.clone(),
+                        asset_whitelist: msg.asset_whitelist,
+                        nft_whitelist: msg.nft_whitelist,
+                    })?,
+                    funds: vec![],
+                    label: "Proxy treasury".to_string(),
+                }),
+                proxy_contract,
+                msg.cross_chain_msg_spec,
+                INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID,
+            )?;
+            Ok(vec![instantiate_treasury_msg])
+        }
+        None => {
+            // 2 - there is a proxy - just go ahead and use it to instantiate the treasury, wait in the callback
+            Ok(vec![])
+        }
+    }
+}
+
 pub fn receive_cw20(
     ctx: &mut Context,
     cw20_msg: Cw20ReceiveMsg,
@@ -994,6 +1052,58 @@ pub fn update_user_votes(
     }
 
     Ok(update_votes_submsgs)
+}
+
+pub fn execute_msg_reply_callback(
+    ctx: &mut Context,
+    msg: ExecuteMsgReplyCallbackMsg,
+) -> GovernanceControllerResult<Response> {
+    let proxy_address = ctx.deps.api.addr_canonicalize(ctx.info.sender.as_ref())?;
+
+    let callback = ICS_PROXY_CALLBACKS.may_load(
+        ctx.deps.storage,
+        (msg.callback_id, proxy_address.to_string()),
+    )?;
+
+    if callback.is_some() {
+        ICS_PROXY_CALLBACKS.remove(
+            ctx.deps.storage,
+            (msg.callback_id, proxy_address.to_string()),
+        );
+
+        let reply = Reply {
+            id: msg.callback_id as u64,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: msg.events,
+                data: msg.data,
+            }),
+        };
+
+        match msg.callback_id {
+            INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID => {
+                handle_instantiate_treasury_reply_callback(ctx, reply)
+            }
+            _ => Err(Std(StdError::generic_err(format!(
+                "unknown cross-chain callback id: {}",
+                msg.callback_id
+            )))),
+        }
+    } else {
+        Err(Unauthorized)
+    }
+}
+
+fn handle_instantiate_treasury_reply_callback(
+    ctx: &mut Context,
+    reply: Reply,
+) -> GovernanceControllerResult<Response> {
+    let contract_address = parse_reply_instantiate_data(reply)?.contract_address;
+
+    let contract_addr = ctx.deps.api.addr_validate(&contract_address)?;
+
+    // TODO: store treasury? where and how?
+
+    Ok(execute_execute_msg_reply_callback_response())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

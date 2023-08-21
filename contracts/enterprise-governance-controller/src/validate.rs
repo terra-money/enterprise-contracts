@@ -139,6 +139,9 @@ pub fn validate_proposal_actions(
             | RemoveAttestation {} => {
                 // no-op
             }
+            ProposalAction::DeployCrossChainTreasury(_) => {
+                // TODO: no-op for now, can we even validate anything here?
+            }
         }
     }
 
@@ -478,7 +481,8 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::UpdateAssetWhitelist
                     | ProposalActionType::UpdateNftWhitelist
                     | ProposalActionType::UpgradeDao
-                    | ProposalActionType::RemoveAttestation => {
+                    | ProposalActionType::RemoveAttestation
+                    | ProposalActionType::DeployCrossChainTreasury => {
                         // allowed proposal action types
                     }
                 }
