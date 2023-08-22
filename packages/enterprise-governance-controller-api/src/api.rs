@@ -4,7 +4,6 @@ use cosmwasm_std::{Addr, Binary, BlockInfo, Decimal, Event, Timestamp, Uint128, 
 use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
-use enterprise_treasury_api::api::{UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
 use multisig_membership_api::api::UserWeight;
 use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
@@ -119,8 +118,8 @@ pub enum ProposalAction {
     UpdateMetadata(UpdateMetadataMsg),
     UpdateGovConfig(UpdateGovConfigMsg),
     UpdateCouncil(UpdateCouncilMsg),
-    UpdateAssetWhitelist(UpdateAssetWhitelistMsg),
-    UpdateNftWhitelist(UpdateNftWhitelistMsg),
+    UpdateAssetWhitelist(UpdateAssetWhitelistProposalActionMsg),
+    UpdateNftWhitelist(UpdateNftWhitelistProposalActionMsg),
     RequestFundingFromDao(RequestFundingFromDaoMsg),
     UpgradeDao(UpgradeDaoMsg),
     ExecuteMsgs(ExecuteMsgsMsg),
@@ -150,8 +149,34 @@ pub struct UpdateCouncilMsg {
 
 #[cw_serde]
 pub struct RequestFundingFromDaoMsg {
+    pub remote_treasury_target: Option<RemoteTreasuryTarget>,
     pub recipient: String,
     pub assets: Vec<AssetUnchecked>,
+}
+
+#[cw_serde]
+pub struct UpdateAssetWhitelistProposalActionMsg {
+    pub remote_treasury_target: Option<RemoteTreasuryTarget>,
+    /// New assets to add to the whitelist. Will ignore assets that are already whitelisted.
+    pub add: Vec<AssetInfoUnchecked>,
+    /// Assets to remove from the whitelist. Will ignore assets that are not already whitelisted.
+    pub remove: Vec<AssetInfoUnchecked>,
+}
+
+#[cw_serde]
+pub struct UpdateNftWhitelistProposalActionMsg {
+    pub remote_treasury_target: Option<RemoteTreasuryTarget>,
+    /// New NFTs to add to the whitelist. Will ignore NFTs that are already whitelisted.
+    pub add: Vec<String>,
+    /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
+    pub remove: Vec<String>,
+}
+
+#[cw_serde]
+pub struct RemoteTreasuryTarget {
+    /// Spec for the cross-chain message to send.
+    /// Treasury address will be determined using chain-id given in the spec.
+    pub cross_chain_msg_spec: CrossChainMsgSpec,
 }
 
 #[cw_serde]
@@ -190,12 +215,12 @@ pub struct DeployCrossChainTreasuryMsg {
     pub nft_whitelist: Option<Vec<String>>,
     pub ics_proxy_code_id: u64,
     pub enterprise_treasury_code_id: u64,
+    /// Proxy contract serving globally for the given chain, with no specific permission model.
+    pub chain_global_proxy: String,
 }
 
 #[cw_serde]
 pub struct CrossChainMsgSpec {
-    /// Proxy contract serving globally for the given chain, with no specific permission model.
-    pub chain_global_proxy: String,
     pub chain_id: String,
     pub src_ibc_port: String,
     pub src_ibc_channel: String,

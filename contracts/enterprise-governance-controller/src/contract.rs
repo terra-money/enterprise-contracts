@@ -37,15 +37,18 @@ use enterprise_governance_controller_api::api::{
     ProposalAction, ProposalActionType, ProposalDeposit, ProposalId, ProposalInfo, ProposalParams,
     ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
     ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
+    ProposalsParams, ProposalsResponse, RemoteTreasuryTarget, RequestFundingFromDaoMsg,
+    UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
+    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CrossChainTreasuryDeploymentInProgress, CustomError, InvalidCosmosMessage, InvalidDepositType,
     NoDaoCouncil, NoSuchProposal, NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted,
     RestrictedUser, Std, Unauthorized, UnsupportedCouncilProposalAction, WrongProposalType,
 };
-use enterprise_governance_controller_api::error::GovernanceControllerResult;
+use enterprise_governance_controller_api::error::{
+    GovernanceControllerError, GovernanceControllerResult,
+};
 use enterprise_governance_controller_api::msg::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
@@ -56,12 +59,14 @@ use enterprise_governance_controller_api::response::{
     execute_weights_changed_response, instantiate_response, reply_create_poll_response,
 };
 use enterprise_protocol::api::{
-    AddCrossChainTreasuryMsg, ComponentContractsResponse, DaoInfoResponse, DaoType,
-    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
-    UpgradeDaoMsg,
+    AddCrossChainTreasuryMsg, ComponentContractsResponse, CrossChainTreasuryParams,
+    CrossChainTreasuryResponse, DaoInfoResponse, DaoType, IsRestrictedUserParams,
+    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::msg::ExecuteMsg::AddCrossChainTreasury;
-use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
+use enterprise_protocol::msg::QueryMsg::{
+    ComponentContracts, CrossChainTreasury, DaoInfo, IsRestrictedUser,
+};
 use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
 use enterprise_treasury_api::msg::ExecuteMsg::Spend;
 use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
@@ -638,9 +643,15 @@ fn execute_proposal_actions_submsgs(
             UpdateMetadata(msg) => update_metadata(ctx.deps.branch(), msg)?,
             UpdateGovConfig(msg) => update_gov_config(ctx, msg)?,
             UpdateCouncil(msg) => update_council(ctx, msg)?,
-            RequestFundingFromDao(msg) => execute_funding_from_dao(ctx.deps.branch(), msg)?,
-            UpdateAssetWhitelist(msg) => update_asset_whitelist(ctx.deps.branch(), msg)?,
-            UpdateNftWhitelist(msg) => update_nft_whitelist(ctx.deps.branch(), msg)?,
+            RequestFundingFromDao(msg) => {
+                execute_funding_from_dao(ctx.deps.branch(), ctx.env.clone(), msg)?
+            }
+            UpdateAssetWhitelist(msg) => {
+                update_asset_whitelist(ctx.deps.branch(), ctx.env.clone(), msg)?
+            }
+            UpdateNftWhitelist(msg) => {
+                update_nft_whitelist(ctx.deps.branch(), ctx.env.clone(), msg)?
+            }
             UpgradeDao(msg) => upgrade_dao(ctx, msg)?,
             ExecuteMsgs(msg) => execute_msgs(msg)?,
             ModifyMultisigMembership(msg) => {
@@ -675,18 +686,18 @@ fn update_metadata(
 
 fn execute_funding_from_dao(
     deps: DepsMut,
+    env: Env,
     msg: RequestFundingFromDaoMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let treasury_addr = query_enterprise_components(deps.as_ref())?.enterprise_treasury_contract;
-
-    let submsg = SubMsg::new(wasm_execute(
-        treasury_addr.to_string(),
-        &Spend(SpendMsg {
+    let submsg = execute_treasury_msg(
+        deps,
+        env,
+        Spend(SpendMsg {
             recipient: msg.recipient,
             assets: msg.assets,
         }),
-        vec![],
-    )?);
+        msg.remote_treasury_target,
+    )?;
 
     Ok(vec![submsg])
 }
@@ -783,32 +794,79 @@ fn update_council(
 
 fn update_asset_whitelist(
     deps: DepsMut,
-    msg: UpdateAssetWhitelistMsg,
+    env: Env,
+    msg: UpdateAssetWhitelistProposalActionMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let treasury_addr = query_enterprise_components(deps.as_ref())?.enterprise_treasury_contract;
+    let update_asset_whitelist_msg =
+        enterprise_treasury_api::msg::ExecuteMsg::UpdateAssetWhitelist(UpdateAssetWhitelistMsg {
+            add: msg.add,
+            remove: msg.remove,
+        });
 
-    let submsg = SubMsg::new(wasm_execute(
-        treasury_addr.to_string(),
-        &enterprise_treasury_api::msg::ExecuteMsg::UpdateAssetWhitelist(msg),
-        vec![],
-    )?);
+    let submsg = execute_treasury_msg(
+        deps,
+        env,
+        update_asset_whitelist_msg,
+        msg.remote_treasury_target,
+    )?;
 
     Ok(vec![submsg])
 }
 
 fn update_nft_whitelist(
     deps: DepsMut,
-    msg: UpdateNftWhitelistMsg,
+    env: Env,
+    msg: UpdateNftWhitelistProposalActionMsg,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let treasury_addr = query_enterprise_components(deps.as_ref())?.enterprise_treasury_contract;
+    let update_nft_whitelist_msg =
+        enterprise_treasury_api::msg::ExecuteMsg::UpdateNftWhitelist(UpdateNftWhitelistMsg {
+            add: msg.add,
+            remove: msg.remove,
+        });
 
-    let submsg = SubMsg::new(wasm_execute(
-        treasury_addr.to_string(),
-        &enterprise_treasury_api::msg::ExecuteMsg::UpdateNftWhitelist(msg),
-        vec![],
-    )?);
+    let submsg = execute_treasury_msg(
+        deps,
+        env,
+        update_nft_whitelist_msg,
+        msg.remote_treasury_target,
+    )?;
 
     Ok(vec![submsg])
+}
+
+fn execute_treasury_msg(
+    deps: DepsMut,
+    env: Env,
+    treasury_msg: enterprise_treasury_api::msg::ExecuteMsg,
+    remote_treasury_target: Option<RemoteTreasuryTarget>,
+) -> GovernanceControllerResult<SubMsg> {
+    match remote_treasury_target {
+        Some(remote_treasury_target) => {
+            let treasury_addr = query_enterprise_cross_chain_treasury_addr(
+                deps.as_ref(),
+                remote_treasury_target.cross_chain_msg_spec.chain_id.clone(),
+            )?;
+
+            let proxy_addr = "query_this".to_string(); // TODO: query this properly from Enterprise
+
+            ibc_hooks_msg_to_ics_proxy_contract(
+                &env,
+                wasm_execute(treasury_addr, &treasury_msg, vec![])?.into(),
+                proxy_addr,
+                remote_treasury_target.cross_chain_msg_spec,
+                None,
+            )
+        }
+        None => {
+            let treasury_addr = query_enterprise_treasury_addr(deps.as_ref())?;
+
+            Ok(SubMsg::new(wasm_execute(
+                treasury_addr.to_string(),
+                &treasury_msg,
+                vec![],
+            )?))
+        }
+    }
 }
 
 fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> GovernanceControllerResult<Vec<SubMsg>> {
@@ -972,7 +1030,7 @@ fn deploy_cross_chain_treasury(
                 }),
                 proxy_contract,
                 msg.cross_chain_msg_spec,
-                callback_id,
+                Some(callback_id),
             )?;
             Ok(vec![instantiate_treasury_msg])
         }
@@ -981,10 +1039,7 @@ fn deploy_cross_chain_treasury(
             // so we go ahead and instantiate the proxy first
             let callback_id = INSTANTIATE_CROSS_CHAIN_ICS_PROXY_CALLBACK_ID;
 
-            let global_proxy_address = ctx
-                .deps
-                .api
-                .addr_canonicalize(&msg.cross_chain_msg_spec.chain_global_proxy)?;
+            let global_proxy_address = ctx.deps.api.addr_canonicalize(&msg.chain_global_proxy)?;
 
             // there is already an attempt to deploy a proxy to the given chain, abort this one
             if ICS_PROXY_CALLBACKS.has(
@@ -1015,7 +1070,7 @@ fn deploy_cross_chain_treasury(
                 }),
                 global_proxy_address.to_string(),
                 msg.cross_chain_msg_spec,
-                callback_id,
+                Some(callback_id),
             )?;
             Ok(vec![instantiate_proxy_msg])
         }
@@ -1623,6 +1678,27 @@ fn query_enterprise_components(
 
 fn query_enterprise_governance_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.enterprise_governance_contract)
+}
+
+fn query_enterprise_treasury_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
+    Ok(query_enterprise_components(deps)?.enterprise_treasury_contract)
+}
+
+fn query_enterprise_cross_chain_treasury_addr(
+    deps: Deps,
+    chain_id: String,
+) -> GovernanceControllerResult<String> {
+    let enterprise = ENTERPRISE_CONTRACT.load(deps.storage)?;
+
+    let response: CrossChainTreasuryResponse = deps.querier.query_wasm_smart(
+        enterprise.to_string(),
+        &CrossChainTreasury(CrossChainTreasuryParams { chain_id }),
+    )?;
+
+    match response.treasury_addr {
+        None => Err(GovernanceControllerError::NoCrossChainTreasuryForGivenChainId),
+        Some(treasury_addr) => Ok(treasury_addr),
+    }
 }
 
 fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {

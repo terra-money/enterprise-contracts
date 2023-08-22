@@ -88,21 +88,23 @@ pub fn ibc_hooks_msg_to_ics_proxy_contract(
     msg: CosmosMsg,
     proxy_contract: String,
     cross_chain_msg_spec: CrossChainMsgSpec,
-    callback_id: u32,
+    callback_id: Option<u32>,
 ) -> GovernanceControllerResult<SubMsg> {
+    let reply_callback = callback_id.map(|callback_id| ReplyCallback {
+        callback_id,
+        ibc_port: cross_chain_msg_spec.dest_ibc_port,
+        ibc_channel: cross_chain_msg_spec.dest_ibc_channel,
+        denom: cross_chain_msg_spec.uluna_denom,
+        receiver: Some(env.contract.address.to_string()),
+    });
+
     let memo = IbcHooksProxyMemoMsg {
         wasm: IbcHooksProxyWasmMsg {
             contract: proxy_contract.clone(),
             msg: IcsProxyExecuteMsg::ExecuteMsgs(ExecuteMsgsMsg {
                 msgs: vec![ExecuteMsgInfo {
                     msg,
-                    reply_callback: Some(ReplyCallback {
-                        callback_id,
-                        ibc_port: cross_chain_msg_spec.dest_ibc_port,
-                        ibc_channel: cross_chain_msg_spec.dest_ibc_channel,
-                        denom: cross_chain_msg_spec.uluna_denom,
-                        receiver: Some(env.contract.address.to_string()),
-                    }),
+                    reply_callback,
                 }],
             }),
         },
