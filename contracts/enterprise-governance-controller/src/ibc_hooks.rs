@@ -124,5 +124,5 @@ pub fn ibc_hooks_msg_to_ics_proxy_contract(
 }
 
 /// A map of ICS proxy contract callbacks we're expecting.
-/// Will store a pair of callback ID and proxy contract address.
-pub const ICS_PROXY_CALLBACKS: Map<(u32, String), ()> = Map::new("ics_proxy_callbacks");
+/// Will store a pair of callback ID and proxy contract address, and map it to chain-id.
+pub const ICS_PROXY_CALLBACKS: Map<(u32, String), String> = Map::new("ics_proxy_callbacks");

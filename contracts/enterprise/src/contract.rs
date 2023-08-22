@@ -20,7 +20,7 @@ use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
-    AddCrossChainTreasury, ComponentContractsResponse, CrossChainTreasuriesParams,
+    AddCrossChainTreasuryMsg, ComponentContractsResponse, CrossChainTreasuriesParams,
     CrossChainTreasuriesResponse, CrossChainTreasury, CrossChainTreasuryParams,
     CrossChainTreasuryResponse, DaoInfoResponse, FinalizeInstantiationMsg, IsRestrictedUserParams,
     IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
@@ -316,7 +316,7 @@ fn remove_attestation(ctx: &mut Context) -> DaoResult<Response> {
 
 fn add_cross_chain_treasuries(
     ctx: &mut Context,
-    msg: AddCrossChainTreasury,
+    msg: AddCrossChainTreasuryMsg,
 ) -> DaoResult<Response> {
     enterprise_governance_controller_caller_only(ctx)?;
 

@@ -87,7 +87,7 @@ pub struct SetAttestationMsg {
 }
 
 #[cw_serde]
-pub struct AddCrossChainTreasury {
+pub struct AddCrossChainTreasuryMsg {
     pub chain_id: String,
     pub treasury_addr: String,
 }

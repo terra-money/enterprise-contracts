@@ -1,5 +1,5 @@
 use crate::api::{
-    AddCrossChainTreasury, ComponentContractsResponse, CrossChainTreasuriesParams,
+    AddCrossChainTreasuryMsg, ComponentContractsResponse, CrossChainTreasuriesParams,
     CrossChainTreasuriesResponse, CrossChainTreasuryParams, CrossChainTreasuryResponse,
     DaoInfoResponse, DaoMetadata, FinalizeInstantiationMsg, IsRestrictedUserParams,
     IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
@@ -21,7 +21,7 @@ pub enum ExecuteMsg {
     SetAttestation(SetAttestationMsg),
     RemoveAttestation {},
 
-    AddCrossChainTreasury(AddCrossChainTreasury),
+    AddCrossChainTreasury(AddCrossChainTreasuryMsg),
 
     // called by this contract itself
     FinalizeInstantiation(FinalizeInstantiationMsg),

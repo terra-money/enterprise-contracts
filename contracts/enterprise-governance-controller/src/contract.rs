@@ -39,9 +39,9 @@ use enterprise_governance_controller_api::api::{
     UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    CustomError, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil, NoSuchProposal,
-    NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted, RestrictedUser, Std, Unauthorized,
-    UnsupportedCouncilProposalAction, WrongProposalType,
+    CrossChainTreasuryDeploymentInProgress, CustomError, InvalidCosmosMessage, InvalidDepositType,
+    NoDaoCouncil, NoSuchProposal, NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted,
+    RestrictedUser, Std, Unauthorized, UnsupportedCouncilProposalAction, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use enterprise_governance_controller_api::msg::{
@@ -54,9 +54,11 @@ use enterprise_governance_controller_api::response::{
     execute_weights_changed_response, instantiate_response, reply_create_poll_response,
 };
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, DaoType, IsRestrictedUserParams,
-    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
+    AddCrossChainTreasuryMsg, ComponentContractsResponse, DaoInfoResponse, DaoType,
+    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
+    UpgradeDaoMsg,
 };
+use enterprise_protocol::msg::ExecuteMsg::AddCrossChainTreasury;
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
 use enterprise_treasury_api::api::{SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg};
 use enterprise_treasury_api::msg::ExecuteMsg::Spend;
@@ -936,14 +938,21 @@ fn deploy_cross_chain_treasury(
 
     match proxy_contract {
         Some(proxy_contract) => {
+            // there is already a proxy contract owned by this DAO,
+            // so we just go ahead and instantiate the treasury
             let callback_id = INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID;
 
             let proxy_address = ctx.deps.api.addr_canonicalize(&proxy_contract)?;
 
+            // there is already an attempt to deploy a treasury to the given chain, abort this one
+            if ICS_PROXY_CALLBACKS.has(ctx.deps.storage, (callback_id, proxy_address.to_string())) {
+                return Err(CrossChainTreasuryDeploymentInProgress);
+            }
+
             ICS_PROXY_CALLBACKS.save(
                 ctx.deps.storage,
                 (callback_id, proxy_address.to_string()),
-                &(),
+                &msg.cross_chain_msg_spec.chain_id,
             )?;
 
             let instantiate_treasury_msg = ibc_hooks_msg_to_ics_proxy_contract(
@@ -1060,50 +1069,61 @@ pub fn execute_msg_reply_callback(
 ) -> GovernanceControllerResult<Response> {
     let proxy_address = ctx.deps.api.addr_canonicalize(ctx.info.sender.as_ref())?;
 
-    let callback = ICS_PROXY_CALLBACKS.may_load(
+    let chain_id = ICS_PROXY_CALLBACKS.may_load(
         ctx.deps.storage,
         (msg.callback_id, proxy_address.to_string()),
     )?;
 
-    if callback.is_some() {
-        ICS_PROXY_CALLBACKS.remove(
-            ctx.deps.storage,
-            (msg.callback_id, proxy_address.to_string()),
-        );
+    match chain_id {
+        Some(chain_id) => {
+            ICS_PROXY_CALLBACKS.remove(
+                ctx.deps.storage,
+                (msg.callback_id, proxy_address.to_string()),
+            );
 
-        let reply = Reply {
-            id: msg.callback_id as u64,
-            result: SubMsgResult::Ok(SubMsgResponse {
-                events: msg.events,
-                data: msg.data,
-            }),
-        };
+            let reply = Reply {
+                id: msg.callback_id as u64,
+                result: SubMsgResult::Ok(SubMsgResponse {
+                    events: msg.events,
+                    data: msg.data,
+                }),
+            };
 
-        match msg.callback_id {
-            INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID => {
-                handle_instantiate_treasury_reply_callback(ctx, reply)
+            match msg.callback_id {
+                INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID => {
+                    handle_instantiate_treasury_reply_callback(ctx, chain_id, reply)
+                }
+                _ => Err(Std(StdError::generic_err(format!(
+                    "unknown cross-chain callback id: {}",
+                    msg.callback_id
+                )))),
             }
-            _ => Err(Std(StdError::generic_err(format!(
-                "unknown cross-chain callback id: {}",
-                msg.callback_id
-            )))),
         }
-    } else {
-        Err(Unauthorized)
+        None => Err(Unauthorized),
     }
 }
 
 fn handle_instantiate_treasury_reply_callback(
     ctx: &mut Context,
+    chain_id: String,
     reply: Reply,
 ) -> GovernanceControllerResult<Response> {
     let contract_address = parse_reply_instantiate_data(reply)?.contract_address;
 
-    let contract_addr = ctx.deps.api.addr_validate(&contract_address)?;
+    let treasury_addr = ctx.deps.api.addr_canonicalize(&contract_address)?;
 
-    // TODO: store treasury? where and how?
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
 
-    Ok(execute_execute_msg_reply_callback_response())
+    let add_treasury_submsg = SubMsg::new(wasm_execute(
+        enterprise_contract.to_string(),
+        &AddCrossChainTreasury(AddCrossChainTreasuryMsg {
+            chain_id,
+            treasury_addr: treasury_addr.to_string(),
+        }),
+        vec![],
+    )?);
+
+    Ok(execute_execute_msg_reply_callback_response().add_submessage(add_treasury_submsg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
