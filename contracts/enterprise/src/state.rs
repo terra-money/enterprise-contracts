@@ -27,7 +27,8 @@ pub const COMPONENT_CONTRACTS: Item<ComponentContracts> = Item::new("component_c
 
 /// Treasuries used in addition to the main one.
 /// Those are cross-chain, and this is the key part of our cross-chain design.
-pub const CROSS_CHAIN_TREASURIES: Map<Addr, ()> = Map::new("cross_chain_treasuries");
+/// Maps chain_id to treasury address.
+pub const CROSS_CHAIN_TREASURIES: Map<String, String> = Map::new("cross_chain_treasuries");
 
 pub const ENTERPRISE_FACTORY_CONTRACT: Item<Addr> = Item::new("enterprise_factory_contract");
 pub const ENTERPRISE_VERSIONING_CONTRACT: Item<Addr> = Item::new("enterprise_versioning_contract");

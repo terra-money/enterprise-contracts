@@ -1,7 +1,7 @@
 use crate::api::{
-    ComponentContractsResponse, CrossChainTreasuriesParams, CrossChainTreasuriesResponse,
-    DaoInfoResponse, DaoMetadata, EditCrossChainTreasuriesMsg, FinalizeInstantiationMsg,
-    IsCrossChainTreasuryParams, IsCrossChainTreasuryResponse, IsRestrictedUserParams,
+    AddCrossChainTreasury, ComponentContractsResponse, CrossChainTreasuriesParams,
+    CrossChainTreasuriesResponse, CrossChainTreasuryParams, CrossChainTreasuryResponse,
+    DaoInfoResponse, DaoMetadata, FinalizeInstantiationMsg, IsRestrictedUserParams,
     IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -21,7 +21,7 @@ pub enum ExecuteMsg {
     SetAttestation(SetAttestationMsg),
     RemoveAttestation {},
 
-    EditCrossChainTreasuries(EditCrossChainTreasuriesMsg),
+    AddCrossChainTreasury(AddCrossChainTreasury),
 
     // called by this contract itself
     FinalizeInstantiation(FinalizeInstantiationMsg),
@@ -41,8 +41,8 @@ pub enum QueryMsg {
     #[returns(CrossChainTreasuriesResponse)]
     CrossChainTreasuries(CrossChainTreasuriesParams),
 
-    #[returns(IsCrossChainTreasuryResponse)]
-    IsCrossChainTreasury(IsCrossChainTreasuryParams),
+    #[returns(CrossChainTreasuryResponse)]
+    CrossChainTreasury(CrossChainTreasuryParams),
 
     /// Query whether a user should be restricted from certain DAO actions, such as governance and
     /// rewards claiming.

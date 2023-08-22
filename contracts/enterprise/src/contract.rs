@@ -5,7 +5,6 @@ use crate::state::{
 };
 use crate::validate::{
     enterprise_factory_caller_only, enterprise_governance_controller_caller_only,
-    validate_and_dedup_edit_treasuries,
 };
 use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
 use attestation_api::msg::QueryMsg::HasUserSigned;
@@ -14,25 +13,26 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_instantiate, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+    entry_point, to_binary, wasm_instantiate, Binary, Deps, DepsMut, Env, MessageInfo, Order,
     Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
-    ComponentContractsResponse, CrossChainTreasuriesParams, CrossChainTreasuriesResponse,
-    DaoInfoResponse, EditCrossChainTreasuriesMsg, FinalizeInstantiationMsg,
-    IsCrossChainTreasuryParams, IsCrossChainTreasuryResponse, IsRestrictedUserParams,
+    AddCrossChainTreasury, ComponentContractsResponse, CrossChainTreasuriesParams,
+    CrossChainTreasuriesResponse, CrossChainTreasury, CrossChainTreasuryParams,
+    CrossChainTreasuryResponse, DaoInfoResponse, FinalizeInstantiationMsg, IsRestrictedUserParams,
     IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion,
+    TreasuryAlreadyExistsForChainId,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::response::{
-    execute_edit_cross_chain_treasuries_response, execute_finalize_instantiation_response,
+    execute_add_cross_chain_treasury_response, execute_finalize_instantiation_response,
     execute_remove_attestation_response, execute_set_attestation_response,
     execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
 };
@@ -92,7 +92,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
         ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
         ExecuteMsg::RemoveAttestation {} => remove_attestation(ctx),
-        ExecuteMsg::EditCrossChainTreasuries(msg) => edit_cross_chain_treasuries(ctx, msg),
+        ExecuteMsg::AddCrossChainTreasury(msg) => add_cross_chain_treasuries(ctx, msg),
     }
 }
 
@@ -314,23 +314,24 @@ fn remove_attestation(ctx: &mut Context) -> DaoResult<Response> {
     Ok(execute_remove_attestation_response())
 }
 
-fn edit_cross_chain_treasuries(
+fn add_cross_chain_treasuries(
     ctx: &mut Context,
-    msg: EditCrossChainTreasuriesMsg,
+    msg: AddCrossChainTreasury,
 ) -> DaoResult<Response> {
     enterprise_governance_controller_caller_only(ctx)?;
 
-    let validated_treasury_edits = validate_and_dedup_edit_treasuries(ctx.deps.as_ref(), msg)?;
+    if CROSS_CHAIN_TREASURIES.has(ctx.deps.storage, msg.chain_id.clone()) {
+        Err(TreasuryAlreadyExistsForChainId)
+    } else {
+        let treasury_addr_canonical = ctx.deps.api.addr_canonicalize(&msg.treasury_addr)?;
+        CROSS_CHAIN_TREASURIES.save(
+            ctx.deps.storage,
+            msg.chain_id,
+            &treasury_addr_canonical.to_string(),
+        )?;
 
-    for treasury in validated_treasury_edits.add_treasuries {
-        CROSS_CHAIN_TREASURIES.save(ctx.deps.storage, treasury, &())?;
+        Ok(execute_add_cross_chain_treasury_response())
     }
-
-    for treasury in validated_treasury_edits.remove_treasuries {
-        CROSS_CHAIN_TREASURIES.remove(ctx.deps.storage, treasury);
-    }
-
-    Ok(execute_edit_cross_chain_treasuries_response())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -370,8 +371,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::CrossChainTreasuries(params) => {
             to_binary(&query_cross_chain_treasuries(qctx, params)?)?
         }
-        QueryMsg::IsCrossChainTreasury(params) => {
-            to_binary(&query_is_cross_chain_treasury(qctx, params)?)?
+        QueryMsg::CrossChainTreasury(params) => {
+            to_binary(&query_cross_chain_treasury(qctx, params)?)?
         }
     };
     Ok(response)
@@ -437,11 +438,7 @@ fn query_cross_chain_treasuries(
     qctx: QueryContext,
     params: CrossChainTreasuriesParams,
 ) -> DaoResult<CrossChainTreasuriesResponse> {
-    let start_after = params
-        .start_after
-        .map(|addr| qctx.deps.api.addr_validate(&addr))
-        .transpose()?
-        .map(Bound::exclusive);
+    let start_after = params.start_after.map(Bound::exclusive);
     let limit = params
         .limit
         .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
@@ -450,23 +447,26 @@ fn query_cross_chain_treasuries(
     let treasuries = CROSS_CHAIN_TREASURIES
         .range(qctx.deps.storage, start_after, None, Order::Ascending)
         .take(limit as usize)
-        .map(|res| res.map(|(addr, _)| addr))
-        .collect::<StdResult<Vec<Addr>>>()?;
+        .map(|res| {
+            res.map(|(chain_id, treasury_addr)| CrossChainTreasury {
+                chain_id,
+                treasury_addr,
+            })
+        })
+        .collect::<StdResult<Vec<CrossChainTreasury>>>()?;
 
     Ok(CrossChainTreasuriesResponse { treasuries })
 }
 
-fn query_is_cross_chain_treasury(
+fn query_cross_chain_treasury(
     qctx: QueryContext,
-    params: IsCrossChainTreasuryParams,
-) -> DaoResult<IsCrossChainTreasuryResponse> {
-    let treasury_addr = qctx.deps.api.addr_validate(&params.treasury)?;
+    params: CrossChainTreasuryParams,
+) -> DaoResult<CrossChainTreasuryResponse> {
+    let treasury_addr =
+        CROSS_CHAIN_TREASURIES.may_load(qctx.deps.storage, params.chain_id.clone())?;
 
-    let is_cross_chain_treasury =
-        CROSS_CHAIN_TREASURIES.has(qctx.deps.storage, treasury_addr.clone());
-
-    Ok(IsCrossChainTreasuryResponse {
-        is_cross_chain_treasury,
+    Ok(CrossChainTreasuryResponse {
+        chain_id: params.chain_id,
         treasury_addr,
     })
 }

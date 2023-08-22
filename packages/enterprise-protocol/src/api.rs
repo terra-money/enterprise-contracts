@@ -87,14 +87,20 @@ pub struct SetAttestationMsg {
 }
 
 #[cw_serde]
-pub struct EditCrossChainTreasuriesMsg {
-    pub add_treasuries: Vec<String>,
-    pub remove_treasuries: Vec<String>,
+pub struct AddCrossChainTreasury {
+    pub chain_id: String,
+    pub treasury_addr: String,
 }
 
 #[cw_serde]
 pub struct IsRestrictedUserParams {
     pub user: String,
+}
+
+#[cw_serde]
+pub struct CrossChainTreasury {
+    pub chain_id: String,
+    pub treasury_addr: String,
 }
 
 #[cw_serde]
@@ -104,8 +110,8 @@ pub struct CrossChainTreasuriesParams {
 }
 
 #[cw_serde]
-pub struct IsCrossChainTreasuryParams {
-    pub treasury: String,
+pub struct CrossChainTreasuryParams {
+    pub chain_id: String,
 }
 
 // Responses
@@ -137,11 +143,11 @@ pub struct IsRestrictedUserResponse {
 
 #[cw_serde]
 pub struct CrossChainTreasuriesResponse {
-    pub treasuries: Vec<Addr>,
+    pub treasuries: Vec<CrossChainTreasury>,
 }
 
 #[cw_serde]
-pub struct IsCrossChainTreasuryResponse {
-    pub is_cross_chain_treasury: bool,
-    pub treasury_addr: Addr,
+pub struct CrossChainTreasuryResponse {
+    pub chain_id: String,
+    pub treasury_addr: Option<String>,
 }
