@@ -1,4 +1,6 @@
-use crate::ibc_hooks::{ibc_hooks_msg_to_ics_proxy_contract, ICS_PROXY_CALLBACKS};
+use crate::ibc_hooks::{
+    ibc_hooks_msg_to_ics_proxy_contract, IcsProxyInstantiateMsg, ICS_PROXY_CALLBACKS,
+};
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, PROPOSAL_INFOS,
     TOTAL_DEPOSITS,
@@ -970,13 +972,52 @@ fn deploy_cross_chain_treasury(
                 }),
                 proxy_contract,
                 msg.cross_chain_msg_spec,
-                INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID,
+                callback_id,
             )?;
             Ok(vec![instantiate_treasury_msg])
         }
         None => {
-            // 2 - there is a proxy - just go ahead and use it to instantiate the treasury, wait in the callback
-            Ok(vec![])
+            // there is no proxy contract owned by this DAO on the given chain,
+            // so we go ahead and instantiate the proxy first
+            let callback_id = INSTANTIATE_CROSS_CHAIN_ICS_PROXY_CALLBACK_ID;
+
+            let global_proxy_address = ctx
+                .deps
+                .api
+                .addr_canonicalize(&msg.cross_chain_msg_spec.chain_global_proxy)?;
+
+            // there is already an attempt to deploy a proxy to the given chain, abort this one
+            if ICS_PROXY_CALLBACKS.has(
+                ctx.deps.storage,
+                (callback_id, global_proxy_address.to_string()),
+            ) {
+                return Err(CrossChainTreasuryDeploymentInProgress);
+            }
+
+            ICS_PROXY_CALLBACKS.save(
+                ctx.deps.storage,
+                (callback_id, global_proxy_address.to_string()),
+                &msg.cross_chain_msg_spec.chain_id,
+            )?;
+
+            let instantiate_proxy_msg = ibc_hooks_msg_to_ics_proxy_contract(
+                &ctx.env,
+                Wasm(Instantiate {
+                    admin: None, // TODO: consider adding an admin, otherwise we'll be redeploying proxies
+                    code_id: msg.ics_proxy_code_id,
+                    msg: to_binary(&IcsProxyInstantiateMsg {
+                        owner: Some(ctx.env.contract.address.to_string()),
+                        whitelist: Some(vec![ctx.env.contract.address.to_string()]),
+                        msgs: None,
+                    })?,
+                    funds: vec![],
+                    label: "Proxy contract".to_string(),
+                }),
+                global_proxy_address.to_string(),
+                msg.cross_chain_msg_spec,
+                callback_id,
+            )?;
+            Ok(vec![instantiate_proxy_msg])
         }
     }
 }
@@ -1090,6 +1131,9 @@ pub fn execute_msg_reply_callback(
             };
 
             match msg.callback_id {
+                INSTANTIATE_CROSS_CHAIN_ICS_PROXY_CALLBACK_ID => {
+                    handle_instantiate_proxy_reply_callback(ctx, chain_id, reply)
+                }
                 INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID => {
                     handle_instantiate_treasury_reply_callback(ctx, chain_id, reply)
                 }
@@ -1101,6 +1145,30 @@ pub fn execute_msg_reply_callback(
         }
         None => Err(Unauthorized),
     }
+}
+
+fn handle_instantiate_proxy_reply_callback(
+    ctx: &mut Context,
+    chain_id: String,
+    reply: Reply,
+) -> GovernanceControllerResult<Response> {
+    let contract_address = parse_reply_instantiate_data(reply)?.contract_address;
+
+    let proxy_addr = ctx.deps.api.addr_canonicalize(&contract_address)?;
+
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    let add_proxy_submsg = SubMsg::new(wasm_execute(
+        enterprise_contract.to_string(),
+        // TODO: use add proxy msg
+        &AddCrossChainTreasury(AddCrossChainTreasuryMsg {
+            chain_id,
+            treasury_addr: proxy_addr.to_string(),
+        }),
+        vec![],
+    )?);
+
+    Ok(execute_execute_msg_reply_callback_response().add_submessage(add_proxy_submsg))
 }
 
 fn handle_instantiate_treasury_reply_callback(

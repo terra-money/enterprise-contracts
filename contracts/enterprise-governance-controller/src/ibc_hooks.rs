@@ -6,6 +6,13 @@ use enterprise_governance_controller_api::api::CrossChainMsgSpec;
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use prost::Message;
 
+#[cw_serde]
+pub struct IcsProxyInstantiateMsg {
+    pub owner: Option<String>,
+    pub whitelist: Option<Vec<String>>,
+    pub msgs: Option<Vec<CosmosMsg>>,
+}
+
 #[derive(Clone, PartialEq, prost::Message)]
 pub struct Coin {
     #[prost(string, tag = "1")]
