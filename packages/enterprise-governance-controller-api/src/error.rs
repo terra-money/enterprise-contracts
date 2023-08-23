@@ -91,8 +91,8 @@ pub enum GovernanceControllerError {
     #[error("Already deploying a remote treasury to given chain")]
     CrossChainTreasuryDeploymentInProgress,
 
-    #[error("No cross chain treasury has been deployed for the given chain ID")]
-    NoCrossChainTreasuryForGivenChainId,
+    #[error("No cross chain deployment has been deployed for the given chain ID")]
+    NoCrossChainDeploymentForGivenChainId,
 
     #[error("Custom Error val: {val}")]
     CustomError { val: String },

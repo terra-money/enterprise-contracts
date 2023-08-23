@@ -44,6 +44,10 @@ pub fn execute_remove_attestation_response() -> Response {
     Response::new().add_attribute("action", "remove_attestation")
 }
 
+pub fn execute_add_cross_chain_proxy_response() -> Response {
+    Response::new().add_attribute("action", "add_cross_chain_proxy")
+}
+
 pub fn execute_add_cross_chain_treasury_response() -> Response {
     Response::new().add_attribute("action", "add_cross_chain_treasury")
 }

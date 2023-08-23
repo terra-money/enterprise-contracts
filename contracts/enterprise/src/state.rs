@@ -25,6 +25,10 @@ pub struct ComponentContracts {
 
 pub const COMPONENT_CONTRACTS: Item<ComponentContracts> = Item::new("component_contracts");
 
+/// Proxies used on other chains to control treasuries.
+/// Maps chain_id to proxy address.
+pub const CROSS_CHAIN_PROXIES: Map<String, String> = Map::new("cross_chain_proxies");
+
 /// Treasuries used in addition to the main one.
 /// Those are cross-chain, and this is the key part of our cross-chain design.
 /// Maps chain_id to treasury address.

@@ -87,6 +87,12 @@ pub struct SetAttestationMsg {
 }
 
 #[cw_serde]
+pub struct AddCrossChainProxyMsg {
+    pub chain_id: String,
+    pub proxy_addr: String,
+}
+
+#[cw_serde]
 pub struct AddCrossChainTreasuryMsg {
     pub chain_id: String,
     pub treasury_addr: String,
@@ -110,7 +116,7 @@ pub struct CrossChainTreasuriesParams {
 }
 
 #[cw_serde]
-pub struct CrossChainTreasuryParams {
+pub struct CrossChainDeploymentsParams {
     pub chain_id: String,
 }
 
@@ -147,7 +153,8 @@ pub struct CrossChainTreasuriesResponse {
 }
 
 #[cw_serde]
-pub struct CrossChainTreasuryResponse {
+pub struct CrossChainDeploymentsResponse {
     pub chain_id: String,
+    pub proxy_addr: Option<String>,
     pub treasury_addr: Option<String>,
 }

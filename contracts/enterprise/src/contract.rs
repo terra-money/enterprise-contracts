@@ -1,6 +1,6 @@
 use crate::state::{
-    ComponentContracts, COMPONENT_CONTRACTS, CROSS_CHAIN_TREASURIES, DAO_CREATION_DATE,
-    DAO_METADATA, DAO_TYPE, DAO_VERSION, ENTERPRISE_FACTORY_CONTRACT,
+    ComponentContracts, COMPONENT_CONTRACTS, CROSS_CHAIN_PROXIES, CROSS_CHAIN_TREASURIES,
+    DAO_CREATION_DATE, DAO_METADATA, DAO_TYPE, DAO_VERSION, ENTERPRISE_FACTORY_CONTRACT,
     ENTERPRISE_VERSIONING_CONTRACT, IS_INSTANTIATION_FINALIZED,
 };
 use crate::validate::{
@@ -20,14 +20,15 @@ use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
-    AddCrossChainTreasuryMsg, ComponentContractsResponse, CrossChainTreasuriesParams,
-    CrossChainTreasuriesResponse, CrossChainTreasury, CrossChainTreasuryParams,
-    CrossChainTreasuryResponse, DaoInfoResponse, FinalizeInstantiationMsg, IsRestrictedUserParams,
-    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
+    AddCrossChainProxyMsg, AddCrossChainTreasuryMsg, ComponentContractsResponse,
+    CrossChainDeploymentsParams, CrossChainDeploymentsResponse, CrossChainTreasuriesParams,
+    CrossChainTreasuriesResponse, CrossChainTreasury, DaoInfoResponse, FinalizeInstantiationMsg,
+    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
+    UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion,
-    TreasuryAlreadyExistsForChainId,
+    ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -92,7 +93,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
         ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
         ExecuteMsg::RemoveAttestation {} => remove_attestation(ctx),
-        ExecuteMsg::AddCrossChainTreasury(msg) => add_cross_chain_treasuries(ctx, msg),
+        ExecuteMsg::AddCrossChainProxy(msg) => add_cross_chain_proxy(ctx, msg),
+        ExecuteMsg::AddCrossChainTreasury(msg) => add_cross_chain_treasury(ctx, msg),
     }
 }
 
@@ -314,7 +316,24 @@ fn remove_attestation(ctx: &mut Context) -> DaoResult<Response> {
     Ok(execute_remove_attestation_response())
 }
 
-fn add_cross_chain_treasuries(
+fn add_cross_chain_proxy(ctx: &mut Context, msg: AddCrossChainProxyMsg) -> DaoResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
+    if CROSS_CHAIN_PROXIES.has(ctx.deps.storage, msg.chain_id.clone()) {
+        Err(ProxyAlreadyExistsForChainId)
+    } else {
+        let proxy_addr_canonical = ctx.deps.api.addr_canonicalize(&msg.proxy_addr)?;
+        CROSS_CHAIN_PROXIES.save(
+            ctx.deps.storage,
+            msg.chain_id,
+            &proxy_addr_canonical.to_string(),
+        )?;
+
+        Ok(execute_add_cross_chain_treasury_response())
+    }
+}
+
+fn add_cross_chain_treasury(
     ctx: &mut Context,
     msg: AddCrossChainTreasuryMsg,
 ) -> DaoResult<Response> {
@@ -371,8 +390,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::CrossChainTreasuries(params) => {
             to_binary(&query_cross_chain_treasuries(qctx, params)?)?
         }
-        QueryMsg::CrossChainTreasury(params) => {
-            to_binary(&query_cross_chain_treasury(qctx, params)?)?
+        QueryMsg::CrossChainDeployments(params) => {
+            to_binary(&query_cross_chain_deployments(qctx, params)?)?
         }
     };
     Ok(response)
@@ -458,15 +477,17 @@ fn query_cross_chain_treasuries(
     Ok(CrossChainTreasuriesResponse { treasuries })
 }
 
-fn query_cross_chain_treasury(
+fn query_cross_chain_deployments(
     qctx: QueryContext,
-    params: CrossChainTreasuryParams,
-) -> DaoResult<CrossChainTreasuryResponse> {
+    params: CrossChainDeploymentsParams,
+) -> DaoResult<CrossChainDeploymentsResponse> {
+    let proxy_addr = CROSS_CHAIN_PROXIES.may_load(qctx.deps.storage, params.chain_id.clone())?;
     let treasury_addr =
         CROSS_CHAIN_TREASURIES.may_load(qctx.deps.storage, params.chain_id.clone())?;
 
-    Ok(CrossChainTreasuryResponse {
+    Ok(CrossChainDeploymentsResponse {
         chain_id: params.chain_id,
+        proxy_addr,
         treasury_addr,
     })
 }

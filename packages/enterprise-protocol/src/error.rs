@@ -36,6 +36,9 @@ pub enum DaoError {
     #[error("Supplied migrate msg is not a map of (version, migrate msg for version)")]
     InvalidMigrateMsgMap,
 
+    #[error("Trying to add a proxy for a chain ID that already has a DAO-owned proxy deployed")]
+    ProxyAlreadyExistsForChainId,
+
     #[error("Trying to add a treasury for a chain ID that already has a treasury deployed")]
     TreasuryAlreadyExistsForChainId,
 }
