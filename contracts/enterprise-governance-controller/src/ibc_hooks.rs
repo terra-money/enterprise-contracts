@@ -1,8 +1,8 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::CosmosMsg::Stargate;
-use cosmwasm_std::{CosmosMsg, Env, SubMsg};
-use cw_storage_plus::Map;
-use enterprise_governance_controller_api::api::CrossChainMsgSpec;
+use cosmwasm_std::{CanonicalAddr, CosmosMsg, Env, SubMsg};
+use cw_storage_plus::{Item, Map};
+use enterprise_governance_controller_api::api::{CrossChainMsgSpec, DeployCrossChainTreasuryMsg};
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use prost::Message;
 
@@ -133,5 +133,22 @@ pub fn ibc_hooks_msg_to_ics_proxy_contract(
 }
 
 /// A map of ICS proxy contract callbacks we're expecting.
-/// Will store a pair of callback ID and proxy contract address, and map it to chain-id.
-pub const ICS_PROXY_CALLBACKS: Map<(u32, String), String> = Map::new("ics_proxy_callbacks");
+pub const ICS_PROXY_CALLBACKS: Map<u32, IcsProxyCallback> = Map::new("ics_proxy_callbacks");
+
+pub const ICS_PROXY_CALLBACK_LAST_ID: Item<u32> = Item::new("ics_proxy_callback_last_id");
+
+#[cw_serde]
+// TODO: write an explanation
+pub struct IcsProxyCallback {
+    pub chain_id: String,
+    pub proxy_addr: CanonicalAddr,
+    pub callback_type: IcsProxyCallbackType,
+}
+
+#[cw_serde]
+pub enum IcsProxyCallbackType {
+    InstantiateProxy {
+        deploy_treasury_msg: Box<DeployCrossChainTreasuryMsg>,
+    },
+    InstantiateTreasury {},
+}

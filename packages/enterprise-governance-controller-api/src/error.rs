@@ -88,9 +88,6 @@ pub enum GovernanceControllerError {
     #[error("This operation is not a supported for {dao_type} DAOs")]
     UnsupportedOperationForDaoType { dao_type: String },
 
-    #[error("Already deploying a remote treasury to given chain")]
-    CrossChainTreasuryDeploymentInProgress,
-
     #[error("No cross chain deployment has been deployed for the given chain ID")]
     NoCrossChainDeploymentForGivenChainId,
 
