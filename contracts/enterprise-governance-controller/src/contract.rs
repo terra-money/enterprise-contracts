@@ -1142,9 +1142,7 @@ pub fn receive_cw20(
             };
             create_proposal(ctx, msg, Some(deposit), depositor)
         }
-        _ => Err(CustomError {
-            val: "msg payload not recognized".to_string(),
-        }),
+        _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
     }
 }
 

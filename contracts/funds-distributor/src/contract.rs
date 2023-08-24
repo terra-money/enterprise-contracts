@@ -10,11 +10,10 @@ use crate::user_weights::{save_initial_weights, update_user_weights};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
-use funds_distributor_api::error::{DistributorError, DistributorResult};
+use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use funds_distributor_api::response::instantiate_response;
 
@@ -69,9 +68,7 @@ pub fn execute(
 fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DistributorResult<Response> {
     match from_binary(&cw20_msg.msg) {
         Ok(Cw20HookMsg::Distribute {}) => distribute_cw20(ctx, cw20_msg),
-        _ => Err(DistributorError::Std(StdError::generic_err(
-            "msg payload not recognized",
-        ))),
+        _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
     }
 }
 
