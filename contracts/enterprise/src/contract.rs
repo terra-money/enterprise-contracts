@@ -385,7 +385,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
 
     let response = match msg {
         QueryMsg::DaoInfo {} => to_binary(&query_dao_info(qctx)?)?,
-        QueryMsg::ComponentContracts {} => to_binary(&query_dao_info(qctx)?)?,
+        QueryMsg::ComponentContracts {} => to_binary(&query_component_contracts(qctx)?)?,
         QueryMsg::IsRestrictedUser(params) => to_binary(&query_is_restricted_user(qctx, params)?)?,
         QueryMsg::CrossChainTreasuries(params) => {
             to_binary(&query_cross_chain_treasuries(qctx, params)?)?
