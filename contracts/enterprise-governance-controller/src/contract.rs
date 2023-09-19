@@ -1148,10 +1148,17 @@ pub fn receive_cw20(
 
 /// Callback invoked when membership weights change.
 /// We need to update governance votes and funds distributor weights.
+///
+/// Only the membership contract can call this.
 pub fn weights_changed(
     ctx: &mut Context,
     msg: WeightsChangedMsg,
 ) -> GovernanceControllerResult<Response> {
+    let membership_contract = query_membership_addr(ctx.deps.as_ref())?;
+    if ctx.info.sender != membership_contract {
+        return Err(Unauthorized);
+    }
+
     let update_votes_submsgs = update_user_votes(ctx.deps.as_ref(), &msg.weight_changes)?;
 
     let new_user_weights = msg
