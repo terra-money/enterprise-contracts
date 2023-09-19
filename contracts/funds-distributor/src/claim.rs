@@ -45,10 +45,13 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
 
         let reward = calculate_user_reward(global_index, distribution, user_weight)?;
 
-        if !reward.is_zero() {
-            let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
-            submsgs.push(SubMsg::new(submsg));
+        // if no user rewards due for the given asset, just skip - no need to send or store anything
+        if reward.is_zero() {
+            continue;
         }
+
+        let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
+        submsgs.push(SubMsg::new(submsg));
 
         NATIVE_DISTRIBUTIONS().save(
             ctx.deps.storage,
@@ -78,10 +81,13 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
 
         let reward = calculate_user_reward(global_index, distribution, user_weight)?;
 
-        if !reward.is_zero() {
-            let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;
-            submsgs.push(SubMsg::new(submsg));
+        // if no user rewards due for the given asset, just skip - no need to send or store anything
+        if reward.is_zero() {
+            continue;
         }
+
+        let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;
+        submsgs.push(SubMsg::new(submsg));
 
         CW20_DISTRIBUTIONS().save(
             ctx.deps.storage,
