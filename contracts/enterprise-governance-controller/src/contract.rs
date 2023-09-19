@@ -128,11 +128,7 @@ pub fn instantiate(
     let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
-    let dao_info: DaoInfoResponse = deps
-        .querier
-        .query_wasm_smart(enterprise_contract.to_string(), &DaoInfo {})?;
-
-    validate_dao_gov_config(&dao_info.dao_type, &msg.gov_config)?;
+    validate_dao_gov_config(&msg.dao_type, &msg.gov_config)?;
     GOV_CONFIG.save(deps.storage, &msg.gov_config)?;
 
     let council_gov_config = validate_dao_council(deps.as_ref(), msg.council_gov_config)?;

@@ -11,8 +11,8 @@ use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::{Instantiate, Migrate, UpdateAdmin};
 use cosmwasm_std::{
-    to_binary, wasm_execute, Addr, Decimal, DepsMut, Env, Response, StdError, StdResult, SubMsg,
-    Uint128, Uint64,
+    to_binary, wasm_execute, Addr, Decimal, Deps, DepsMut, Env, Response, StdError, StdResult,
+    SubMsg, Uint128, Uint64,
 };
 use cw_asset::{Asset, AssetInfo};
 use cw_storage_plus::{Item, Map};
@@ -140,6 +140,7 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> EnterpriseTreasuryResu
     let dao_metadata = DAO_METADATA.load(deps.storage)?;
 
     let enterprise_contract_submsg = create_enterprise_contract(
+        deps.as_ref(),
         env.clone(),
         version_info.version.enterprise_code_id,
         enterprise_factory,
@@ -190,12 +191,15 @@ fn map_whitelisted_assets(mut deps: DepsMut) -> EnterpriseTreasuryResult<()> {
 }
 
 pub fn create_enterprise_contract(
+    deps: Deps,
     env: Env,
     enterprise_code_id: u64,
     enterprise_factory: Addr,
     enterprise_versioning: Addr,
     dao_metadata: DaoMetadata,
 ) -> EnterpriseTreasuryResult<SubMsg> {
+    let dao_type = DAO_TYPE.load(deps.storage)?;
+
     let submsg = SubMsg::reply_on_success(
         Wasm(Instantiate {
             admin: Some(env.contract.address.to_string()),
@@ -204,6 +208,7 @@ pub fn create_enterprise_contract(
                 enterprise_factory_contract: enterprise_factory.to_string(),
                 enterprise_versioning_contract: enterprise_versioning.to_string(),
                 dao_metadata,
+                dao_type,
             })?,
             funds: vec![],
             label: "Enterprise treasury".to_string(),
@@ -321,6 +326,7 @@ pub fn create_governance_controller_contract(
     let version_info = MIGRATION_INFO.load(deps.storage)?.version_info;
     let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
     let dao_council = DAO_COUNCIL.load(deps.storage)?;
+    let dao_type = DAO_TYPE.load(deps.storage)?;
 
     let proposal_infos = PROPOSAL_INFOS
         .range(deps.storage, None, None, Ascending)
@@ -332,6 +338,7 @@ pub fn create_governance_controller_contract(
             code_id: version_info.enterprise_governance_controller_code_id,
             msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
+                dao_type,
                 gov_config: GovConfig {
                     quorum: gov_config.quorum,
                     threshold: gov_config.threshold,
@@ -576,7 +583,6 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         })?,
     }));
 
-    let dao_type = DAO_TYPE.load(ctx.deps.storage)?;
     let finalize_enterprise_instantiation = SubMsg::new(wasm_execute(
         enterprise_contract.to_string(),
         &FinalizeInstantiation(FinalizeInstantiationMsg {
@@ -587,7 +593,6 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
             membership_contract: membership_contract.to_string(),
             council_membership_contract: council_membership_contract.to_string(),
             attestation_contract: None,
-            dao_type,
         }),
         vec![],
     )?);

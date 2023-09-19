@@ -78,6 +78,8 @@ pub fn instantiate(
 
     DAO_VERSION.save(deps.storage, &Version::from_str(CONTRACT_VERSION)?)?;
 
+    DAO_TYPE.save(deps.storage, &msg.dao_type)?;
+
     IS_INSTANTIATION_FINALIZED.save(deps.storage, &false)?;
 
     Ok(instantiate_response())
@@ -136,8 +138,6 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
     };
 
     COMPONENT_CONTRACTS.save(ctx.deps.storage, &component_contracts)?;
-
-    DAO_TYPE.save(ctx.deps.storage, &msg.dao_type)?;
 
     IS_INSTANTIATION_FINALIZED.save(ctx.deps.storage, &true)?;
 

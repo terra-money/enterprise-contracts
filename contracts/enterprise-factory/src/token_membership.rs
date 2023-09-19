@@ -9,7 +9,6 @@ use cosmwasm_std::{to_binary, Addr, DepsMut, StdResult, SubMsg, Uint128};
 use cw20::{Cw20Coin, Logo, MinterResponse};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{ImportCw20MembershipMsg, NewCw20MembershipMsg};
-use enterprise_protocol::api::DaoType::Token;
 use enterprise_protocol::error::DaoError::{ZeroInitialDaoBalance, ZeroInitialWeightMember};
 use enterprise_protocol::error::DaoResult;
 use token_staking_api::msg::InstantiateMsg;
@@ -21,7 +20,6 @@ pub fn import_cw20_membership(deps: DepsMut, msg: ImportCw20MembershipMsg) -> Da
 
     DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
         Ok(DaoBeingCreated {
-            dao_type: Some(Token),
             unlocking_period: Some(msg.unlocking_period),
             ..info
         })
@@ -53,7 +51,6 @@ pub fn instantiate_new_cw20_membership(
     DAO_BEING_CREATED.save(
         deps.storage,
         &DaoBeingCreated {
-            dao_type: Some(Token),
             unlocking_period: Some(msg.unlocking_period),
             ..dao_being_created
         },

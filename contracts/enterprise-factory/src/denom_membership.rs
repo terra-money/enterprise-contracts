@@ -5,7 +5,6 @@ use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{to_binary, DepsMut, StdResult, SubMsg};
 use cw_utils::Duration;
 use denom_staking_api::msg::InstantiateMsg;
-use enterprise_protocol::api::DaoType;
 use enterprise_protocol::error::DaoResult;
 
 pub fn instantiate_denom_staking_membership_contract(
@@ -19,7 +18,7 @@ pub fn instantiate_denom_staking_membership_contract(
 
     DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
         Ok(DaoBeingCreated {
-            dao_type: Some(DaoType::Token),
+            unlocking_period: Some(unlocking_period),
             ..info
         })
     })?;

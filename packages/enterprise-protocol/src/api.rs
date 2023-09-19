@@ -55,7 +55,6 @@ pub struct FinalizeInstantiationMsg {
     pub membership_contract: String,
     pub council_membership_contract: String,
     pub attestation_contract: Option<String>,
-    pub dao_type: DaoType,
 }
 
 #[cw_serde]

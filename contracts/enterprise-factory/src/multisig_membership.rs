@@ -3,11 +3,10 @@ use crate::state::{DaoBeingCreated, DAO_BEING_CREATED};
 use crate::validate::validate_existing_cw3_contract;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
-use cosmwasm_std::{to_binary, DepsMut, StdResult, SubMsg};
+use cosmwasm_std::{to_binary, DepsMut, SubMsg};
 use cw3::Cw3QueryMsg::ListVoters;
 use cw3::VoterListResponse;
 use enterprise_factory_api::api::{ImportCw3MembershipMsg, NewMultisigMembershipMsg};
-use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::error::DaoResult;
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::msg::InstantiateMsg;
@@ -16,13 +15,6 @@ pub fn import_cw3_membership(deps: DepsMut, msg: ImportCw3MembershipMsg) -> DaoR
     let cw3_address = deps.api.addr_validate(&msg.cw3_contract)?;
 
     validate_existing_cw3_contract(deps.as_ref(), cw3_address.as_ref())?;
-
-    DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
-        Ok(DaoBeingCreated {
-            dao_type: Some(Multisig),
-            ..info
-        })
-    })?;
 
     // TODO: gotta do an integration test for this
     let mut initial_weights: Vec<UserWeight> = vec![];
@@ -63,13 +55,6 @@ pub fn instantiate_new_multisig_membership(
     deps: DepsMut,
     msg: NewMultisigMembershipMsg,
 ) -> DaoResult<SubMsg> {
-    DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
-        Ok(DaoBeingCreated {
-            dao_type: Some(Multisig),
-            ..info
-        })
-    })?;
-
     instantiate_multisig_membership_contract(
         deps,
         msg.multisig_members,

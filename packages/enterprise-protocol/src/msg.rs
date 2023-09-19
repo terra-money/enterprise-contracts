@@ -1,7 +1,7 @@
 use crate::api::{
     AddCrossChainProxyMsg, AddCrossChainTreasuryMsg, ComponentContractsResponse,
     CrossChainDeploymentsParams, CrossChainDeploymentsResponse, CrossChainTreasuriesParams,
-    CrossChainTreasuriesResponse, DaoInfoResponse, DaoMetadata, FinalizeInstantiationMsg,
+    CrossChainTreasuriesResponse, DaoInfoResponse, DaoMetadata, DaoType, FinalizeInstantiationMsg,
     IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
     UpgradeDaoMsg,
 };
@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
     pub enterprise_factory_contract: String,
     pub enterprise_versioning_contract: String,
     pub dao_metadata: DaoMetadata,
+    pub dao_type: DaoType,
 }
 
 #[cw_serde]

@@ -7,11 +7,13 @@ use crate::api::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
+use enterprise_protocol::api::DaoType;
 use membership_common_api::api::WeightsChangedMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub enterprise_contract: String,
+    pub dao_type: DaoType,
     pub gov_config: GovConfig,
     pub council_gov_config: Option<DaoCouncilSpec>,
     pub proposal_infos: Option<Vec<(ProposalId, ProposalInfo)>>,

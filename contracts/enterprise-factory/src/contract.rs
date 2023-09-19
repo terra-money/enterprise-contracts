@@ -35,7 +35,7 @@ use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryM
 use enterprise_factory_api::response::{
     execute_create_dao_response, execute_finalize_dao_creation_response, instantiate_response,
 };
-use enterprise_protocol::api::FinalizeInstantiationMsg;
+use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::error::DaoError::Unauthorized;
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
@@ -101,16 +101,23 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
 
     let enterprise_code_id = latest_version.enterprise_code_id;
 
+    let dao_type = match msg.dao_membership {
+        NewDenom(_) => DaoType::Denom,
+        ImportCw20(_) | NewCw20(_) => DaoType::Token,
+        ImportCw721(_) | NewCw721(_) => DaoType::Nft,
+        ImportCw3(_) | NewMultisig(_) => DaoType::Multisig,
+    };
+
     DAO_BEING_CREATED.save(
         deps.storage,
         &DaoBeingCreated {
             create_dao_msg: Some(msg.clone()),
             version_info: Some(latest_version),
+            dao_type: Some(dao_type.clone()),
             dao_asset: None,
             dao_nft: None,
             enterprise_address: None,
             initial_weights: None,
-            dao_type: None,
             unlocking_period: None,
             membership_address: None,
             council_membership_address: None,
@@ -126,6 +133,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         dao_metadata: msg.dao_metadata.clone(),
         enterprise_factory_contract: env.contract.address.to_string(),
         enterprise_versioning_contract: config.enterprise_versioning.to_string(),
+        dao_type,
     };
     let create_dao_submsg = SubMsg::reply_on_success(
         Instantiate {
@@ -192,7 +200,6 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
                 .attestation_addr
                 .as_ref()
                 .map(|addr| addr.to_string()),
-            dao_type: dao_being_created.require_dao_type()?,
         }),
         vec![],
     )?);
@@ -231,6 +238,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let create_dao_msg = dao_being_created.require_create_dao_msg()?;
             let version_info = dao_being_created.require_version_info()?;
+            let dao_type = dao_being_created.require_dao_type()?;
 
             DAO_BEING_CREATED.save(
                 deps.storage,
@@ -246,6 +254,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     code_id: version_info.enterprise_governance_controller_code_id,
                     msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
+                        dao_type,
                         gov_config: create_dao_msg.gov_config,
                         council_gov_config: create_dao_msg.dao_council,
                         proposal_infos: None, // no proposal infos to migrate, it's a fresh DAO
