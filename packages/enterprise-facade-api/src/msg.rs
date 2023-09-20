@@ -10,6 +10,7 @@ use crate::api::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
+use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -113,6 +114,12 @@ pub enum QueryMsg {
     CreateProposalWithTokenDepositAdapted {
         contract: Addr,
         params: CreateProposalWithTokenDepositMsg,
+    },
+
+    #[returns(AdapterResponse)]
+    CreateProposalWithNftDepositAdapted {
+        contract: Addr,
+        params: CreateProposalWithNftDepositMsg,
     },
 
     #[returns(AdapterResponse)]

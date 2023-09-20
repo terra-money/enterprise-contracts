@@ -26,6 +26,7 @@ use enterprise_facade_api::api::{
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
+use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 use EnterpriseFacadeError::UnsupportedOperation;
 use QueryV5Msg::ProposalStatus;
 
@@ -212,6 +213,14 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
                 dao_type: dao_type.to_string(),
             })),
         }
+    }
+
+    fn adapt_create_proposal_with_nft_deposit(
+        &self,
+        _: QueryContext,
+        _: CreateProposalWithNftDepositMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Err(UnsupportedOperation)
     }
 
     fn adapt_create_council_proposal(

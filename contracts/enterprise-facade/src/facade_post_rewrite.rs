@@ -4,6 +4,7 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     coins, to_binary, wasm_execute, Addr, Decimal, Deps, Response, SubMsg, Uint128, Uint64,
 };
+use cw721::Cw721ExecuteMsg::Approve;
 use cw_utils::Expiration::Never;
 use denom_staking_api::api::DenomConfigResponse;
 use denom_staking_api::msg::QueryMsg::DenomConfig;
@@ -23,8 +24,12 @@ use enterprise_facade_api::api::{
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
-use enterprise_governance_controller_api::api::GovConfigResponse;
-use enterprise_governance_controller_api::msg::ExecuteMsg::{CreateProposal, ExecuteProposal};
+use enterprise_governance_controller_api::api::{
+    CreateProposalWithNftDepositMsg, GovConfigResponse,
+};
+use enterprise_governance_controller_api::msg::ExecuteMsg::{
+    CreateProposal, CreateProposalWithNftDeposit, ExecuteProposal,
+};
 use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
 use enterprise_treasury_api::msg::QueryMsg::{AssetWhitelist, NftWhitelist};
@@ -738,6 +743,62 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
                 dao_type: dao_type.to_string(),
             })),
         }
+    }
+
+    fn adapt_create_proposal_with_nft_deposit(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalWithNftDepositMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let dao_type = self.get_dao_type(qctx.deps)?;
+
+        if dao_type != DaoType::Nft {
+            return Err(Dao(UnsupportedOperationForDaoType {
+                dao_type: dao_type.to_string(),
+            }));
+        }
+
+        let governance_controller = self
+            .component_contracts(qctx.deps)?
+            .enterprise_governance_controller_contract;
+        let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+
+        let nft_config: NftConfigResponse = qctx
+            .deps
+            .querier
+            .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+
+        // give governance controller allowance over deposit tokens
+        let allow_deposit_tokens_for_governance_controller = params
+            .deposit_tokens
+            .iter()
+            .map(|token_id| {
+                serde_json_wasm::to_string(&Approve {
+                    spender: governance_controller.to_string(),
+                    token_id: token_id.to_string(),
+                    expires: None,
+                })
+            })
+            .map(|msg_json_res| {
+                msg_json_res.map(|msg_json| AdaptedMsg {
+                    target_contract: nft_config.nft_contract.clone(),
+                    msg: msg_json,
+                    funds: vec![],
+                })
+            })
+            .collect::<serde_json_wasm::ser::Result<Vec<AdaptedMsg>>>()?;
+
+        let mut msgs = allow_deposit_tokens_for_governance_controller;
+
+        let create_proposal_with_nft_deposit_msg = AdaptedMsg {
+            target_contract: governance_controller,
+            msg: serde_json_wasm::to_string(&CreateProposalWithNftDeposit(params))?,
+            funds: vec![],
+        };
+
+        msgs.push(create_proposal_with_nft_deposit_msg);
+
+        Ok(AdapterResponse { msgs })
     }
 
     fn adapt_create_council_proposal(

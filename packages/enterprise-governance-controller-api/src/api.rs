@@ -5,6 +5,7 @@ use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
 use multisig_membership_api::api::UserWeight;
+use nft_staking_api::api::NftTokenId;
 use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
@@ -86,7 +87,15 @@ pub struct CreateProposalMsg {
     pub proposal_actions: Vec<ProposalAction>,
 }
 
-// TODO: move to poll-engine, together with the deposit returning logic?
+#[cw_serde]
+pub struct CreateProposalWithNftDepositMsg {
+    pub create_proposal_msg: CreateProposalMsg,
+    /// Tokens that the user wants to deposit to create the proposal.
+    /// These tokens are expected to be owned by the user or approved for them, otherwise this fails.
+    /// governance-controller expects to have an approval for those tokens.
+    pub deposit_tokens: Vec<NftTokenId>,
+}
+
 #[cw_serde]
 pub struct ProposalDeposit {
     pub depositor: Addr,
@@ -95,15 +104,26 @@ pub struct ProposalDeposit {
 
 #[cw_serde]
 pub enum ProposalAsset {
-    Denom { denom: String, amount: Uint128 },
-    Cw20 { token_addr: Addr, amount: Uint128 },
+    Denom {
+        denom: String,
+        amount: Uint128,
+    },
+    Cw20 {
+        token_addr: Addr,
+        amount: Uint128,
+    },
+    Cw721 {
+        nft_addr: Addr,
+        tokens: Vec<NftTokenId>,
+    },
 }
 
 impl ProposalDeposit {
     pub fn amount(&self) -> Uint128 {
-        match self.asset {
-            ProposalAsset::Denom { amount, .. } => amount,
-            ProposalAsset::Cw20 { amount, .. } => amount,
+        match &self.asset {
+            ProposalAsset::Denom { amount, .. } => *amount,
+            ProposalAsset::Cw20 { amount, .. } => *amount,
+            ProposalAsset::Cw721 { tokens, .. } => Uint128::from(tokens.len() as u128),
         }
     }
 }

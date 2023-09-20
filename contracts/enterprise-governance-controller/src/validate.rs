@@ -20,7 +20,7 @@ use enterprise_governance_controller_api::error::GovernanceControllerError::{
 use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
 };
-use enterprise_protocol::api::DaoType::{Multisig, Nft};
+use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::api::{DaoInfoResponse, DaoType, UpgradeDaoMsg};
 use enterprise_protocol::error::DaoError::{InvalidMigrateMsgMap, MigratingToLowerVersion};
 use enterprise_protocol::msg::QueryMsg::DaoInfo;
@@ -58,7 +58,8 @@ pub fn validate_dao_gov_config(
         }
     }
 
-    if dao_gov_config.minimum_deposit.is_some() && (dao_type == &Nft || dao_type == &Multisig) {
+    // no minimum deposits allowed for multisig DAOs
+    if dao_gov_config.minimum_deposit.is_some() && dao_type == &Multisig {
         return Err(MinimumDepositNotAllowed {});
     }
 

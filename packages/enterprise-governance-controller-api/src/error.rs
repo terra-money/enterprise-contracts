@@ -79,6 +79,9 @@ pub enum GovernanceControllerError {
     #[error("An NFT is added or removed multiple times")]
     DuplicateNftFound,
 
+    #[error("An NFT token is being deposited multiple times")]
+    DuplicateNftDeposit,
+
     #[error("An NFT is present in both add and remove lists")]
     NftPresentInBothAddAndRemove,
 

@@ -15,6 +15,7 @@ use enterprise_facade_api::api::{
 };
 use enterprise_facade_api::error::EnterpriseFacadeError::CannotCreateFacade;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
+use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 use enterprise_treasury_api::api::ConfigResponse;
 use enterprise_treasury_api::msg::QueryMsg::Config;
 
@@ -126,6 +127,12 @@ pub trait EnterpriseFacade {
         &self,
         qctx: QueryContext,
         params: CreateProposalWithTokenDepositMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_create_proposal_with_nft_deposit(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalWithNftDepositMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse>;
 
     fn adapt_create_council_proposal(

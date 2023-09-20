@@ -123,6 +123,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_create_proposal_with_token_deposit(qctx, params)?)?
         }
+        QueryMsg::CreateProposalWithNftDepositAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_create_proposal_with_nft_deposit(qctx, params)?)?
+        }
         QueryMsg::CreateCouncilProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_create_council_proposal(qctx, params)?)?

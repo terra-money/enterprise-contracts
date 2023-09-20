@@ -21,6 +21,9 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
+use cw721::Cw721ExecuteMsg::TransferNft;
+use cw721::Cw721QueryMsg::OwnerOf;
+use cw721::{Approval, OwnerOfResponse};
 use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_utils::Expiration::Never;
 use cw_utils::{parse_reply_instantiate_data, Expiration};
@@ -34,22 +37,22 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
 use enterprise_governance_controller_api::api::{
-    AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg, CrossChainMsgSpec,
-    DeployCrossChainTreasuryMsg, DistributeFundsMsg, ExecuteMsgReplyCallbackMsg, ExecuteMsgsMsg,
-    ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
-    ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalAsset,
-    ProposalDeposit, ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
-    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    RemoteTreasuryTarget, RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg,
-    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
-    UpdateNftWhitelistProposalActionMsg,
+    AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg,
+    CreateProposalWithNftDepositMsg, CrossChainMsgSpec, DeployCrossChainTreasuryMsg,
+    DistributeFundsMsg, ExecuteMsgReplyCallbackMsg, ExecuteMsgsMsg, ExecuteProposalMsg, GovConfig,
+    GovConfigResponse, MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal,
+    ProposalAction, ProposalActionType, ProposalAsset, ProposalDeposit, ProposalId, ProposalInfo,
+    ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, RemoteTreasuryTarget, RequestFundingFromDaoMsg,
+    UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
+    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    CustomError, Dao, InvalidCosmosMessage, InvalidDepositType,
+    CustomError, Dao, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType,
     NoCrossChainDeploymentForGivenChainId, NoDaoCouncil, NoSuchProposal, NoVotesAvailable,
     NoVotingPower, ProposalAlreadyExecuted, RestrictedUser, Std, Unauthorized,
-    UnsupportedCouncilProposalAction, WrongProposalType,
+    UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use enterprise_governance_controller_api::msg::{
@@ -81,6 +84,8 @@ use membership_common_api::api::{
 };
 use multisig_membership_api::api::{SetMembersMsg, UpdateMembersMsg};
 use multisig_membership_api::msg::ExecuteMsg::{SetMembers, UpdateMembers};
+use nft_staking_api::api::{NftConfigResponse, NftTokenId};
+use nft_staking_api::msg::QueryMsg::NftConfig;
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, Poll, PollId, PollParams, PollRejectionReason,
     PollResponse, PollStatus, PollStatusFilter, PollStatusResponse, PollVoterParams,
@@ -89,6 +94,7 @@ use poll_engine_api::api::{
 };
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
+use std::collections::HashSet;
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
@@ -152,6 +158,7 @@ pub fn execute(
     let ctx = &mut Context { deps, env, info };
     match msg {
         ExecuteMsg::CreateProposal(msg) => determine_deposit_and_create_proposal(ctx, msg),
+        ExecuteMsg::CreateProposalWithNftDeposit(msg) => create_proposal_with_nft_deposit(ctx, msg),
         ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(ctx, msg),
         ExecuteMsg::CastVote(msg) => cast_vote(ctx, msg),
         ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(ctx, msg),
@@ -194,6 +201,113 @@ fn determine_deposit_and_create_proposal(
     };
 
     create_proposal(ctx, msg, deposit, proposer)
+}
+
+fn create_proposal_with_nft_deposit(
+    ctx: &mut Context,
+    msg: CreateProposalWithNftDepositMsg,
+) -> GovernanceControllerResult<Response> {
+    let dao_type = query_dao_type(ctx.deps.as_ref())?;
+
+    if dao_type != Nft {
+        return Err(UnsupportedOperationForDaoType {
+            dao_type: dao_type.to_string(),
+        });
+    }
+
+    assert_no_duplicate_nft_deposits(&msg.deposit_tokens)?;
+
+    let dao_nft_config = query_dao_nft_config(ctx.deps.as_ref())?;
+
+    let proposer = ctx.info.sender.clone();
+
+    let mut transfer_deposit_tokens_msgs: Vec<SubMsg> = vec![];
+
+    for token_id in &msg.deposit_tokens {
+        // ensure that proposer is either an owner or is approved for every token being deposited
+        if !can_deposit_nft(
+            ctx,
+            dao_nft_config.nft_contract.to_string(),
+            proposer.clone(),
+            token_id.to_string(),
+        )? {
+            return Err(Unauthorized);
+        }
+
+        // add a msg to transfer the NFT token being deposited to this contract
+        // this assumes that this contract was given approval for the token, otherwise this fails
+        transfer_deposit_tokens_msgs.push(SubMsg::new(wasm_execute(
+            dao_nft_config.nft_contract.to_string(),
+            &TransferNft {
+                recipient: ctx.env.contract.address.to_string(),
+                token_id: token_id.to_string(),
+            },
+            vec![],
+        )?));
+    }
+
+    let nft_deposit = ProposalDeposit {
+        depositor: proposer.clone(),
+        asset: ProposalAsset::Cw721 {
+            nft_addr: dao_nft_config.nft_contract,
+            tokens: msg.deposit_tokens,
+        },
+    };
+
+    let create_proposal_response =
+        create_proposal(ctx, msg.create_proposal_msg, Some(nft_deposit), proposer)?;
+
+    Ok(create_proposal_response.add_submessages(transfer_deposit_tokens_msgs))
+}
+
+fn assert_no_duplicate_nft_deposits(tokens: &Vec<NftTokenId>) -> GovernanceControllerResult<()> {
+    let mut token_set: HashSet<NftTokenId> = HashSet::new();
+
+    for token in tokens {
+        let newly_inserted = token_set.insert(token.to_string());
+        if !newly_inserted {
+            return Err(DuplicateNftDeposit);
+        }
+    }
+
+    Ok(())
+}
+
+fn can_deposit_nft(
+    ctx: &Context,
+    nft_contract: String,
+    proposer: Addr,
+    token_id: NftTokenId,
+) -> GovernanceControllerResult<bool> {
+    let owner_response: OwnerOfResponse = ctx.deps.querier.query_wasm_smart(
+        nft_contract,
+        &OwnerOf {
+            token_id,
+            include_expired: Some(false),
+        },
+    )?;
+
+    let owner = ctx.deps.api.addr_validate(&owner_response.owner)?;
+
+    // only owners and users with an approval can deposit the NFT
+    let can_deposit_nft = owner == proposer
+        || has_nft_approval(ctx.deps.as_ref(), proposer, owner_response.approvals)?;
+
+    Ok(can_deposit_nft)
+}
+
+fn has_nft_approval(
+    deps: Deps,
+    user: Addr,
+    approvals: Vec<Approval>,
+) -> GovernanceControllerResult<bool> {
+    for approval in approvals {
+        let spender = deps.api.addr_validate(&approval.spender)?;
+        if spender == user {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn create_proposal(
@@ -508,20 +622,38 @@ fn return_deposit_submsgs(
     match deposit {
         None => Ok(vec![]),
         Some(deposit) => {
-            let transfer_msg = match deposit.asset.clone() {
+            let transfer_msgs = match deposit.asset.clone() {
                 ProposalAsset::Denom { denom, amount } => {
-                    Asset::native(denom, amount).transfer_msg(deposit.depositor.clone())?
+                    vec![SubMsg::new(
+                        Asset::native(denom, amount).transfer_msg(deposit.depositor.clone())?,
+                    )]
                 }
                 ProposalAsset::Cw20 { token_addr, amount } => {
-                    Asset::cw20(token_addr, amount).transfer_msg(deposit.depositor.clone())?
+                    vec![SubMsg::new(
+                        Asset::cw20(token_addr, amount).transfer_msg(deposit.depositor.clone())?,
+                    )]
                 }
+                ProposalAsset::Cw721 { nft_addr, tokens } => tokens
+                    .into_iter()
+                    .map(|token_id| {
+                        wasm_execute(
+                            nft_addr.to_string(),
+                            &TransferNft {
+                                recipient: deposit.depositor.to_string(),
+                                token_id,
+                            },
+                            vec![],
+                        )
+                        .map(SubMsg::new)
+                    })
+                    .collect::<StdResult<Vec<SubMsg>>>()?,
             };
 
             TOTAL_DEPOSITS.update(deps.storage, |deposits| -> StdResult<Uint128> {
                 Ok(deposits - deposit.amount())
             })?;
 
-            Ok(vec![SubMsg::new(transfer_msg)])
+            Ok(transfer_msgs)
         }
     }
 }
@@ -1800,6 +1932,18 @@ fn query_enterprise_cross_chain_deployments(
 
 fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.membership_contract)
+}
+
+/// Query the membership contract for its NftConfig.
+/// Will fail if the DAO is not of type Nft.
+fn query_dao_nft_config(deps: Deps) -> GovernanceControllerResult<NftConfigResponse> {
+    let membership_contract = query_membership_addr(deps)?;
+
+    let nft_config: NftConfigResponse = deps
+        .querier
+        .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+
+    Ok(nft_config)
 }
 
 /// Query the membership contract for its DenomConfig.
