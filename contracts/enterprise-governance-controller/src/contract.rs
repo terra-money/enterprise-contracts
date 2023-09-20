@@ -24,6 +24,8 @@ use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_utils::Expiration::Never;
 use cw_utils::{parse_reply_instantiate_data, Expiration};
+use denom_staking_api::api::DenomConfigResponse;
+use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_controller_api::api::ProposalAction::{
     AddAttestation, DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RemoveAttestation,
@@ -35,8 +37,8 @@ use enterprise_governance_controller_api::api::{
     AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg, CrossChainMsgSpec,
     DeployCrossChainTreasuryMsg, DistributeFundsMsg, ExecuteMsgReplyCallbackMsg, ExecuteMsgsMsg,
     ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
-    ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
-    ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
+    ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalAsset,
+    ProposalDeposit, ProposalId, ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus,
     ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
     RemoteTreasuryTarget, RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg,
@@ -87,7 +89,6 @@ use poll_engine_api::api::{
 };
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
-use std::ops::{Add, Sub};
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
@@ -148,10 +149,9 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> GovernanceControllerResult<Response> {
-    let sender = info.sender.clone();
     let ctx = &mut Context { deps, env, info };
     match msg {
-        ExecuteMsg::CreateProposal(msg) => create_proposal(ctx, msg, None, sender),
+        ExecuteMsg::CreateProposal(msg) => determine_deposit_and_create_proposal(ctx, msg),
         ExecuteMsg::CreateCouncilProposal(msg) => create_council_proposal(ctx, msg),
         ExecuteMsg::CastVote(msg) => cast_vote(ctx, msg),
         ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(ctx, msg),
@@ -161,6 +161,39 @@ pub fn execute(
         ExecuteMsg::WeightsChanged(msg) => weights_changed(ctx, msg),
         ExecuteMsg::ExecuteMsgReplyCallback(msg) => execute_msg_reply_callback(ctx, msg),
     }
+}
+
+fn determine_deposit_and_create_proposal(
+    ctx: &mut Context,
+    msg: CreateProposalMsg,
+) -> GovernanceControllerResult<Response> {
+    let dao_type = query_dao_type(ctx.deps.as_ref())?;
+
+    let proposer = ctx.info.sender.clone();
+
+    let deposit = match dao_type {
+        Denom => {
+            let dao_denom_config = query_dao_denom_config(ctx.deps.as_ref())?;
+
+            // find if the message contains funds that match the DAO's denom
+            let dao_denom_from_funds = ctx
+                .info
+                .funds
+                .iter()
+                .find(|coin| coin.denom == dao_denom_config.denom);
+
+            dao_denom_from_funds.map(|coin| ProposalDeposit {
+                depositor: proposer.clone(),
+                asset: ProposalAsset::Denom {
+                    denom: coin.denom.clone(),
+                    amount: coin.amount,
+                },
+            })
+        }
+        Token | Nft | Multisig => None,
+    };
+
+    create_proposal(ctx, msg, deposit, proposer)
 }
 
 fn create_proposal(
@@ -475,13 +508,17 @@ fn return_deposit_submsgs(
     match deposit {
         None => Ok(vec![]),
         Some(deposit) => {
-            let membership_contract = query_membership_addr(deps.as_ref())?;
-
-            let transfer_msg =
-                Asset::cw20(membership_contract, deposit.amount).transfer_msg(deposit.depositor)?;
+            let transfer_msg = match deposit.asset.clone() {
+                ProposalAsset::Denom { denom, amount } => {
+                    Asset::native(denom, amount).transfer_msg(deposit.depositor.clone())?
+                }
+                ProposalAsset::Cw20 { token_addr, amount } => {
+                    Asset::cw20(token_addr, amount).transfer_msg(deposit.depositor.clone())?
+                }
+            };
 
             TOTAL_DEPOSITS.update(deps.storage, |deposits| -> StdResult<Uint128> {
-                Ok(deposits.sub(deposit.amount))
+                Ok(deposits - deposit.amount())
             })?;
 
             Ok(vec![SubMsg::new(transfer_msg)])
@@ -594,7 +631,7 @@ fn resolve_ended_proposal(
                             TOTAL_DEPOSITS.update(
                                 ctx.deps.storage,
                                 |deposits| -> StdResult<Uint128> {
-                                    Ok(deposits.sub(deposit.amount))
+                                    Ok(deposits - deposit.amount())
                                 },
                             )?;
                         }
@@ -1127,6 +1164,7 @@ pub fn receive_cw20(
             // only membership CW20 contract can execute this message
             let dao_type = query_dao_type(ctx.deps.as_ref())?;
 
+            // TODO: this is not the token itself, remedy it here and in other places (need to query for TokenConfig)
             let membership_contract = query_membership_addr(ctx.deps.as_ref())?;
             if dao_type != Token || ctx.info.sender != membership_contract {
                 return Err(InvalidDepositType);
@@ -1134,7 +1172,10 @@ pub fn receive_cw20(
             let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
             let deposit = ProposalDeposit {
                 depositor: depositor.clone(),
-                amount: cw20_msg.amount,
+                asset: ProposalAsset::Cw20 {
+                    token_addr: membership_contract,
+                    amount: cw20_msg.amount,
+                },
             };
             create_proposal(ctx, msg, Some(deposit), depositor)
         }
@@ -1334,7 +1375,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
 
             if let Some(deposit) = proposal_info.proposal_deposit {
                 TOTAL_DEPOSITS.update(deps.storage, |deposits| -> StdResult<Uint128> {
-                    Ok(deposits.add(deposit.amount))
+                    Ok(deposits + deposit.amount())
                 })?;
             }
 
@@ -1759,6 +1800,18 @@ fn query_enterprise_cross_chain_deployments(
 
 fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.membership_contract)
+}
+
+/// Query the membership contract for its DenomConfig.
+/// Will fail if the DAO is not of type Denom.
+fn query_dao_denom_config(deps: Deps) -> GovernanceControllerResult<DenomConfigResponse> {
+    let membership_contract = query_membership_addr(deps)?;
+
+    let denom_config: DenomConfigResponse = deps
+        .querier
+        .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
+
+    Ok(denom_config)
 }
 
 fn query_council_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {

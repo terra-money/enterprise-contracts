@@ -5,12 +5,13 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, Deps, Response, StdResult};
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
+    ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
+    CreateProposalWithTokenDepositMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
     MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
     NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
     ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
-    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
+    StakedNftsResponse, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeError::CannotCreateFacade;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
@@ -115,6 +116,18 @@ pub trait EnterpriseFacade {
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse>;
 
+    fn adapt_create_proposal_with_denom_deposit(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalWithDenomDepositMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_create_proposal_with_token_deposit(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalWithTokenDepositMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
     fn adapt_create_council_proposal(
         &self,
         qctx: QueryContext,
@@ -131,6 +144,12 @@ pub trait EnterpriseFacade {
         &self,
         qctx: QueryContext,
         params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_stake(
+        &self,
+        qctx: QueryContext,
+        params: StakeMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse>;
 
     fn adapt_unstake(

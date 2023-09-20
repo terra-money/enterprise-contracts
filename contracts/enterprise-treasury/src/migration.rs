@@ -11,15 +11,16 @@ use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::{Instantiate, Migrate, UpdateAdmin};
 use cosmwasm_std::{
-    to_binary, wasm_execute, Addr, Decimal, Deps, DepsMut, Env, Response, StdError, StdResult,
-    SubMsg, Uint128, Uint64,
+    to_binary, wasm_execute, Addr, BlockInfo, Decimal, Deps, DepsMut, Env, Response, StdError,
+    StdResult, SubMsg, Uint128, Uint64,
 };
 use cw_asset::{Asset, AssetInfo};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
 use enterprise_governance_controller_api::api::{
-    DaoCouncilSpec, GovConfig, ProposalActionType, ProposalId, ProposalInfo,
+    DaoCouncilSpec, GovConfig, ProposalAction, ProposalActionType, ProposalAsset, ProposalDeposit,
+    ProposalId, ProposalInfo, ProposalType,
 };
 use enterprise_protocol::api::{DaoMetadata, DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
@@ -51,7 +52,38 @@ const FUNDS_DISTRIBUTOR_CONTRACT: Item<Addr> = Item::new("funds_distributor_cont
 
 const ENTERPRISE_FACTORY_CONTRACT: Item<Addr> = Item::new("enterprise_factory_contract");
 
-const PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> = Map::new("proposal_infos");
+const PROPOSAL_INFOS: Map<ProposalId, ProposalInfoV5> = Map::new("proposal_infos");
+
+#[cw_serde]
+pub struct ProposalInfoV5 {
+    pub proposal_type: ProposalType,
+    pub executed_at: Option<BlockInfo>,
+    pub proposal_deposit: Option<ProposalDepositV5>,
+    pub proposal_actions: Vec<ProposalAction>,
+}
+
+impl ProposalInfoV5 {
+    pub fn to_proposal_info(self, token_addr: Addr) -> ProposalInfo {
+        ProposalInfo {
+            proposal_type: self.proposal_type,
+            executed_at: self.executed_at,
+            proposal_deposit: self.proposal_deposit.map(|deposit| ProposalDeposit {
+                depositor: deposit.depositor,
+                asset: ProposalAsset::Cw20 {
+                    token_addr,
+                    amount: deposit.amount,
+                },
+            }),
+            proposal_actions: self.proposal_actions,
+        }
+    }
+}
+
+#[cw_serde]
+pub struct ProposalDepositV5 {
+    pub depositor: Addr,
+    pub amount: Uint128,
+}
 
 #[cw_serde]
 struct MigrationInfo {
@@ -328,8 +360,18 @@ pub fn create_governance_controller_contract(
     let dao_council = DAO_COUNCIL.load(deps.storage)?;
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
+    let dao_membership_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+
     let proposal_infos = PROPOSAL_INFOS
         .range(deps.storage, None, None, Ascending)
+        .map(|res| {
+            res.map(|(id, proposal_info_v5)| {
+                (
+                    id,
+                    proposal_info_v5.to_proposal_info(dao_membership_contract.clone()),
+                )
+            })
+        })
         .collect::<StdResult<Vec<(ProposalId, ProposalInfo)>>>()?;
 
     let submsg = SubMsg::reply_on_success(
@@ -393,7 +435,7 @@ pub fn governance_controller_contract_created(
     let response = if dao_type == DaoType::Token {
         let deposit_amount: Uint128 = PROPOSAL_INFOS
             .range(deps.storage, None, None, Ascending)
-            .collect::<StdResult<Vec<(ProposalId, ProposalInfo)>>>()?
+            .collect::<StdResult<Vec<(ProposalId, ProposalInfoV5)>>>()?
             .into_iter()
             .filter_map(|(_, proposal_info)| proposal_info.proposal_deposit)
             .map(|deposit| deposit.amount)

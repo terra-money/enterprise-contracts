@@ -1,11 +1,12 @@
 use crate::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
+    ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
+    CreateProposalWithTokenDepositMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
     MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
     NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
     ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
-    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
+    StakedNftsResponse, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
@@ -103,20 +104,35 @@ pub enum QueryMsg {
     },
 
     #[returns(AdapterResponse)]
+    CreateProposalWithDenomDepositAdapted {
+        contract: Addr,
+        params: CreateProposalWithDenomDepositMsg,
+    },
+
+    #[returns(AdapterResponse)]
+    CreateProposalWithTokenDepositAdapted {
+        contract: Addr,
+        params: CreateProposalWithTokenDepositMsg,
+    },
+
+    #[returns(AdapterResponse)]
     CreateCouncilProposalAdapted {
         contract: Addr,
         params: CreateProposalMsg,
     },
 
     #[returns(AdapterResponse)]
-    CastVote { contract: Addr, params: CastVoteMsg },
+    CastVoteAdapted { contract: Addr, params: CastVoteMsg },
 
     #[returns(AdapterResponse)]
-    CastCouncilVote { contract: Addr, params: CastVoteMsg },
+    CastCouncilVoteAdapted { contract: Addr, params: CastVoteMsg },
 
     #[returns(AdapterResponse)]
-    Unstake { contract: Addr, params: UnstakeMsg },
+    StakeAdapted { contract: Addr, params: StakeMsg },
 
     #[returns(AdapterResponse)]
-    Claim { contract: Addr },
+    UnstakeAdapted { contract: Addr, params: UnstakeMsg },
+
+    #[returns(AdapterResponse)]
+    ClaimAdapted { contract: Addr },
 }

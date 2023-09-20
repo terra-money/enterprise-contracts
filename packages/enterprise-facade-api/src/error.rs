@@ -16,6 +16,9 @@ pub enum EnterpriseFacadeError {
 
     #[error("Could not properly identify the contract and its relation to Enterprise, facade cannot be created")]
     CannotCreateFacade,
+
+    #[error("The operation is unsupported by this DAO version")]
+    UnsupportedOperation,
 }
 
 impl EnterpriseFacadeError {
@@ -37,8 +40,8 @@ impl From<OverflowError> for EnterpriseFacadeError {
     }
 }
 
-impl From<serde_json::Error> for EnterpriseFacadeError {
-    fn from(e: serde_json::Error) -> Self {
+impl From<serde_json_wasm::ser::Error> for EnterpriseFacadeError {
+    fn from(e: serde_json_wasm::ser::Error) -> Self {
         Std(StdError::generic_err(e.to_string()))
     }
 }

@@ -6,21 +6,27 @@ use crate::facade_v5::QueryV5Msg::{
     AssetWhitelist, Claims, DaoInfo, ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist,
     Proposal, ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
 };
+use crate::util::adapter_response_single_msg;
 use common::cw::{Context, QueryContext};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_schema::serde::de::DeserializeOwned;
 use cosmwasm_schema::serde::Serialize;
-use cosmwasm_std::{wasm_execute, Addr, Deps, Response, SubMsg};
+use cosmwasm_std::{to_binary, wasm_execute, Addr, Deps, Response, SubMsg};
 use enterprise_facade_api::api::{
-    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
-    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams, StakedNftsResponse,
-    TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    AdaptedMsg, AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg,
+    ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
+    CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType, ExecuteProposalMsg,
+    ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
+    MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse, ProposalParams,
+    ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg,
+    StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
+    UserStakeResponse,
 };
-use enterprise_facade_api::error::EnterpriseFacadeResult;
+use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
+use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
+use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
+use EnterpriseFacadeError::UnsupportedOperation;
 use QueryV5Msg::ProposalStatus;
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
@@ -165,10 +171,47 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
         _: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(AdapterResponse {
-            target_contract: self.enterprise_address.clone(),
-            msg: serde_json::to_string(&CreateProposal(params))?,
-        })
+        Ok(adapter_response_single_msg(
+            self.enterprise_address.clone(),
+            serde_json_wasm::to_string(&CreateProposal(params))?,
+            vec![],
+        ))
+    }
+
+    fn adapt_create_proposal_with_denom_deposit(
+        &self,
+        _: QueryContext,
+        _: CreateProposalWithDenomDepositMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Err(UnsupportedOperation)
+    }
+
+    fn adapt_create_proposal_with_token_deposit(
+        &self,
+        qctx: QueryContext,
+        params: CreateProposalWithTokenDepositMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let dao_info = self.query_dao_info(qctx.clone())?;
+        let dao_type = dao_info.dao_type;
+
+        match dao_type {
+            DaoType::Token => Ok(adapter_response_single_msg(
+                dao_info.dao_membership_contract,
+                serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
+                    contract: self.enterprise_address.to_string(),
+                    amount: params.deposit_amount,
+                    msg: to_binary(&Cw20HookV5Msg::CreateProposal(CreateProposalMsg {
+                        title: params.create_proposal_msg.title,
+                        description: params.create_proposal_msg.description,
+                        proposal_actions: params.create_proposal_msg.proposal_actions,
+                    }))?,
+                })?,
+                vec![],
+            )),
+            _ => Err(Dao(UnsupportedOperationForDaoType {
+                dao_type: dao_type.to_string(),
+            })),
+        }
     }
 
     fn adapt_create_council_proposal(
@@ -176,10 +219,11 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
         _: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(AdapterResponse {
-            target_contract: self.enterprise_address.clone(),
-            msg: serde_json::to_string(&CreateCouncilProposal(params))?,
-        })
+        Ok(adapter_response_single_msg(
+            self.enterprise_address.clone(),
+            serde_json_wasm::to_string(&CreateCouncilProposal(params))?,
+            vec![],
+        ))
     }
 
     fn adapt_cast_vote(
@@ -187,10 +231,11 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
         _: QueryContext,
         params: CastVoteMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(AdapterResponse {
-            target_contract: self.enterprise_address.clone(),
-            msg: serde_json::to_string(&CastVote(params))?,
-        })
+        Ok(adapter_response_single_msg(
+            self.enterprise_address.clone(),
+            serde_json_wasm::to_string(&CastVote(params))?,
+            vec![],
+        ))
     }
 
     fn adapt_cast_council_vote(
@@ -198,10 +243,60 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
         _: QueryContext,
         params: CastVoteMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(AdapterResponse {
-            target_contract: self.enterprise_address.clone(),
-            msg: serde_json::to_string(&CastCouncilVote(params))?,
-        })
+        Ok(adapter_response_single_msg(
+            self.enterprise_address.clone(),
+            serde_json_wasm::to_string(&CastCouncilVote(params))?,
+            vec![],
+        ))
+    }
+
+    fn adapt_stake(
+        &self,
+        qctx: QueryContext,
+        params: StakeMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        match params {
+            StakeMsg::Cw20(msg) => {
+                let token_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
+                let msg = cw20::Cw20ExecuteMsg::Send {
+                    contract: self.enterprise_address.to_string(),
+                    amount: msg.amount,
+                    msg: to_binary(&Cw20HookV5Msg::Stake {})?,
+                };
+                Ok(adapter_response_single_msg(
+                    token_addr,
+                    serde_json_wasm::to_string(&msg)?,
+                    vec![],
+                ))
+            }
+            StakeMsg::Cw721(msg) => {
+                let nft_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
+
+                let stake_msg_binary = to_binary(&Cw721HookV5Msg::Stake {})?;
+
+                let msgs = msg
+                    .tokens
+                    .into_iter()
+                    .map(|token_id| cw721::Cw721ExecuteMsg::SendNft {
+                        contract: self.enterprise_address.to_string(),
+                        token_id,
+                        msg: stake_msg_binary.clone(),
+                    })
+                    .map(|send_nft_msg| {
+                        serde_json_wasm::to_string(&send_nft_msg).map(|send_nft_msg_json| {
+                            AdaptedMsg {
+                                target_contract: nft_addr.clone(),
+                                msg: send_nft_msg_json,
+                                funds: vec![],
+                            }
+                        })
+                    })
+                    .collect::<serde_json_wasm::ser::Result<Vec<AdaptedMsg>>>()?;
+
+                Ok(AdapterResponse { msgs })
+            }
+            StakeMsg::Denom(_) => Err(UnsupportedOperation),
+        }
     }
 
     fn adapt_unstake(
@@ -209,17 +304,19 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
         _: QueryContext,
         params: UnstakeMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(AdapterResponse {
-            target_contract: self.enterprise_address.clone(),
-            msg: serde_json::to_string(&Unstake(params))?,
-        })
+        Ok(adapter_response_single_msg(
+            self.enterprise_address.clone(),
+            serde_json_wasm::to_string(&Unstake(params))?,
+            vec![],
+        ))
     }
 
     fn adapt_claim(&self, _: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(AdapterResponse {
-            target_contract: self.enterprise_address.clone(),
-            msg: serde_json::to_string(&Claim {})?,
-        })
+        Ok(adapter_response_single_msg(
+            self.enterprise_address.clone(),
+            serde_json_wasm::to_string(&Claim {})?,
+            vec![],
+        ))
     }
 }
 
@@ -247,6 +344,19 @@ enum ExecuteV5Msg {
     CastCouncilVote(CastVoteMsg),
     Unstake(UnstakeMsg),
     Claim {},
+}
+
+/// This is what CW20-receive hook messages for Enterprise contract looked like for v5.
+#[cw_serde]
+enum Cw20HookV5Msg {
+    Stake {},
+    CreateProposal(CreateProposalMsg),
+}
+
+/// This is what CW721-receive hook messages for Enterprise contract looked like for v5.
+#[cw_serde]
+pub enum Cw721HookV5Msg {
+    Stake {},
 }
 
 /// This is what query messages for Enterprise contract looked like for v5.

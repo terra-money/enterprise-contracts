@@ -115,23 +115,35 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_create_proposal(qctx, params)?)?
         }
+        QueryMsg::CreateProposalWithDenomDepositAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_create_proposal_with_denom_deposit(qctx, params)?)?
+        }
+        QueryMsg::CreateProposalWithTokenDepositAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_create_proposal_with_token_deposit(qctx, params)?)?
+        }
         QueryMsg::CreateCouncilProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_create_council_proposal(qctx, params)?)?
         }
-        QueryMsg::CastVote { contract, params } => {
+        QueryMsg::CastVoteAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_cast_vote(qctx, params)?)?
         }
-        QueryMsg::CastCouncilVote { contract, params } => {
+        QueryMsg::CastCouncilVoteAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_cast_council_vote(qctx, params)?)?
         }
-        QueryMsg::Unstake { contract, params } => {
+        QueryMsg::StakeAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.adapt_stake(qctx, params)?)?
+        }
+        QueryMsg::UnstakeAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_unstake(qctx, params)?)?
         }
-        QueryMsg::Claim { contract } => {
+        QueryMsg::ClaimAdapted { contract } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_claim(qctx)?)?
         }

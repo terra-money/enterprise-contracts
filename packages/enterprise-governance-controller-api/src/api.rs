@@ -90,7 +90,22 @@ pub struct CreateProposalMsg {
 #[cw_serde]
 pub struct ProposalDeposit {
     pub depositor: Addr,
-    pub amount: Uint128,
+    pub asset: ProposalAsset,
+}
+
+#[cw_serde]
+pub enum ProposalAsset {
+    Denom { denom: String, amount: Uint128 },
+    Cw20 { token_addr: Addr, amount: Uint128 },
+}
+
+impl ProposalDeposit {
+    pub fn amount(&self) -> Uint128 {
+        match self.asset {
+            ProposalAsset::Denom { amount, .. } => amount,
+            ProposalAsset::Cw20 { amount, .. } => amount,
+        }
+    }
 }
 
 // TODO: try to find a (Rust) language construct allowing us to merge this with ProposalAction

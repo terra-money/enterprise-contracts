@@ -37,6 +37,8 @@ common = { path = "../../packages/common" }
 cosmwasm-schema = "1.1.9"
 cosmwasm-std = "1"
 cw2 = "1.0.1"
+cw20 = "1.0.1"
+cw721 = "0.16.0"
 cw-utils = "1.0.1"
 denom-staking-api = { path = "../../packages/denom-staking-api" }
 token-staking-api = { path = "../../packages/token-staking-api" }
@@ -46,4 +48,4 @@ enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }
-serde_json = "1.0"
+serde-json-wasm = "0.5.0"

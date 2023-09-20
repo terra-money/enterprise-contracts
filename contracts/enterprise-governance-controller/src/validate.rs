@@ -93,7 +93,7 @@ pub fn validate_deposit(
         Some(required_amount) => {
             let deposited_amount = deposit
                 .as_ref()
-                .map(|deposit| deposit.amount)
+                .map(|deposit| deposit.amount())
                 .unwrap_or_default();
 
             if deposited_amount >= required_amount {

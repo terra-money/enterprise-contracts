@@ -1,7 +1,7 @@
 use common::commons::ModifyValue;
 use common::cw::ReleaseAt;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Coin, Decimal, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use cw_utils::{Duration, Expiration};
@@ -180,6 +180,18 @@ pub struct CreateProposalMsg {
     pub proposal_actions: Vec<ProposalAction>,
 }
 
+#[cw_serde]
+pub struct CreateProposalWithDenomDepositMsg {
+    pub create_proposal_msg: CreateProposalMsg,
+    pub deposit_amount: Uint128,
+}
+
+#[cw_serde]
+pub struct CreateProposalWithTokenDepositMsg {
+    pub create_proposal_msg: CreateProposalMsg,
+    pub deposit_amount: Uint128,
+}
+
 // TODO: move to poll-engine, together with the deposit returning logic?
 #[cw_serde]
 pub struct ProposalDeposit {
@@ -295,6 +307,30 @@ pub struct CastVoteMsg {
 #[cw_serde]
 pub struct ExecuteProposalMsg {
     pub proposal_id: ProposalId,
+}
+
+#[cw_serde]
+pub enum StakeMsg {
+    Cw20(StakeCw20Msg),
+    Cw721(StakeCw721Msg),
+    Denom(StakeDenomMsg),
+}
+
+#[cw_serde]
+pub struct StakeCw20Msg {
+    pub user: String,
+    pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct StakeCw721Msg {
+    pub user: String,
+    pub tokens: Vec<NftTokenId>,
+}
+
+#[cw_serde]
+pub struct StakeDenomMsg {
+    pub amount: Uint128,
 }
 
 #[cw_serde]
@@ -593,6 +629,15 @@ pub struct ClaimsParams {
 /// Enterprise version being used.
 #[cw_serde]
 pub struct AdapterResponse {
+    pub msgs: Vec<AdaptedMsg>,
+}
+
+/// Used to enable adapter-like behavior, where this contract can tell its consumers what call to
+/// make with which pre-compiled message in order to achieve desired behavior, regardless of
+/// Enterprise version being used.
+#[cw_serde]
+pub struct AdaptedMsg {
     pub target_contract: Addr,
     pub msg: String,
+    pub funds: Vec<Coin>,
 }
