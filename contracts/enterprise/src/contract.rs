@@ -251,7 +251,7 @@ fn get_versions_between_current_and_target(
             enterprise_versioning.to_string(),
             &Versions(VersionsParams {
                 start_after: last_version.clone(),
-                limit: None,
+                limit: Some(MAX_QUERY_LIMIT as u32),
             }),
         )?;
 
