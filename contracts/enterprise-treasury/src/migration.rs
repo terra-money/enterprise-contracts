@@ -61,6 +61,7 @@ impl ProposalInfoV5 {
         ProposalInfo {
             proposal_type: self.proposal_type,
             executed_at: self.executed_at,
+            earliest_execution: None,
             proposal_deposit: self.proposal_deposit.map(|deposit| ProposalDeposit {
                 depositor: deposit.depositor,
                 asset: ProposalDepositAsset::Cw20 {

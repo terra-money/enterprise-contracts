@@ -17,6 +17,9 @@ pub type ProposalId = u64;
 pub struct ProposalInfo {
     pub proposal_type: ProposalType,
     pub executed_at: Option<BlockInfo>,
+    /// The earliest time at which the proposal's actions can be executed, if it passed.
+    /// If None, can be executed as soon as the proposal passes
+    pub earliest_execution: Option<Timestamp>,
     pub proposal_deposit: Option<ProposalDeposit>,
     pub proposal_actions: Vec<ProposalAction>,
 }

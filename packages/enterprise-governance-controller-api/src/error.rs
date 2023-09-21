@@ -64,6 +64,9 @@ pub enum GovernanceControllerError {
     #[error("The given proposal has already been executed")]
     ProposalAlreadyExecuted,
 
+    #[error("Not enough time has passed since the proposal reached its current outcome")]
+    ProposalCannotBeExecutedYet,
+
     #[error("No votes are available")]
     NoVotesAvailable,
 

@@ -8,7 +8,8 @@ use cw2::set_contract_version;
 use enterprise_governance_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use poll_engine::execute::initialize_poll_engine;
 use poll_engine::query::{
-    query_poll, query_poll_status, query_poll_voter, query_poll_voters, query_polls, query_voter,
+    query_poll, query_poll_status, query_poll_voter, query_poll_voters, query_polls,
+    query_simulate_end_poll_status, query_voter,
 };
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, PollStatus, UpdateVotesParams, VoteOutcome,
@@ -125,6 +126,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> PollResult<Binary> {
         QueryMsg::Poll(params) => to_binary(&query_poll(&qctx, params)?)?,
         QueryMsg::Polls(params) => to_binary(&query_polls(&qctx, params)?)?,
         QueryMsg::PollStatus { poll_id } => to_binary(&query_poll_status(&qctx, poll_id)?)?,
+        QueryMsg::SimulateEndPollStatus {
+            poll_id,
+            maximum_available_votes,
+        } => to_binary(&query_simulate_end_poll_status(
+            &qctx,
+            poll_id,
+            maximum_available_votes,
+        )?)?,
         QueryMsg::PollVoter(params) => to_binary(&query_poll_voter(&qctx, params)?)?,
         QueryMsg::PollVoters(params) => to_binary(&query_poll_voters(&qctx, params)?)?,
         QueryMsg::Voter(params) => to_binary(&query_voter(

@@ -1,10 +1,10 @@
-use cosmwasm_std::Order;
+use cosmwasm_std::{Order, Uint128};
 use cw_storage_plus::Bound;
 use itertools::Itertools;
 
 use common::cw::{Pagination, QueryContext};
 
-use crate::state::{polls, votes, PollStorage, VoteStorage};
+use crate::state::{polls, votes, PollHelpers, PollStorage, VoteStorage};
 use poll_engine_api::api::{
     PollId, PollParams, PollResponse, PollStatusResponse, PollVoterParams, PollVoterResponse,
     PollVotersParams, PollVotersResponse, PollsParams, PollsResponse, VoterResponse,
@@ -71,6 +71,23 @@ pub fn query_poll_status(
 
     Ok(PollStatusResponse {
         status: poll.status.clone(),
+        ends_at: poll.ends_at,
+        results: poll.results,
+    })
+}
+
+// TODO: tests
+pub fn query_simulate_end_poll_status(
+    qctx: &QueryContext,
+    poll_id: impl Into<PollId>,
+    maximum_available_votes: Uint128,
+) -> PollResult<PollStatusResponse> {
+    let poll = polls().load_poll(qctx.deps.storage, poll_id.into())?;
+
+    let simulated_final_status = poll.final_status(maximum_available_votes)?;
+
+    Ok(PollStatusResponse {
+        status: simulated_final_status,
         ends_at: poll.ends_at,
         results: poll.results,
     })

@@ -5,7 +5,10 @@ use crate::ibc_hooks::{
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, PROPOSAL_INFOS,
 };
-use crate::state::{State, COUNCIL_GOV_CONFIG, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
+use crate::state::{
+    ProposalBeingVotedOn, ProposalExecutabilityStatus, State, COUNCIL_GOV_CONFIG,
+    ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
+};
 use crate::validate::{
     apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
     validate_modify_multisig_membership, validate_proposal_actions, validate_unlocking_period,
@@ -30,6 +33,7 @@ use cw_utils::{parse_reply_instantiate_data, Expiration};
 use denom_staking_api::api::DenomConfigResponse;
 use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
+use enterprise_governance_api::msg::QueryMsg::SimulateEndPollStatus;
 use enterprise_governance_controller_api::api::ProposalAction::{
     AddAttestation, DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RemoveAttestation,
     RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
@@ -51,8 +55,9 @@ use enterprise_governance_controller_api::api::{
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, Dao, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType,
     NoCrossChainDeploymentForGivenChainId, NoDaoCouncil, NoSuchProposal, NoVotesAvailable,
-    NoVotingPower, ProposalAlreadyExecuted, RestrictedUser, Std, Unauthorized,
-    UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType, WrongProposalType,
+    NoVotingPower, ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser, Std,
+    Unauthorized, UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType,
+    WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use enterprise_governance_controller_api::msg::{
@@ -110,6 +115,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const CREATE_POLL_REPLY_ID: u64 = 1;
 pub const END_POLL_REPLY_ID: u64 = 2;
 pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 3;
+pub const CAST_VOTE_REPLY_ID: u64 = 4;
 
 pub const INSTANTIATE_CROSS_CHAIN_ICS_PROXY_CALLBACK_ID: u32 = 1001;
 pub const INSTANTIATE_CROSS_CHAIN_TREASURY_CALLBACK_ID: u32 = 1002;
@@ -131,6 +137,7 @@ pub fn instantiate(
         &State {
             proposal_being_created: None,
             proposal_being_executed: None,
+            proposal_being_voted_on: None,
         },
     )?;
 
@@ -475,6 +482,7 @@ fn create_poll(
             proposal_being_created: Some(ProposalInfo {
                 proposal_type,
                 executed_at: None,
+                earliest_execution: None,
                 proposal_deposit: deposit,
                 proposal_actions: msg.proposal_actions,
             }),
@@ -505,16 +513,42 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
 
     let governance_contract = query_enterprise_governance_addr(ctx.deps.as_ref())?;
 
-    let cast_vote_submessage = SubMsg::new(wasm_execute(
-        governance_contract.to_string(),
-        &enterprise_governance_api::msg::ExecuteMsg::CastVote(CastVoteParams {
-            poll_id: msg.proposal_id.into(),
-            outcome: msg.outcome,
-            voter: ctx.info.sender.to_string(),
-            amount: user_available_votes,
-        }),
-        vec![],
-    )?);
+    let cast_vote_submessage = SubMsg::reply_on_success(
+        wasm_execute(
+            governance_contract.to_string(),
+            &enterprise_governance_api::msg::ExecuteMsg::CastVote(CastVoteParams {
+                poll_id: msg.proposal_id.into(),
+                outcome: msg.outcome,
+                voter: ctx.info.sender.to_string(),
+                amount: user_available_votes,
+            }),
+            vec![],
+        )?,
+        CAST_VOTE_REPLY_ID,
+    );
+
+    let total_available_votes =
+        total_available_votes(ctx.deps.as_ref(), Never {}, proposal_info.proposal_type)?;
+
+    let end_proposal_status =
+        simulate_end_proposal_status(ctx.deps.as_ref(), msg.proposal_id, total_available_votes)?
+            .status;
+
+    STATE.update(ctx.deps.storage, |state| -> StdResult<State> {
+        if state.proposal_being_voted_on.is_some() {
+            Err(StdError::generic_err(
+                "Invalid state: proposal being voted on is present when not expected",
+            ))
+        } else {
+            Ok(State {
+                proposal_being_voted_on: Some(ProposalBeingVotedOn {
+                    proposal_id: msg.proposal_id,
+                    executability_status: end_proposal_status.into(),
+                }),
+                ..state
+            })
+        }
+    })?;
 
     let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
 
@@ -592,6 +626,12 @@ fn execute_proposal(
 
     if proposal_info.executed_at.is_some() {
         return Err(ProposalAlreadyExecuted);
+    }
+
+    if let Some(earliest_execution) = proposal_info.earliest_execution {
+        if ctx.env.block.time < earliest_execution {
+            return Err(ProposalCannotBeExecutedYet);
+        }
     }
 
     let submsgs = end_proposal(ctx, &msg, proposal_info.proposal_type.clone())?;
@@ -1529,6 +1569,75 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
             // no actions, regardless of the result
             Ok(Response::new())
         }
+        CAST_VOTE_REPLY_ID => {
+            let gov_config = GOV_CONFIG.load(deps.storage)?;
+
+            if !gov_config.allow_early_proposal_execution {
+                // if no early execution is allowed, no need to store anything
+                Ok(Response::new())
+            } else {
+                // otherwise, let's see if we need to update earliest proposal execution time
+
+                let state = STATE.load(deps.storage)?;
+
+                let proposal_being_voted_on = state.proposal_being_voted_on.ok_or(CustomError {
+                    val: "Invalid state - missing ID of proposal being voted on".to_string(),
+                })?;
+
+                STATE.save(
+                    deps.storage,
+                    &State {
+                        proposal_being_voted_on: None,
+                        ..state
+                    },
+                )?;
+
+                let proposal_info =
+                    PROPOSAL_INFOS.load(deps.storage, proposal_being_voted_on.proposal_id)?;
+
+                if proposal_info.proposal_type == Council {
+                    // nothing to modify in council proposal types
+                    return Ok(Response::new());
+                }
+
+                let total_available_votes = total_available_votes(
+                    deps.as_ref(),
+                    Never {},
+                    proposal_info.proposal_type.clone(),
+                )?;
+
+                let end_proposal_status = simulate_end_proposal_status(
+                    deps.as_ref(),
+                    proposal_being_voted_on.proposal_id,
+                    total_available_votes,
+                )?;
+
+                let new_executability_status =
+                    ProposalExecutabilityStatus::from(end_proposal_status.status);
+
+                // if status of the proposal has changed, we need to update its earliest execution time
+                if new_executability_status != proposal_being_voted_on.executability_status {
+                    // general-type proposals need a delay before the proposal can be executed
+                    // after its execution status changes (i.e. this vote changed the outcome)
+
+                    let execution_delay = gov_config.vote_duration / 10;
+                    let earliest_execution = env.block.time.plus_seconds(execution_delay);
+
+                    let proposal_ends_at = end_proposal_status.ends_at;
+
+                    PROPOSAL_INFOS.save(
+                        deps.storage,
+                        proposal_being_voted_on.proposal_id,
+                        &ProposalInfo {
+                            earliest_execution: Some(min(earliest_execution, proposal_ends_at)),
+                            ..proposal_info
+                        },
+                    )?;
+                }
+
+                Ok(Response::new())
+            }
+        }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }
 }
@@ -1796,6 +1905,24 @@ fn total_available_votes(
         General => general_total_available_votes(deps, expiration),
         Council => query_council_total_weight(deps, expiration),
     }
+}
+
+/// Checks what the status of a proposal would be if we tried to execute it right now.
+fn simulate_end_proposal_status(
+    deps: Deps,
+    proposal_id: ProposalId,
+    maximum_available_votes: Uint128,
+) -> GovernanceControllerResult<PollStatusResponse> {
+    let governance_contract = query_enterprise_governance_addr(deps)?;
+    let response = deps.querier.query_wasm_smart(
+        governance_contract.to_string(),
+        &SimulateEndPollStatus {
+            poll_id: proposal_id,
+            maximum_available_votes,
+        },
+    )?;
+
+    Ok(response)
 }
 
 fn general_total_available_votes(
