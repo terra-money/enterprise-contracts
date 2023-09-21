@@ -267,8 +267,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             Ok(Response::new()
                 .add_submessage(update_admin_msg)
                 .add_submessage(enterprise_governance_controller_submsg)
-                .add_attribute("action", "instantiate_dao")
-                .add_attribute("dao_address", enterprise_contract.to_string()))
+                .add_attribute("action", "instantiate_dao"))
         }
         CW20_CONTRACT_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
@@ -563,12 +562,13 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
                 Ok(DaoBeingCreated {
-                    enterprise_treasury_address: Some(enterprise_treasury_contract),
+                    enterprise_treasury_address: Some(enterprise_treasury_contract.clone()),
                     ..info
                 })
             })?;
 
-            Ok(Response::new())
+            Ok(Response::new()
+                .add_attribute("dao_address", enterprise_treasury_contract.to_string()))
         }
         ATTESTATION_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
