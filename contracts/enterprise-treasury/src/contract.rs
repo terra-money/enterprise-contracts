@@ -34,6 +34,7 @@ use enterprise_treasury_api::response::{
 };
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
+use std::ops::Not;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-treasury";
@@ -193,12 +194,13 @@ fn distribute_funds(
         }
     }
 
-    // TODO: no need to send this if native funds are empty
-    submsgs.push(SubMsg::new(wasm_execute(
-        funds_distributor.to_string(),
-        &DistributeNative {},
-        native_funds,
-    )?));
+    if native_funds.is_empty().not() {
+        submsgs.push(SubMsg::new(wasm_execute(
+            funds_distributor.to_string(),
+            &DistributeNative {},
+            native_funds,
+        )?));
+    }
 
     Ok(execute_distribute_funds_response().add_submessages(submsgs))
 }
