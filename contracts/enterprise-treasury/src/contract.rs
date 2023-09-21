@@ -193,13 +193,14 @@ fn distribute_funds(
         }
     }
 
+    // TODO: no need to send this if native funds are empty
     submsgs.push(SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
         &DistributeNative {},
         native_funds,
     )?));
 
-    Ok(execute_distribute_funds_response())
+    Ok(execute_distribute_funds_response().add_submessages(submsgs))
 }
 
 fn execute_cosmos_msgs(
