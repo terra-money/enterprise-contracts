@@ -1,7 +1,7 @@
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
-use crate::state::{ADMIN, CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES, TOTAL_WEIGHT};
+use crate::state::{ADMIN, CW20_GLOBAL_INDICES, EFFECTIVE_TOTAL_WEIGHT, NATIVE_GLOBAL_INDICES};
 use crate::{cw20_distributions, native_distributions};
 use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
@@ -32,7 +32,9 @@ pub fn save_initial_weights(
     initial_weights: Vec<UserWeight>,
     minimum_eligible_weight: Uint128,
 ) -> DistributorResult<()> {
-    let mut total_weight = TOTAL_WEIGHT.may_load(ctx.deps.storage)?.unwrap_or_default();
+    let mut effective_total_weight = EFFECTIVE_TOTAL_WEIGHT
+        .may_load(ctx.deps.storage)?
+        .unwrap_or_default();
 
     for user_weight in initial_weights {
         let user = ctx.deps.api.addr_validate(&user_weight.user)?;
@@ -49,10 +51,10 @@ pub fn save_initial_weights(
             calculate_effective_weight(user_weight.weight, minimum_eligible_weight);
         EFFECTIVE_USER_WEIGHTS.save(ctx.deps.storage, user, &effective_user_weight)?;
 
-        total_weight += effective_user_weight;
+        effective_total_weight += effective_user_weight;
     }
 
-    TOTAL_WEIGHT.save(ctx.deps.storage, &total_weight)?;
+    EFFECTIVE_TOTAL_WEIGHT.save(ctx.deps.storage, &effective_total_weight)?;
 
     Ok(())
 }
@@ -69,7 +71,7 @@ pub fn update_user_weights(
         return Err(Unauthorized);
     }
 
-    let mut total_weight = TOTAL_WEIGHT.load(ctx.deps.storage)?;
+    let mut effective_total_weight = EFFECTIVE_TOTAL_WEIGHT.load(ctx.deps.storage)?;
 
     let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(ctx.deps.storage)?;
 
@@ -110,10 +112,11 @@ pub fn update_user_weights(
 
         let old_user_effective_weight = old_user_effective_weight.unwrap_or_default();
 
-        total_weight = total_weight - old_user_effective_weight + effective_user_weight;
+        effective_total_weight =
+            effective_total_weight - old_user_effective_weight + effective_user_weight;
     }
 
-    TOTAL_WEIGHT.save(ctx.deps.storage, &total_weight)?;
+    EFFECTIVE_TOTAL_WEIGHT.save(ctx.deps.storage, &effective_total_weight)?;
 
     Ok(execute_update_user_weights_response())
 }

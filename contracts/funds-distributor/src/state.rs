@@ -5,7 +5,7 @@ pub const ADMIN: Item<Addr> = Item::new("admin");
 pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract");
 
 /// Total weight of all users eligible for rewards.
-pub const TOTAL_WEIGHT: Item<Uint128> = Item::new("total_weight");
+pub const EFFECTIVE_TOTAL_WEIGHT: Item<Uint128> = Item::new("total_weight");
 
 /// Tracks global index for native denomination rewards.
 /// Global index is simply a decimal number representing the amount of currency rewards paid

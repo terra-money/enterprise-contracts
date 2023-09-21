@@ -1,5 +1,5 @@
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
-use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
+use crate::state::{EFFECTIVE_TOTAL_WEIGHT, ENTERPRISE_CONTRACT};
 use common::cw::Context;
 use cosmwasm_std::{Addr, Decimal, Response, Uint128};
 use cw20::Cw20ReceiveMsg;
@@ -28,7 +28,7 @@ pub fn distribute_native(ctx: &mut Context) -> DistributorResult<Response> {
         .collect();
     assert_assets_whitelisted(ctx, distribution_assets)?;
 
-    let total_weight = TOTAL_WEIGHT.load(ctx.deps.storage)?;
+    let total_weight = EFFECTIVE_TOTAL_WEIGHT.load(ctx.deps.storage)?;
     if total_weight == Uint128::zero() {
         return Err(ZeroTotalWeight);
     }
@@ -59,7 +59,7 @@ pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> Distribut
 
     assert_assets_whitelisted(ctx, vec![AssetInfo::cw20(cw20_addr.clone())])?;
 
-    let total_weight = TOTAL_WEIGHT.load(ctx.deps.storage)?;
+    let total_weight = EFFECTIVE_TOTAL_WEIGHT.load(ctx.deps.storage)?;
     if total_weight == Uint128::zero() {
         return Err(ZeroTotalWeight);
     }
