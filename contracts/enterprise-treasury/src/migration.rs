@@ -204,7 +204,7 @@ pub fn create_enterprise_contract(
                 dao_type,
             })?,
             funds: vec![],
-            label: "Enterprise treasury".to_string(),
+            label: "Enterprise main contract".to_string(),
         }),
         ENTERPRISE_INSTANTIATE_REPLY_ID,
     );
