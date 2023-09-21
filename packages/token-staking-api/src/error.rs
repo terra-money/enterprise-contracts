@@ -18,6 +18,9 @@ pub enum TokenStakingError {
     #[error("Cannot initialize stakes - existing stakes already present")]
     StakesAlreadyInitialized,
 
+    #[error("A staker is duplicated in the stakers array")]
+    DuplicateInitialStakerFound,
+
     #[error("Initial stakes amount received does not match the sum of initial user stakes")]
     IncorrectStakesInitializationAmount,
 

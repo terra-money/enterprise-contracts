@@ -1,7 +1,7 @@
 use crate::claims::{add_claim, get_releasable_claims, TOKEN_CLAIMS};
 use crate::config::CONFIG;
 use common::cw::{Context, ReleaseAt};
-use cosmwasm_std::{from_binary, wasm_execute, Response, SubMsg, Uint128};
+use cosmwasm_std::{from_binary, wasm_execute, Addr, Response, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::member_weights::{
@@ -15,13 +15,14 @@ use membership_common::validate::{
 };
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
+use std::collections::HashSet;
 use std::ops::Not;
 use token_staking_api::api::{
     ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg, UserClaim, UserStake,
 };
 use token_staking_api::error::TokenStakingError::{
-    IncorrectClaimsAmountReceived, IncorrectStakesInitializationAmount, InsufficientStake,
-    StakesAlreadyInitialized, Unauthorized,
+    DuplicateInitialStakerFound, IncorrectClaimsAmountReceived,
+    IncorrectStakesInitializationAmount, InsufficientStake, StakesAlreadyInitialized, Unauthorized,
 };
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::Cw20HookMsg;
@@ -85,8 +86,16 @@ fn initialize_stakers(
 
     let mut user_stakes_sum = Uint128::zero();
 
+    let mut initial_stakers_set: HashSet<Addr> = HashSet::new();
+
     for staker in stakers {
         let user = ctx.deps.api.addr_validate(&staker.user)?;
+
+        let new_staker = initial_stakers_set.insert(user.clone());
+
+        if !new_staker {
+            return Err(DuplicateInitialStakerFound);
+        }
 
         user_stakes_sum += staker.staked_amount;
 
