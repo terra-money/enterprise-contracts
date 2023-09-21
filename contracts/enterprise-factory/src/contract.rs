@@ -536,9 +536,9 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let response = Response::new()
                 .add_submessage(funds_distributor_submsg)
                 .add_submessage(enterprise_governance_submsg)
-                .add_submessage(enterprise_treasury_submsg)
                 .add_submessage(membership_submsg)
-                .add_submessage(council_membership_submsg);
+                .add_submessage(council_membership_submsg)
+                .add_submessage(enterprise_treasury_submsg);
 
             let response = match create_dao_msg.attestation_text {
                 Some(attestation_text) => response.add_submessage(SubMsg::reply_on_success(
