@@ -408,6 +408,16 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
+                    enterprise_governance_controller_address: Some(
+                        enterprise_governance_controller_contract.clone(),
+                    ),
+                    ..dao_being_created.clone()
+                },
+            )?;
+
             let create_dao_msg = dao_being_created.require_create_dao_msg()?;
             let version_info = dao_being_created.require_version_info()?;
 
@@ -459,7 +469,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             }
 
             let mut nft_whitelist = create_dao_msg.nft_whitelist.unwrap_or_default();
-            if let Some(nft) = dao_being_created.dao_nft.clone() {
+            if let Some(nft) = dao_being_created.dao_nft {
                 nft_whitelist.push(nft.to_string());
             }
 
@@ -521,16 +531,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 council_members,
                 weight_change_hooks,
                 COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
-            )?;
-
-            DAO_BEING_CREATED.save(
-                deps.storage,
-                &DaoBeingCreated {
-                    enterprise_governance_controller_address: Some(
-                        enterprise_governance_controller_contract,
-                    ),
-                    ..dao_being_created
-                },
             )?;
 
             let response = Response::new()
