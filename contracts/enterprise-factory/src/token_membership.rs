@@ -13,7 +13,11 @@ use enterprise_protocol::error::DaoError::{ZeroInitialDaoBalance, ZeroInitialWei
 use enterprise_protocol::error::DaoResult;
 use token_staking_api::msg::InstantiateMsg;
 
-pub fn import_cw20_membership(deps: DepsMut, msg: ImportCw20MembershipMsg) -> DaoResult<SubMsg> {
+pub fn import_cw20_membership(
+    deps: DepsMut,
+    msg: ImportCw20MembershipMsg,
+    weight_change_hooks: Option<Vec<String>>,
+) -> DaoResult<SubMsg> {
     let cw20_address = deps.api.addr_validate(&msg.cw20_contract)?;
 
     validate_existing_cw20_contract(deps.as_ref(), cw20_address.as_ref())?;
@@ -25,7 +29,12 @@ pub fn import_cw20_membership(deps: DepsMut, msg: ImportCw20MembershipMsg) -> Da
         })
     })?;
 
-    instantiate_token_staking_membership_contract(deps, cw20_address, msg.unlocking_period)
+    instantiate_token_staking_membership_contract(
+        deps,
+        cw20_address,
+        msg.unlocking_period,
+        weight_change_hooks,
+    )
 }
 
 pub fn instantiate_new_cw20_membership(
@@ -121,6 +130,7 @@ pub fn instantiate_token_staking_membership_contract(
     deps: DepsMut,
     cw20_address: Addr,
     unlocking_period: Duration,
+    weight_change_hooks: Option<Vec<String>>,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
     let enterprise_contract = dao_being_created.require_enterprise_address()?;
@@ -134,6 +144,7 @@ pub fn instantiate_token_staking_membership_contract(
                 enterprise_contract: enterprise_contract.to_string(),
                 token_contract: cw20_address.to_string(),
                 unlocking_period,
+                weight_change_hooks,
             })?,
             funds: vec![],
             label: "Token staking membership".to_string(),

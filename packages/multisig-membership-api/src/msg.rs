@@ -9,6 +9,7 @@ use membership_common_api::api::{
 pub struct InstantiateMsg {
     pub enterprise_contract: String,
     pub initial_weights: Option<Vec<UserWeight>>,
+    pub weight_change_hooks: Option<Vec<String>>,
 }
 
 #[cw_serde]

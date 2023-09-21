@@ -9,6 +9,19 @@ use membership_common_api::msg::WeightChangeHook;
 
 pub const WEIGHT_CHANGE_HOOKS: Map<Addr, ()> = Map::new("membership_common__weight_change_hooks");
 
+/// Stores initial weight change hooks, without checking who the sender is.
+pub fn save_initial_weight_change_hooks(
+    ctx: &mut Context,
+    weight_change_hooks: Vec<String>,
+) -> MembershipResult<()> {
+    for hook in weight_change_hooks {
+        let hook_addr = ctx.deps.api.addr_validate(&hook)?;
+        WEIGHT_CHANGE_HOOKS.save(ctx.deps.storage, hook_addr.clone(), &())?;
+    }
+
+    Ok(())
+}
+
 /// Add an address to which weight changes will be reported. Only the current admin can execute this.
 pub fn add_weight_change_hook(
     ctx: &mut Context,

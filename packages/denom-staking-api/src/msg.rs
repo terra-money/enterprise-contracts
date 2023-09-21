@@ -14,6 +14,7 @@ pub struct InstantiateMsg {
     pub enterprise_contract: String,
     pub denom: String,
     pub unlocking_period: Duration,
+    pub weight_change_hooks: Option<Vec<String>>,
 }
 
 #[cw_serde]

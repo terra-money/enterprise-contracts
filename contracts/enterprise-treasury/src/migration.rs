@@ -28,7 +28,6 @@ use enterprise_treasury_api::error::EnterpriseTreasuryError::{Std, Unauthorized}
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
 use enterprise_treasury_api::msg::ExecuteMsg::FinalizeMigration;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
-use membership_common_api::api::WeightChangeHookMsg;
 use multisig_membership_api::api::UserWeight;
 
 const NATIVE_ASSET_WHITELIST: Map<String, ()> = Map::new("native_asset_whitelist");
@@ -305,6 +304,7 @@ pub fn create_dao_council_membership_contract(
     deps: DepsMut,
     multisig_membership_code_id: u64,
     enterprise_contract: Addr,
+    governance_controller_contract: Addr,
 ) -> EnterpriseTreasuryResult<SubMsg> {
     let dao_council = DAO_COUNCIL.load(deps.storage)?;
 
@@ -325,6 +325,7 @@ pub fn create_dao_council_membership_contract(
             msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 initial_weights: Some(council_members),
+                weight_change_hooks: Some(vec![governance_controller_contract.to_string()]),
             })?,
             funds: vec![],
             label: "Dao council membership".to_string(),
@@ -459,6 +460,7 @@ pub fn governance_controller_contract_created(
         deps.branch(),
         version_info.multisig_membership_code_id,
         enterprise_contract.clone(),
+        governance_controller_contract.clone(),
     )?;
 
     let membership_submsg = create_enterprise_membership_contract(
@@ -467,6 +469,7 @@ pub fn governance_controller_contract_created(
         version_info.nft_staking_membership_code_id,
         version_info.multisig_membership_code_id,
         enterprise_contract,
+        governance_controller_contract,
     )?;
 
     Ok(response
@@ -480,10 +483,13 @@ pub fn create_enterprise_membership_contract(
     nft_membership_code_id: u64,
     multisig_membership_code_id: u64,
     enterprise_contract: Addr,
+    governance_controller_contract: Addr,
 ) -> EnterpriseTreasuryResult<SubMsg> {
     let gov_config = DAO_GOV_CONFIG.load(deps.storage)?;
 
     let dao_type = DAO_TYPE.load(deps.storage)?;
+
+    let weight_change_hooks = Some(vec![governance_controller_contract.to_string()]);
 
     let msg = match dao_type {
         DaoType::Denom => {
@@ -501,6 +507,7 @@ pub fn create_enterprise_membership_contract(
                     enterprise_contract: enterprise_contract.to_string(),
                     token_contract: cw20_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
+                    weight_change_hooks,
                 })?,
                 funds: vec![],
                 label: "Token staking membership".to_string(),
@@ -516,6 +523,7 @@ pub fn create_enterprise_membership_contract(
                     enterprise_contract: enterprise_contract.to_string(),
                     nft_contract: cw721_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
+                    weight_change_hooks,
                 })?,
                 funds: vec![],
                 label: "NFT staking membership".to_string(),
@@ -538,6 +546,7 @@ pub fn create_enterprise_membership_contract(
                 msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
                     enterprise_contract: enterprise_contract.to_string(),
                     initial_weights: Some(initial_weights),
+                    weight_change_hooks,
                 })?,
                 funds: vec![],
                 label: "Multisig membership".to_string(),
@@ -594,21 +603,6 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
             .ok_or(Std(StdError::generic_err(
                 "invalid state - missing council membership address",
             )))?;
-
-    let add_membership_weight_change_hook_submsg = SubMsg::new(wasm_execute(
-        membership_contract.to_string(),
-        &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
-            hook_addr: governance_controller_contract.to_string(),
-        }),
-        vec![],
-    )?);
-    let add_council_membership_weight_change_hook_submsg = SubMsg::new(wasm_execute(
-        council_membership_contract.to_string(),
-        &membership_common_api::msg::ExecuteMsg::AddWeightChangeHook(WeightChangeHookMsg {
-            hook_addr: governance_controller_contract.to_string(),
-        }),
-        vec![],
-    )?);
 
     let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(ctx.deps.storage)?;
     let migrate_funds_distributor = SubMsg::new(Wasm(Migrate {
@@ -669,8 +663,6 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
     MIGRATION_INFO.remove(ctx.deps.storage);
 
     Ok(Response::new()
-        .add_submessage(add_membership_weight_change_hook_submsg)
-        .add_submessage(add_council_membership_weight_change_hook_submsg)
         .add_submessage(migrate_funds_distributor)
         .add_submessage(migrate_enterprise_governance_submsg)
         .add_submessage(finalize_enterprise_instantiation))

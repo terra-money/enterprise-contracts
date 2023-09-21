@@ -11,6 +11,7 @@ pub fn instantiate_denom_staking_membership_contract(
     deps: DepsMut,
     denom: String,
     unlocking_period: Duration,
+    weight_change_hooks: Option<Vec<String>>,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
     let enterprise_contract = dao_being_created.require_enterprise_address()?;
@@ -31,6 +32,7 @@ pub fn instantiate_denom_staking_membership_contract(
                 enterprise_contract: enterprise_contract.to_string(),
                 denom,
                 unlocking_period,
+                weight_change_hooks,
             })?,
             funds: vec![],
             label: "Denom staking membership".to_string(),

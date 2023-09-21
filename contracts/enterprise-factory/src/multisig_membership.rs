@@ -11,7 +11,11 @@ use enterprise_protocol::error::DaoResult;
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::msg::InstantiateMsg;
 
-pub fn import_cw3_membership(deps: DepsMut, msg: ImportCw3MembershipMsg) -> DaoResult<SubMsg> {
+pub fn import_cw3_membership(
+    deps: DepsMut,
+    msg: ImportCw3MembershipMsg,
+    weight_change_hooks: Option<Vec<String>>,
+) -> DaoResult<SubMsg> {
     let cw3_address = deps.api.addr_validate(&msg.cw3_contract)?;
 
     validate_existing_cw3_contract(deps.as_ref(), cw3_address.as_ref())?;
@@ -47,6 +51,7 @@ pub fn import_cw3_membership(deps: DepsMut, msg: ImportCw3MembershipMsg) -> DaoR
     instantiate_multisig_membership_contract(
         deps,
         initial_weights,
+        weight_change_hooks,
         MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     )
 }
@@ -54,10 +59,12 @@ pub fn import_cw3_membership(deps: DepsMut, msg: ImportCw3MembershipMsg) -> DaoR
 pub fn instantiate_new_multisig_membership(
     deps: DepsMut,
     msg: NewMultisigMembershipMsg,
+    weight_change_hooks: Option<Vec<String>>,
 ) -> DaoResult<SubMsg> {
     instantiate_multisig_membership_contract(
         deps,
         msg.multisig_members,
+        weight_change_hooks,
         MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     )
 }
@@ -65,6 +72,7 @@ pub fn instantiate_new_multisig_membership(
 pub fn instantiate_multisig_membership_contract(
     deps: DepsMut,
     initial_weights: Vec<UserWeight>,
+    weight_change_hooks: Option<Vec<String>>,
     reply_id: u64,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
@@ -87,6 +95,7 @@ pub fn instantiate_multisig_membership_contract(
             msg: to_binary(&InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 initial_weights: Some(initial_weights),
+                weight_change_hooks,
             })?,
             funds: vec![],
             label: "Multisig staking membership".to_string(),
