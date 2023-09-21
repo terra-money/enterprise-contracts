@@ -15,7 +15,7 @@ use enterprise_governance_controller_api::api::{
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
-    Std, UnsupportedCouncilProposalAction, ZeroVoteDuration,
+    MaximumProposalActionsExceeded, Std, UnsupportedCouncilProposalAction, ZeroVoteDuration,
 };
 use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
@@ -31,6 +31,8 @@ use GovernanceControllerError::{
     MinimumDepositNotAllowed, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
 };
 use ProposalAction::AddAttestation;
+
+const MAXIMUM_PROPOSAL_ACTIONS: u8 = 10;
 
 pub fn validate_dao_gov_config(
     dao_type: &DaoType,
@@ -111,6 +113,12 @@ pub fn validate_proposal_actions(
     dao_type: DaoType,
     proposal_actions: &Vec<ProposalAction>,
 ) -> GovernanceControllerResult<()> {
+    if proposal_actions.len() > MAXIMUM_PROPOSAL_ACTIONS as usize {
+        return Err(MaximumProposalActionsExceeded {
+            maximum: MAXIMUM_PROPOSAL_ACTIONS,
+        });
+    }
+
     for proposal_action in proposal_actions {
         match proposal_action {
             UpdateAssetWhitelist(msg) => {

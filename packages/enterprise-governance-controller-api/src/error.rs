@@ -31,6 +31,9 @@ pub enum GovernanceControllerError {
     #[error("Proposal action {action} is not supported in council proposals")]
     UnsupportedCouncilProposalAction { action: ProposalActionType },
 
+    #[error("Proposal exceeds maximum amount of proposal actions, which is {maximum}")]
+    MaximumProposalActionsExceeded { maximum: u8 },
+
     #[error("Council members must be unique, however {member} was duplicated")]
     DuplicateCouncilMember { member: String },
 
