@@ -31,8 +31,8 @@ pub fn add_whitelisted_assets_checked(
             AssetInfo::Cw20(addr) => {
                 CW20_ASSET_WHITELIST.save(deps.storage, addr, &())?;
             }
-            AssetInfo::Cw1155(addr, id) => {
-                CW1155_ASSET_WHITELIST.save(deps.storage, (addr, id), &())?;
+            AssetInfo::Cw1155(_, _) => {
+                return Err(StdError::generic_err("CW1155 asset type is not supported").into())
             }
             _ => return Err(StdError::generic_err("unknown asset type").into()),
         }
