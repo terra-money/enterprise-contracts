@@ -94,6 +94,8 @@ use poll_engine_api::api::{
 use poll_engine_api::error::PollError::PollInProgress;
 use std::cmp::min;
 use std::collections::HashSet;
+use token_staking_api::api::TokenConfigResponse;
+use token_staking_api::msg::QueryMsg::TokenConfig;
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
@@ -1290,16 +1292,16 @@ pub fn receive_cw20(
             // only membership CW20 contract can execute this message
             let dao_type = query_dao_type(ctx.deps.as_ref())?;
 
-            // TODO: this is not the token itself, remedy it here and in other places (need to query for TokenConfig)
-            let membership_contract = query_membership_addr(ctx.deps.as_ref())?;
-            if dao_type != Token || ctx.info.sender != membership_contract {
+            let token_contract = query_dao_token_config(ctx.deps.as_ref())?.token_contract;
+
+            if dao_type != Token || ctx.info.sender != token_contract {
                 return Err(InvalidDepositType);
             }
             let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
             let deposit = ProposalDeposit {
                 depositor: depositor.clone(),
                 asset: ProposalDepositAsset::Cw20 {
-                    token_addr: membership_contract,
+                    token_addr: token_contract,
                     amount: cw20_msg.amount,
                 },
             };
@@ -1920,6 +1922,18 @@ fn query_enterprise_cross_chain_deployments(
 
 fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.membership_contract)
+}
+
+/// Query the membership contract for its TokenConfig.
+/// Will fail if the DAO is not of type Token.
+fn query_dao_token_config(deps: Deps) -> GovernanceControllerResult<TokenConfigResponse> {
+    let membership_contract = query_membership_addr(deps)?;
+
+    let token_config: TokenConfigResponse = deps
+        .querier
+        .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
+
+    Ok(token_config)
 }
 
 /// Query the membership contract for its NftConfig.
