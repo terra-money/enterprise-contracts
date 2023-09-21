@@ -46,7 +46,7 @@ pub fn execute_cast_council_vote_response(
     amount: Uint128,
 ) -> Response {
     Response::new()
-        .add_attribute("action", "cast_vote")
+        .add_attribute("action", "cast_council_vote")
         .add_attribute("dao_address", dao_address)
         .add_attribute("proposal_id", proposal_id.to_string())
         .add_attribute("voter", voter)

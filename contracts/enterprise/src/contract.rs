@@ -32,11 +32,7 @@ use enterprise_protocol::error::DaoError::{
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use enterprise_protocol::response::{
-    execute_add_cross_chain_treasury_response, execute_finalize_instantiation_response,
-    execute_remove_attestation_response, execute_set_attestation_response,
-    execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
-};
+use enterprise_protocol::response::{execute_add_cross_chain_proxy_response, execute_add_cross_chain_treasury_response, execute_finalize_instantiation_response, execute_remove_attestation_response, execute_set_attestation_response, execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response};
 use enterprise_versioning_api::api::{
     Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
 };
@@ -335,7 +331,7 @@ fn add_cross_chain_proxy(ctx: &mut Context, msg: AddCrossChainProxyMsg) -> DaoRe
             &proxy_addr_canonical.to_string(),
         )?;
 
-        Ok(execute_add_cross_chain_treasury_response())
+        Ok(execute_add_cross_chain_proxy_response())
     }
 }
 
