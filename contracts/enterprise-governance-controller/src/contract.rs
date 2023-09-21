@@ -1576,7 +1576,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> GovernanceControllerResult<
     let qctx = QueryContext::from(deps, env);
 
     let response = match msg {
-        QueryMsg::Config {} => to_binary(&query_gov_config(qctx)?)?,
+        QueryMsg::Config {} => to_binary(&query_config(qctx)?)?,
         QueryMsg::GovConfig {} => to_binary(&query_gov_config(qctx)?)?,
         QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params)?)?,
         QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params)?)?,
