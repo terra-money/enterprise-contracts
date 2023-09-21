@@ -32,7 +32,9 @@ const TOTAL_WEIGHT_SECONDS_SNAPSHOT: SnapshotItem<Uint128> = SnapshotItem::new(
 );
 
 pub fn load_total_weight(store: &dyn Storage) -> StdResult<Uint128> {
-    TOTAL_WEIGHT_HEIGHT_SNAPSHOT.load(store)
+    Ok(TOTAL_WEIGHT_HEIGHT_SNAPSHOT
+        .may_load(store)?
+        .unwrap_or_default())
 }
 
 pub fn load_total_weight_at_height(store: &dyn Storage, height: u64) -> StdResult<Uint128> {
