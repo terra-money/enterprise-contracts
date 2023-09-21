@@ -143,6 +143,9 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
 
     Ok(execute_finalize_instantiation_response(
         component_contracts
+            .attestation_contract
+            .map(|it| it.to_string()),
+        component_contracts
             .enterprise_governance_contract
             .to_string(),
         component_contracts
@@ -151,6 +154,7 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
         component_contracts.enterprise_treasury_contract.to_string(),
         component_contracts.funds_distributor_contract.to_string(),
         component_contracts.membership_contract.to_string(),
+        component_contracts.council_membership_contract.to_string(),
     ))
 }
 
