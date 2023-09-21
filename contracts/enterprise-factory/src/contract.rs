@@ -264,16 +264,9 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID,
             );
 
-            let finalize_submsg = SubMsg::new(wasm_execute(
-                env.contract.address.to_string(),
-                &FinalizeDaoCreation {},
-                vec![],
-            )?);
-
             Ok(Response::new()
                 .add_submessage(update_admin_msg)
                 .add_submessage(enterprise_governance_controller_submsg)
-                .add_submessage(finalize_submsg)
                 .add_attribute("action", "instantiate_dao")
                 .add_attribute("dao_address", enterprise_contract.to_string()))
         }
@@ -553,7 +546,14 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 None => response,
             };
 
-            Ok(response)
+            let finalize_submsg = SubMsg::new(wasm_execute(
+                env.contract.address.to_string(),
+                &FinalizeDaoCreation {},
+                vec![],
+            )?);
+
+            // Ok(response)
+            Ok(response.add_submessage(finalize_submsg))
         }
         ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
