@@ -9,6 +9,7 @@ use cw_asset::Asset;
 use enterprise_protocol::api::{IsRestrictedUserParams, IsRestrictedUserResponse};
 use enterprise_protocol::msg::QueryMsg::IsRestrictedUser;
 use funds_distributor_api::api::ClaimRewardsMsg;
+use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_claim_rewards_response;
 use DistributorError::RestrictedUser;
@@ -24,6 +25,10 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
     }
 
     let user = ctx.deps.api.addr_validate(&msg.user)?;
+
+    if ctx.info.sender != user {
+        return Err(Unauthorized);
+    }
 
     let user_weight = EFFECTIVE_USER_WEIGHTS
         .may_load(ctx.deps.storage, user.clone())?

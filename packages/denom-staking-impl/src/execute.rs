@@ -5,7 +5,7 @@ use cosmwasm_std::{coins, BankMsg, Response, SubMsg, Uint128};
 use cw_utils::Duration::{Height, Time};
 use denom_staking_api::api::{ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
 use denom_staking_api::error::DenomStakingError::{
-    InsufficientStake, InvalidStakingDenom, MultipleDenomsBeingStaked,
+    InsufficientStake, InvalidStakingDenom, MultipleDenomsBeingStaked, Unauthorized,
 };
 use denom_staking_api::error::DenomStakingResult;
 use membership_common::member_weights::{
@@ -133,6 +133,10 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> DenomStakingResult<Response> {
         .map(|user| ctx.deps.api.addr_validate(&user))
         .transpose()?
         .unwrap_or_else(|| ctx.info.sender.clone());
+
+    if ctx.info.sender != user {
+        return Err(Unauthorized);
+    }
 
     let releasable_claims =
         get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;

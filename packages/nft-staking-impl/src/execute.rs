@@ -185,6 +185,10 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> NftStakingResult<Response> {
         .transpose()?
         .unwrap_or(ctx.info.sender.clone());
 
+    if ctx.info.sender != user {
+        return Err(Unauthorized);
+    }
+
     let releasable_claims =
         get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;
 
