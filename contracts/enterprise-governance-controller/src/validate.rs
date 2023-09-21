@@ -11,7 +11,7 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 use enterprise_governance_controller_api::api::{
     CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, GovConfig,
     ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
-    RequestFundingFromDaoMsg, UpdateGovConfigMsg,
+    RemoteTreasuryTarget, RequestFundingFromDaoMsg, UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     Dao, DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument,
@@ -126,9 +126,12 @@ pub fn validate_proposal_actions(
 
     for proposal_action in proposal_actions {
         match proposal_action {
-            UpdateAssetWhitelist(msg) => {
-                validate_asset_whitelist_changes(deps, &msg.add, &msg.remove)?
-            }
+            UpdateAssetWhitelist(msg) => validate_asset_whitelist_changes(
+                deps,
+                &msg.remote_treasury_target,
+                &msg.add,
+                &msg.remove,
+            )?,
             UpdateNftWhitelist(msg) => validate_nft_whitelist_changes(deps, &msg.add, &msg.remove)?,
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
@@ -218,9 +221,15 @@ pub fn normalize_asset_whitelist(
 
 fn validate_asset_whitelist_changes(
     deps: Deps,
+    remote_treasury_target: &Option<RemoteTreasuryTarget>,
     add: &Vec<AssetInfoUnchecked>,
     remove: &Vec<AssetInfoUnchecked>,
 ) -> GovernanceControllerResult<()> {
+    if remote_treasury_target.is_some() {
+        // we can't do any validation, the assets are from a different chain
+        return Ok(());
+    }
+
     let add_asset_hashsets = split_asset_hashsets(deps, add)?;
     let remove_asset_hashsets = split_asset_hashsets(deps, remove)?;
 
