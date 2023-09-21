@@ -30,9 +30,6 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
         return Err(Unauthorized);
     }
 
-    // only enterprise governance should send the actual NFT, they'll tell us which user
-    enterprise_governance_controller_only(ctx, Some(msg.sender.clone()))?;
-
     match from_binary(&msg.msg) {
         Ok(Cw721HookMsg::Stake { user }) => stake_nft(ctx, msg, user),
         Ok(Cw721HookMsg::AddClaim { user, release_at }) => {

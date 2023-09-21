@@ -35,9 +35,6 @@ pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResul
         return Err(Unauthorized);
     }
 
-    // only enterprise governance should send the actual tokens, they'll tell us which user
-    enterprise_governance_controller_only(ctx, Some(msg.sender.clone()))?;
-
     match from_binary(&msg.msg) {
         Ok(Cw20HookMsg::Stake { user }) => stake_token(ctx, msg, user),
         Ok(Cw20HookMsg::InitializeStakers { stakers }) => initialize_stakers(ctx, msg, stakers),
