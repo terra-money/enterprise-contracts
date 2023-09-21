@@ -12,6 +12,8 @@ use enterprise_protocol::error::DaoResult;
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::msg::InstantiateMsg;
 
+const LIST_VOTERS_QUERY_LIMIT: u32 = 100;
+
 pub fn import_cw3_membership(
     deps: DepsMut,
     msg: ImportCw3MembershipMsg,
@@ -28,7 +30,7 @@ pub fn import_cw3_membership(
     while {
         let query_msg = ListVoters {
             start_after: last_voter.clone(),
-            limit: None,
+            limit: Some(LIST_VOTERS_QUERY_LIMIT),
         };
 
         last_voter = None;
