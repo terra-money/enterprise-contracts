@@ -1,4 +1,3 @@
-use crate::asset_whitelist::add_whitelisted_assets_checked;
 use crate::contract::{
     COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
@@ -14,7 +13,7 @@ use cosmwasm_std::{
     to_binary, wasm_execute, Addr, BlockInfo, Decimal, Deps, DepsMut, Env, Response, StdError,
     StdResult, SubMsg, Uint128, Uint64,
 };
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::Asset;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
@@ -29,10 +28,6 @@ use enterprise_treasury_api::error::EnterpriseTreasuryResult;
 use enterprise_treasury_api::msg::ExecuteMsg::FinalizeMigration;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use multisig_membership_api::api::UserWeight;
-
-const NATIVE_ASSET_WHITELIST: Map<String, ()> = Map::new("native_asset_whitelist");
-const CW20_ASSET_WHITELIST: Map<Addr, ()> = Map::new("cw20_asset_whitelist");
-const CW1155_ASSET_WHITELIST: Map<(Addr, String), ()> = Map::new("cw1155_asset_whitelist");
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -137,7 +132,7 @@ pub struct DaoCouncil {
     pub threshold: Decimal,
 }
 
-pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
+pub fn migrate_to_rewrite(deps: DepsMut, env: Env) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(deps.storage)?;
     let enterprise_factory_config: ConfigResponse = deps.querier.query_wasm_smart(
         enterprise_factory.to_string(),
@@ -179,8 +174,6 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> EnterpriseTreasuryResu
         dao_metadata,
     )?;
 
-    map_whitelisted_assets(deps.branch())?;
-
     let finalize_migration_submsg = SubMsg::new(wasm_execute(
         env.contract.address.to_string(),
         &FinalizeMigration {},
@@ -188,37 +181,6 @@ pub fn migrate_to_rewrite(mut deps: DepsMut, env: Env) -> EnterpriseTreasuryResu
     )?);
 
     Ok(vec![enterprise_contract_submsg, finalize_migration_submsg])
-}
-
-fn map_whitelisted_assets(mut deps: DepsMut) -> EnterpriseTreasuryResult<()> {
-    let native_asset_whitelist = NATIVE_ASSET_WHITELIST
-        .range(deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(String, ())>>>()?
-        .into_iter()
-        .map(|(denom, _)| AssetInfo::native(denom))
-        .collect::<Vec<AssetInfo>>();
-
-    add_whitelisted_assets_checked(deps.branch(), native_asset_whitelist)?;
-
-    let cw20_asset_whitelist = CW20_ASSET_WHITELIST
-        .range(deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(Addr, ())>>>()?
-        .into_iter()
-        .map(|(addr, _)| AssetInfo::cw20(addr))
-        .collect::<Vec<AssetInfo>>();
-
-    add_whitelisted_assets_checked(deps.branch(), cw20_asset_whitelist)?;
-
-    let cw1155_asset_whitelist = CW1155_ASSET_WHITELIST
-        .range(deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<((Addr, String), ())>>>()?
-        .into_iter()
-        .map(|((addr, token_id), _)| AssetInfo::cw1155(addr, token_id))
-        .collect::<Vec<AssetInfo>>();
-
-    add_whitelisted_assets_checked(deps.branch(), cw1155_asset_whitelist)?;
-
-    Ok(())
 }
 
 pub fn create_enterprise_contract(
@@ -638,9 +600,6 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
     )?);
 
     // remove all the old storage
-    NATIVE_ASSET_WHITELIST.clear(ctx.deps.storage);
-    CW20_ASSET_WHITELIST.clear(ctx.deps.storage);
-    CW1155_ASSET_WHITELIST.clear(ctx.deps.storage);
 
     DAO_GOV_CONFIG.remove(ctx.deps.storage);
     DAO_COUNCIL.remove(ctx.deps.storage);
