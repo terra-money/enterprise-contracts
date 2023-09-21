@@ -1981,12 +1981,12 @@ fn query_council_total_weight(
 ) -> GovernanceControllerResult<Uint128> {
     let dao_council_membership = query_council_membership_addr(deps)?;
 
-    let member_weight: UserWeightResponse = deps.querier.query_wasm_smart(
+    let total_weight: TotalWeightResponse = deps.querier.query_wasm_smart(
         dao_council_membership.to_string(),
         &multisig_membership_api::msg::QueryMsg::TotalWeight(TotalWeightParams { expiration }),
     )?;
 
-    Ok(member_weight.weight)
+    Ok(total_weight.total_weight)
 }
 
 /// Checks whether the user should be restricted from participating, i.e. there is an attestation
