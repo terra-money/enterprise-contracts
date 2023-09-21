@@ -132,15 +132,30 @@ pub fn query_poll_voters(
     Ok(PollVotersResponse { votes })
 }
 
-pub fn query_voter(qctx: &QueryContext, voter_addr: impl AsRef<str>) -> PollResult<VoterResponse> {
+pub fn query_voter(
+    qctx: &QueryContext,
+    voter_addr: impl AsRef<str>,
+    start_after: Option<PollId>,
+    limit: Option<u64>,
+) -> PollResult<VoterResponse> {
     let voter = qctx.deps.api.addr_validate(voter_addr.as_ref())?;
 
-    let votes = votes()
+    let votes_iter = votes()
         .prefix(voter)
-        .range(qctx.deps.storage, None, None, Order::Ascending)
+        .range(
+            qctx.deps.storage,
+            start_after.map(Bound::exclusive),
+            None,
+            Order::Ascending,
+        )
         .flatten()
-        .map(|(_, vote)| vote)
-        .collect_vec();
+        .map(|(_, vote)| vote);
+
+    // apply pagination limit if provided
+    let votes = match limit {
+        Some(n) => votes_iter.take(n as usize).collect_vec(),
+        None => votes_iter.collect_vec(),
+    };
 
     Ok(VoterResponse { votes })
 }

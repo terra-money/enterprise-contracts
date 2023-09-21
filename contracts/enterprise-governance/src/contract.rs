@@ -83,7 +83,7 @@ fn update_votes(ctx: &mut Context, params: UpdateVotesParams) -> PollResult<Resp
         deps: ctx.deps.as_ref(),
         env: ctx.env.clone(),
     };
-    let votes = query_voter(&qctx, &params.voter)?;
+    let votes = query_voter(&qctx, &params.voter, None, None)?;
 
     for vote in votes.votes {
         let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
@@ -127,7 +127,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> PollResult<Binary> {
         QueryMsg::PollStatus { poll_id } => to_binary(&query_poll_status(&qctx, poll_id)?)?,
         QueryMsg::PollVoter(params) => to_binary(&query_poll_voter(&qctx, params)?)?,
         QueryMsg::PollVoters(params) => to_binary(&query_poll_voters(&qctx, params)?)?,
-        QueryMsg::Voter(params) => to_binary(&query_voter(&qctx, params.voter_addr)?)?,
+        QueryMsg::Voter(params) => to_binary(&query_voter(
+            &qctx,
+            params.voter_addr,
+            params.start_after,
+            params.limit,
+        )?)?,
     };
     Ok(response)
 }

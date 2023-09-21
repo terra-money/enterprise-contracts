@@ -304,6 +304,8 @@ pub struct PollVotersResponse {
 pub struct VoterParams {
     /// The voter's address.
     pub voter_addr: String,
+    pub start_after: Option<PollId>,
+    pub limit: Option<u64>,
 }
 
 #[cw_serde]

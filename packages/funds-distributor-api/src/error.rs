@@ -22,6 +22,9 @@ pub enum DistributorError {
 
     #[error("Duplicate initial user weight found")]
     DuplicateInitialWeight,
+
+    #[error("Attempting to distribute an asset that is not whitelisted")]
+    DistributingNonWhitelistedAsset,
 }
 
 impl From<OverflowError> for DistributorError {
