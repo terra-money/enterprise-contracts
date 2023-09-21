@@ -143,6 +143,7 @@ pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> NftStakingResult<Response>
     Ok(Response::new()
         .add_attribute("action", "unstake")
         .add_attribute("total_staked", new_total_staked.to_string())
+        .add_attribute("user_stake", new_weight.to_string())
         .add_attribute("claim_id", claim.id.to_string())
         .add_submessages(report_weight_change_submsgs))
 }
