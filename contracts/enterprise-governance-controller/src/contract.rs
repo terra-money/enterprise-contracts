@@ -663,9 +663,9 @@ fn end_proposal(
     let ends_at = poll.ends_at;
 
     let total_available_votes = if ends_at <= ctx.env.block.time {
-        general_total_available_votes(ctx.deps.as_ref(), AtTime(ends_at))?
+        total_available_votes(ctx.deps.as_ref(), AtTime(ends_at), proposal_type.clone())?
     } else {
-        general_total_available_votes(ctx.deps.as_ref(), Never {})?
+        total_available_votes(ctx.deps.as_ref(), Never {}, proposal_type.clone())?
     };
 
     if total_available_votes == Uint128::zero() {
