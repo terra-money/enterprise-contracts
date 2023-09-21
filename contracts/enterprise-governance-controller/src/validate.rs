@@ -22,10 +22,8 @@ use enterprise_governance_controller_api::error::{
 };
 use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::api::{DaoInfoResponse, DaoType, UpgradeDaoMsg};
-use enterprise_protocol::error::DaoError::{InvalidMigrateMsgMap, MigratingToLowerVersion};
+use enterprise_protocol::error::DaoError::MigratingToLowerVersion;
 use enterprise_protocol::msg::QueryMsg::DaoInfo;
-use serde_json::Value;
-use serde_json::Value::Object;
 use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{
     MinimumDepositNotAllowed, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
@@ -350,14 +348,7 @@ pub fn validate_upgrade_dao(deps: Deps, msg: &UpgradeDaoMsg) -> GovernanceContro
         .into());
     }
 
-    let json: Value = serde_json::from_slice(msg.migrate_msg.as_slice())
-        .map_err(|e| StdError::generic_err(e.to_string()))?;
-
-    if let Object(_) = json {
-        Ok(())
-    } else {
-        Err(InvalidMigrateMsgMap.into())
-    }
+    Ok(())
 }
 
 fn validate_execute_msgs(msg: &ExecuteMsgsMsg) -> GovernanceControllerResult<()> {

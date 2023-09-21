@@ -68,15 +68,37 @@ pub struct UpdateMetadataMsg {
     pub telegram_username: ModifyValue<Option<String>>,
 }
 
+/// MigrateMsg for a specific version.
+#[cw_serde]
+pub struct VersionMigrateMsg {
+    pub version: Version,
+    pub migrate_msg: String,
+}
+
 #[cw_serde]
 pub struct UpgradeDaoMsg {
     pub new_version: Version,
-    /// Expects a map of (version, migrate msg for that version).
+    /// Expects an array of (version, migrate msg for that version).
     /// E.g.
-    /// {
-    ///   "1.0.2": { <MigrateMsg for 1.0.2> },
-    ///   "2.0.0": { <MigrateMsg for 2.0.0> }
-    /// }
+    /// [
+    ///   {
+    ///     "version": {
+    ///       "major": 2,
+    ///       "minor": 0,
+    ///       "patch": 0
+    ///     },
+    ///     "migrate_msg": <MigrateMsg JSON for 2.0.0>
+    ///   },
+    ///   {
+    ///     "version": {
+    ///       "major": 2,
+    ///       "minor": 1,
+    ///       "patch": 3
+    ///     },
+    ///     "migrate_msg": <MigrateMsg JSON for 2.1.3>
+    ///   }
+    /// ]
+    pub migrate_msgs: Vec<VersionMigrateMsg>,
     pub migrate_msg: Binary,
 }
 

@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 // TODO: tests for this for comparison and parsing?
 #[cw_serde]
-#[derive(Ord, PartialOrd, Eq)]
+#[derive(Ord, PartialOrd, Eq, Hash)]
 pub struct Version {
     pub major: u64,
     pub minor: u64,

@@ -13,8 +13,8 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_instantiate, Binary, Deps, DepsMut, Env, MessageInfo, Order,
-    Reply, Response, StdError, StdResult, SubMsg,
+    entry_point, to_binary, wasm_instantiate, Binary, Deps, DepsMut, Empty, Env, MessageInfo,
+    Order, Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
@@ -27,10 +27,10 @@ use enterprise_protocol::api::{
     UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
-    AlreadyInitialized, InvalidMigrateMsgMap, MigratingToLowerVersion,
+    AlreadyInitialized, DuplicateVersionMigrateMsgFound, MigratingToLowerVersion,
     ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId,
 };
-use enterprise_protocol::error::{DaoError, DaoResult};
+use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::response::{
     execute_add_cross_chain_treasury_response, execute_finalize_instantiation_response,
@@ -41,8 +41,7 @@ use enterprise_versioning_api::api::{
     Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
 };
 use enterprise_versioning_api::msg::QueryMsg::Versions;
-use serde_json::json;
-use serde_json::Value::Object;
+use std::collections::HashMap;
 use std::ops::Not;
 use std::str::FromStr;
 
@@ -201,33 +200,40 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
 
     enterprise_governance_controller_caller_only(ctx)?;
 
-    let migrate_msg_json: serde_json::Value = serde_json::from_slice(msg.migrate_msg.as_slice())
-        .map_err(|e| DaoError::Std(StdError::generic_err(e.to_string())))?;
+    let mut migrate_msgs_map: HashMap<Version, String> = HashMap::new();
 
-    if let Object(migrate_msgs_map) = migrate_msg_json {
-        let versions =
-            get_versions_between_current_and_target(ctx, current_version, msg.new_version.clone())?;
-
-        let mut submsgs = vec![];
-
-        for version in versions {
-            let msg = migrate_msgs_map.get(&version.version.to_string());
-            let migrate_msg = match msg {
-                Some(msg) => to_binary(msg)?,
-                None => to_binary(&json!({}))?, // if no msg was supplied, just use an empty one
-            };
-
-            submsgs.push(SubMsg::new(Wasm(Migrate {
-                contract_addr: ctx.env.contract.address.to_string(),
-                new_code_id: version.enterprise_code_id,
-                msg: migrate_msg,
-            })));
+    for version_migrate_msg in msg.migrate_msgs {
+        let existing_version_migrate_msg = migrate_msgs_map.insert(
+            version_migrate_msg.version.clone(),
+            version_migrate_msg.migrate_msg,
+        );
+        if existing_version_migrate_msg.is_some() {
+            return Err(DuplicateVersionMigrateMsgFound {
+                version: version_migrate_msg.version,
+            });
         }
-
-        Ok(execute_upgrade_dao_response(msg.new_version.to_string()).add_submessages(submsgs))
-    } else {
-        Err(InvalidMigrateMsgMap)
     }
+
+    let versions =
+        get_versions_between_current_and_target(ctx, current_version, msg.new_version.clone())?;
+
+    let mut submsgs = vec![];
+
+    for version in versions {
+        let msg = migrate_msgs_map.get(&version.version);
+        let migrate_msg = match msg {
+            Some(msg) => to_binary(msg)?,
+            None => to_binary(&Empty {})?, // if no msg was supplied, just use an empty one
+        };
+
+        submsgs.push(SubMsg::new(Wasm(Migrate {
+            contract_addr: ctx.env.contract.address.to_string(),
+            new_code_id: version.enterprise_code_id,
+            msg: migrate_msg,
+        })));
+    }
+
+    Ok(execute_upgrade_dao_response(msg.new_version.to_string()).add_submessages(submsgs))
 }
 
 fn get_versions_between_current_and_target(

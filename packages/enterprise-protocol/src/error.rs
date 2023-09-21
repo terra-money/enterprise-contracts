@@ -39,8 +39,8 @@ pub enum DaoError {
     #[error("Attempting to migrate from {current} to a lower version ({target})")]
     MigratingToLowerVersion { current: Version, target: Version },
 
-    #[error("Supplied migrate msg is not a map of (version, migrate msg for version)")]
-    InvalidMigrateMsgMap,
+    #[error("Supplied migrate msg array contains a duplicate migrate msg for version {version}")]
+    DuplicateVersionMigrateMsgFound { version: Version },
 
     #[error("Trying to add a proxy for a chain ID that already has a DAO-owned proxy deployed")]
     ProxyAlreadyExistsForChainId,
