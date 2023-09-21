@@ -7,6 +7,7 @@ use cosmwasm_std::{to_binary, DepsMut, SubMsg};
 use cw3::Cw3QueryMsg::ListVoters;
 use cw3::VoterListResponse;
 use enterprise_factory_api::api::{ImportCw3MembershipMsg, NewMultisigMembershipMsg};
+use enterprise_protocol::error::DaoError::MultisigDaoWithNoInitialMembers;
 use enterprise_protocol::error::DaoResult;
 use multisig_membership_api::api::UserWeight;
 use multisig_membership_api::msg::InstantiateMsg;
@@ -75,6 +76,11 @@ pub fn instantiate_multisig_membership_contract(
     weight_change_hooks: Option<Vec<String>>,
     reply_id: u64,
 ) -> DaoResult<SubMsg> {
+    // multisig DAO with no initial members is meaningless - it's locked from the get-go
+    if initial_weights.is_empty() {
+        return Err(MultisigDaoWithNoInitialMembers);
+    }
+
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
     let enterprise_contract = dao_being_created.require_enterprise_address()?;

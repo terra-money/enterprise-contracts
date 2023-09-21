@@ -27,6 +27,12 @@ pub enum DaoError {
     #[error("Zero-weighted members are not allowed upon DAO creation")]
     ZeroInitialWeightMember,
 
+    #[error("Attempting to create a token DAO with no holders and no way to mint tokens")]
+    TokenDaoWithNoBalancesOrMint,
+
+    #[error("Attempting to create a multisig DAO initial members")]
+    MultisigDaoWithNoInitialMembers,
+
     #[error("Zero initial DAO balance is not allowed upon DAO creation")]
     ZeroInitialDaoBalance,
 

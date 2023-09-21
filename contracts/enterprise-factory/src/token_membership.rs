@@ -6,10 +6,12 @@ use crate::validate::validate_existing_cw20_contract;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{to_binary, Addr, DepsMut, StdResult, SubMsg, Uint128};
-use cw20::{Cw20Coin, Logo, MinterResponse};
+use cw20::{Cw20Coin, Logo, MinterResponse, TokenInfoResponse};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{ImportCw20MembershipMsg, NewCw20MembershipMsg};
-use enterprise_protocol::error::DaoError::{ZeroInitialDaoBalance, ZeroInitialWeightMember};
+use enterprise_protocol::error::DaoError::{
+    TokenDaoWithNoBalancesOrMint, ZeroInitialDaoBalance, ZeroInitialWeightMember,
+};
 use enterprise_protocol::error::DaoResult;
 use token_staking_api::msg::InstantiateMsg;
 
@@ -21,6 +23,20 @@ pub fn import_cw20_membership(
     let cw20_address = deps.api.addr_validate(&msg.cw20_contract)?;
 
     validate_existing_cw20_contract(deps.as_ref(), cw20_address.as_ref())?;
+
+    // if token being imported has no holders and no way to be minted,
+    // DAO is essentially locked from the get-go
+    let token_info: TokenInfoResponse = deps
+        .querier
+        .query_wasm_smart(cw20_address.to_string(), &cw20::Cw20QueryMsg::TokenInfo {})?;
+    if token_info.total_supply.is_zero() {
+        let minter: Option<MinterResponse> = deps
+            .querier
+            .query_wasm_smart(cw20_address.to_string(), &cw20::Cw20QueryMsg::Minter {})?;
+        if minter.is_none() {
+            return Err(TokenDaoWithNoBalancesOrMint);
+        }
+    }
 
     DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
         Ok(DaoBeingCreated {
@@ -51,6 +67,12 @@ pub fn instantiate_new_cw20_membership(
         if initial_balance.amount == Uint128::zero() {
             return Err(ZeroInitialWeightMember);
         }
+    }
+
+    // if there are no initial token holders and no minter is defined,
+    // DAO is essentially locked from the get-go
+    if msg.initial_token_balances.is_empty() && msg.token_mint.is_none() {
+        return Err(TokenDaoWithNoBalancesOrMint);
     }
 
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
