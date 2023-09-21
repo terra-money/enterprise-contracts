@@ -391,7 +391,11 @@ pub fn create_governance_controller_contract(
                     allow_early_proposal_execution: gov_config.allow_early_proposal_execution,
                 },
                 council_gov_config: dao_council.map(|council| DaoCouncilSpec {
-                    members: vec![], // TODO: this works, but we really shouldn't have this field when it's meaningless
+                    members: council
+                        .members
+                        .into_iter()
+                        .map(|addr| addr.to_string())
+                        .collect(),
                     allowed_proposal_action_types: Some(council.allowed_proposal_action_types),
                     quorum: council.quorum,
                     threshold: council.threshold,
