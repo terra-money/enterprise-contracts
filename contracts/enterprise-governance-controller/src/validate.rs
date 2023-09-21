@@ -11,11 +11,12 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 use enterprise_governance_controller_api::api::{
     CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, GovConfig,
     ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
-    UpdateGovConfigMsg,
+    RequestFundingFromDaoMsg, UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
-    MaximumProposalActionsExceeded, Std, UnsupportedCouncilProposalAction, ZeroVoteDuration,
+    MaximumProposalActionsExceeded, Std, UnsupportedCouncilProposalAction, UnsupportedCw1155Asset,
+    ZeroVoteDuration,
 };
 use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
@@ -132,6 +133,7 @@ pub fn validate_proposal_actions(
                 validate_dao_council(deps, msg.dao_council.clone())?;
             }
             DistributeFunds(msg) => validate_distribute_funds(deps, msg)?,
+            RequestFundingFromDao(msg) => validate_request_funding_from_dao(deps, msg)?,
             UpdateGovConfig(msg) => {
                 let gov_config = GOV_CONFIG.load(deps.storage)?;
 
@@ -140,7 +142,6 @@ pub fn validate_proposal_actions(
                 validate_dao_gov_config(&dao_type, &updated_gov_config)?;
             }
             UpdateMetadata(_)
-            | RequestFundingFromDao(_)
             | UpdateMinimumWeightForRewards(_)
             | AddAttestation(_)
             | RemoveAttestation {} => {
@@ -429,6 +430,28 @@ pub fn validate_distribute_funds(
                 )))
             }
             _ => return Err(Std(StdError::generic_err("unknown asset type"))),
+        }
+    }
+
+    Ok(())
+}
+
+pub fn validate_request_funding_from_dao(
+    deps: Deps,
+    msg: &RequestFundingFromDaoMsg,
+) -> GovernanceControllerResult<()> {
+    // in case it's for our own chain, we can validate all the parameters
+    if msg.remote_treasury_target.is_none() {
+        deps.api.addr_validate(&msg.recipient)?;
+
+        for asset in &msg.assets {
+            // first validate the asset info
+            let checked_asset = asset.check(deps.api, None)?;
+
+            // CW1155 are not supported in treasury operations for now
+            if let AssetInfo::Cw1155(_, _) = checked_asset.info {
+                return Err(UnsupportedCw1155Asset);
+            }
         }
     }
 

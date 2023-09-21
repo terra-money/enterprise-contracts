@@ -79,6 +79,9 @@ pub enum GovernanceControllerError {
     #[error("An asset is present in both add and remove lists")]
     AssetPresentInBothAddAndRemove,
 
+    #[error("CW1155 assets are not yet supported for this operation")]
+    UnsupportedCw1155Asset,
+
     #[error("An NFT is added or removed multiple times")]
     DuplicateNftFound,
 
