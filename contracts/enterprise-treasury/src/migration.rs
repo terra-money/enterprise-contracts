@@ -252,7 +252,6 @@ pub fn create_enterprise_contract(
 
 pub fn enterprise_contract_created(
     mut deps: DepsMut,
-    env: Env,
     enterprise_contract: Addr,
 ) -> EnterpriseTreasuryResult<Response> {
     let migration_info = MIGRATION_INFO.load(deps.storage)?;
@@ -265,39 +264,10 @@ pub fn enterprise_contract_created(
         },
     )?;
 
-    // update enterprise's admin to itself
-    let update_enterprise_admin = UpdateAdmin {
-        contract_addr: enterprise_contract.to_string(),
-        admin: enterprise_contract.to_string(),
-    };
-
-    // update all existing contracts' admin to enterprise
-    let update_treasury_admin = UpdateAdmin {
-        contract_addr: env.contract.address.to_string(),
-        admin: enterprise_contract.to_string(),
-    };
-
-    let funds_distributor = FUNDS_DISTRIBUTOR_CONTRACT.load(deps.storage)?;
-    let update_funds_distributor_admin = UpdateAdmin {
-        contract_addr: funds_distributor.to_string(),
-        admin: enterprise_contract.to_string(),
-    };
-
-    let enterprise_governance = ENTERPRISE_GOVERNANCE_CONTRACT.load(deps.storage)?;
-    let update_enterprise_governance_admin = UpdateAdmin {
-        contract_addr: enterprise_governance.to_string(),
-        admin: enterprise_contract.to_string(),
-    };
-
     let governance_controller_submsg =
         create_governance_controller_contract(deps.branch(), enterprise_contract)?;
 
-    Ok(Response::new()
-        .add_submessage(SubMsg::new(update_enterprise_admin))
-        .add_submessage(SubMsg::new(update_treasury_admin))
-        .add_submessage(SubMsg::new(update_funds_distributor_admin))
-        .add_submessage(SubMsg::new(update_enterprise_governance_admin))
-        .add_submessage(governance_controller_submsg))
+    Ok(Response::new().add_submessage(governance_controller_submsg))
 }
 
 pub fn create_dao_council_membership_contract(
@@ -623,6 +593,28 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         })?,
     }));
 
+    // update enterprise's admin to itself
+    let update_enterprise_admin = SubMsg::new(UpdateAdmin {
+        contract_addr: enterprise_contract.to_string(),
+        admin: enterprise_contract.to_string(),
+    });
+
+    // update all existing contracts' admin to enterprise
+    let update_treasury_admin = SubMsg::new(UpdateAdmin {
+        contract_addr: ctx.env.contract.address.to_string(),
+        admin: enterprise_contract.to_string(),
+    });
+
+    let update_funds_distributor_admin = SubMsg::new(UpdateAdmin {
+        contract_addr: funds_distributor.to_string(),
+        admin: enterprise_contract.to_string(),
+    });
+
+    let update_enterprise_governance_admin = SubMsg::new(UpdateAdmin {
+        contract_addr: enterprise_governance.to_string(),
+        admin: enterprise_contract.to_string(),
+    });
+
     let finalize_enterprise_instantiation = SubMsg::new(wasm_execute(
         enterprise_contract.to_string(),
         &FinalizeInstantiation(FinalizeInstantiationMsg {
@@ -665,5 +657,9 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
     Ok(Response::new()
         .add_submessage(migrate_funds_distributor)
         .add_submessage(migrate_enterprise_governance_submsg)
+        .add_submessage(update_enterprise_admin)
+        .add_submessage(update_treasury_admin)
+        .add_submessage(update_funds_distributor_admin)
+        .add_submessage(update_enterprise_governance_admin)
         .add_submessage(finalize_enterprise_instantiation))
 }

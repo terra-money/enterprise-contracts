@@ -221,12 +221,12 @@ fn execute_cosmos_msgs(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> EnterpriseTreasuryResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> EnterpriseTreasuryResult<Response> {
     match msg.id {
         ENTERPRISE_INSTANTIATE_REPLY_ID => {
             let enterprise_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
 
-            enterprise_contract_created(deps, env, enterprise_contract)
+            enterprise_contract_created(deps, enterprise_contract)
         }
         ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID => {
             let governance_controller_contract =
