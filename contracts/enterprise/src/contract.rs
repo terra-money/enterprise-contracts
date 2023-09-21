@@ -32,7 +32,12 @@ use enterprise_protocol::error::DaoError::{
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use enterprise_protocol::response::{execute_add_cross_chain_proxy_response, execute_add_cross_chain_treasury_response, execute_finalize_instantiation_response, execute_remove_attestation_response, execute_set_attestation_response, execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response};
+use enterprise_protocol::response::{
+    execute_add_cross_chain_proxy_response, execute_add_cross_chain_treasury_response,
+    execute_finalize_instantiation_response, execute_remove_attestation_response,
+    execute_set_attestation_response, execute_update_metadata_response,
+    execute_upgrade_dao_response, instantiate_response,
+};
 use enterprise_versioning_api::api::{
     Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
 };
@@ -242,7 +247,7 @@ fn get_versions_between_current_and_target(
     let mut versions: Vec<VersionInfo> = vec![];
     let mut last_version = Some(current_version);
 
-    loop {
+    'outer: loop {
         let versions_response: VersionsResponse = ctx.deps.querier.query_wasm_smart(
             enterprise_versioning.to_string(),
             &Versions(VersionsParams {
@@ -262,13 +267,13 @@ fn get_versions_between_current_and_target(
 
         for version in versions_response.versions {
             if version.version > target_version {
-                break;
+                break 'outer;
             }
 
             versions.push(version.clone());
 
             if version.version == target_version {
-                break;
+                break 'outer;
             }
         }
     }
