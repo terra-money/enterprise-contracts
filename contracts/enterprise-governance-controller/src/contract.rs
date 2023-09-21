@@ -1215,6 +1215,7 @@ fn deploy_cross_chain_treasury(
                     admin: None, // TODO: consider adding an admin, otherwise we'll be redeploying proxies
                     code_id: msg.ics_proxy_code_id,
                     msg: to_binary(&IcsProxyInstantiateMsg {
+                        allow_cross_chain_msgs: true,
                         owner: Some(ctx.env.contract.address.to_string()),
                         whitelist: Some(vec![ctx.env.contract.address.to_string()]),
                         msgs: None,

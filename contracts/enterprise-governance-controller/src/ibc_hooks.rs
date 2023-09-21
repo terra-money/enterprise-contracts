@@ -8,6 +8,9 @@ use prost::Message;
 
 #[cw_serde]
 pub struct IcsProxyInstantiateMsg {
+    /// This is a flag that can block this contract from executing cross-chain messages.
+    /// Mainly used to prevent fake reports of this contract's callbacks.
+    pub allow_cross_chain_msgs: bool,
     pub owner: Option<String>,
     pub whitelist: Option<Vec<String>>,
     pub msgs: Option<Vec<CosmosMsg>>,
