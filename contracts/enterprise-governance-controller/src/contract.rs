@@ -4,7 +4,6 @@ use crate::ibc_hooks::{
 };
 use crate::proposals::{
     get_proposal_actions, is_proposal_executed, set_proposal_executed, PROPOSAL_INFOS,
-    TOTAL_DEPOSITS,
 };
 use crate::state::{State, COUNCIL_GOV_CONFIG, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
 use crate::validate::{
@@ -41,12 +40,12 @@ use enterprise_governance_controller_api::api::{
     CreateProposalWithNftDepositMsg, CrossChainMsgSpec, DeployCrossChainTreasuryMsg,
     DistributeFundsMsg, ExecuteMsgReplyCallbackMsg, ExecuteMsgsMsg, ExecuteProposalMsg, GovConfig,
     GovConfigResponse, MemberVoteParams, MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal,
-    ProposalAction, ProposalActionType, ProposalAsset, ProposalDeposit, ProposalId, ProposalInfo,
-    ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, RemoteTreasuryTarget, RequestFundingFromDaoMsg,
-    UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
-    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
+    ProposalAction, ProposalActionType, ProposalDeposit, ProposalDepositAsset, ProposalId,
+    ProposalInfo, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter,
+    ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, RemoteTreasuryTarget,
+    RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg,
+    UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, Dao, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType,
@@ -191,7 +190,7 @@ fn determine_deposit_and_create_proposal(
 
             dao_denom_from_funds.map(|coin| ProposalDeposit {
                 depositor: proposer.clone(),
-                asset: ProposalAsset::Denom {
+                asset: ProposalDepositAsset::Denom {
                     denom: coin.denom.clone(),
                     amount: coin.amount,
                 },
@@ -248,7 +247,7 @@ fn create_proposal_with_nft_deposit(
 
     let nft_deposit = ProposalDeposit {
         depositor: proposer.clone(),
-        asset: ProposalAsset::Cw721 {
+        asset: ProposalDepositAsset::Cw721 {
             nft_addr: dao_nft_config.nft_contract,
             tokens: msg.deposit_tokens,
         },
@@ -612,50 +611,45 @@ fn return_proposal_deposit_submsgs(
         .may_load(deps.storage, proposal_id)?
         .ok_or(NoSuchProposal)?;
 
-    return_deposit_submsgs(deps, proposal_info.proposal_deposit)
+    if let Some(deposit) = proposal_info.proposal_deposit {
+        send_proposal_deposit_to(deposit.asset, deposit.depositor)
+    } else {
+        Ok(vec![])
+    }
 }
 
-fn return_deposit_submsgs(
-    deps: DepsMut,
-    deposit: Option<ProposalDeposit>,
+fn send_proposal_deposit_to(
+    deposit_asset: ProposalDepositAsset,
+    recipient: Addr,
 ) -> GovernanceControllerResult<Vec<SubMsg>> {
-    match deposit {
-        None => Ok(vec![]),
-        Some(deposit) => {
-            let transfer_msgs = match deposit.asset.clone() {
-                ProposalAsset::Denom { denom, amount } => {
-                    vec![SubMsg::new(
-                        Asset::native(denom, amount).transfer_msg(deposit.depositor.clone())?,
-                    )]
-                }
-                ProposalAsset::Cw20 { token_addr, amount } => {
-                    vec![SubMsg::new(
-                        Asset::cw20(token_addr, amount).transfer_msg(deposit.depositor.clone())?,
-                    )]
-                }
-                ProposalAsset::Cw721 { nft_addr, tokens } => tokens
-                    .into_iter()
-                    .map(|token_id| {
-                        wasm_execute(
-                            nft_addr.to_string(),
-                            &TransferNft {
-                                recipient: deposit.depositor.to_string(),
-                                token_id,
-                            },
-                            vec![],
-                        )
-                        .map(SubMsg::new)
-                    })
-                    .collect::<StdResult<Vec<SubMsg>>>()?,
-            };
-
-            TOTAL_DEPOSITS.update(deps.storage, |deposits| -> StdResult<Uint128> {
-                Ok(deposits - deposit.amount())
-            })?;
-
-            Ok(transfer_msgs)
+    let transfer_msgs = match deposit_asset {
+        ProposalDepositAsset::Denom { denom, amount } => {
+            vec![SubMsg::new(
+                Asset::native(denom, amount).transfer_msg(recipient)?,
+            )]
         }
-    }
+        ProposalDepositAsset::Cw20 { token_addr, amount } => {
+            vec![SubMsg::new(
+                Asset::cw20(token_addr, amount).transfer_msg(recipient)?,
+            )]
+        }
+        ProposalDepositAsset::Cw721 { nft_addr, tokens } => tokens
+            .into_iter()
+            .map(|token_id| {
+                wasm_execute(
+                    nft_addr.to_string(),
+                    &TransferNft {
+                        recipient: recipient.to_string(),
+                        token_id,
+                    },
+                    vec![],
+                )
+                .map(SubMsg::new)
+            })
+            .collect::<StdResult<Vec<SubMsg>>>()?,
+    };
+
+    Ok(transfer_msgs)
 }
 
 fn end_proposal(
@@ -760,14 +754,13 @@ fn resolve_ended_proposal(
                 General => match reason {
                     QuorumNotReached | IsVetoOutcome => {
                         if let Some(deposit) = proposal_info.proposal_deposit {
-                            TOTAL_DEPOSITS.update(
-                                ctx.deps.storage,
-                                |deposits| -> StdResult<Uint128> {
-                                    Ok(deposits - deposit.amount())
-                                },
-                            )?;
+                            // confiscate the deposit by sending it to treasury
+                            let treasury_contract =
+                                query_enterprise_treasury_addr(ctx.deps.as_ref())?;
+                            send_proposal_deposit_to(deposit.asset, treasury_contract)?
+                        } else {
+                            vec![]
                         }
-                        vec![]
                     }
                     // return deposits only if quorum reached and not vetoed
                     _ => return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?,
@@ -1304,7 +1297,7 @@ pub fn receive_cw20(
             let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
             let deposit = ProposalDeposit {
                 depositor: depositor.clone(),
-                asset: ProposalAsset::Cw20 {
+                asset: ProposalDepositAsset::Cw20 {
                     token_addr: membership_contract,
                     amount: cw20_msg.amount,
                 },
@@ -1504,12 +1497,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
             )?;
 
             PROPOSAL_INFOS.save(deps.storage, poll_id, &proposal_info)?;
-
-            if let Some(deposit) = proposal_info.proposal_deposit {
-                TOTAL_DEPOSITS.update(deps.storage, |deposits| -> StdResult<Uint128> {
-                    Ok(deposits + deposit.amount())
-                })?;
-            }
 
             Ok(reply_create_poll_response(poll_id))
         }

@@ -19,8 +19,8 @@ use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
 use enterprise_governance_controller_api::api::{
-    DaoCouncilSpec, GovConfig, ProposalAction, ProposalActionType, ProposalAsset, ProposalDeposit,
-    ProposalId, ProposalInfo, ProposalType,
+    DaoCouncilSpec, GovConfig, ProposalAction, ProposalActionType, ProposalDeposit,
+    ProposalDepositAsset, ProposalId, ProposalInfo, ProposalType,
 };
 use enterprise_protocol::api::{DaoMetadata, DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
@@ -69,7 +69,7 @@ impl ProposalInfoV5 {
             executed_at: self.executed_at,
             proposal_deposit: self.proposal_deposit.map(|deposit| ProposalDeposit {
                 depositor: deposit.depositor,
-                asset: ProposalAsset::Cw20 {
+                asset: ProposalDepositAsset::Cw20 {
                     token_addr,
                     amount: deposit.amount,
                 },

@@ -1,12 +1,10 @@
-use cosmwasm_std::{BlockInfo, StdResult, Storage, Uint128};
-use cw_storage_plus::{Item, Map};
+use cosmwasm_std::{BlockInfo, StdResult, Storage};
+use cw_storage_plus::Map;
 use enterprise_governance_controller_api::api::{ProposalAction, ProposalId, ProposalInfo};
 use enterprise_governance_controller_api::error::GovernanceControllerError::NoSuchProposal;
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 
 pub const PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> = Map::new("proposal_infos");
-
-pub const TOTAL_DEPOSITS: Item<Uint128> = Item::new("total_proposal_deposits");
 
 pub fn is_proposal_executed(
     store: &dyn Storage,

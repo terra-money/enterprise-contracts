@@ -99,11 +99,11 @@ pub struct CreateProposalWithNftDepositMsg {
 #[cw_serde]
 pub struct ProposalDeposit {
     pub depositor: Addr,
-    pub asset: ProposalAsset,
+    pub asset: ProposalDepositAsset,
 }
 
 #[cw_serde]
-pub enum ProposalAsset {
+pub enum ProposalDepositAsset {
     Denom {
         denom: String,
         amount: Uint128,
@@ -121,9 +121,9 @@ pub enum ProposalAsset {
 impl ProposalDeposit {
     pub fn amount(&self) -> Uint128 {
         match &self.asset {
-            ProposalAsset::Denom { amount, .. } => *amount,
-            ProposalAsset::Cw20 { amount, .. } => *amount,
-            ProposalAsset::Cw721 { tokens, .. } => Uint128::from(tokens.len() as u128),
+            ProposalDepositAsset::Denom { amount, .. } => *amount,
+            ProposalDepositAsset::Cw20 { amount, .. } => *amount,
+            ProposalDepositAsset::Cw721 { tokens, .. } => Uint128::from(tokens.len() as u128),
         }
     }
 }
