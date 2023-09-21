@@ -30,11 +30,11 @@ task(async ({ network, deployer, executor, signer, refs }) => {
 
   // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
-  // await deployEnterpriseFactory(refs, network, deployer, signer);
+  await deployEnterpriseFactory(refs, network, deployer, signer);
 
-  await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 0, 3);
+  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 0, 0);
 
-  await instantiateDao(refs, network, executor);
+  // await instantiateDao(refs, network, executor);
 
   // try {
   //   await deployer.instantiate(MULTISIG_MEMBERSHIP, {
@@ -215,11 +215,8 @@ const TEST_DAO_METADATA = {
 const TEST_GOV_CONFIG = {
   quorum: "0.3",
   threshold: "0.3",
-  // veto_threshold: "0.3",
+  veto_threshold: "0.15",
   vote_duration: 300,
-  unlocking_period: {
-    time: 300
-  },
   allow_early_proposal_execution: true,
 };
 
