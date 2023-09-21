@@ -416,12 +416,20 @@ pub fn governance_controller_contract_created(
             .map(|deposit| deposit.amount)
             .sum();
 
-        let dao_token = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+        let response = Response::new();
 
-        let send_deposits_submsg = Asset::cw20(dao_token, deposit_amount)
-            .transfer_msg(governance_controller_contract.to_string())?;
+        if deposit_amount.is_zero() {
+            // deposit is zero, nothing to send
+            response
+        } else {
+            // deposit is not zero, send it over to governance controller
+            let dao_token = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
-        Response::new().add_submessage(SubMsg::new(send_deposits_submsg))
+            let send_deposits_submsg = Asset::cw20(dao_token, deposit_amount)
+                .transfer_msg(governance_controller_contract.to_string())?;
+
+            response.add_submessage(SubMsg::new(send_deposits_submsg))
+        }
     } else {
         Response::new()
     };
