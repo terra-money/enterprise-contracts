@@ -37,8 +37,6 @@ pub struct GovConfig {
     pub veto_threshold: Option<Decimal>,
     /// Duration of proposals before they end, expressed in seconds
     pub vote_duration: u64, // TODO: change from u64 to Duration
-    /// Duration that has to pass for unstaked membership tokens to be claimable
-    pub unlocking_period: Duration,
     /// Optional minimum amount of DAO's governance unit to be required to create a deposit.
     pub minimum_deposit: Option<Uint128>,
     /// If set to true, this will allow DAOs to execute proposals that have reached quorum and

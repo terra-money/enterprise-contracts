@@ -1,5 +1,6 @@
 use crate::contract::MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID;
 use crate::state::{DaoBeingCreated, DAO_BEING_CREATED};
+use crate::validate::validate_unlocking_period;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{to_binary, DepsMut, StdResult, SubMsg};
@@ -16,6 +17,11 @@ pub fn instantiate_denom_staking_membership_contract(
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
     let enterprise_contract = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
+
+    validate_unlocking_period(
+        dao_being_created.require_create_dao_msg()?.gov_config,
+        unlocking_period,
+    )?;
 
     DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
         Ok(DaoBeingCreated {

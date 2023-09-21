@@ -14,21 +14,21 @@ use enterprise_governance_controller_api::api::{
     RequestFundingFromDaoMsg, UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument, InvalidCosmosMessage,
-    MaximumProposalActionsExceeded, Std, UnsupportedCouncilProposalAction, UnsupportedCw1155Asset,
-    ZeroVoteDuration,
+    Dao, DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument,
+    InvalidCosmosMessage, MaximumProposalActionsExceeded, Std, UnsupportedCouncilProposalAction,
+    UnsupportedCw1155Asset, ZeroVoteDuration,
 };
 use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
 };
 use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::api::{DaoInfoResponse, DaoType, UpgradeDaoMsg};
-use enterprise_protocol::error::DaoError::MigratingToLowerVersion;
+use enterprise_protocol::error::DaoError::{
+    MigratingToLowerVersion, VoteDurationLongerThanUnstaking,
+};
 use enterprise_protocol::msg::QueryMsg::DaoInfo;
 use std::collections::{HashMap, HashSet};
-use GovernanceControllerError::{
-    MinimumDepositNotAllowed, UnsupportedOperationForDaoType, VoteDurationLongerThanUnstaking,
-};
+use GovernanceControllerError::{MinimumDepositNotAllowed, UnsupportedOperationForDaoType};
 use ProposalAction::AddAttestation;
 
 const MAXIMUM_PROPOSAL_ACTIONS: u8 = 10;
@@ -39,12 +39,6 @@ pub fn validate_dao_gov_config(
 ) -> GovernanceControllerResult<()> {
     if dao_gov_config.vote_duration == 0 {
         return Err(ZeroVoteDuration);
-    }
-
-    if let Duration::Time(unlocking_time) = dao_gov_config.unlocking_period {
-        if unlocking_time < dao_gov_config.vote_duration {
-            return Err(VoteDurationLongerThanUnstaking {});
-        }
     }
 
     validate_quorum_value(dao_gov_config.quorum)?;
@@ -64,6 +58,18 @@ pub fn validate_dao_gov_config(
         return Err(MinimumDepositNotAllowed {});
     }
 
+    Ok(())
+}
+
+pub fn validate_unlocking_period(
+    dao_gov_config: GovConfig,
+    unlocking_period: Duration,
+) -> GovernanceControllerResult<()> {
+    if let Duration::Time(unlocking_time) = unlocking_period {
+        if unlocking_time < dao_gov_config.vote_duration {
+            return Err(Dao(VoteDurationLongerThanUnstaking));
+        }
+    }
     Ok(())
 }
 
@@ -173,10 +179,6 @@ pub fn apply_gov_config_changes(gov_config: GovConfig, msg: &UpdateGovConfigMsg)
 
     if let Change(voting_duration) = msg.voting_duration {
         gov_config.vote_duration = voting_duration.u64();
-    }
-
-    if let Change(unlocking_period) = msg.unlocking_period {
-        gov_config.unlocking_period = unlocking_period;
     }
 
     if let Change(minimum_deposit) = msg.minimum_deposit {

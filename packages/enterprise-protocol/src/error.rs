@@ -47,6 +47,9 @@ pub enum DaoError {
 
     #[error("Trying to add a treasury for a chain ID that already has a treasury deployed")]
     TreasuryAlreadyExistsForChainId,
+
+    #[error("Proposal voting duration cannot be longer than unstaking duration")]
+    VoteDurationLongerThanUnstaking,
 }
 
 impl DaoError {

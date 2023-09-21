@@ -319,7 +319,6 @@ pub fn create_governance_controller_contract(
                     threshold: gov_config.threshold,
                     veto_threshold: gov_config.veto_threshold,
                     vote_duration: gov_config.vote_duration,
-                    unlocking_period: gov_config.unlocking_period,
                     minimum_deposit: gov_config.minimum_deposit,
                     allow_early_proposal_execution: gov_config.allow_early_proposal_execution,
                 },

@@ -2,7 +2,7 @@ use crate::contract::{
     CW721_CONTRACT_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use crate::state::{DaoBeingCreated, CONFIG, DAO_BEING_CREATED};
-use crate::validate::validate_existing_cw721_contract;
+use crate::validate::{validate_existing_cw721_contract, validate_unlocking_period};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{to_binary, Addr, DepsMut, StdResult, SubMsg};
@@ -84,6 +84,11 @@ pub fn instantiate_nft_staking_membership_contract(
 
     let enterprise_contract = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
+
+    validate_unlocking_period(
+        dao_being_created.require_create_dao_msg()?.gov_config,
+        unlocking_period,
+    )?;
 
     let submsg = SubMsg::reply_on_success(
         Wasm(Instantiate {

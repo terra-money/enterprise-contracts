@@ -4,8 +4,10 @@ use cw3::Cw3QueryMsg::ListVoters;
 use cw3::VoterListResponse;
 use cw721::Cw721QueryMsg::NumTokens;
 use cw721::NumTokensResponse;
+use cw_utils::Duration;
+use enterprise_governance_controller_api::api::GovConfig;
 use enterprise_protocol::error::DaoError::{
-    InvalidExistingMultisigContract, InvalidExistingNftContract,
+    InvalidExistingMultisigContract, InvalidExistingNftContract, VoteDurationLongerThanUnstaking,
 };
 use enterprise_protocol::error::{DaoError, DaoResult};
 use DaoError::InvalidExistingTokenContract;
@@ -37,5 +39,17 @@ pub fn validate_existing_cw3_contract(deps: Deps, contract: &str) -> DaoResult<(
 
     result.map_err(|_| InvalidExistingMultisigContract)?;
 
+    Ok(())
+}
+
+pub fn validate_unlocking_period(
+    dao_gov_config: GovConfig,
+    unlocking_period: Duration,
+) -> DaoResult<()> {
+    if let Duration::Time(unlocking_time) = unlocking_period {
+        if unlocking_time < dao_gov_config.vote_duration {
+            return Err(VoteDurationLongerThanUnstaking);
+        }
+    }
     Ok(())
 }

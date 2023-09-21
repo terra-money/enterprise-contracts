@@ -52,9 +52,6 @@ pub enum GovernanceControllerError {
     #[error("Invalid deposit type")]
     InvalidDepositType,
 
-    #[error("Proposal voting duration cannot be longer than unstaking duration")]
-    VoteDurationLongerThanUnstaking,
-
     #[error("Requiring a minimum deposit for proposals is not allowed for this DAO type")]
     MinimumDepositNotAllowed,
 

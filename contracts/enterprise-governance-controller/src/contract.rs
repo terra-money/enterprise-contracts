@@ -8,7 +8,8 @@ use crate::proposals::{
 use crate::state::{State, COUNCIL_GOV_CONFIG, ENTERPRISE_CONTRACT, GOV_CONFIG, STATE};
 use crate::validate::{
     apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
-    validate_modify_multisig_membership, validate_proposal_actions, validate_upgrade_dao,
+    validate_modify_multisig_membership, validate_proposal_actions, validate_unlocking_period,
+    validate_upgrade_dao,
 };
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
@@ -877,22 +878,18 @@ fn update_gov_config(
 
     GOV_CONFIG.save(ctx.deps.storage, &updated_gov_config)?;
 
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
-    let dao_info: DaoInfoResponse = ctx
-        .deps
-        .querier
-        .query_wasm_smart(enterprise_contract.to_string(), &DaoInfo {})?;
-    let component_contracts: ComponentContractsResponse = ctx
-        .deps
-        .querier
-        .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
+    let dao_type = query_dao_type(ctx.deps.as_ref())?;
+
+    let membership_contract = query_membership_addr(ctx.deps.as_ref())?;
 
     let mut submsgs = vec![];
 
     if let Change(new_unlocking_period) = msg.unlocking_period {
-        match dao_info.dao_type {
+        validate_unlocking_period(updated_gov_config, new_unlocking_period)?;
+
+        match dao_type {
             Denom => submsgs.push(SubMsg::new(wasm_execute(
-                component_contracts.membership_contract.to_string(),
+                membership_contract.to_string(),
                 &denom_staking_api::msg::ExecuteMsg::UpdateUnlockingPeriod(
                     denom_staking_api::api::UpdateUnlockingPeriodMsg {
                         new_unlocking_period: Some(new_unlocking_period),
@@ -901,7 +898,7 @@ fn update_gov_config(
                 vec![],
             )?)),
             Token => submsgs.push(SubMsg::new(wasm_execute(
-                component_contracts.membership_contract.to_string(),
+                membership_contract.to_string(),
                 &token_staking_api::msg::ExecuteMsg::UpdateUnlockingPeriod(
                     token_staking_api::api::UpdateUnlockingPeriodMsg {
                         new_unlocking_period: Some(new_unlocking_period),
@@ -910,7 +907,7 @@ fn update_gov_config(
                 vec![],
             )?)),
             Nft => submsgs.push(SubMsg::new(wasm_execute(
-                component_contracts.membership_contract.to_string(),
+                membership_contract.to_string(),
                 &nft_staking_api::msg::ExecuteMsg::UpdateUnlockingPeriod(
                     nft_staking_api::api::UpdateUnlockingPeriodMsg {
                         new_unlocking_period: Some(new_unlocking_period),

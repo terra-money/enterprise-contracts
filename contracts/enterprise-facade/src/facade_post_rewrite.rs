@@ -11,7 +11,7 @@ use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_facade_api::api::{
     AdaptedMsg, AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim,
     ClaimAsset, ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
-    CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil, DaoGovConfig,
+    CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
     DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomUserStake, ExecuteProposalMsg,
     ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
     MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
@@ -25,7 +25,7 @@ use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::{
-    CreateProposalWithNftDepositMsg, GovConfigResponse,
+    CreateProposalWithNftDepositMsg, GovConfig, GovConfigResponse,
 };
 use enterprise_governance_controller_api::msg::ExecuteMsg::{
     CreateProposal, CreateProposalWithNftDeposit, ExecuteProposal,
@@ -170,12 +170,11 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
                     telegram_username: dao_info.metadata.socials.telegram_username,
                 },
             },
-            gov_config: DaoGovConfig {
+            gov_config: GovConfig {
                 quorum: gov_config.gov_config.quorum,
                 threshold: gov_config.gov_config.threshold,
                 veto_threshold: gov_config.gov_config.veto_threshold,
                 vote_duration: gov_config.gov_config.vote_duration,
-                unlocking_period: gov_config.gov_config.unlocking_period,
                 minimum_deposit: gov_config.gov_config.minimum_deposit,
                 allow_early_proposal_execution: gov_config
                     .gov_config
