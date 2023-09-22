@@ -5,6 +5,7 @@ use cosmwasm_std::{
     coins, to_binary, wasm_execute, Addr, Decimal, Deps, Response, SubMsg, Uint128, Uint64,
 };
 use cw721::Cw721ExecuteMsg::Approve;
+use cw_utils::Duration;
 use cw_utils::Expiration::Never;
 use denom_staking_api::api::DenomConfigResponse;
 use denom_staking_api::msg::QueryMsg::DenomConfig;
@@ -13,8 +14,8 @@ use enterprise_facade_api::api::{
     ClaimAsset, ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
     CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
     DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomUserStake, ExecuteProposalMsg,
-    ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
-    MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
+    GovConfigV5, ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
     NftWhitelistResponse, Proposal, ProposalActionType, ProposalParams, ProposalResponse,
     ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
     ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
@@ -25,7 +26,7 @@ use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::{
-    CreateProposalWithNftDepositMsg, GovConfig, GovConfigResponse,
+    CreateProposalWithNftDepositMsg, GovConfigResponse,
 };
 use enterprise_governance_controller_api::msg::ExecuteMsg::{
     CreateProposal, CreateProposalWithNftDeposit, ExecuteProposal,
@@ -95,28 +96,35 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         )?;
 
         // get the membership contract, which actually used to mean the CW20 / CW721 contract, not the new membership contracts
-        let dao_membership_contract = match dao_type {
+        let (dao_membership_contract, unlocking_period) = match dao_type {
             DaoType::Denom => {
-                // doesn't make too much sense, but kept for backwards-compatibility since this best fits what was the previous behavior
-                self.enterprise_address.clone()
+                let denom_config: DenomConfigResponse = qctx.deps.querier.query_wasm_smart(
+                    gov_config.dao_membership_contract.to_string(),
+                    &DenomConfig {},
+                )?;
+                // address doesn't make too much sense, but kept for backwards-compatibility since this best fits what was the previous behavior
+                (
+                    self.enterprise_address.clone(),
+                    denom_config.unlocking_period,
+                )
             }
             DaoType::Token => {
                 let token_config: TokenConfigResponse = qctx.deps.querier.query_wasm_smart(
                     gov_config.dao_membership_contract.to_string(),
                     &TokenConfig {},
                 )?;
-                token_config.token_contract
+                (token_config.token_contract, token_config.unlocking_period)
             }
             DaoType::Nft => {
                 let nft_config: NftConfigResponse = qctx.deps.querier.query_wasm_smart(
                     gov_config.dao_membership_contract.to_string(),
                     &NftConfig {},
                 )?;
-                nft_config.nft_contract
+                (nft_config.nft_contract, nft_config.unlocking_period)
             }
             DaoType::Multisig => {
                 // doesn't make too much sense, but kept for backwards-compatibility since this was the previous behavior
-                self.enterprise_address.clone()
+                (self.enterprise_address.clone(), Duration::Time(0))
             }
         };
 
@@ -170,11 +178,12 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
                     telegram_username: dao_info.metadata.socials.telegram_username,
                 },
             },
-            gov_config: GovConfig {
+            gov_config: GovConfigV5 {
                 quorum: gov_config.gov_config.quorum,
                 threshold: gov_config.gov_config.threshold,
                 veto_threshold: gov_config.gov_config.veto_threshold,
                 vote_duration: gov_config.gov_config.vote_duration,
+                unlocking_period,
                 minimum_deposit: gov_config.gov_config.minimum_deposit,
                 allow_early_proposal_execution: gov_config
                     .gov_config
