@@ -30,7 +30,7 @@ pub enum DaoError {
     #[error("Attempting to create a token DAO with no holders and no way to mint tokens")]
     TokenDaoWithNoBalancesOrMint,
 
-    #[error("Attempting to create a multisig DAO initial members")]
+    #[error("Attempting to create a multisig DAO without initial members")]
     MultisigDaoWithNoInitialMembers,
 
     #[error("Zero initial DAO balance is not allowed upon DAO creation")]

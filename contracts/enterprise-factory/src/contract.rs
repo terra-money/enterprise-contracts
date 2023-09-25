@@ -36,7 +36,7 @@ use enterprise_factory_api::response::{
     execute_create_dao_response, execute_finalize_dao_creation_response, instantiate_response,
 };
 use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
-use enterprise_protocol::error::DaoError::Unauthorized;
+use enterprise_protocol::error::DaoError::{MultisigDaoWithNoInitialMembers, Unauthorized};
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
 use enterprise_versioning_api::api::VersionResponse;
@@ -501,11 +501,17 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 ImportCw3(msg) => {
                     import_cw3_membership(deps.branch(), msg, weight_change_hooks.clone())?
                 }
-                NewMultisig(msg) => instantiate_new_multisig_membership(
-                    deps.branch(),
-                    msg,
-                    weight_change_hooks.clone(),
-                )?,
+                NewMultisig(msg) => {
+                    // multisig DAO with no initial members is meaningless - it's locked from the get-go
+                    if msg.multisig_members.is_empty() {
+                        return Err(MultisigDaoWithNoInitialMembers);
+                    }
+                    instantiate_new_multisig_membership(
+                        deps.branch(),
+                        msg,
+                        weight_change_hooks.clone(),
+                    )?
+                }
             };
 
             let council_members = create_dao_msg
