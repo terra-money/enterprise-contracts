@@ -333,12 +333,7 @@ fn add_cross_chain_proxy(ctx: &mut Context, msg: AddCrossChainProxyMsg) -> DaoRe
     if CROSS_CHAIN_PROXIES.has(ctx.deps.storage, msg.chain_id.clone()) {
         Err(ProxyAlreadyExistsForChainId)
     } else {
-        let proxy_addr_canonical = ctx.deps.api.addr_canonicalize(&msg.proxy_addr)?;
-        CROSS_CHAIN_PROXIES.save(
-            ctx.deps.storage,
-            msg.chain_id,
-            &proxy_addr_canonical.to_string(),
-        )?;
+        CROSS_CHAIN_PROXIES.save(ctx.deps.storage, msg.chain_id, &msg.proxy_addr)?;
 
         Ok(execute_add_cross_chain_proxy_response())
     }
@@ -353,12 +348,7 @@ fn add_cross_chain_treasury(
     if CROSS_CHAIN_TREASURIES.has(ctx.deps.storage, msg.chain_id.clone()) {
         Err(TreasuryAlreadyExistsForChainId)
     } else {
-        let treasury_addr_canonical = ctx.deps.api.addr_canonicalize(&msg.treasury_addr)?;
-        CROSS_CHAIN_TREASURIES.save(
-            ctx.deps.storage,
-            msg.chain_id,
-            &treasury_addr_canonical.to_string(),
-        )?;
+        CROSS_CHAIN_TREASURIES.save(ctx.deps.storage, msg.chain_id, &msg.treasury_addr)?;
 
         Ok(execute_add_cross_chain_treasury_response())
     }

@@ -119,6 +119,12 @@ impl From<ParseReplyError> for GovernanceControllerError {
     }
 }
 
+impl From<bech32_no_std::Error> for GovernanceControllerError {
+    fn from(value: bech32_no_std::Error) -> Self {
+        GovernanceControllerError::Std(StdError::generic_err(value.to_string()))
+    }
+}
+
 impl GovernanceControllerError {
     /// Converts this GovernanceControllerError into a StdError.
     pub fn std_err(&self) -> StdError {

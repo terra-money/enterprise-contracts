@@ -8,6 +8,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
+bech32-no_std = "0.7.3"
 common = { path = "../common"}
 cosmwasm-schema = "1.1"
 cosmwasm-std = "1"

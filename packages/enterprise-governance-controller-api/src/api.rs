@@ -258,6 +258,7 @@ pub struct DeployCrossChainTreasuryMsg {
 #[cw_serde]
 pub struct CrossChainMsgSpec {
     pub chain_id: String,
+    pub chain_bech32_prefix: String,
     pub src_ibc_port: String,
     pub src_ibc_channel: String,
     pub dest_ibc_port: String,

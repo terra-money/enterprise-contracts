@@ -1,10 +1,13 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::CosmosMsg::Stargate;
-use cosmwasm_std::{CanonicalAddr, CosmosMsg, Env, SubMsg};
+use cosmwasm_std::{CosmosMsg, Env, SubMsg};
 use cw_storage_plus::{Item, Map};
 use enterprise_governance_controller_api::api::{CrossChainMsgSpec, DeployCrossChainTreasuryMsg};
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
 use prost::Message;
+
+use bech32_no_std::ToBase32;
+use sha2::{Digest, Sha256};
 
 #[cw_serde]
 pub struct IcsProxyInstantiateMsg {
@@ -143,8 +146,9 @@ pub const ICS_PROXY_CALLBACK_LAST_ID: Item<u32> = Item::new("ics_proxy_callback_
 #[cw_serde]
 // TODO: write an explanation
 pub struct IcsProxyCallback {
-    pub chain_id: String,
-    pub proxy_addr: CanonicalAddr,
+    pub cross_chain_msg_spec: CrossChainMsgSpec,
+    /// Address of the proxy, in its own native chain representation. E.g. proxy on juno would be 'juno1ahe3aw...'
+    pub proxy_addr: String,
     pub callback_type: IcsProxyCallbackType,
 }
 
@@ -153,5 +157,46 @@ pub enum IcsProxyCallbackType {
     InstantiateProxy {
         deploy_treasury_msg: Box<DeployCrossChainTreasuryMsg>,
     },
-    InstantiateTreasury {},
+    InstantiateTreasury {
+        cross_chain_msg_spec: CrossChainMsgSpec,
+    },
+}
+
+/// Prefix for Bech32 addresses on Terra. E.g. 'terra1y2dwydn...'
+pub const TERRA_CHAIN_BECH32_PREFIX: &str = "terra";
+
+const SENDER_PREFIX: &str = "ibc-wasm-hook-intermediary";
+
+/// Derives the sender address that will be used instead of the original sender's address
+/// when using IBC hooks cross-chain.
+/// ```rust
+/// use enterprise_governance_controller::ibc_hooks::derive_intermediate_sender;
+/// let original_sender =   "juno12smx2wdlyttvyzvzg54y2vnqwq2qjatezqwqxu";
+/// let hashed_sender = derive_intermediate_sender("channel-0", original_sender, "osmo").unwrap();
+/// assert_eq!(hashed_sender, "osmo1nt0pudh879m6enw4j6z4mvyu3vmwawjv5gr7xw6lvhdsdpn3m0qs74xdjl");
+/// ```
+pub fn derive_intermediate_sender(
+    channel: &str,
+    original_sender: &str,
+    bech32_prefix: &str,
+) -> Result<String, bech32_no_std::Error> {
+    let sender_path = format!("{channel}/{original_sender}");
+
+    let sender_hash_32 = prefixed_sha256(SENDER_PREFIX, &sender_path);
+
+    bech32_no_std::encode(bech32_prefix, sender_hash_32.to_base32())
+}
+
+pub fn prefixed_sha256(prefix: &str, address: &str) -> [u8; 32] {
+    let mut hasher = Sha256::default();
+
+    hasher.update(prefix.as_bytes());
+    let prefix_hash = hasher.finalize();
+
+    let mut hasher = Sha256::default();
+
+    hasher.update(prefix_hash);
+    hasher.update(address.as_bytes());
+
+    hasher.finalize().into()
 }

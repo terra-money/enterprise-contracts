@@ -33,6 +33,7 @@ optimize = """docker run --rm -v "${process.cwd()}":/code \
 """
 
 [dependencies]
+bech32-no_std = "0.7.3"
 common = { path = "../../packages/common" }
 membership-common-api = { path = "../../packages/membership-common-api" }
 cosmwasm-std = "1"
@@ -59,6 +60,7 @@ multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 poll-engine-api = { path = "../../packages/poll-engine-api" }
 prost = "0.11.9"
 serde-json-wasm = "0.5.0"
+sha2 = "0.10.8"
 
 [dev-dependencies]
 anyhow = "1"
