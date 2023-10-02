@@ -3,10 +3,14 @@ use crate::api::{
     EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cw_asset::AssetInfoUnchecked;
+use enterprise_treasury_api::api::{AssetWhitelistResponse, NftWhitelistResponse};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub config: Config,
+    pub global_asset_whitelist: Option<Vec<AssetInfoUnchecked>>,
+    pub global_nft_whitelist: Option<Vec<String>>,
 }
 
 #[cw_serde]
@@ -34,4 +38,8 @@ pub enum QueryMsg {
     EnterpriseCodeIds(EnterpriseCodeIdsMsg),
     #[returns(IsEnterpriseCodeIdResponse)]
     IsEnterpriseCodeId(IsEnterpriseCodeIdMsg),
+    #[returns(AssetWhitelistResponse)]
+    GlobalAssetWhitelist {},
+    #[returns(NftWhitelistResponse)]
+    GlobalNftWhitelist {},
 }

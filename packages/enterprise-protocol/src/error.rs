@@ -42,6 +42,9 @@ pub enum DaoError {
     #[error("Supplied migrate msg array contains a duplicate migrate msg for version {version}")]
     DuplicateVersionMigrateMsgFound { version: Version },
 
+    #[error("Duplicate whitelist asset has been supplied")]
+    DuplicateWhitelistAssetFound,
+
     #[error("Trying to add a proxy for a chain ID that already has a DAO-owned proxy deployed")]
     ProxyAlreadyExistsForChainId,
 

@@ -10,6 +10,7 @@ use crate::nft_membership::{
 };
 use crate::state::{
     DaoBeingCreated, CONFIG, DAO_ADDRESSES, DAO_BEING_CREATED, DAO_ID_COUNTER, ENTERPRISE_CODE_IDS,
+    GLOBAL_ASSET_WHITELIST, GLOBAL_NFT_WHITELIST,
 };
 use crate::token_membership::{
     import_cw20_membership, instantiate_new_cw20_membership,
@@ -39,6 +40,7 @@ use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::error::DaoError::{MultisigDaoWithNoInitialMembers, Unauthorized};
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
+use enterprise_treasury_api::api::{AssetWhitelistResponse, NftWhitelistResponse};
 use enterprise_versioning_api::api::VersionResponse;
 use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
@@ -77,6 +79,23 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &msg.config)?;
     DAO_ID_COUNTER.save(deps.storage, &1u64)?;
+
+    // TODO: dedup assets and NFTs
+    let asset_whitelist = msg
+        .global_asset_whitelist
+        .unwrap_or_default()
+        .into_iter()
+        .map(|asset_unchecked| asset_unchecked.check(deps.api, None))
+        .collect::<StdResult<Vec<AssetInfo>>>()?;
+    GLOBAL_ASSET_WHITELIST.save(deps.storage, &asset_whitelist)?;
+
+    let nfts = msg
+        .global_nft_whitelist
+        .unwrap_or_default()
+        .into_iter()
+        .map(|nft| deps.api.addr_validate(&nft))
+        .collect::<StdResult<Vec<Addr>>>()?;
+    GLOBAL_NFT_WHITELIST.save(deps.storage, &nfts)?;
 
     Ok(instantiate_response())
 }
@@ -604,6 +623,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> DaoResult<Binary> {
         QueryMsg::AllDaos(msg) => to_binary(&query_all_daos(deps, msg)?)?,
         QueryMsg::EnterpriseCodeIds(msg) => to_binary(&query_enterprise_code_ids(deps, msg)?)?,
         QueryMsg::IsEnterpriseCodeId(msg) => to_binary(&query_is_enterprise_code_id(deps, msg)?)?,
+        QueryMsg::GlobalAssetWhitelist {} => to_binary(&query_asset_whitelist(deps)?)?,
+        QueryMsg::GlobalNftWhitelist {} => to_binary(&query_nft_whitelist(deps)?)?,
     };
     Ok(response)
 }
@@ -629,6 +650,18 @@ pub fn query_all_daos(deps: Deps, msg: QueryAllDaosMsg) -> DaoResult<AllDaosResp
         .collect_vec();
 
     Ok(AllDaosResponse { daos: addresses })
+}
+
+pub fn query_asset_whitelist(deps: Deps) -> DaoResult<AssetWhitelistResponse> {
+    let assets = GLOBAL_ASSET_WHITELIST.load(deps.storage)?;
+
+    Ok(AssetWhitelistResponse { assets })
+}
+
+pub fn query_nft_whitelist(deps: Deps) -> DaoResult<NftWhitelistResponse> {
+    let nfts = GLOBAL_NFT_WHITELIST.load(deps.storage)?;
+
+    Ok(NftWhitelistResponse { nfts })
 }
 
 pub fn query_enterprise_code_ids(

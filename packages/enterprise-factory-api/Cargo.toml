@@ -24,8 +24,9 @@ serde_with = { version = "2", features = ["json", "macros"] }
 strum = "0.24"
 strum_macros = "0.24"
 thiserror = "1"
-enterprise-protocol = { path = "../enterprise-protocol" }
 enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
+enterprise-protocol = { path = "../enterprise-protocol" }
+enterprise-treasury-api = { path = "../enterprise-treasury-api" }
 multisig-membership-api = { path = "../multisig-membership-api" }
 
 [dev-dependencies]
