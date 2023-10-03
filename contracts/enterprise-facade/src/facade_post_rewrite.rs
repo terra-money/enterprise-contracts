@@ -14,11 +14,11 @@ use enterprise_facade_api::api::{
     ClaimAsset, ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
     CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
     DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomUserStake, ExecuteProposalMsg,
-    GovConfigV5, ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
-    NftWhitelistResponse, Proposal, ProposalActionType, ProposalParams, ProposalResponse,
-    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
-    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    GovConfigV5, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
+    MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
+    NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
     QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TokenUserStake,
     TotalStakedAmountResponse, UnstakeMsg, UserStake, UserStakeParams, UserStakeResponse,
 };
@@ -79,11 +79,6 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &DaoInfo {})?;
 
-        let logo = match dao_info.metadata.logo {
-            enterprise_protocol::api::Logo::Url(url) => Logo::Url(url),
-            enterprise_protocol::api::Logo::None => Logo::None,
-        };
-
         let dao_type = map_dao_type(dao_info.dao_type);
 
         let component_contracts = self.component_contracts(qctx.deps)?;
@@ -141,19 +136,11 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             .map(|user_weight| user_weight.user)
             .collect();
 
-        let dao_council = gov_config.council_gov_config.map(|config| {
-            let allowed_proposal_action_types = config
-                .allowed_proposal_action_types
-                .into_iter()
-                .map(map_proposal_action_type)
-                .collect();
-
-            DaoCouncil {
-                members: council_members,
-                allowed_proposal_action_types,
-                quorum: config.quorum,
-                threshold: config.threshold,
-            }
+        let dao_council = gov_config.council_gov_config.map(|config| DaoCouncil {
+            members: council_members,
+            allowed_proposal_action_types: config.allowed_proposal_action_types,
+            quorum: config.quorum,
+            threshold: config.threshold,
         });
 
         // Map DAO version to version code, formula: 100*100*(major) + 100*(minor) + (patch)
@@ -170,7 +157,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             metadata: DaoMetadata {
                 name: dao_info.metadata.name,
                 description: dao_info.metadata.description,
-                logo,
+                logo: dao_info.metadata.logo.into(),
                 socials: DaoSocialData {
                     github_username: dao_info.metadata.socials.github_username,
                     discord_username: dao_info.metadata.socials.discord_username,
@@ -195,6 +182,7 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             enterprise_factory_contract: component_contracts.enterprise_factory_contract,
             funds_distributor_contract: component_contracts.funds_distributor_contract,
             dao_code_version,
+            dao_version: version,
         })
     }
 
@@ -1076,27 +1064,6 @@ fn map_dao_type(dao_type: enterprise_protocol::api::DaoType) -> DaoType {
         enterprise_protocol::api::DaoType::Token => DaoType::Token,
         enterprise_protocol::api::DaoType::Nft => DaoType::Nft,
         enterprise_protocol::api::DaoType::Multisig => DaoType::Multisig,
-    }
-}
-
-fn map_proposal_action_type(
-    action_type: enterprise_governance_controller_api::api::ProposalActionType,
-) -> ProposalActionType {
-    match action_type {
-        enterprise_governance_controller_api::api::ProposalActionType::UpdateMetadata => ProposalActionType::UpdateMetadata,
-        enterprise_governance_controller_api::api::ProposalActionType::UpdateGovConfig => ProposalActionType::UpdateGovConfig,
-        enterprise_governance_controller_api::api::ProposalActionType::UpdateCouncil => ProposalActionType::UpdateCouncil,
-        enterprise_governance_controller_api::api::ProposalActionType::UpdateAssetWhitelist => ProposalActionType::UpdateAssetWhitelist,
-        enterprise_governance_controller_api::api::ProposalActionType::UpdateNftWhitelist => ProposalActionType::UpdateNftWhitelist,
-        enterprise_governance_controller_api::api::ProposalActionType::RequestFundingFromDao => ProposalActionType::RequestFundingFromDao,
-        enterprise_governance_controller_api::api::ProposalActionType::UpgradeDao => ProposalActionType::UpgradeDao,
-        enterprise_governance_controller_api::api::ProposalActionType::ExecuteMsgs => ProposalActionType::ExecuteMsgs,
-        enterprise_governance_controller_api::api::ProposalActionType::ModifyMultisigMembership => ProposalActionType::ModifyMultisigMembership,
-        enterprise_governance_controller_api::api::ProposalActionType::DistributeFunds => ProposalActionType::DistributeFunds,
-        enterprise_governance_controller_api::api::ProposalActionType::UpdateMinimumWeightForRewards => ProposalActionType::UpdateMinimumWeightForRewards,
-        enterprise_governance_controller_api::api::ProposalActionType::AddAttestation => ProposalActionType::AddAttestation,
-        enterprise_governance_controller_api::api::ProposalActionType::RemoveAttestation => ProposalActionType::RemoveAttestation,
-        enterprise_governance_controller_api::api::ProposalActionType::DeployCrossChainTreasury => ProposalActionType::DeployCrossChainTreasury,
     }
 }
 

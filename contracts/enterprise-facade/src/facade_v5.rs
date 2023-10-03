@@ -1,17 +1,29 @@
 use crate::facade::EnterpriseFacade;
-use crate::facade_v5::ExecuteV5Msg::{
+use crate::state::ENTERPRISE_VERSIONING;
+use crate::util::adapter_response_single_msg;
+use crate::v5_structs::ExecuteV5Msg::{
     CastCouncilVote, CastVote, Claim, CreateCouncilProposal, CreateProposal, Unstake,
 };
-use crate::facade_v5::QueryV5Msg::{
+use crate::v5_structs::ProposalActionV5::{
+    DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
+    UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
+    UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
+};
+use crate::v5_structs::QueryV5Msg::ProposalStatus;
+use crate::v5_structs::QueryV5Msg::{
     AssetWhitelist, Claims, DaoInfo, ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist,
     Proposal, ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
 };
-use crate::util::adapter_response_single_msg;
+use crate::v5_structs::{
+    CreateProposalV5Msg, Cw20HookV5Msg, Cw721HookV5Msg, DaoInfoResponseV5, ExecuteV5Msg,
+    ProposalActionV5, UpgradeDaoV5Msg, UserStakeV5Params,
+};
 use common::cw::{Context, QueryContext};
-use cosmwasm_schema::cw_serde;
 use cosmwasm_schema::serde::de::DeserializeOwned;
 use cosmwasm_schema::serde::Serialize;
-use cosmwasm_std::{to_binary, wasm_execute, Addr, Deps, Response, SubMsg};
+use cosmwasm_std::{
+    to_binary, wasm_execute, Addr, Deps, Empty, Response, StdError, StdResult, SubMsg,
+};
 use enterprise_facade_api::api::{
     AdaptedMsg, AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg,
     ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
@@ -26,9 +38,9 @@ use enterprise_facade_api::api::{
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
-use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
+use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
+use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use EnterpriseFacadeError::UnsupportedOperation;
-use QueryV5Msg::ProposalStatus;
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
 pub struct EnterpriseFacadeV5 {
@@ -50,7 +62,27 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
     }
 
     fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse> {
-        self.query_enterprise_contract(qctx.deps, &DaoInfo {})
+        let dao_info_v5: DaoInfoResponseV5 =
+            self.query_enterprise_contract(qctx.deps, &DaoInfo {})?;
+
+        let dao_version_from_code_version = Version {
+            major: 0,
+            minor: dao_info_v5.dao_code_version.u64(),
+            patch: 0,
+        };
+
+        Ok(DaoInfoResponse {
+            creation_date: dao_info_v5.creation_date,
+            metadata: dao_info_v5.metadata,
+            gov_config: dao_info_v5.gov_config,
+            dao_council: dao_info_v5.dao_council,
+            dao_type: dao_info_v5.dao_type,
+            dao_membership_contract: dao_info_v5.dao_membership_contract,
+            enterprise_factory_contract: dao_info_v5.enterprise_factory_contract,
+            funds_distributor_contract: dao_info_v5.funds_distributor_contract,
+            dao_code_version: dao_info_v5.dao_code_version,
+            dao_version: dao_version_from_code_version,
+        })
     }
 
     fn query_member_info(
@@ -169,12 +201,14 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
 
     fn adapt_create_proposal(
         &self,
-        _: QueryContext,
+        qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_msg(
             self.enterprise_address.clone(),
-            serde_json_wasm::to_string(&CreateProposal(params))?,
+            serde_json_wasm::to_string(&CreateProposal(
+                self.map_create_proposal_msg(qctx.deps, params)?,
+            ))?,
             vec![],
         ))
     }
@@ -225,12 +259,14 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
 
     fn adapt_create_council_proposal(
         &self,
-        _: QueryContext,
+        qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_msg(
             self.enterprise_address.clone(),
-            serde_json_wasm::to_string(&CreateCouncilProposal(params))?,
+            serde_json_wasm::to_string(&CreateCouncilProposal(
+                self.map_create_proposal_msg(qctx.deps, params)?,
+            ))?,
             vec![],
         ))
     }
@@ -339,58 +375,85 @@ impl EnterpriseFacadeV5 {
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &msg)?)
     }
-}
 
-/// This is what execute messages for Enterprise contract looked like for v5.
-#[cw_serde]
-enum ExecuteV5Msg {
-    // facaded part
-    ExecuteProposal(ExecuteProposalMsg),
-    // adapted part
-    CreateProposal(CreateProposalMsg),
-    CreateCouncilProposal(CreateProposalMsg),
-    CastVote(CastVoteMsg),
-    CastCouncilVote(CastVoteMsg),
-    Unstake(UnstakeMsg),
-    Claim {},
-}
+    fn map_proposal_action_to_v5(
+        &self,
+        deps: Deps,
+        proposal_action: ProposalAction,
+    ) -> StdResult<ProposalActionV5> {
+        match proposal_action {
+            ProposalAction::UpdateMetadata(msg) => Ok(UpdateMetadata(msg.into())),
+            ProposalAction::UpdateGovConfig(msg) => Ok(UpdateGovConfig(msg.into())),
+            ProposalAction::UpdateCouncil(msg) => Ok(UpdateCouncil(msg.into())),
+            ProposalAction::UpdateAssetWhitelist(msg) => Ok(UpdateAssetWhitelist(msg.into())),
+            ProposalAction::UpdateNftWhitelist(msg) => Ok(UpdateNftWhitelist(msg.into())),
+            ProposalAction::RequestFundingFromDao(msg) => Ok(RequestFundingFromDao(msg.into())),
+            ProposalAction::UpgradeDao(msg) => {
+                let version_1_0_0 = Version {
+                    major: 1,
+                    minor: 0,
+                    patch: 0,
+                };
+                let enterprise_versioning = ENTERPRISE_VERSIONING.load(deps.storage)?;
 
-/// This is what CW20-receive hook messages for Enterprise contract looked like for v5.
-#[cw_serde]
-enum Cw20HookV5Msg {
-    Stake {},
-    CreateProposal(CreateProposalMsg),
-}
+                if msg.new_version >= version_1_0_0 {
+                    let version_1_0_0_info: VersionResponse = deps.querier.query_wasm_smart(
+                        enterprise_versioning.to_string(),
+                        &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams {
+                            version: version_1_0_0,
+                        }),
+                    )?;
+                    // if we're migrating old DAO to rewritten structure, we first need to migrate to 1.0.0
+                    Ok(UpgradeDao(UpgradeDaoV5Msg {
+                        // send enterprise_treasury_code_id, since it takes the address of old enterprise contract
+                        new_dao_code_id: version_1_0_0_info.version.enterprise_treasury_code_id,
+                        migrate_msg: to_binary(&enterprise_treasury_api::msg::MigrateMsg {})?,
+                    }))
+                } else {
+                    // we're migrating old DAO to a newer version of old DAO code
+                    let version_info: VersionResponse = deps.querier.query_wasm_smart(
+                        enterprise_versioning.to_string(),
+                        &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams {
+                            version: msg.new_version,
+                        }),
+                    )?;
+                    Ok(UpgradeDao(UpgradeDaoV5Msg {
+                        new_dao_code_id: version_info.version.enterprise_code_id,
+                        migrate_msg: to_binary(&Empty {})?,
+                    }))
+                }
+            }
+            ProposalAction::ExecuteMsgs(msg) => Ok(ExecuteMsgs(msg.into())),
+            ProposalAction::ModifyMultisigMembership(msg) => {
+                Ok(ModifyMultisigMembership(msg.into()))
+            }
+            ProposalAction::DistributeFunds(msg) => Ok(DistributeFunds(msg.into())),
+            ProposalAction::UpdateMinimumWeightForRewards(msg) => {
+                Ok(UpdateMinimumWeightForRewards(msg.into()))
+            }
+            ProposalAction::AddAttestation(_)
+            | ProposalAction::RemoveAttestation { .. }
+            | ProposalAction::DeployCrossChainTreasury(_) => {
+                Err(StdError::generic_err("unsupported proposal action"))
+            }
+        }
+    }
 
-/// This is what CW721-receive hook messages for Enterprise contract looked like for v5.
-#[cw_serde]
-pub enum Cw721HookV5Msg {
-    Stake {},
-}
+    pub fn map_create_proposal_msg(
+        &self,
+        deps: Deps,
+        msg: CreateProposalMsg,
+    ) -> StdResult<CreateProposalV5Msg> {
+        let proposal_actions = msg
+            .proposal_actions
+            .into_iter()
+            .map(|it| self.map_proposal_action_to_v5(deps, it))
+            .collect::<StdResult<Vec<ProposalActionV5>>>()?;
 
-/// This is what query messages for Enterprise contract looked like for v5.
-/// Looks almost the same as the API for enterprise-facade, but the facade also takes target
-/// Enterprise contract address in each of the queries.
-#[cw_serde]
-pub enum QueryV5Msg {
-    DaoInfo {},
-    MemberInfo(QueryMemberInfoMsg),
-    ListMultisigMembers(ListMultisigMembersMsg),
-    AssetWhitelist(AssetWhitelistParams),
-    NftWhitelist(NftWhitelistParams),
-    Proposal(ProposalParams),
-    Proposals(ProposalsParams),
-    ProposalStatus(ProposalStatusParams),
-    MemberVote(MemberVoteParams),
-    ProposalVotes(ProposalVotesParams),
-    UserStake(UserStakeV5Params),
-    TotalStakedAmount {},
-    StakedNfts(StakedNftsParams),
-    Claims(ClaimsParams),
-    ReleasableClaims(ClaimsParams),
-}
-
-#[cw_serde]
-pub struct UserStakeV5Params {
-    pub user: String,
+        Ok(CreateProposalV5Msg {
+            title: msg.title,
+            description: msg.description,
+            proposal_actions,
+        })
+    }
 }

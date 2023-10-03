@@ -1,4 +1,5 @@
 use crate::facade::get_facade;
+use crate::state::ENTERPRISE_VERSIONING;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
@@ -16,9 +17,14 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> EnterpriseFacadeResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    ENTERPRISE_VERSIONING.save(
+        deps.storage,
+        &deps.api.addr_validate(&msg.enterprise_versioning)?,
+    )?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }

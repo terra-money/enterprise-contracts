@@ -1,6 +1,6 @@
 use crate::facade_post_rewrite::EnterpriseFacadePostRewrite;
 use crate::facade_v5::EnterpriseFacadeV5;
-use crate::facade_v5::QueryV5Msg::DaoInfo;
+use crate::v5_structs::QueryV5Msg::DaoInfo;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, Deps, Response, StdResult};
 use enterprise_facade_api::api::{

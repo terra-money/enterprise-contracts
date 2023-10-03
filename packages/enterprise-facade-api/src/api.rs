@@ -5,7 +5,8 @@ use cosmwasm_std::{Addr, Binary, Coin, Decimal, Timestamp, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use cw_utils::{Duration, Expiration};
-use enterprise_governance_controller_api::api::ProposalAction;
+use enterprise_governance_controller_api::api::{ProposalAction, ProposalActionType};
+use enterprise_versioning_api::api::Version;
 use poll_engine_api::api::{Vote, VoteOutcome};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
@@ -44,6 +45,15 @@ impl fmt::Display for Logo {
         match self {
             Logo::Url(url) => write!(f, "url: {}", url),
             Logo::None => write!(f, "none"),
+        }
+    }
+}
+
+impl From<enterprise_protocol::api::Logo> for Logo {
+    fn from(value: enterprise_protocol::api::Logo) -> Self {
+        match value {
+            enterprise_protocol::api::Logo::Url(url) => Logo::Url(url),
+            enterprise_protocol::api::Logo::None => Logo::None,
         }
     }
 }
@@ -172,26 +182,6 @@ pub struct CreateProposalWithTokenDepositMsg {
 pub struct ProposalDeposit {
     pub depositor: Addr,
     pub amount: Uint128,
-}
-
-// TODO: try to find a (Rust) language construct allowing us to merge this with ProposalAction
-#[cw_serde]
-#[derive(Display)]
-pub enum ProposalActionType {
-    UpdateMetadata,
-    UpdateGovConfig,
-    UpdateCouncil,
-    UpdateAssetWhitelist,
-    UpdateNftWhitelist,
-    RequestFundingFromDao,
-    UpgradeDao,
-    ExecuteMsgs,
-    ModifyMultisigMembership,
-    DistributeFunds,
-    UpdateMinimumWeightForRewards,
-    AddAttestation,
-    RemoveAttestation,
-    DeployCrossChainTreasury,
 }
 
 #[cw_serde]
@@ -381,6 +371,7 @@ pub struct DaoInfoResponse {
     pub enterprise_factory_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub dao_code_version: Uint64,
+    pub dao_version: Version,
 }
 
 #[cw_serde]

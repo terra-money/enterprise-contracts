@@ -13,7 +13,9 @@ use cosmwasm_std::Addr;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub enterprise_versioning: String,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {

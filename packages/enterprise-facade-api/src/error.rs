@@ -1,6 +1,7 @@
-use crate::api::{NftTokenId, ProposalActionType};
+use crate::api::NftTokenId;
 use crate::error::EnterpriseFacadeError::Std;
 use cosmwasm_std::{CheckedFromRatioError, OverflowError, StdError, Uint128};
+use enterprise_governance_controller_api::api::ProposalActionType;
 use poll_engine_api::error::PollError;
 use thiserror::Error;
 

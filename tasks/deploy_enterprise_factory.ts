@@ -26,9 +26,9 @@ task(async ({ network, deployer, executor, signer, refs }) => {
   deployer.buildContract(ENTERPRISE);
   deployer.optimizeContract(ENTERPRISE);
 
-  // await deployEnterpriseFacade(refs, network, deployer, signer);
-
   // await deployEnterpriseVersioning(refs, network, deployer, signer);
+
+  // await deployEnterpriseFacade(refs, network, deployer, signer);
 
   await deployEnterpriseFactory(refs, network, deployer, signer);
 
@@ -51,10 +51,13 @@ const deployEnterpriseFacade = async (refs: Refs, network: string, deployer: Dep
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
   try {
-    await deployer.instantiate("enterprise-facade", {}, {
-      admin: signer.key.accAddress,
-      label: "Enterprise facade",
-    });
+    await deployer.instantiate("enterprise-facade", {
+          enterprise_versioning: refs.getAddress(network, ENTERPRISE_VERSIONING),
+        },
+        {
+          admin: signer.key.accAddress,
+          label: "Enterprise facade",
+        });
   } catch (err) {
     console.log(err);
   }
