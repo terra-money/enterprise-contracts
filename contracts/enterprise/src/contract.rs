@@ -3,9 +3,7 @@ use crate::state::{
     DAO_CREATION_DATE, DAO_METADATA, DAO_TYPE, DAO_VERSION, ENTERPRISE_FACTORY_CONTRACT,
     ENTERPRISE_VERSIONING_CONTRACT, IS_INSTANTIATION_FINALIZED,
 };
-use crate::validate::{
-    enterprise_factory_caller_only, enterprise_governance_controller_caller_only,
-};
+use crate::validate::enterprise_governance_controller_caller_only;
 use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
 use attestation_api::msg::QueryMsg::HasUserSigned;
 use common::commons::ModifyValue::Change;
@@ -28,7 +26,7 @@ use enterprise_protocol::api::{
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, DuplicateVersionMigrateMsgFound, MigratingToLowerVersion,
-    ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId,
+    ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId, Unauthorized,
 };
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -107,7 +105,14 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
         return Err(AlreadyInitialized);
     }
 
-    enterprise_factory_caller_only(ctx)?;
+    let contract_info = ctx
+        .deps
+        .querier
+        .query_wasm_contract_info(ctx.env.contract.address.to_string())?;
+
+    if ctx.deps.api.addr_validate(&contract_info.creator)? != ctx.info.sender {
+        return Err(Unauthorized);
+    }
 
     let component_contracts = ComponentContracts {
         enterprise_governance_contract: ctx

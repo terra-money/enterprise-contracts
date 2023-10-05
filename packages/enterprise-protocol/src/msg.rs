@@ -26,7 +26,7 @@ pub enum ExecuteMsg {
     AddCrossChainProxy(AddCrossChainProxyMsg),
     AddCrossChainTreasury(AddCrossChainTreasuryMsg),
 
-    // called by this contract itself
+    // called only right after instantiation
     FinalizeInstantiation(FinalizeInstantiationMsg),
 }
 
@@ -38,6 +38,7 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(DaoInfoResponse)]
     DaoInfo {},
+
     #[returns(ComponentContractsResponse)]
     ComponentContracts {},
 
