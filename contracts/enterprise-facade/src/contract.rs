@@ -117,6 +117,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.query_releasable_claims(qctx, params)?)?
         }
+        QueryMsg::CrossChainTreasuries { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.query_cross_chain_treasuries(qctx, params)?)?
+        }
         QueryMsg::CreateProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.adapt_create_proposal(qctx, params)?)?

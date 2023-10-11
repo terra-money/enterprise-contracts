@@ -31,8 +31,10 @@ use enterprise_governance_controller_api::api::{
 use enterprise_governance_controller_api::msg::ExecuteMsg::{
     CreateProposal, CreateProposalWithNftDeposit, ExecuteProposal,
 };
-use enterprise_protocol::api::ComponentContractsResponse;
-use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
+use enterprise_protocol::api::{
+    ComponentContractsResponse, CrossChainTreasuriesParams, CrossChainTreasuriesResponse,
+};
+use enterprise_protocol::msg::QueryMsg::{ComponentContracts, CrossChainTreasuries, DaoInfo};
 use enterprise_treasury_api::msg::QueryMsg::{AssetWhitelist, NftWhitelist};
 use membership_common_api::api::{
     MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
@@ -634,6 +636,17 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
             }
             DaoType::Multisig => Ok(ClaimsResponse { claims: vec![] }),
         }
+    }
+
+    fn query_cross_chain_treasuries(
+        &self,
+        qctx: QueryContext,
+        params: CrossChainTreasuriesParams,
+    ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse> {
+        Ok(qctx.deps.querier.query_wasm_smart(
+            self.enterprise_address.to_string(),
+            &CrossChainTreasuries(params),
+        )?)
     }
 
     fn adapt_create_proposal(

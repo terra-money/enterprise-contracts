@@ -39,6 +39,7 @@ use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
 use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
+use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use EnterpriseFacadeError::UnsupportedOperation;
 
@@ -197,6 +198,14 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
         params: ClaimsParams,
     ) -> EnterpriseFacadeResult<ClaimsResponse> {
         self.query_enterprise_contract(qctx.deps, &ReleasableClaims(params))
+    }
+
+    fn query_cross_chain_treasuries(
+        &self,
+        _: QueryContext,
+        _: CrossChainTreasuriesParams,
+    ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse> {
+        Err(UnsupportedOperation)
     }
 
     fn adapt_create_proposal(

@@ -16,6 +16,7 @@ use enterprise_facade_api::api::{
 use enterprise_facade_api::error::EnterpriseFacadeError::CannotCreateFacade;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
+use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 use enterprise_treasury_api::api::ConfigResponse;
 use enterprise_treasury_api::msg::QueryMsg::Config;
 
@@ -110,6 +111,12 @@ pub trait EnterpriseFacade {
         qctx: QueryContext,
         params: ClaimsParams,
     ) -> EnterpriseFacadeResult<ClaimsResponse>;
+
+    fn query_cross_chain_treasuries(
+        &self,
+        qctx: QueryContext,
+        params: CrossChainTreasuriesParams,
+    ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse>;
 
     fn adapt_create_proposal(
         &self,

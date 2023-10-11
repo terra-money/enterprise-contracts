@@ -11,6 +11,7 @@ use crate::api::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
+use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -96,6 +97,12 @@ pub enum QueryMsg {
     ReleasableClaims {
         contract: Addr,
         params: ClaimsParams,
+    },
+
+    #[returns(CrossChainTreasuriesResponse)]
+    CrossChainTreasuries {
+        contract: Addr,
+        params: CrossChainTreasuriesParams,
     },
 
     // Adapter queries - those are designed to be called to determine which contract should be
