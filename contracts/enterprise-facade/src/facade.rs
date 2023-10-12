@@ -1,5 +1,6 @@
 use crate::facade_post_rewrite::EnterpriseFacadePostRewrite;
 use crate::facade_v5::EnterpriseFacadeV5;
+use crate::v5_structs::DaoInfoResponseV5;
 use crate::v5_structs::QueryV5Msg::DaoInfo;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, Deps, Response, StdResult};
@@ -181,7 +182,7 @@ pub trait EnterpriseFacade {
 /// For v1.0.0 (post-rewrite) Enterprise, the address will be that of the enterprise treasury contract.
 pub fn get_facade(deps: Deps, address: Addr) -> EnterpriseFacadeResult<Box<dyn EnterpriseFacade>> {
     // attempt to query for DAO info
-    let dao_info: StdResult<DaoInfoResponse> = deps
+    let dao_info: StdResult<DaoInfoResponseV5> = deps
         .querier
         .query_wasm_smart(address.to_string(), &DaoInfo {});
 
@@ -191,20 +192,55 @@ pub fn get_facade(deps: Deps, address: Addr) -> EnterpriseFacadeResult<Box<dyn E
             enterprise_address: address,
         }))
     } else {
-        // if the query failed, this should be the post-rewrite Enterprise treasury, but let's check
-        let treasury_config: ConfigResponse = deps
-            .querier
-            .query_wasm_smart(address.to_string(), &Config {})
-            .map_err(|_| CannotCreateFacade)?;
+        // if the query failed, this should be either the post-rewrite Enterprise treasury or Enterprise contract, but let's check
 
-        let governance_controller_config: enterprise_governance_controller_api::api::ConfigResponse = deps
-            .querier
-            .query_wasm_smart(treasury_config.admin.to_string(), &enterprise_governance_controller_api::msg::QueryMsg::Config {})
-            .map_err(|_| CannotCreateFacade)?;
-
-        Ok(Box::new(EnterpriseFacadePostRewrite {
-            enterprise_treasury_address: address,
-            enterprise_address: governance_controller_config.enterprise_contract,
-        }))
+        if let Ok(facade) =
+            get_facade_assume_post_rewrite_enterprise_treasury(deps, address.clone())
+        {
+            Ok(facade)
+        } else {
+            get_facade_assume_post_rewrite_enterprise(deps, address)
+        }
     }
+}
+
+fn get_facade_assume_post_rewrite_enterprise_treasury(
+    deps: Deps,
+    address: Addr,
+) -> EnterpriseFacadeResult<Box<dyn EnterpriseFacade>> {
+    let treasury_config: ConfigResponse = deps
+        .querier
+        .query_wasm_smart(address.to_string(), &Config {})
+        .map_err(|_| CannotCreateFacade)?;
+
+    let governance_controller_config: enterprise_governance_controller_api::api::ConfigResponse =
+        deps.querier
+            .query_wasm_smart(
+                treasury_config.admin.to_string(),
+                &enterprise_governance_controller_api::msg::QueryMsg::Config {},
+            )
+            .map_err(|_| CannotCreateFacade)?;
+
+    Ok(Box::new(EnterpriseFacadePostRewrite {
+        enterprise_treasury_address: address,
+        enterprise_address: governance_controller_config.enterprise_contract,
+    }))
+}
+
+fn get_facade_assume_post_rewrite_enterprise(
+    deps: Deps,
+    address: Addr,
+) -> EnterpriseFacadeResult<Box<dyn EnterpriseFacade>> {
+    let component_contracts: enterprise_protocol::api::ComponentContractsResponse = deps
+        .querier
+        .query_wasm_smart(
+            address.to_string(),
+            &enterprise_protocol::msg::QueryMsg::ComponentContracts {},
+        )
+        .map_err(|_| CannotCreateFacade)?;
+
+    Ok(Box::new(EnterpriseFacadePostRewrite {
+        enterprise_treasury_address: component_contracts.enterprise_treasury_contract,
+        enterprise_address: address,
+    }))
 }
