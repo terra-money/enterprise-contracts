@@ -20,7 +20,8 @@ use enterprise_facade_api::api::{
     ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
     QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TokenUserStake,
-    TotalStakedAmountResponse, UnstakeMsg, UserStake, UserStakeParams, UserStakeResponse,
+    TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStake, UserStakeParams,
+    UserStakeResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -73,6 +74,15 @@ impl EnterpriseFacade for EnterpriseFacadePostRewrite {
         )?);
 
         Ok(Response::new().add_submessage(submsg))
+    }
+
+    fn query_treasury_address(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
+        Ok(TreasuryAddressResponse {
+            treasury_address: self.enterprise_treasury_address.clone(),
+        })
     }
 
     fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse> {

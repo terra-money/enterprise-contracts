@@ -57,6 +57,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
+        QueryMsg::TreasuryAddress { contract } => {
+            let facade = get_facade(deps, contract)?;
+            to_binary(&facade.query_treasury_address(qctx)?)?
+        }
         QueryMsg::DaoInfo { contract } => {
             let facade = get_facade(deps, contract)?;
             to_binary(&facade.query_dao_info(qctx)?)?

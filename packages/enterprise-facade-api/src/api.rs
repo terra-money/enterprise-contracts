@@ -361,6 +361,11 @@ pub struct MultisigMembersResponse {
 }
 
 #[cw_serde]
+pub struct TreasuryAddressResponse {
+    pub treasury_address: Addr,
+}
+
+#[cw_serde]
 pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,

@@ -32,8 +32,8 @@ use enterprise_facade_api::api::{
     MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse, ProposalParams,
     ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
     ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg,
-    StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams,
-    UserStakeResponse,
+    StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse,
+    UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -60,6 +60,15 @@ impl EnterpriseFacade for EnterpriseFacadeV5 {
             vec![],
         )?);
         Ok(Response::new().add_submessage(submsg))
+    }
+
+    fn query_treasury_address(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
+        Ok(TreasuryAddressResponse {
+            treasury_address: self.enterprise_address.clone(),
+        })
     }
 
     fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse> {

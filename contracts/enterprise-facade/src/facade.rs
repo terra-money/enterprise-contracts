@@ -12,7 +12,8 @@ use enterprise_facade_api::api::{
     NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
     ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
+    UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeError::CannotCreateFacade;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
@@ -27,6 +28,11 @@ pub trait EnterpriseFacade {
         ctx: &mut Context,
         msg: ExecuteProposalMsg,
     ) -> EnterpriseFacadeResult<Response>;
+
+    fn query_treasury_address(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<TreasuryAddressResponse>;
 
     fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse>;
 
