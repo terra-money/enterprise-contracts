@@ -1,10 +1,22 @@
 {
-  "juno-1": {
-    "chain_global_proxy": "juno1n8yau8y65xl47h5dyj9rr56ucynjydd290pgh4dr5gvs2qfu2yrqv0ry23",
-    "enterprise_treasury_code_id": 3690,
-    "ics_proxy_code_id": 3689,
-    "uluna_denom": "ibc/107D152BB3176FAEBF4C2A84C5FFDEEA7C7CB4FE1BBDAB710F1FD25BCD055CBF",
-    "src_ibc_channel": "channel-2",
-    "dest_ibc_channel": "channel-86"
+  "mainnet": {
+    "juno-1": {
+      "chain_global_proxy": "juno1n8yau8y65xl47h5dyj9rr56ucynjydd290pgh4dr5gvs2qfu2yrqv0ry23",
+      "enterprise_treasury_code_id": 3690,
+      "ics_proxy_code_id": 3689,
+      "uluna_denom": "ibc/107D152BB3176FAEBF4C2A84C5FFDEEA7C7CB4FE1BBDAB710F1FD25BCD055CBF",
+      "src_ibc_channel": "channel-2",
+      "dest_ibc_channel": "channel-86"
+    }
+  },
+  "testnet": {
+    "injective-888": {
+      "chain_global_proxy": "",
+      "enterprise_treasury_code_id": 0,
+      "ics_proxy_code_id": 0,
+      "uluna_denom": "ibc/97498452BF27CC90656FD7D6EFDA287FA2BFFFF3E84691C84CB9E0451F6DF0A4",
+      "src_ibc_channel": "channel-352",
+      "dest_ibc_channel": "channel-126"
+    }
   }
 }
