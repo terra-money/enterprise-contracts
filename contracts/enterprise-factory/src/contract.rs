@@ -240,12 +240,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .contract_address;
             let enterprise_contract = deps.api.addr_validate(&contract_address)?;
 
-            let id = DAO_ID_COUNTER.load(deps.storage)?;
-            let next_id = id + 1;
-            DAO_ID_COUNTER.save(deps.storage, &next_id)?;
-
-            DAO_ADDRESSES.save(deps.storage, id, &enterprise_contract)?;
-
             // Update the admin of the DAO contract to be the DAO itself
             let update_admin_msg = SubMsg::new(WasmMsg::UpdateAdmin {
                 contract_addr: enterprise_contract.to_string(),
@@ -584,6 +578,13 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
                 .contract_address;
             let enterprise_treasury_contract = deps.api.addr_validate(&contract_address)?;
+
+            let id = DAO_ID_COUNTER.load(deps.storage)?;
+            let next_id = id + 1;
+            DAO_ID_COUNTER.save(deps.storage, &next_id)?;
+
+            // we're saving enterprise-treasury as DAO address for consistency with previous behaviors
+            DAO_ADDRESSES.save(deps.storage, id, &enterprise_treasury_contract)?;
 
             DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
                 Ok(DaoBeingCreated {
