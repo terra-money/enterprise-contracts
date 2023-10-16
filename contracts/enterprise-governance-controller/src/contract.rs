@@ -350,10 +350,11 @@ fn create_proposal(
 
     let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General, proposer)?;
 
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    // TODO: extract somewhere to enterprise as a query (like DaoAddress or sth), we might change which contract we're considering the DAO
+    let treasury_address = query_enterprise_treasury_addr(ctx.deps.as_ref())?;
 
     Ok(
-        execute_create_proposal_response(enterprise_contract.to_string())
+        execute_create_proposal_response(treasury_address.to_string())
             .add_submessage(create_poll_submsg),
     )
 }
