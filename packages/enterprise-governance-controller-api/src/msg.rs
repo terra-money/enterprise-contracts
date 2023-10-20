@@ -30,9 +30,6 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     WeightsChanged(WeightsChangedMsg),
 
-    /// Only executable by the contract itself. Not part of the public API.
-    ExecuteProposalActions(ExecuteProposalMsg),
-
     /// Callback from the ICS proxy contract.
     ExecuteMsgReplyCallback(ExecuteMsgReplyCallbackMsg),
 }

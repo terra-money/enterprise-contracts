@@ -116,7 +116,6 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const CREATE_POLL_REPLY_ID: u64 = 1;
 pub const END_POLL_REPLY_ID: u64 = 2;
-pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 3;
 pub const CAST_VOTE_REPLY_ID: u64 = 4;
 
 pub const INSTANTIATE_CROSS_CHAIN_ICS_PROXY_CALLBACK_ID: u32 = 1001;
@@ -174,7 +173,6 @@ pub fn execute(
         ExecuteMsg::CastVote(msg) => cast_vote(ctx, msg),
         ExecuteMsg::CastCouncilVote(msg) => cast_council_vote(ctx, msg),
         ExecuteMsg::ExecuteProposal(msg) => execute_proposal(ctx, msg),
-        ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::WeightsChanged(msg) => weights_changed(ctx, msg),
         ExecuteMsg::ExecuteMsgReplyCallback(msg) => execute_msg_reply_callback(ctx, msg),
@@ -775,19 +773,15 @@ fn resolve_ended_proposal(
         }
         PollStatus::Passed { .. } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
-            let execute_proposal_actions_msg = SubMsg::reply_always(
-                wasm_execute(
-                    ctx.env.contract.address.to_string(),
-                    &ExecuteMsg::ExecuteProposalActions(ExecuteProposalMsg { proposal_id }),
-                    vec![],
-                )?,
-                EXECUTE_PROPOSAL_ACTIONS_REPLY_ID,
-            );
-            let mut submsgs = return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
+            let mut execute_proposal_actions_submsgs =
+                execute_proposal_actions_submsgs(ctx, proposal_id)?;
 
-            submsgs.insert(0, execute_proposal_actions_msg);
+            let mut return_deposit_submsgs =
+                return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
 
-            submsgs
+            execute_proposal_actions_submsgs.append(&mut return_deposit_submsgs);
+
+            execute_proposal_actions_submsgs
         }
         PollStatus::Rejected { reason } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
@@ -817,23 +811,6 @@ fn resolve_ended_proposal(
     };
 
     Ok(submsgs)
-}
-
-fn execute_proposal_actions(
-    ctx: &mut Context,
-    msg: ExecuteProposalMsg,
-) -> GovernanceControllerResult<Response> {
-    // only the DAO itself can execute this
-    if ctx.info.sender != ctx.env.contract.address {
-        return Err(Unauthorized);
-    }
-
-    let submsgs: Vec<SubMsg> = execute_proposal_actions_submsgs(ctx, msg.proposal_id)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "execute_proposal_actions")
-        .add_attribute("proposal_id", msg.proposal_id.to_string())
-        .add_submessages(submsgs))
 }
 
 fn execute_proposal_actions_submsgs(
@@ -1577,10 +1554,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
             let execute_submsgs = resolve_ended_proposal(ctx, proposal_id)?;
 
             Ok(Response::new().add_submessages(execute_submsgs))
-        }
-        EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
-            // no actions, regardless of the result
-            Ok(Response::new())
         }
         CAST_VOTE_REPLY_ID => {
             let gov_config = GOV_CONFIG.load(deps.storage)?;
