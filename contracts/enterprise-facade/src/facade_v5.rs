@@ -451,7 +451,8 @@ impl EnterpriseFacadeV5 {
             }
             ProposalAction::AddAttestation(_)
             | ProposalAction::RemoveAttestation { .. }
-            | ProposalAction::DeployCrossChainTreasury(_) => {
+            | ProposalAction::DeployCrossChainTreasury(_)
+            | ProposalAction::ExecuteTreasuryMsgs(_) => {
                 Err(StdError::generic_err("unsupported proposal action"))
             }
         }

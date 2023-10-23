@@ -9,8 +9,8 @@ use enterprise_governance_controller_api::api::ProposalAction::{
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::{
-    CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, GovConfig,
-    ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
+    CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteTreasuryMsgsMsg,
+    GovConfig, ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
     RemoteTreasuryTarget, RequestFundingFromDaoMsg, UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
@@ -29,7 +29,7 @@ use enterprise_protocol::error::DaoError::{
 use enterprise_protocol::msg::QueryMsg::DaoInfo;
 use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{MinimumDepositNotAllowed, UnsupportedOperationForDaoType};
-use ProposalAction::AddAttestation;
+use ProposalAction::{AddAttestation, ExecuteTreasuryMsgs};
 
 const MAXIMUM_PROPOSAL_ACTIONS: u8 = 10;
 
@@ -135,6 +135,7 @@ pub fn validate_proposal_actions(
             UpdateNftWhitelist(msg) => validate_nft_whitelist_changes(deps, &msg.add, &msg.remove)?,
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
+            ExecuteTreasuryMsgs(msg) => validate_execute_treasury_msgs(msg)?,
             ModifyMultisigMembership(msg) => {
                 validate_modify_multisig_membership(deps, dao_type.clone(), msg)?
             }
@@ -364,7 +365,15 @@ pub fn validate_upgrade_dao(deps: Deps, msg: &UpgradeDaoMsg) -> GovernanceContro
 }
 
 fn validate_execute_msgs(msg: &ExecuteMsgsMsg) -> GovernanceControllerResult<()> {
-    for msg in msg.msgs.iter() {
+    validate_custom_execute_msgs(&msg.msgs)
+}
+
+fn validate_execute_treasury_msgs(msg: &ExecuteTreasuryMsgsMsg) -> GovernanceControllerResult<()> {
+    validate_custom_execute_msgs(&msg.msgs)
+}
+
+fn validate_custom_execute_msgs(msgs: &[String]) -> GovernanceControllerResult<()> {
+    for msg in msgs.iter() {
         serde_json_wasm::from_str::<CosmosMsg>(msg.as_str()).map_err(|_| InvalidCosmosMessage)?;
     }
     Ok(())
@@ -503,6 +512,7 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::UpdateCouncil
                     | ProposalActionType::RequestFundingFromDao
                     | ProposalActionType::ExecuteMsgs
+                    | ProposalActionType::ExecuteTreasuryMsgs
                     | ProposalActionType::ModifyMultisigMembership
                     | ProposalActionType::DistributeFunds
                     | ProposalActionType::UpdateMinimumWeightForRewards

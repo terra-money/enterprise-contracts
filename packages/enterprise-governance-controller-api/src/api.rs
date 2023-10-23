@@ -141,6 +141,7 @@ pub enum ProposalActionType {
     RequestFundingFromDao,
     UpgradeDao,
     ExecuteMsgs,
+    ExecuteTreasuryMsgs,
     ModifyMultisigMembership,
     DistributeFunds,
     UpdateMinimumWeightForRewards,
@@ -159,6 +160,7 @@ pub enum ProposalAction {
     RequestFundingFromDao(RequestFundingFromDaoMsg),
     UpgradeDao(UpgradeDaoMsg),
     ExecuteMsgs(ExecuteMsgsMsg),
+    ExecuteTreasuryMsgs(ExecuteTreasuryMsgsMsg),
     ModifyMultisigMembership(ModifyMultisigMembershipMsg),
     DistributeFunds(DistributeFundsMsg),
     UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
@@ -219,6 +221,13 @@ pub struct RemoteTreasuryTarget {
 pub struct ExecuteMsgsMsg {
     pub action_type: String,
     pub msgs: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ExecuteTreasuryMsgsMsg {
+    pub action_type: String,
+    pub msgs: Vec<String>,
+    pub remote_treasury_target: Option<RemoteTreasuryTarget>,
 }
 
 #[cw_serde]
