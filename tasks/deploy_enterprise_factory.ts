@@ -1,5 +1,5 @@
-import task, {Deployer, Executor, Refs} from "terrariums";
-import {Signer} from "terrariums/lib/src/signers";
+import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
+import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
 const ATTESTATION = "attestation";
 const DENOM_STAKING_MEMBERSHIP = "denom-staking-membership";
@@ -23,16 +23,16 @@ const DENOM_AXL_WBTC = "ibc/05D299885B07905B6886F554B39346EA6761246076A1120B1950
 const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341C7EC6752E674";
 
 task(async ({ network, deployer, executor, signer, refs }) => {
-  deployer.buildContract(ENTERPRISE);
-  deployer.optimizeContract(ENTERPRISE);
+  // deployer.buildContract(ENTERPRISE);
+  // deployer.optimizeContract(ENTERPRISE);
 
   // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
   // await deployEnterpriseFacade(refs, network, deployer, signer);
 
-  await deployEnterpriseFactory(refs, network, deployer, signer);
+  // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 0, 0);
+  await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 2, 0);
 
   // await instantiateDao(refs, network, executor);
 
