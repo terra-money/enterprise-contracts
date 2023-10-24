@@ -67,86 +67,11 @@ pub struct DaoSocialData {
 }
 
 #[cw_serde]
-pub struct DaoCouncilSpec {
-    /// Addresses of council members. Each member has equal voting power.
-    pub members: Vec<String>,
-    /// Portion of total available votes cast in a proposal to consider it valid
-    /// e.g. quorum of 30% means that 30% of all available votes have to be cast in the proposal,
-    /// otherwise it fails automatically when it expires
-    pub quorum: Decimal,
-    /// Portion of votes assigned to a single option from all the votes cast in the given proposal
-    /// required to determine the 'winning' option
-    /// e.g. 51% threshold means that an option has to have at least 51% of the cast votes to win
-    pub threshold: Decimal,
-    /// Proposal action types allowed in proposals that are voted on by the council.
-    /// Effectively defines what types of actions council can propose and vote on.
-    /// If None, will default to a predefined set of actions.
-    pub allowed_proposal_action_types: Option<Vec<ProposalActionType>>,
-}
-
-#[cw_serde]
 pub struct DaoCouncil {
     pub members: Vec<Addr>,
     pub allowed_proposal_action_types: Vec<ProposalActionType>,
     pub quorum: Decimal,
     pub threshold: Decimal,
-}
-
-#[cw_serde]
-pub enum DaoMembershipInfo {
-    New(NewDaoMembershipMsg),
-    Existing(ExistingDaoMembershipMsg),
-}
-
-#[cw_serde]
-pub struct NewDaoMembershipMsg {
-    pub membership_contract_code_id: u64,
-    pub membership_info: NewMembershipInfo,
-}
-
-#[cw_serde]
-pub enum NewMembershipInfo {
-    NewToken(Box<NewTokenMembershipInfo>),
-    NewNft(NewNftMembershipInfo),
-    NewMultisig(NewMultisigMembershipInfo),
-}
-
-#[cw_serde]
-pub struct ExistingDaoMembershipMsg {
-    pub dao_type: DaoType,
-    pub membership_contract_addr: String,
-}
-
-#[cw_serde]
-pub struct NewTokenMembershipInfo {
-    pub token_name: String,
-    pub token_symbol: String,
-    pub token_decimals: u8,
-    pub initial_token_balances: Vec<Cw20Coin>,
-    /// Optional amount of tokens to be minted to the DAO's address
-    pub initial_dao_balance: Option<Uint128>,
-    pub token_mint: Option<MinterResponse>,
-    pub token_marketing: Option<TokenMarketingInfo>,
-}
-
-#[cw_serde]
-pub struct TokenMarketingInfo {
-    pub project: Option<String>,
-    pub description: Option<String>,
-    pub marketing_owner: Option<String>,
-    pub logo_url: Option<String>,
-}
-
-#[cw_serde]
-pub struct NewNftMembershipInfo {
-    pub nft_name: String,
-    pub nft_symbol: String,
-    pub minter: Option<String>,
-}
-
-#[cw_serde]
-pub struct NewMultisigMembershipInfo {
-    pub multisig_members: Vec<MultisigMember>,
 }
 
 #[cw_serde]
@@ -175,92 +100,6 @@ pub struct CreateProposalWithDenomDepositMsg {
 pub struct CreateProposalWithTokenDepositMsg {
     pub create_proposal_msg: CreateProposalMsg,
     pub deposit_amount: Uint128,
-}
-
-// TODO: move to poll-engine, together with the deposit returning logic?
-#[cw_serde]
-pub struct ProposalDeposit {
-    pub depositor: Addr,
-    pub amount: Uint128,
-}
-
-#[cw_serde]
-pub struct UpdateMetadataMsg {
-    pub name: ModifyValue<String>,
-    pub description: ModifyValue<Option<String>>,
-    pub logo: ModifyValue<Logo>,
-    pub github_username: ModifyValue<Option<String>>,
-    pub discord_username: ModifyValue<Option<String>>,
-    pub twitter_username: ModifyValue<Option<String>>,
-    pub telegram_username: ModifyValue<Option<String>>,
-}
-
-#[cw_serde]
-pub struct UpdateGovConfigMsg {
-    pub quorum: ModifyValue<Decimal>,
-    pub threshold: ModifyValue<Decimal>,
-    pub veto_threshold: ModifyValue<Option<Decimal>>,
-    pub voting_duration: ModifyValue<Uint64>,
-    pub unlocking_period: ModifyValue<Duration>,
-    pub minimum_deposit: ModifyValue<Option<Uint128>>,
-    pub allow_early_proposal_execution: ModifyValue<bool>,
-}
-
-#[cw_serde]
-pub struct UpdateCouncilMsg {
-    pub dao_council: Option<DaoCouncilSpec>,
-}
-
-#[cw_serde]
-pub struct UpdateAssetWhitelistMsg {
-    /// New assets to add to the whitelist. Will ignore assets that are already whitelisted.
-    pub add: Vec<AssetInfo>,
-    /// Assets to remove from the whitelist. Will ignore assets that are not already whitelisted.
-    pub remove: Vec<AssetInfo>,
-}
-
-#[cw_serde]
-pub struct UpdateNftWhitelistMsg {
-    /// New NFTs to add to the whitelist. Will ignore NFTs that are already whitelisted.
-    pub add: Vec<Addr>,
-    /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
-    pub remove: Vec<Addr>,
-}
-
-#[cw_serde]
-pub struct RequestFundingFromDaoMsg {
-    pub recipient: String,
-    pub assets: Vec<Asset>,
-}
-
-#[cw_serde]
-pub struct UpgradeDaoMsg {
-    pub new_dao_code_id: u64,
-    pub migrate_msg: Binary,
-}
-
-#[cw_serde]
-pub struct ExecuteMsgsMsg {
-    pub action_type: String,
-    pub msgs: Vec<String>,
-}
-
-#[cw_serde]
-pub struct ModifyMultisigMembershipMsg {
-    /// Members to be edited.
-    /// Can contain existing members, in which case their new weight will be the one specified in
-    /// this message. This effectively allows removing of members (by setting their weight to 0).
-    pub edit_members: Vec<MultisigMember>,
-}
-
-#[cw_serde]
-pub struct DistributeFundsMsg {
-    pub funds: Vec<Asset>,
-}
-
-#[cw_serde]
-pub struct UpdateMinimumWeightForRewardsMsg {
-    pub minimum_weight_for_rewards: Uint128,
 }
 
 #[cw_serde]
@@ -312,14 +151,6 @@ pub struct UnstakeCw20Msg {
 #[cw_serde]
 pub struct UnstakeCw721Msg {
     pub tokens: Vec<NftTokenId>,
-}
-
-#[cw_serde]
-pub struct ReceiveNftMsg {
-    pub edition: Option<Uint64>,
-    pub sender: String,
-    pub token_id: String,
-    pub msg: Binary,
 }
 
 #[cw_serde]
