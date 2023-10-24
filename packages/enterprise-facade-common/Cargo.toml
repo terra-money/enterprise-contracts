@@ -1,0 +1,24 @@
+[package]
+name = "enterprise-facade-common"
+version = "1.0.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+common = { path = "../common" }
+cw20 = "1.0.1"
+cosmwasm-std = "1"
+cosmwasm-schema = "1.1"
+cw-asset = "2.4.0"
+cw-utils = "1.0.1"
+enterprise-facade-api = { path = "../enterprise-facade-api" }
+enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
+enterprise-treasury-api = { path = "../enterprise-treasury-api" }
+enterprise-versioning-api = { path = "../enterprise-versioning-api" }
+enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+serde_with = { version = "2", features = ["json", "macros"] }
+strum_macros = "0.24"
+thiserror = "1"

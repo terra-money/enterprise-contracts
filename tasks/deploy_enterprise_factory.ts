@@ -32,9 +32,22 @@ task(async ({ network, deployer, executor, signer, refs }) => {
 
   // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-  await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 2, 0);
+  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 2, 0);
 
   // await instantiateDao(refs, network, executor);
+
+  try {
+    await executor.execute(
+        "terra197rges8u3wtwvrdkv80ku77ejc5quch76vhgzs9znargumgre7jsvx3wh0",
+        {
+          execute_proposal: {
+            proposal_id: 1
+          }
+        }
+    )
+  } catch (e) {
+    console.log(e);
+  }
 
   // try {
   //   await deployer.instantiate(MULTISIG_MEMBERSHIP, {

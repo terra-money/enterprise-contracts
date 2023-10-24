@@ -1,9 +1,7 @@
-use common::commons::ModifyValue;
 use common::cw::ReleaseAt;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Coin, Decimal, Timestamp, Uint128, Uint64};
-use cw20::{Cw20Coin, MinterResponse};
-use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
+use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128, Uint64};
+use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_governance_controller_api::api::{ProposalAction, ProposalActionType};
 use enterprise_versioning_api::api::Version;
@@ -457,6 +455,20 @@ pub struct ClaimsParams {
 #[cw_serde]
 pub struct AdapterResponse {
     pub msgs: Vec<AdaptedMsg>,
+}
+
+pub fn adapter_response_single_msg(
+    target_contract: Addr,
+    msg: String,
+    funds: Vec<Coin>,
+) -> AdapterResponse {
+    AdapterResponse {
+        msgs: vec![AdaptedMsg {
+            target_contract,
+            msg,
+            funds,
+        }],
+    }
 }
 
 /// Used to enable adapter-like behavior, where this contract can tell its consumers what call to
