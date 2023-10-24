@@ -130,7 +130,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         deps.storage,
         &DaoBeingCreated {
             create_dao_msg: Some(msg.clone()),
-            version_info: Some(latest_version),
+            version_info: Some(latest_version.clone()),
             dao_type: Some(dao_type.clone()),
             dao_asset: None,
             dao_nft: None,
@@ -152,6 +152,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         enterprise_factory_contract: env.contract.address.to_string(),
         enterprise_versioning_contract: config.enterprise_versioning.to_string(),
         dao_type,
+        dao_version: latest_version.version,
     };
     let create_dao_submsg = SubMsg::reply_on_success(
         Instantiate {

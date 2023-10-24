@@ -203,6 +203,11 @@ pub fn create_enterprise_contract(
                 enterprise_versioning_contract: enterprise_versioning.to_string(),
                 dao_metadata,
                 dao_type,
+                dao_version: Version {
+                    major: 1,
+                    minor: 0,
+                    patch: 0,
+                },
             })?,
             funds: vec![],
             label: "Enterprise main contract".to_string(),

@@ -74,7 +74,7 @@ pub fn instantiate(
 
     DAO_METADATA.save(deps.storage, &msg.dao_metadata)?;
 
-    DAO_VERSION.save(deps.storage, &Version::from_str(CONTRACT_VERSION)?)?;
+    DAO_VERSION.save(deps.storage, &msg.dao_version)?;
 
     DAO_TYPE.save(deps.storage, &msg.dao_type)?;
 
@@ -242,6 +242,9 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
             msg: migrate_msg,
         })));
     }
+
+    // TODO: what if someone wants to check a version in one of the intermediary steps of upgrading (e.g. upgrading from 1.0.0 to 3.0.0, on the 2.0.0 mid-step the version they'll get is incorrect)?
+    DAO_VERSION.save(ctx.deps.storage, &msg.new_version)?;
 
     Ok(execute_upgrade_dao_response(msg.new_version.to_string()).add_submessages(submsgs))
 }
@@ -501,7 +504,6 @@ fn query_cross_chain_deployments(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    DAO_VERSION.save(deps.storage, &Version::from_str(CONTRACT_VERSION)?)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))
 }

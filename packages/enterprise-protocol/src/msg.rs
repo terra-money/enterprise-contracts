@@ -6,6 +6,7 @@ use crate::api::{
     UpgradeDaoMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use enterprise_versioning_api::api::Version;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,6 +14,7 @@ pub struct InstantiateMsg {
     pub enterprise_versioning_contract: String,
     pub dao_metadata: DaoMetadata,
     pub dao_type: DaoType,
+    pub dao_version: Version,
 }
 
 #[cw_serde]
