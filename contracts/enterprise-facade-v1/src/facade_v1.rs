@@ -38,7 +38,7 @@ use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
-use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use EnterpriseFacadeError::UnsupportedOperation;
 

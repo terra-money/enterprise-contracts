@@ -43,6 +43,7 @@ cw721 = "0.16.0"
 cw-asset = "2.4.0"
 cw-utils = "1.0.1"
 enterprise-facade-api = { path = "../../packages/enterprise-facade-api" }
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
 enterprise-facade-common = { path = "../../packages/enterprise-facade-common" }

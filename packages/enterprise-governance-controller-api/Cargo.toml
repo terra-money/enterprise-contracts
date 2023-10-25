@@ -17,6 +17,7 @@ cw-asset = "2.4.0"
 cw-utils = "1.0.1"
 enterprise-protocol = { path = "../enterprise-protocol"}
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }
 multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 nft-staking-api = { path = "../../packages/nft-staking-api" }

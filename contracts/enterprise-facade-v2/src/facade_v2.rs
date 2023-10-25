@@ -32,10 +32,10 @@ use enterprise_governance_controller_api::api::{
 use enterprise_governance_controller_api::msg::ExecuteMsg::{
     CreateProposal, CreateProposalWithNftDeposit, ExecuteProposal,
 };
-use enterprise_protocol::api::{
-    ComponentContractsResponse, CrossChainTreasuriesParams, CrossChainTreasuriesResponse,
-};
-use enterprise_protocol::msg::QueryMsg::{ComponentContracts, CrossChainTreasuries, DaoInfo};
+use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_outposts_api::msg::QueryMsg::CrossChainTreasuries;
+use enterprise_protocol::api::ComponentContractsResponse;
+use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
 use enterprise_treasury_api::msg::QueryMsg::{AssetWhitelist, NftWhitelist};
 use membership_common_api::api::{
     MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
@@ -663,7 +663,9 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         params: CrossChainTreasuriesParams,
     ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse> {
         Ok(qctx.deps.querier.query_wasm_smart(
-            self.enterprise_address.to_string(),
+            self.component_contracts(qctx.deps)?
+                .enterprise_outposts_contract
+                .to_string(),
             &CrossChainTreasuries(params),
         )?)
     }

@@ -14,7 +14,7 @@ use enterprise_facade_api::api::{
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::TreasuryAddress;
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use enterprise_protocol::api::CrossChainTreasuriesResponse;
+use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
 use ExecuteMsg::ExecuteProposal;
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,

@@ -13,7 +13,7 @@ use enterprise_facade_api::api::{
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
-use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 
 pub trait EnterpriseFacade {
     fn execute_proposal(

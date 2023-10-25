@@ -45,12 +45,6 @@ pub enum DaoError {
     #[error("Duplicate whitelist asset has been supplied")]
     DuplicateWhitelistAssetFound,
 
-    #[error("Trying to add a proxy for a chain ID that already has a DAO-owned proxy deployed")]
-    ProxyAlreadyExistsForChainId,
-
-    #[error("Trying to add a treasury for a chain ID that already has a treasury deployed")]
-    TreasuryAlreadyExistsForChainId,
-
     #[error("Proposal voting duration cannot be longer than unstaking duration")]
     VoteDurationLongerThanUnstaking,
 }

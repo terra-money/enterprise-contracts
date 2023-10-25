@@ -17,6 +17,7 @@ cw-utils = "1.0.1"
 enterprise-facade-api = { path = "../enterprise-facade-api" }
 enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
 enterprise-treasury-api = { path = "../enterprise-treasury-api" }
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
 enterprise-versioning-api = { path = "../enterprise-versioning-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 serde_with = { version = "2", features = ["json", "macros"] }

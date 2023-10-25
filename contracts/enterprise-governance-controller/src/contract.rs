@@ -55,10 +55,10 @@ use enterprise_governance_controller_api::api::{
     UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    CustomError, Dao, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType,
+    CustomError, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType,
     NoCrossChainDeploymentForGivenChainId, NoDaoCouncil, NoSuchProposal, NoVotesAvailable,
-    NoVotingPower, ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser, Std,
-    Unauthorized, UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType,
+    NoVotingPower, Outposts, ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser,
+    Std, Unauthorized, UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType,
     WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
@@ -71,17 +71,18 @@ use enterprise_governance_controller_api::response::{
     execute_execute_msg_reply_callback_response, execute_execute_proposal_response,
     execute_weights_changed_response, instantiate_response, reply_create_poll_response,
 };
+use enterprise_outposts_api::api::{
+    AddCrossChainProxyMsg, AddCrossChainTreasuryMsg, CrossChainDeploymentsParams,
+    CrossChainDeploymentsResponse,
+};
+use enterprise_outposts_api::error::EnterpriseOutpostsError::TreasuryAlreadyExistsForChainId;
+use enterprise_outposts_api::msg::ExecuteMsg::{AddCrossChainProxy, AddCrossChainTreasury};
+use enterprise_outposts_api::msg::QueryMsg::CrossChainDeployments;
 use enterprise_protocol::api::{
-    AddCrossChainProxyMsg, AddCrossChainTreasuryMsg, ComponentContractsResponse,
-    CrossChainDeploymentsParams, CrossChainDeploymentsResponse, DaoInfoResponse, DaoType,
-    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
-    UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoType, IsRestrictedUserParams,
+    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
-use enterprise_protocol::error::DaoError::TreasuryAlreadyExistsForChainId;
-use enterprise_protocol::msg::ExecuteMsg::{AddCrossChainProxy, AddCrossChainTreasury};
-use enterprise_protocol::msg::QueryMsg::{
-    ComponentContracts, CrossChainDeployments, DaoInfo, IsRestrictedUser,
-};
+use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
 use enterprise_treasury_api::api::{
     ExecuteCosmosMsgsMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
@@ -1200,7 +1201,7 @@ fn deploy_cross_chain_treasury(
     )?;
 
     if deployments_response.treasury_addr.is_some() {
-        return Err(Dao(TreasuryAlreadyExistsForChainId));
+        return Err(Outposts(TreasuryAlreadyExistsForChainId));
     }
 
     match deployments_response.proxy_addr {
@@ -1477,10 +1478,10 @@ fn handle_instantiate_proxy_reply_callback(
 ) -> GovernanceControllerResult<Response> {
     let proxy_addr = parse_reply_instantiate_data(reply)?.contract_address;
 
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let enterprise_outposts = query_enterprise_outposts_addr(ctx.deps.as_ref())?;
 
     let add_proxy_submsg = SubMsg::new(wasm_execute(
-        enterprise_contract.to_string(),
+        enterprise_outposts.to_string(),
         &AddCrossChainProxy(AddCrossChainProxyMsg {
             chain_id,
             proxy_addr: proxy_addr.clone(),
@@ -1510,10 +1511,10 @@ fn handle_instantiate_treasury_reply_callback(
 ) -> GovernanceControllerResult<Response> {
     let treasury_addr = parse_reply_instantiate_data(reply)?.contract_address;
 
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let enterprise_outposts = query_enterprise_outposts_addr(ctx.deps.as_ref())?;
 
     let add_treasury_submsg = SubMsg::new(wasm_execute(
-        enterprise_contract.to_string(),
+        enterprise_outposts.to_string(),
         &AddCrossChainTreasury(AddCrossChainTreasuryMsg {
             chain_id,
             treasury_addr,
@@ -2040,14 +2041,18 @@ fn query_main_dao_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     query_enterprise_treasury_addr(deps)
 }
 
+fn query_enterprise_outposts_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
+    Ok(query_enterprise_components(deps)?.enterprise_outposts_contract)
+}
+
 fn query_enterprise_cross_chain_deployments(
     deps: Deps,
     chain_id: String,
 ) -> GovernanceControllerResult<CrossChainDeploymentsResponse> {
-    let enterprise = ENTERPRISE_CONTRACT.load(deps.storage)?;
+    let enterprise_outposts = query_enterprise_outposts_addr(deps)?;
 
     Ok(deps.querier.query_wasm_smart(
-        enterprise.to_string(),
+        enterprise_outposts.to_string(),
         &CrossChainDeployments(CrossChainDeploymentsParams { chain_id }),
     )?)
 }

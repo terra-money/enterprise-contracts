@@ -1,7 +1,5 @@
 use crate::api::{
-    AddCrossChainProxyMsg, AddCrossChainTreasuryMsg, ComponentContractsResponse,
-    CrossChainDeploymentsParams, CrossChainDeploymentsResponse, CrossChainTreasuriesParams,
-    CrossChainTreasuriesResponse, DaoInfoResponse, DaoMetadata, DaoType, FinalizeInstantiationMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoMetadata, DaoType, FinalizeInstantiationMsg,
     IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
     UpgradeDaoMsg,
 };
@@ -25,9 +23,6 @@ pub enum ExecuteMsg {
     SetAttestation(SetAttestationMsg),
     RemoveAttestation {},
 
-    AddCrossChainProxy(AddCrossChainProxyMsg),
-    AddCrossChainTreasury(AddCrossChainTreasuryMsg),
-
     // called only right after instantiation
     FinalizeInstantiation(FinalizeInstantiationMsg),
 }
@@ -43,12 +38,6 @@ pub enum QueryMsg {
 
     #[returns(ComponentContractsResponse)]
     ComponentContracts {},
-
-    #[returns(CrossChainTreasuriesResponse)]
-    CrossChainTreasuries(CrossChainTreasuriesParams),
-
-    #[returns(CrossChainDeploymentsResponse)]
-    CrossChainDeployments(CrossChainDeploymentsParams),
 
     /// Query whether a user should be restricted from certain DAO actions, such as governance and
     /// rewards claiming.

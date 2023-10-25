@@ -1,6 +1,7 @@
 use crate::api::ProposalActionType;
 use cosmwasm_std::{StdError, Uint128};
 use cw_utils::ParseReplyError;
+use enterprise_outposts_api::error::EnterpriseOutpostsError;
 use enterprise_protocol::error::DaoError;
 use poll_engine_api::error::PollError;
 use serde_json_wasm::ser::Error;
@@ -18,6 +19,9 @@ pub enum GovernanceControllerError {
 
     #[error("{0}")]
     Dao(#[from] DaoError),
+
+    #[error("{0}")]
+    Outposts(#[from] EnterpriseOutpostsError),
 
     #[error("Unauthorized")]
     Unauthorized,

@@ -108,37 +108,8 @@ pub struct SetAttestationMsg {
 }
 
 #[cw_serde]
-pub struct AddCrossChainProxyMsg {
-    pub chain_id: String,
-    pub proxy_addr: String,
-}
-
-#[cw_serde]
-pub struct AddCrossChainTreasuryMsg {
-    pub chain_id: String,
-    pub treasury_addr: String,
-}
-
-#[cw_serde]
 pub struct IsRestrictedUserParams {
     pub user: String,
-}
-
-#[cw_serde]
-pub struct CrossChainTreasury {
-    pub chain_id: String,
-    pub treasury_addr: String,
-}
-
-#[cw_serde]
-pub struct CrossChainTreasuriesParams {
-    pub start_after: Option<String>,
-    pub limit: Option<u32>,
-}
-
-#[cw_serde]
-pub struct CrossChainDeploymentsParams {
-    pub chain_id: String,
 }
 
 // Responses
@@ -156,6 +127,7 @@ pub struct ComponentContractsResponse {
     pub enterprise_factory_contract: Addr,
     pub enterprise_governance_contract: Addr,
     pub enterprise_governance_controller_contract: Addr,
+    pub enterprise_outposts_contract: Addr,
     pub enterprise_treasury_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub membership_contract: Addr,
@@ -166,16 +138,4 @@ pub struct ComponentContractsResponse {
 #[cw_serde]
 pub struct IsRestrictedUserResponse {
     pub is_restricted: bool,
-}
-
-#[cw_serde]
-pub struct CrossChainTreasuriesResponse {
-    pub treasuries: Vec<CrossChainTreasury>,
-}
-
-#[cw_serde]
-pub struct CrossChainDeploymentsResponse {
-    pub chain_id: String,
-    pub proxy_addr: Option<String>,
-    pub treasury_addr: Option<String>,
 }

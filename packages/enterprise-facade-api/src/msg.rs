@@ -12,7 +12,7 @@ use crate::api::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
-use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 
 #[cw_serde]
 pub struct InstantiateMsg {
