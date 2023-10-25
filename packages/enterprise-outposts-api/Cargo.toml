@@ -8,12 +8,16 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
+bech32-no_std = "0.7.3"
 common = { path = "../common" }
+cw-asset = "2.4.0"
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
+cw-utils = "1.0.1"
 schemars = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_with = { version = "2", features = ["json", "macros"] }
 strum = "0.24"
 strum_macros = "0.24"
+serde-json-wasm = "0.5.0"
 thiserror = "1"

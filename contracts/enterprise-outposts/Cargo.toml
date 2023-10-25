@@ -33,10 +33,17 @@ optimize = """docker run --rm -v "${process.cwd()}":/code \
 """
 
 [dependencies]
+bech32-no_std = "0.7.3"
 common = { path = "../../packages/common" }
+cw-asset = "2.4.0"
 cosmwasm-std = "1"
 cosmwasm-schema = "1"
 cw-storage-plus = "1.0.1"
+cw-utils = "1.0.1"
 cw2 = "1.0.1"
 enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+prost = "0.11.9"
+serde-json-wasm = "0.5.0"
+sha2 = "0.10.8"

@@ -1,28 +1,38 @@
+use crate::ibc_hooks::IcsProxyCallbackType::{InstantiateProxy, InstantiateTreasury};
+use crate::ibc_hooks::{
+    derive_intermediate_sender, ibc_hooks_msg_to_ics_proxy_contract, IcsProxyCallback,
+    IcsProxyInstantiateMsg, ICS_PROXY_CALLBACKS, ICS_PROXY_CALLBACK_LAST_ID,
+    TERRA_CHAIN_BECH32_PREFIX,
+};
 use crate::state::{CROSS_CHAIN_PROXIES, CROSS_CHAIN_TREASURIES, ENTERPRISE_CONTRACT};
 use crate::validate::enterprise_governance_controller_caller_only;
 use common::cw::{Context, QueryContext};
+use cosmwasm_std::CosmosMsg::Wasm;
+use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
-    StdResult,
+    StdResult, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
+use cw_asset::AssetInfoUnchecked;
 use cw_storage_plus::Bound;
+use cw_utils::parse_reply_instantiate_data;
 use enterprise_outposts_api::api::{
     AddCrossChainProxyMsg, AddCrossChainTreasuryMsg, CrossChainDeploymentsParams,
-    CrossChainDeploymentsResponse, CrossChainTreasuriesParams, CrossChainTreasuriesResponse,
-    CrossChainTreasury,
+    CrossChainDeploymentsResponse, CrossChainMsgSpec, CrossChainTreasuriesParams,
+    CrossChainTreasuriesResponse, CrossChainTreasury, DeployCrossChainTreasuryMsg,
+    ExecuteMsgReplyCallbackMsg,
 };
 use enterprise_outposts_api::error::EnterpriseOutpostsError::{
-    ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId,
+    ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId, Unauthorized,
 };
 use enterprise_outposts_api::error::EnterpriseOutpostsResult;
 use enterprise_outposts_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::response::{
     execute_add_cross_chain_proxy_response, execute_add_cross_chain_treasury_response,
-    instantiate_response,
+    execute_deploy_cross_chain_proxy_response, execute_deploy_cross_chain_treasury_response,
+    execute_execute_msg_reply_callback_response, instantiate_response,
 };
-
-pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-outposts";
@@ -60,6 +70,8 @@ pub fn execute(
     match msg {
         ExecuteMsg::AddCrossChainProxy(msg) => add_cross_chain_proxy(ctx, msg),
         ExecuteMsg::AddCrossChainTreasury(msg) => add_cross_chain_treasury(ctx, msg),
+        ExecuteMsg::DeployCrossChainTreasury(msg) => deploy_cross_chain_treasury(ctx, msg),
+        ExecuteMsg::ExecuteMsgReplyCallback(msg) => execute_msg_reply_callback(ctx, msg),
     }
 }
 
@@ -91,6 +103,248 @@ fn add_cross_chain_treasury(
 
         Ok(execute_add_cross_chain_treasury_response())
     }
+}
+
+fn deploy_cross_chain_treasury(
+    ctx: &mut Context,
+    msg: DeployCrossChainTreasuryMsg,
+) -> EnterpriseOutpostsResult<Response> {
+    let qctx = QueryContext {
+        deps: ctx.deps.as_ref(),
+        env: ctx.env.clone(),
+    };
+    let deployments_response = query_cross_chain_deployments(
+        qctx,
+        CrossChainDeploymentsParams {
+            chain_id: msg.cross_chain_msg_spec.chain_id.clone(),
+        },
+    )?;
+
+    if deployments_response.treasury_addr.is_some() {
+        return Err(TreasuryAlreadyExistsForChainId);
+    }
+
+    match deployments_response.proxy_addr {
+        Some(proxy_contract) => {
+            // there is already a proxy contract owned by this DAO,
+            // so we just go ahead and instantiate the treasury
+
+            let instantiate_treasury_msg = instantiate_remote_treasury(
+                ctx.deps.branch(),
+                ctx.env.clone(),
+                msg.enterprise_treasury_code_id,
+                proxy_contract,
+                msg.asset_whitelist,
+                msg.nft_whitelist,
+                msg.cross_chain_msg_spec,
+            )?;
+
+            Ok(execute_deploy_cross_chain_treasury_response()
+                .add_submessage(instantiate_treasury_msg))
+        }
+        None => {
+            // there is no proxy contract owned by this DAO on the given chain,
+            // so we go ahead and instantiate the proxy first
+
+            // TODO: should we disallow multiple ongoing instantiations for the same chain?
+
+            let callback_id = ICS_PROXY_CALLBACK_LAST_ID
+                .may_load(ctx.deps.storage)?
+                .unwrap_or_default()
+                + 1;
+            ICS_PROXY_CALLBACK_LAST_ID.save(ctx.deps.storage, &callback_id)?;
+
+            ICS_PROXY_CALLBACKS.save(
+                ctx.deps.storage,
+                callback_id,
+                &IcsProxyCallback {
+                    cross_chain_msg_spec: msg.cross_chain_msg_spec.clone(),
+                    proxy_addr: msg.chain_global_proxy.clone(),
+                    callback_type: InstantiateProxy {
+                        deploy_treasury_msg: Box::new(msg.clone()),
+                    },
+                },
+            )?;
+
+            // calculate what the address of this contract will look like on the other chain
+            // via IBC-hooks
+            let ibc_hooks_governance_controller_addr = derive_intermediate_sender(
+                &msg.cross_chain_msg_spec.dest_ibc_channel,
+                ctx.env.contract.address.as_ref(),
+                &msg.cross_chain_msg_spec.chain_bech32_prefix,
+            )?;
+
+            let instantiate_proxy_msg = ibc_hooks_msg_to_ics_proxy_contract(
+                &ctx.env,
+                Wasm(Instantiate {
+                    admin: None,
+                    code_id: msg.ics_proxy_code_id,
+                    msg: to_binary(&IcsProxyInstantiateMsg {
+                        allow_cross_chain_msgs: true,
+                        owner: Some(ibc_hooks_governance_controller_addr),
+                        whitelist: None,
+                        msgs: None,
+                    })?,
+                    funds: vec![],
+                    label: "Proxy contract".to_string(),
+                }),
+                msg.chain_global_proxy,
+                msg.cross_chain_msg_spec,
+                Some(callback_id),
+            )?;
+            Ok(execute_deploy_cross_chain_proxy_response().add_submessage(instantiate_proxy_msg))
+        }
+    }
+}
+
+fn instantiate_remote_treasury(
+    deps: DepsMut,
+    env: Env,
+    enterprise_treasury_code_id: u64,
+    proxy_contract: String,
+    asset_whitelist: Option<Vec<AssetInfoUnchecked>>,
+    nft_whitelist: Option<Vec<String>>,
+    cross_chain_msg_spec: CrossChainMsgSpec,
+) -> EnterpriseOutpostsResult<SubMsg> {
+    let callback_id = ICS_PROXY_CALLBACK_LAST_ID
+        .may_load(deps.storage)?
+        .unwrap_or_default()
+        + 1;
+    ICS_PROXY_CALLBACK_LAST_ID.save(deps.storage, &callback_id)?;
+
+    // TODO: should we disallow multiple ongoing instantiations for the same chain?
+
+    ICS_PROXY_CALLBACKS.save(
+        deps.storage,
+        callback_id,
+        &IcsProxyCallback {
+            cross_chain_msg_spec: cross_chain_msg_spec.clone(),
+            proxy_addr: proxy_contract.clone(),
+            callback_type: InstantiateTreasury {
+                cross_chain_msg_spec: cross_chain_msg_spec.clone(),
+            },
+        },
+    )?;
+
+    let instantiate_treasury_msg = ibc_hooks_msg_to_ics_proxy_contract(
+        &env,
+        Wasm(Instantiate {
+            admin: Some(proxy_contract.clone()),
+            code_id: enterprise_treasury_code_id,
+            msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
+                admin: proxy_contract.clone(),
+                asset_whitelist,
+                nft_whitelist,
+            })?,
+            funds: vec![],
+            label: "Proxy treasury".to_string(),
+        }),
+        proxy_contract,
+        cross_chain_msg_spec,
+        Some(callback_id),
+    )?;
+    Ok(instantiate_treasury_msg)
+}
+
+pub fn execute_msg_reply_callback(
+    ctx: &mut Context,
+    msg: ExecuteMsgReplyCallbackMsg,
+) -> EnterpriseOutpostsResult<Response> {
+    let ics_proxy_callback = ICS_PROXY_CALLBACKS.may_load(ctx.deps.storage, msg.callback_id)?;
+
+    match ics_proxy_callback {
+        Some(ics_proxy_callback) => {
+            let sender = ctx.info.sender.clone();
+
+            // calculate what the IBC-hooks-derived address should be for the proxy
+            // we're expecting the reply from
+            let derived_proxy_addr = derive_intermediate_sender(
+                &ics_proxy_callback.cross_chain_msg_spec.src_ibc_channel,
+                &ics_proxy_callback.proxy_addr,
+                TERRA_CHAIN_BECH32_PREFIX,
+            )?;
+
+            let ibc_hooks_proxy_addr = ctx.deps.api.addr_validate(&derived_proxy_addr)?;
+
+            if sender != ibc_hooks_proxy_addr {
+                return Err(Unauthorized);
+            }
+
+            ICS_PROXY_CALLBACKS.remove(ctx.deps.storage, msg.callback_id);
+
+            let reply = Reply {
+                id: msg.callback_id as u64,
+                result: SubMsgResult::Ok(SubMsgResponse {
+                    events: msg.events,
+                    data: msg.data,
+                }),
+            };
+
+            match ics_proxy_callback.callback_type {
+                InstantiateProxy {
+                    deploy_treasury_msg,
+                } => handle_instantiate_proxy_reply_callback(
+                    ctx,
+                    ics_proxy_callback.cross_chain_msg_spec.chain_id,
+                    *deploy_treasury_msg,
+                    reply,
+                ),
+                InstantiateTreasury { .. } => handle_instantiate_treasury_reply_callback(
+                    ctx,
+                    ics_proxy_callback.cross_chain_msg_spec.chain_id,
+                    reply,
+                ),
+            }
+        }
+        None => Err(Unauthorized),
+    }
+}
+
+fn handle_instantiate_proxy_reply_callback(
+    ctx: &mut Context,
+    chain_id: String,
+    deploy_treasury_msg: DeployCrossChainTreasuryMsg,
+    reply: Reply,
+) -> EnterpriseOutpostsResult<Response> {
+    let proxy_addr = parse_reply_instantiate_data(reply)?.contract_address;
+
+    add_cross_chain_proxy(
+        ctx,
+        AddCrossChainProxyMsg {
+            chain_id,
+            proxy_addr: proxy_addr.clone(),
+        },
+    )?;
+
+    let instantiate_treasury_submsg = instantiate_remote_treasury(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        deploy_treasury_msg.enterprise_treasury_code_id,
+        proxy_addr,
+        deploy_treasury_msg.asset_whitelist,
+        deploy_treasury_msg.nft_whitelist,
+        deploy_treasury_msg.cross_chain_msg_spec,
+    )?;
+
+    Ok(execute_execute_msg_reply_callback_response().add_submessage(instantiate_treasury_submsg))
+}
+
+fn handle_instantiate_treasury_reply_callback(
+    ctx: &mut Context,
+    chain_id: String,
+    reply: Reply,
+) -> EnterpriseOutpostsResult<Response> {
+    let treasury_addr = parse_reply_instantiate_data(reply)?.contract_address;
+
+    add_cross_chain_treasury(
+        ctx,
+        AddCrossChainTreasuryMsg {
+            chain_id,
+            treasury_addr,
+        },
+    )?;
+
+    Ok(execute_execute_msg_reply_callback_response())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
