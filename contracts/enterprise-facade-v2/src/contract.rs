@@ -10,7 +10,7 @@ use enterprise_facade_api::msg::{ExecuteMsg, QueryMsg};
 use enterprise_facade_common::facade::EnterpriseFacade;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:enterprise-facade";
+const CONTRACT_NAME: &str = "crates.io:enterprise-facade-v2";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
