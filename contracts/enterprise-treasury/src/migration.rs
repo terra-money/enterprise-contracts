@@ -1,7 +1,7 @@
 use crate::contract::{
     COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
-    MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+    ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use crate::state::{Config, CONFIG};
 use common::cw::Context;
@@ -85,6 +85,7 @@ struct MigrationInfo {
     pub version_info: VersionInfo,
     pub enterprise_contract: Option<Addr>,
     pub enterprise_governance_controller_contract: Option<Addr>,
+    pub enterprise_outposts_contract: Option<Addr>,
     pub membership_contract: Option<Addr>,
     pub council_membership_contract: Option<Addr>,
 }
@@ -159,6 +160,7 @@ pub fn migrate_to_rewrite(deps: DepsMut, env: Env) -> EnterpriseTreasuryResult<V
             version_info: version_info.version.clone(),
             enterprise_contract: None,
             enterprise_governance_controller_contract: None,
+            enterprise_outposts_contract: None,
             membership_contract: None,
             council_membership_contract: None,
         },
@@ -413,13 +415,19 @@ pub fn governance_controller_contract_created(
         version_info.token_staking_membership_code_id,
         version_info.nft_staking_membership_code_id,
         version_info.multisig_membership_code_id,
-        enterprise_contract,
+        enterprise_contract.clone(),
         governance_controller_contract,
+    )?;
+
+    let enterprise_outposts_submsg = create_enterprise_outposts_contract(
+        enterprise_contract,
+        version_info.enterprise_outposts_code_id,
     )?;
 
     Ok(response
         .add_submessage(dao_council_membership_submsg)
-        .add_submessage(membership_submsg))
+        .add_submessage(membership_submsg)
+        .add_submessage(enterprise_outposts_submsg))
 }
 
 pub fn create_enterprise_membership_contract(
@@ -521,6 +529,43 @@ pub fn membership_contract_created(
     Ok(Response::new())
 }
 
+pub fn create_enterprise_outposts_contract(
+    enterprise_contract: Addr,
+    enterprise_outposts_code_id: u64,
+) -> EnterpriseTreasuryResult<SubMsg> {
+    let instantiate_enterprise_outposts = SubMsg::reply_on_success(
+        Wasm(Instantiate {
+            admin: Some(enterprise_contract.to_string()),
+            code_id: enterprise_outposts_code_id,
+            msg: to_binary(&enterprise_outposts_api::msg::InstantiateMsg {
+                enterprise_contract: enterprise_contract.to_string(),
+            })?,
+            funds: vec![],
+            label: "Enterprise outposts".to_string(),
+        }),
+        ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID,
+    );
+
+    Ok(instantiate_enterprise_outposts)
+}
+
+pub fn enterprise_outposts_contract_created(
+    deps: DepsMut,
+    enterprise_outposts_contract: Addr,
+) -> EnterpriseTreasuryResult<Response> {
+    let migration_info = MIGRATION_INFO.load(deps.storage)?;
+
+    MIGRATION_INFO.save(
+        deps.storage,
+        &MigrationInfo {
+            enterprise_outposts_contract: Some(enterprise_outposts_contract),
+            ..migration_info
+        },
+    )?;
+
+    Ok(Response::new())
+}
+
 pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Response> {
     if ctx.info.sender != ctx.env.contract.address {
         return Err(Unauthorized);
@@ -536,6 +581,12 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         .ok_or(Std(StdError::generic_err(
         "invalid state - missing governance controller address",
     )))?;
+    let enterprise_outposts_contract =
+        migration_info
+            .enterprise_outposts_contract
+            .ok_or(Std(StdError::generic_err(
+                "invalid state - missing outposts address",
+            )))?;
     let membership_contract =
         migration_info
             .membership_contract
@@ -596,6 +647,7 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
             enterprise_treasury_contract: ctx.env.contract.address.to_string(),
             enterprise_governance_contract: enterprise_governance.to_string(),
             enterprise_governance_controller_contract: governance_controller_contract.to_string(),
+            enterprise_outposts_contract: enterprise_outposts_contract.to_string(),
             funds_distributor_contract: funds_distributor.to_string(),
             membership_contract: membership_contract.to_string(),
             council_membership_contract: council_membership_contract.to_string(),

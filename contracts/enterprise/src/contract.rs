@@ -126,6 +126,10 @@ fn finalize_instantiation(ctx: &mut Context, msg: FinalizeInstantiationMsg) -> D
             .deps
             .api
             .addr_validate(&msg.enterprise_treasury_contract)?,
+        enterprise_outposts_contract: ctx
+            .deps
+            .api
+            .addr_validate(&msg.enterprise_outposts_contract)?,
         funds_distributor_contract: ctx
             .deps
             .api

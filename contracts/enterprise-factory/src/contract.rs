@@ -65,8 +65,9 @@ pub const COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 5;
 pub const FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID: u64 = 6;
 pub const ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID: u64 = 7;
 pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 8;
-pub const ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID: u64 = 9;
-pub const ATTESTATION_INSTANTIATE_REPLY_ID: u64 = 10;
+pub const ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID: u64 = 9;
+pub const ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID: u64 = 10;
+pub const ATTESTATION_INSTANTIATE_REPLY_ID: u64 = 11;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -142,6 +143,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
             funds_distributor_address: None,
             enterprise_governance_address: None,
             enterprise_governance_controller_address: None,
+            enterprise_outposts_address: None,
             enterprise_treasury_address: None,
             attestation_addr: None,
         },
@@ -191,6 +193,7 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
             funds_distributor_address: None,
             enterprise_governance_address: None,
             enterprise_governance_controller_address: None,
+            enterprise_outposts_address: None,
             enterprise_treasury_address: None,
             attestation_addr: None,
         },
@@ -207,6 +210,9 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
                 .to_string(),
             enterprise_governance_controller_contract: dao_being_created
                 .require_enterprise_governance_controller_address()?
+                .to_string(),
+            enterprise_outposts_contract: dao_being_created
+                .require_enterprise_outposts_address()?
                 .to_string(),
             funds_distributor_contract: dao_being_created
                 .require_funds_distributor_address()?
@@ -469,6 +475,19 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID,
             );
 
+            let enterprise_outposts_submsg = SubMsg::reply_on_success(
+                Wasm(Instantiate {
+                    admin: Some(enterprise_contract.to_string()),
+                    code_id: version_info.enterprise_outposts_code_id,
+                    msg: to_binary(&enterprise_outposts_api::msg::InstantiateMsg {
+                        enterprise_contract: enterprise_contract.to_string(),
+                    })?,
+                    funds: vec![],
+                    label: "Enterprise outposts".to_string(),
+                }),
+                ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID,
+            );
+
             let mut asset_whitelist = create_dao_msg.asset_whitelist.unwrap_or_default();
             if let Some(asset) = dao_being_created.dao_asset.clone() {
                 asset_whitelist.push(asset.into());
@@ -550,6 +569,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_submessage(enterprise_governance_submsg)
                 .add_submessage(membership_submsg)
                 .add_submessage(council_membership_submsg)
+                .add_submessage(enterprise_outposts_submsg)
                 .add_submessage(enterprise_treasury_submsg);
 
             let response = match create_dao_msg.attestation_text {
@@ -573,6 +593,21 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             // Ok(response)
             Ok(response.add_submessage(finalize_submsg))
+        }
+        ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID => {
+            let contract_address = parse_reply_instantiate_data(msg)
+                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
+                .contract_address;
+            let enterprise_outposts_contract = deps.api.addr_validate(&contract_address)?;
+
+            DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
+                Ok(DaoBeingCreated {
+                    enterprise_outposts_address: Some(enterprise_outposts_contract),
+                    ..info
+                })
+            })?;
+
+            Ok(Response::new())
         }
         ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)

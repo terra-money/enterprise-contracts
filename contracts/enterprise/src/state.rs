@@ -17,6 +17,7 @@ pub struct ComponentContracts {
     pub enterprise_governance_controller_contract: Addr,
     /// This is the main treasury contract, that is used by default.
     pub enterprise_treasury_contract: Addr,
+    pub enterprise_outposts_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub membership_contract: Addr,
     pub council_membership_contract: Addr,

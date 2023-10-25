@@ -63,6 +63,7 @@ pub struct VersionInfo {
     pub enterprise_code_id: u64,
     pub enterprise_governance_code_id: u64,
     pub enterprise_governance_controller_code_id: u64,
+    pub enterprise_outposts_code_id: u64,
     pub enterprise_treasury_code_id: u64,
     pub funds_distributor_code_id: u64,
     pub token_staking_membership_code_id: u64,

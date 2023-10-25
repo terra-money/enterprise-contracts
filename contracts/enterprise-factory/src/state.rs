@@ -41,6 +41,7 @@ pub struct DaoBeingCreated {
     pub funds_distributor_address: Option<Addr>,
     pub enterprise_governance_address: Option<Addr>,
     pub enterprise_governance_controller_address: Option<Addr>,
+    pub enterprise_outposts_address: Option<Addr>,
     pub enterprise_treasury_address: Option<Addr>,
     pub attestation_addr: Option<Addr>,
 }
@@ -118,6 +119,14 @@ impl DaoBeingCreated {
             .ok_or(Std(StdError::generic_err(
             "invalid state - Enterprise governance controller address not present when expected",
         )))
+    }
+
+    pub fn require_enterprise_outposts_address(&self) -> DaoResult<Addr> {
+        self.enterprise_outposts_address
+            .clone()
+            .ok_or(Std(StdError::generic_err(
+                "invalid state - Enterprise outposts address not present when expected",
+            )))
     }
 
     pub fn require_enterprise_treasury_address(&self) -> DaoResult<Addr> {

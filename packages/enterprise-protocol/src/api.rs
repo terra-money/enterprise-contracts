@@ -51,6 +51,7 @@ pub struct FinalizeInstantiationMsg {
     pub enterprise_treasury_contract: String,
     pub enterprise_governance_contract: String,
     pub enterprise_governance_controller_contract: String,
+    pub enterprise_outposts_contract: String,
     pub funds_distributor_contract: String,
     pub membership_contract: String,
     pub council_membership_contract: String,

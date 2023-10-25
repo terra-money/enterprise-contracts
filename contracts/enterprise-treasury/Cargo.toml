@@ -44,6 +44,7 @@ enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 enterprise-governance-api = { path = "../../packages/enterprise-governance-api" }
 enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }

@@ -4,7 +4,8 @@ use crate::asset_whitelist::{
     remove_whitelisted_assets,
 };
 use crate::migration::{
-    council_membership_contract_created, enterprise_contract_created, finalize_migration,
+    council_membership_contract_created, enterprise_contract_created,
+    enterprise_outposts_contract_created, finalize_migration,
     governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
 };
 use crate::state::{Config, CONFIG, NFT_WHITELIST};
@@ -44,6 +45,7 @@ pub const ENTERPRISE_INSTANTIATE_REPLY_ID: u64 = 1;
 pub const MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
 pub const COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 4;
+pub const ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID: u64 = 5;
 
 const DEFAULT_QUERY_LIMIT: u8 = 30;
 const MAX_QUERY_LIMIT: u8 = 100;
@@ -245,6 +247,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> EnterpriseTreasuryResult<R
             let membership_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
 
             membership_contract_created(deps, membership_contract)
+        }
+        ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID => {
+            let enterprise_outposts_contract =
+                parse_instantiated_contract_addr(deps.as_ref(), msg)?;
+
+            enterprise_outposts_contract_created(deps, enterprise_outposts_contract)
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }
