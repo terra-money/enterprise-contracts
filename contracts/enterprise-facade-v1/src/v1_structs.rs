@@ -6,7 +6,7 @@ use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::Duration;
 use enterprise_facade_api::api::{
     AssetWhitelistParams, CastVoteMsg, ClaimsParams, CreateProposalMsg, DaoCouncil, DaoMetadata,
-    DaoType, ExecuteProposalMsg, GovConfigV5, ListMultisigMembersMsg, Logo, MemberVoteParams,
+    DaoType, ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, Logo, MemberVoteParams,
     NftWhitelistParams, ProposalParams, ProposalStatusParams, ProposalVotesParams, ProposalsParams,
     QueryMemberInfoMsg, StakedNftsParams, UnstakeMsg,
 };
@@ -19,7 +19,7 @@ use enterprise_protocol::api::UpdateMetadataMsg;
 use multisig_membership_api::api::UserWeight;
 
 #[cw_serde]
-pub struct UpdateMetadataV5Msg {
+pub struct UpdateMetadataV1Msg {
     pub name: ModifyValue<String>,
     pub description: ModifyValue<Option<String>>,
     pub logo: ModifyValue<Logo>,
@@ -29,14 +29,14 @@ pub struct UpdateMetadataV5Msg {
     pub telegram_username: ModifyValue<Option<String>>,
 }
 
-impl From<UpdateMetadataMsg> for UpdateMetadataV5Msg {
+impl From<UpdateMetadataMsg> for UpdateMetadataV1Msg {
     fn from(value: UpdateMetadataMsg) -> Self {
         let logo = match value.logo {
             Change(logo) => Change(logo.into()),
             NoChange => NoChange,
         };
 
-        UpdateMetadataV5Msg {
+        UpdateMetadataV1Msg {
             name: value.name,
             description: value.description,
             logo,
@@ -49,7 +49,7 @@ impl From<UpdateMetadataMsg> for UpdateMetadataV5Msg {
 }
 
 #[cw_serde]
-pub struct UpdateGovConfigV5Msg {
+pub struct UpdateGovConfigV1Msg {
     pub quorum: ModifyValue<Decimal>,
     pub threshold: ModifyValue<Decimal>,
     pub veto_threshold: ModifyValue<Option<Decimal>>,
@@ -59,9 +59,9 @@ pub struct UpdateGovConfigV5Msg {
     pub allow_early_proposal_execution: ModifyValue<bool>,
 }
 
-impl From<UpdateGovConfigMsg> for UpdateGovConfigV5Msg {
+impl From<UpdateGovConfigMsg> for UpdateGovConfigV1Msg {
     fn from(value: UpdateGovConfigMsg) -> Self {
-        UpdateGovConfigV5Msg {
+        UpdateGovConfigV1Msg {
             quorum: value.quorum,
             threshold: value.threshold,
             veto_threshold: value.veto_threshold,
@@ -74,27 +74,27 @@ impl From<UpdateGovConfigMsg> for UpdateGovConfigV5Msg {
 }
 
 #[cw_serde]
-pub struct UpdateCouncilV5Msg {
+pub struct UpdateCouncilV1Msg {
     pub dao_council: Option<DaoCouncilSpec>,
 }
 
-impl From<UpdateCouncilMsg> for UpdateCouncilV5Msg {
+impl From<UpdateCouncilMsg> for UpdateCouncilV1Msg {
     fn from(value: UpdateCouncilMsg) -> Self {
-        UpdateCouncilV5Msg {
+        UpdateCouncilV1Msg {
             dao_council: value.dao_council,
         }
     }
 }
 
 #[cw_serde]
-pub struct UpdateAssetWhitelistV5Msg {
+pub struct UpdateAssetWhitelistV1Msg {
     pub add: Vec<AssetInfoUnchecked>,
     pub remove: Vec<AssetInfoUnchecked>,
 }
 
-impl From<UpdateAssetWhitelistProposalActionMsg> for UpdateAssetWhitelistV5Msg {
+impl From<UpdateAssetWhitelistProposalActionMsg> for UpdateAssetWhitelistV1Msg {
     fn from(value: UpdateAssetWhitelistProposalActionMsg) -> Self {
-        UpdateAssetWhitelistV5Msg {
+        UpdateAssetWhitelistV1Msg {
             add: value.add,
             remove: value.remove,
         }
@@ -102,14 +102,14 @@ impl From<UpdateAssetWhitelistProposalActionMsg> for UpdateAssetWhitelistV5Msg {
 }
 
 #[cw_serde]
-pub struct UpdateNftWhitelistV5Msg {
+pub struct UpdateNftWhitelistV1Msg {
     pub add: Vec<String>,
     pub remove: Vec<String>,
 }
 
-impl From<UpdateNftWhitelistProposalActionMsg> for UpdateNftWhitelistV5Msg {
+impl From<UpdateNftWhitelistProposalActionMsg> for UpdateNftWhitelistV1Msg {
     fn from(value: UpdateNftWhitelistProposalActionMsg) -> Self {
-        UpdateNftWhitelistV5Msg {
+        UpdateNftWhitelistV1Msg {
             add: value.add,
             remove: value.remove,
         }
@@ -117,14 +117,14 @@ impl From<UpdateNftWhitelistProposalActionMsg> for UpdateNftWhitelistV5Msg {
 }
 
 #[cw_serde]
-pub struct RequestFundingFromDaoV5Msg {
+pub struct RequestFundingFromDaoV1Msg {
     pub recipient: String,
     pub assets: Vec<AssetUnchecked>,
 }
 
-impl From<RequestFundingFromDaoMsg> for RequestFundingFromDaoV5Msg {
+impl From<RequestFundingFromDaoMsg> for RequestFundingFromDaoV1Msg {
     fn from(value: RequestFundingFromDaoMsg) -> Self {
-        RequestFundingFromDaoV5Msg {
+        RequestFundingFromDaoV1Msg {
             recipient: value.recipient,
             assets: value.assets,
         }
@@ -132,20 +132,20 @@ impl From<RequestFundingFromDaoMsg> for RequestFundingFromDaoV5Msg {
 }
 
 #[cw_serde]
-pub struct UpgradeDaoV5Msg {
+pub struct UpgradeDaoV1Msg {
     pub new_dao_code_id: u64,
     pub migrate_msg: Binary,
 }
 
 #[cw_serde]
-pub struct ExecuteMsgsV5Msg {
+pub struct ExecuteMsgsV1Msg {
     pub action_type: String,
     pub msgs: Vec<String>,
 }
 
-impl From<ExecuteMsgsMsg> for ExecuteMsgsV5Msg {
+impl From<ExecuteMsgsMsg> for ExecuteMsgsV1Msg {
     fn from(value: ExecuteMsgsMsg) -> Self {
-        ExecuteMsgsV5Msg {
+        ExecuteMsgsV1Msg {
             action_type: value.action_type,
             msgs: value.msgs,
         }
@@ -153,30 +153,30 @@ impl From<ExecuteMsgsMsg> for ExecuteMsgsV5Msg {
 }
 
 #[cw_serde]
-pub struct ModifyMultisigMembershipV5Msg {
+pub struct ModifyMultisigMembershipV1Msg {
     /// Members to be edited.
     /// Can contain existing members, in which case their new weight will be the one specified in
     /// this message. This effectively allows removing of members (by setting their weight to 0).
-    pub edit_members: Vec<MultisigMemberV5>,
+    pub edit_members: Vec<MultisigMemberV1>,
 }
 
-impl From<ModifyMultisigMembershipMsg> for ModifyMultisigMembershipV5Msg {
+impl From<ModifyMultisigMembershipMsg> for ModifyMultisigMembershipV1Msg {
     fn from(value: ModifyMultisigMembershipMsg) -> Self {
-        ModifyMultisigMembershipV5Msg {
+        ModifyMultisigMembershipV1Msg {
             edit_members: value.edit_members.into_iter().map(|it| it.into()).collect(),
         }
     }
 }
 
 #[cw_serde]
-pub struct MultisigMemberV5 {
+pub struct MultisigMemberV1 {
     pub address: String,
     pub weight: Uint128,
 }
 
-impl From<UserWeight> for MultisigMemberV5 {
+impl From<UserWeight> for MultisigMemberV1 {
     fn from(value: UserWeight) -> Self {
-        MultisigMemberV5 {
+        MultisigMemberV1 {
             address: value.user,
             weight: value.weight,
         }
@@ -184,37 +184,37 @@ impl From<UserWeight> for MultisigMemberV5 {
 }
 
 #[cw_serde]
-pub struct DistributeFundsV5Msg {
+pub struct DistributeFundsV1Msg {
     pub funds: Vec<AssetUnchecked>,
 }
 
-impl From<DistributeFundsMsg> for DistributeFundsV5Msg {
+impl From<DistributeFundsMsg> for DistributeFundsV1Msg {
     fn from(value: DistributeFundsMsg) -> Self {
-        DistributeFundsV5Msg { funds: value.funds }
+        DistributeFundsV1Msg { funds: value.funds }
     }
 }
 
 #[cw_serde]
-pub struct UpdateMinimumWeightForRewardsV5Msg {
+pub struct UpdateMinimumWeightForRewardsV1Msg {
     pub minimum_weight_for_rewards: Uint128,
 }
 
-impl From<UpdateMinimumWeightForRewardsMsg> for UpdateMinimumWeightForRewardsV5Msg {
+impl From<UpdateMinimumWeightForRewardsMsg> for UpdateMinimumWeightForRewardsV1Msg {
     fn from(value: UpdateMinimumWeightForRewardsMsg) -> Self {
-        UpdateMinimumWeightForRewardsV5Msg {
+        UpdateMinimumWeightForRewardsV1Msg {
             minimum_weight_for_rewards: value.minimum_weight_for_rewards,
         }
     }
 }
 
-/// This is what execute messages for Enterprise contract looked like for v5.
+/// This is what execute messages for Enterprise contract looked like for v1.
 #[cw_serde]
-pub enum ExecuteV5Msg {
+pub enum ExecuteV1Msg {
     // facaded part
     ExecuteProposal(ExecuteProposalMsg),
     // adapted part
-    CreateProposal(CreateProposalV5Msg),
-    CreateCouncilProposal(CreateProposalV5Msg),
+    CreateProposal(CreateProposalV1Msg),
+    CreateCouncilProposal(CreateProposalV1Msg),
     CastVote(CastVoteMsg),
     CastCouncilVote(CastVoteMsg),
     Unstake(UnstakeMsg),
@@ -222,48 +222,48 @@ pub enum ExecuteV5Msg {
 }
 
 #[cw_serde]
-pub struct CreateProposalV5Msg {
+pub struct CreateProposalV1Msg {
     /// Title of the proposal
     pub title: String,
     /// Optional description text of the proposal
     pub description: Option<String>,
     /// Actions to be executed, in order, if the proposal passes
-    pub proposal_actions: Vec<ProposalActionV5>,
+    pub proposal_actions: Vec<ProposalActionV1>,
 }
 
 #[cw_serde]
-pub enum ProposalActionV5 {
-    UpdateMetadata(UpdateMetadataV5Msg),
-    UpdateGovConfig(UpdateGovConfigV5Msg),
-    UpdateCouncil(UpdateCouncilV5Msg),
-    UpdateAssetWhitelist(UpdateAssetWhitelistV5Msg),
-    UpdateNftWhitelist(UpdateNftWhitelistV5Msg),
-    RequestFundingFromDao(RequestFundingFromDaoV5Msg),
-    UpgradeDao(UpgradeDaoV5Msg),
-    ExecuteMsgs(ExecuteMsgsV5Msg),
-    ModifyMultisigMembership(ModifyMultisigMembershipV5Msg),
-    DistributeFunds(DistributeFundsV5Msg),
-    UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsV5Msg),
+pub enum ProposalActionV1 {
+    UpdateMetadata(UpdateMetadataV1Msg),
+    UpdateGovConfig(UpdateGovConfigV1Msg),
+    UpdateCouncil(UpdateCouncilV1Msg),
+    UpdateAssetWhitelist(UpdateAssetWhitelistV1Msg),
+    UpdateNftWhitelist(UpdateNftWhitelistV1Msg),
+    RequestFundingFromDao(RequestFundingFromDaoV1Msg),
+    UpgradeDao(UpgradeDaoV1Msg),
+    ExecuteMsgs(ExecuteMsgsV1Msg),
+    ModifyMultisigMembership(ModifyMultisigMembershipV1Msg),
+    DistributeFunds(DistributeFundsV1Msg),
+    UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsV1Msg),
 }
 
-/// This is what CW20-receive hook messages for Enterprise contract looked like for v5.
+/// This is what CW20-receive hook messages for Enterprise contract looked like for v1.
 #[cw_serde]
-pub enum Cw20HookV5Msg {
+pub enum Cw20HookV1Msg {
     Stake {},
     CreateProposal(CreateProposalMsg),
 }
 
-/// This is what CW721-receive hook messages for Enterprise contract looked like for v5.
+/// This is what CW721-receive hook messages for Enterprise contract looked like for v1.
 #[cw_serde]
-pub enum Cw721HookV5Msg {
+pub enum Cw721HookV1Msg {
     Stake {},
 }
 
-/// This is what query messages for Enterprise contract looked like for v5.
+/// This is what query messages for Enterprise contract looked like for v1.
 /// Looks almost the same as the API for enterprise-facade, but the facade also takes target
 /// Enterprise contract address in each of the queries.
 #[cw_serde]
-pub enum QueryV5Msg {
+pub enum QueryV1Msg {
     DaoInfo {},
     MemberInfo(QueryMemberInfoMsg),
     ListMultisigMembers(ListMultisigMembersMsg),
@@ -274,7 +274,7 @@ pub enum QueryV5Msg {
     ProposalStatus(ProposalStatusParams),
     MemberVote(MemberVoteParams),
     ProposalVotes(ProposalVotesParams),
-    UserStake(UserStakeV5Params),
+    UserStake(UserStakeV1Params),
     TotalStakedAmount {},
     StakedNfts(StakedNftsParams),
     Claims(ClaimsParams),
@@ -282,15 +282,15 @@ pub enum QueryV5Msg {
 }
 
 #[cw_serde]
-pub struct UserStakeV5Params {
+pub struct UserStakeV1Params {
     pub user: String,
 }
 
 #[cw_serde]
-pub struct DaoInfoResponseV5 {
+pub struct DaoInfoResponseV1 {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
-    pub gov_config: GovConfigV5,
+    pub gov_config: GovConfigV1,
     pub dao_council: Option<DaoCouncil>,
     pub dao_type: DaoType,
     pub dao_membership_contract: Addr,

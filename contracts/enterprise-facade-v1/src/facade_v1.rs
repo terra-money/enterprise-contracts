@@ -1,20 +1,20 @@
 use crate::state::ENTERPRISE_VERSIONING;
-use crate::v1_structs::ExecuteV5Msg::{
+use crate::v1_structs::ExecuteV1Msg::{
     CastCouncilVote, CastVote, Claim, CreateCouncilProposal, CreateProposal, Unstake,
 };
-use crate::v1_structs::ProposalActionV5::{
+use crate::v1_structs::ProposalActionV1::{
     DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
-use crate::v1_structs::QueryV5Msg::ProposalStatus;
-use crate::v1_structs::QueryV5Msg::{
+use crate::v1_structs::QueryV1Msg::ProposalStatus;
+use crate::v1_structs::QueryV1Msg::{
     AssetWhitelist, Claims, DaoInfo, ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist,
     Proposal, ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
 };
 use crate::v1_structs::{
-    CreateProposalV5Msg, Cw20HookV5Msg, Cw721HookV5Msg, DaoInfoResponseV5, ExecuteV5Msg,
-    ProposalActionV5, UpgradeDaoV5Msg, UserStakeV5Params,
+    CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
+    ProposalActionV1, UpgradeDaoV1Msg, UserStakeV1Params,
 };
 use common::cw::{Context, QueryContext};
 use cosmwasm_schema::serde::de::DeserializeOwned;
@@ -55,7 +55,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     ) -> EnterpriseFacadeResult<Response> {
         let submsg = SubMsg::new(wasm_execute(
             self.enterprise_address.to_string(),
-            &ExecuteV5Msg::ExecuteProposal(msg),
+            &ExecuteV1Msg::ExecuteProposal(msg),
             vec![],
         )?);
         Ok(Response::new().add_submessage(submsg))
@@ -71,7 +71,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     }
 
     fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse> {
-        let dao_info_v5: DaoInfoResponseV5 =
+        let dao_info_v5: DaoInfoResponseV1 =
             self.query_enterprise_contract(qctx.deps, &DaoInfo {})?;
 
         let dao_version_from_code_version = Version {
@@ -173,7 +173,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     ) -> EnterpriseFacadeResult<UserStakeResponse> {
         self.query_enterprise_contract(
             qctx.deps,
-            &UserStake(UserStakeV5Params { user: params.user }),
+            &UserStake(UserStakeV1Params { user: params.user }),
         )
     }
 
@@ -252,7 +252,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: params.deposit_amount,
-                    msg: to_binary(&Cw20HookV5Msg::CreateProposal(CreateProposalMsg {
+                    msg: to_binary(&Cw20HookV1Msg::CreateProposal(CreateProposalMsg {
                         title: params.create_proposal_msg.title,
                         description: params.create_proposal_msg.description,
                         proposal_actions: params.create_proposal_msg.proposal_actions,
@@ -323,7 +323,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                 let msg = cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: msg.amount,
-                    msg: to_binary(&Cw20HookV5Msg::Stake {})?,
+                    msg: to_binary(&Cw20HookV1Msg::Stake {})?,
                 };
                 Ok(adapter_response_single_msg(
                     token_addr,
@@ -334,7 +334,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
             StakeMsg::Cw721(msg) => {
                 let nft_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
 
-                let stake_msg_binary = to_binary(&Cw721HookV5Msg::Stake {})?;
+                let stake_msg_binary = to_binary(&Cw721HookV1Msg::Stake {})?;
 
                 let msgs = msg
                     .tokens
@@ -397,7 +397,7 @@ impl EnterpriseFacadeV1 {
         &self,
         deps: Deps,
         proposal_action: ProposalAction,
-    ) -> StdResult<ProposalActionV5> {
+    ) -> StdResult<ProposalActionV1> {
         match proposal_action {
             ProposalAction::UpdateMetadata(msg) => Ok(UpdateMetadata(msg.into())),
             ProposalAction::UpdateGovConfig(msg) => Ok(UpdateGovConfig(msg.into())),
@@ -421,7 +421,7 @@ impl EnterpriseFacadeV1 {
                         }),
                     )?;
                     // if we're migrating old DAO to rewritten structure, we first need to migrate to 1.0.0
-                    Ok(UpgradeDao(UpgradeDaoV5Msg {
+                    Ok(UpgradeDao(UpgradeDaoV1Msg {
                         // send enterprise_treasury_code_id, since it takes the address of old enterprise contract
                         new_dao_code_id: version_1_0_0_info.version.enterprise_treasury_code_id,
                         migrate_msg: to_binary(&enterprise_treasury_api::msg::MigrateMsg {})?,
@@ -434,7 +434,7 @@ impl EnterpriseFacadeV1 {
                             version: msg.new_version,
                         }),
                     )?;
-                    Ok(UpgradeDao(UpgradeDaoV5Msg {
+                    Ok(UpgradeDao(UpgradeDaoV1Msg {
                         new_dao_code_id: version_info.version.enterprise_code_id,
                         migrate_msg: to_binary(&Empty {})?,
                     }))
@@ -461,14 +461,14 @@ impl EnterpriseFacadeV1 {
         &self,
         deps: Deps,
         msg: CreateProposalMsg,
-    ) -> StdResult<CreateProposalV5Msg> {
+    ) -> StdResult<CreateProposalV1Msg> {
         let proposal_actions = msg
             .proposal_actions
             .into_iter()
             .map(|it| self.map_proposal_action_to_v5(deps, it))
-            .collect::<StdResult<Vec<ProposalActionV5>>>()?;
+            .collect::<StdResult<Vec<ProposalActionV1>>>()?;
 
-        Ok(CreateProposalV5Msg {
+        Ok(CreateProposalV1Msg {
             title: msg.title,
             description: msg.description,
             proposal_actions,

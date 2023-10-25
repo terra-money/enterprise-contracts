@@ -1,204 +1,59 @@
-use crate::facade_post_rewrite::EnterpriseFacadePostRewrite;
-use crate::facade_v5::EnterpriseFacadeV5;
-use crate::v5_structs::DaoInfoResponseV5;
-use crate::v5_structs::QueryV5Msg::DaoInfo;
-use common::cw::{Context, QueryContext};
-use cosmwasm_std::{Addr, Deps, Response, StdResult};
-use enterprise_facade_api::api::{
-    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
-    CreateProposalWithTokenDepositMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
-    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse,
-};
+use crate::facade::QueryV1Msg::DaoInfo;
+use crate::state::{ENTERPRISE_FACADE_V1, ENTERPRISE_FACADE_V2};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Addr, Deps, StdResult, Timestamp, Uint64};
+use enterprise_facade_api::api::{DaoCouncil, DaoMetadata, DaoType, GovConfigV1};
 use enterprise_facade_api::error::EnterpriseFacadeError::CannotCreateFacade;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
-use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
-use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_treasury_api::api::ConfigResponse;
 use enterprise_treasury_api::msg::QueryMsg::Config;
 
-pub trait EnterpriseFacade {
-    fn execute_proposal(
-        &self,
-        ctx: &mut Context,
-        msg: ExecuteProposalMsg,
-    ) -> EnterpriseFacadeResult<Response>;
+#[cw_serde]
+pub enum QueryV1Msg {
+    DaoInfo {},
+}
 
-    fn query_treasury_address(
-        &self,
-        qctx: QueryContext,
-    ) -> EnterpriseFacadeResult<TreasuryAddressResponse>;
+#[cw_serde]
+pub struct DaoInfoResponseV1 {
+    pub creation_date: Timestamp,
+    pub metadata: DaoMetadata,
+    pub gov_config: GovConfigV1,
+    pub dao_council: Option<DaoCouncil>,
+    pub dao_type: DaoType,
+    pub dao_membership_contract: Addr,
+    pub enterprise_factory_contract: Addr,
+    pub funds_distributor_contract: Addr,
+    pub dao_code_version: Uint64,
+}
 
-    fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse>;
-
-    fn query_member_info(
-        &self,
-        qctx: QueryContext,
-        msg: QueryMemberInfoMsg,
-    ) -> EnterpriseFacadeResult<MemberInfoResponse>;
-
-    fn query_list_multisig_members(
-        &self,
-        qctx: QueryContext,
-        msg: ListMultisigMembersMsg,
-    ) -> EnterpriseFacadeResult<MultisigMembersResponse>;
-
-    fn query_asset_whitelist(
-        &self,
-        qctx: QueryContext,
-        params: AssetWhitelistParams,
-    ) -> EnterpriseFacadeResult<AssetWhitelistResponse>;
-
-    fn query_nft_whitelist(
-        &self,
-        qctx: QueryContext,
-        params: NftWhitelistParams,
-    ) -> EnterpriseFacadeResult<NftWhitelistResponse>;
-
-    fn query_proposal(
-        &self,
-        qctx: QueryContext,
-        params: ProposalParams,
-    ) -> EnterpriseFacadeResult<ProposalResponse>;
-
-    fn query_proposals(
-        &self,
-        qctx: QueryContext,
-        params: ProposalsParams,
-    ) -> EnterpriseFacadeResult<ProposalsResponse>;
-
-    fn query_proposal_status(
-        &self,
-        qctx: QueryContext,
-        params: ProposalStatusParams,
-    ) -> EnterpriseFacadeResult<ProposalStatusResponse>;
-
-    fn query_member_vote(
-        &self,
-        qctx: QueryContext,
-        params: MemberVoteParams,
-    ) -> EnterpriseFacadeResult<MemberVoteResponse>;
-
-    fn query_proposal_votes(
-        &self,
-        qctx: QueryContext,
-        params: ProposalVotesParams,
-    ) -> EnterpriseFacadeResult<ProposalVotesResponse>;
-
-    fn query_user_stake(
-        &self,
-        qctx: QueryContext,
-        params: UserStakeParams,
-    ) -> EnterpriseFacadeResult<UserStakeResponse>;
-
-    fn query_total_staked_amount(
-        &self,
-        qctx: QueryContext,
-    ) -> EnterpriseFacadeResult<TotalStakedAmountResponse>;
-
-    fn query_staked_nfts(
-        &self,
-        qctx: QueryContext,
-        params: StakedNftsParams,
-    ) -> EnterpriseFacadeResult<StakedNftsResponse>;
-
-    fn query_claims(
-        &self,
-        qctx: QueryContext,
-        params: ClaimsParams,
-    ) -> EnterpriseFacadeResult<ClaimsResponse>;
-
-    fn query_releasable_claims(
-        &self,
-        qctx: QueryContext,
-        params: ClaimsParams,
-    ) -> EnterpriseFacadeResult<ClaimsResponse>;
-
-    fn query_cross_chain_treasuries(
-        &self,
-        qctx: QueryContext,
-        params: CrossChainTreasuriesParams,
-    ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse>;
-
-    fn adapt_create_proposal(
-        &self,
-        qctx: QueryContext,
-        params: CreateProposalMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_create_proposal_with_denom_deposit(
-        &self,
-        qctx: QueryContext,
-        params: CreateProposalWithDenomDepositMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_create_proposal_with_token_deposit(
-        &self,
-        qctx: QueryContext,
-        params: CreateProposalWithTokenDepositMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_create_proposal_with_nft_deposit(
-        &self,
-        qctx: QueryContext,
-        params: CreateProposalWithNftDepositMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_create_council_proposal(
-        &self,
-        qctx: QueryContext,
-        params: CreateProposalMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_cast_vote(
-        &self,
-        qctx: QueryContext,
-        params: CastVoteMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_cast_council_vote(
-        &self,
-        qctx: QueryContext,
-        params: CastVoteMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_stake(
-        &self,
-        qctx: QueryContext,
-        params: StakeMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_unstake(
-        &self,
-        qctx: QueryContext,
-        params: UnstakeMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse>;
-
-    fn adapt_claim(&self, qctx: QueryContext) -> EnterpriseFacadeResult<AdapterResponse>;
+/// Structure informing us the address of the facade contract to use, and the DAO address to use
+/// when calling the facade.
+#[cw_serde]
+pub struct FacadeTarget {
+    pub facade_address: Addr,
+    pub dao_address: Addr,
 }
 
 /// Get the correct facade implementation for the given address.
 /// Address given will be for different contracts depending on Enterprise version.
 /// For v0.5.0 (pre-rewrite) Enterprise, the address will be that of the enterprise contract itself.
-/// For v1.0.0 (post-rewrite) Enterprise, the address will be that of the enterprise treasury contract.
-pub fn get_facade(deps: Deps, address: Addr) -> EnterpriseFacadeResult<Box<dyn EnterpriseFacade>> {
+/// For v1.0.0 (post-rewrite) Enterprise, the address will be that of the enterprise treasury contract or the enterprise contract.
+pub fn get_facade(deps: Deps, address: Addr) -> EnterpriseFacadeResult<FacadeTarget> {
     // attempt to query for DAO info
-    let dao_info: StdResult<DaoInfoResponseV5> = deps
+    let dao_info: StdResult<DaoInfoResponseV1> = deps
         .querier
         .query_wasm_smart(address.to_string(), &DaoInfo {});
 
     if dao_info.is_ok() {
-        // if the query was successful, then this is a v0.5.0 (pre-rewrite) Enterprise contract
-        Ok(Box::new(EnterpriseFacadeV5 {
-            enterprise_address: address,
-        }))
+        // if the query was successful, then this is a v0.5.0 (pre-rewrite) enterprise contract
+        let facade_v1 = ENTERPRISE_FACADE_V1.load(deps.storage)?;
+        Ok(FacadeTarget {
+            facade_address: facade_v1,
+            dao_address: address,
+        })
     } else {
-        // if the query failed, this should be either the post-rewrite Enterprise treasury or Enterprise contract, but let's check
+        // if the query failed, this should be either the post-rewrite enterprise-treasury or enterprise contract, but let's check
 
         if let Ok(facade) =
             get_facade_assume_post_rewrite_enterprise_treasury(deps, address.clone())
@@ -212,11 +67,11 @@ pub fn get_facade(deps: Deps, address: Addr) -> EnterpriseFacadeResult<Box<dyn E
 
 fn get_facade_assume_post_rewrite_enterprise_treasury(
     deps: Deps,
-    address: Addr,
-) -> EnterpriseFacadeResult<Box<dyn EnterpriseFacade>> {
+    treasury_address: Addr,
+) -> EnterpriseFacadeResult<FacadeTarget> {
     let treasury_config: ConfigResponse = deps
         .querier
-        .query_wasm_smart(address.to_string(), &Config {})
+        .query_wasm_smart(treasury_address.to_string(), &Config {})
         .map_err(|_| CannotCreateFacade)?;
 
     let governance_controller_config: enterprise_governance_controller_api::api::ConfigResponse =
@@ -227,26 +82,30 @@ fn get_facade_assume_post_rewrite_enterprise_treasury(
             )
             .map_err(|_| CannotCreateFacade)?;
 
-    Ok(Box::new(EnterpriseFacadePostRewrite {
-        enterprise_treasury_address: address,
-        enterprise_address: governance_controller_config.enterprise_contract,
-    }))
+    let facade_v2 = ENTERPRISE_FACADE_V2.load(deps.storage)?;
+
+    Ok(FacadeTarget {
+        facade_address: facade_v2,
+        dao_address: governance_controller_config.enterprise_contract,
+    })
 }
 
 fn get_facade_assume_post_rewrite_enterprise(
     deps: Deps,
-    address: Addr,
-) -> EnterpriseFacadeResult<Box<dyn EnterpriseFacade>> {
-    let component_contracts: enterprise_protocol::api::ComponentContractsResponse = deps
+    enterprise_address: Addr,
+) -> EnterpriseFacadeResult<FacadeTarget> {
+    let _: ComponentContractsResponse = deps
         .querier
         .query_wasm_smart(
-            address.to_string(),
+            enterprise_address.to_string(),
             &enterprise_protocol::msg::QueryMsg::ComponentContracts {},
         )
         .map_err(|_| CannotCreateFacade)?;
 
-    Ok(Box::new(EnterpriseFacadePostRewrite {
-        enterprise_treasury_address: component_contracts.enterprise_treasury_contract,
-        enterprise_address: address,
-    }))
+    let facade_v2 = ENTERPRISE_FACADE_V2.load(deps.storage)?;
+
+    Ok(FacadeTarget {
+        facade_address: facade_v2,
+        dao_address: enterprise_address,
+    })
 }

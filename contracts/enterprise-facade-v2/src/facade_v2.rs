@@ -13,7 +13,7 @@ use enterprise_facade_api::api::{
     ClaimAsset, ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
     CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
     DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomUserStake, ExecuteProposalMsg,
-    GovConfigV5, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
+    GovConfigV1, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
     MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
     NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse, ProposalStatus,
     ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
@@ -178,7 +178,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     telegram_username: dao_info.metadata.socials.telegram_username,
                 },
             },
-            gov_config: GovConfigV5 {
+            gov_config: GovConfigV1 {
                 quorum: gov_config.gov_config.quorum,
                 threshold: gov_config.gov_config.threshold,
                 veto_threshold: gov_config.gov_config.veto_threshold,

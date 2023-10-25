@@ -16,7 +16,8 @@ use enterprise_protocol::api::{CrossChainTreasuriesParams, CrossChainTreasuriesR
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub enterprise_versioning: String,
+    pub enterprise_facade_v1: String,
+    pub enterprise_facade_v2: String,
 }
 
 #[cw_serde]

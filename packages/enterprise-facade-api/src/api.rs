@@ -198,7 +198,7 @@ pub struct TreasuryAddressResponse {
 pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
-    pub gov_config: GovConfigV5,
+    pub gov_config: GovConfigV1,
     pub dao_council: Option<DaoCouncil>,
     pub dao_type: DaoType,
     pub dao_membership_contract: Addr,
@@ -209,7 +209,7 @@ pub struct DaoInfoResponse {
 }
 
 #[cw_serde]
-pub struct GovConfigV5 {
+pub struct GovConfigV1 {
     /// Portion of total available votes cast in a proposal to consider it valid
     /// e.g. quorum of 30% means that 30% of all available votes have to be cast in the proposal,
     /// otherwise it fails automatically when it expires
