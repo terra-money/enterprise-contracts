@@ -25,8 +25,8 @@ const DENOM_AXL_WBTC = "ibc/05D299885B07905B6886F554B39346EA6761246076A1120B1950
 const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341C7EC6752E674";
 
 task(async ({ network, deployer, executor, signer, refs }) => {
-  deployer.buildContract(ENTERPRISE);
-  deployer.optimizeContract(ENTERPRISE);
+  // deployer.buildContract(ENTERPRISE);
+  // deployer.optimizeContract(ENTERPRISE);
 
   // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
@@ -34,7 +34,7 @@ task(async ({ network, deployer, executor, signer, refs }) => {
 
   // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 2, 0);
+  await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 4, 0);
 
   // await instantiateDao(refs, network, executor);
 
@@ -141,39 +141,34 @@ const deployEnterpriseFactory = async (refs: Refs, network: string, deployer: De
 }
 
 const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer: Deployer, executor: Executor, major: number, minor: number, patch: number): Promise<void> => {
-  const attestationCodeId = await deployer.storeCode(ATTESTATION);
+  await deployer.storeCode(ATTESTATION);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const denomStakingMembershipCodeId = await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
+  await deployer.storeCode(ENTERPRISE);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  let enterpriseCodeId;
-  try {
-    enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-  } catch (e) {
-    console.log(e);
-  }
-
-  const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
+  await deployer.storeCode(ENTERPRISE_GOVERNANCE);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const enterpriseGovernanceControllerCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
+  await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const enterpriseTreasuryCodeId = await deployer.storeCode(ENTERPRISE_TREASURY);
+  await deployer.storeCode(ENTERPRISE_TREASURY);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
+  await deployer.storeCode(FUNDS_DISTRIBUTOR);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const multisigMembershipCodeId = await deployer.storeCode(MULTISIG_MEMBERSHIP);
+  await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const tokenStakingMembershipCodeId = await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
+  await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const nftStakingMembershipCodeId = await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
+  await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  await deployer.storeCode(MULTISIG_MEMBERSHIP);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const enterpriseVersioningAddr = refs.getAddress(network, ENTERPRISE_VERSIONING);
@@ -188,16 +183,16 @@ const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer:
             patch: patch,
           },
           changelog: [],
-          attestation_code_id: parseInt(attestationCodeId),
-          enterprise_code_id: parseInt(enterpriseCodeId),
-          enterprise_governance_code_id: parseInt(enterpriseGovernanceCodeId),
-          enterprise_governance_controller_code_id: parseInt(enterpriseGovernanceControllerCodeId),
-          enterprise_treasury_code_id: parseInt(enterpriseTreasuryCodeId),
-          funds_distributor_code_id: parseInt(fundsDistributorCodeId),
-          token_staking_membership_code_id: parseInt(tokenStakingMembershipCodeId),
-          denom_staking_membership_code_id: parseInt(denomStakingMembershipCodeId),
-          nft_staking_membership_code_id: parseInt(nftStakingMembershipCodeId),
-          multisig_membership_code_id: parseInt(multisigMembershipCodeId),
+          attestation_code_id: parseInt(refs.getCodeId(network, ATTESTATION)),
+          enterprise_code_id: parseInt(refs.getCodeId(network, ENTERPRISE)),
+          enterprise_governance_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE)),
+          enterprise_governance_controller_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE_CONTROLLER)),
+          enterprise_treasury_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_TREASURY)),
+          funds_distributor_code_id: parseInt(refs.getCodeId(network, FUNDS_DISTRIBUTOR)),
+          token_staking_membership_code_id: parseInt(refs.getCodeId(network, TOKEN_STAKING_MEMBERSHIP)),
+          denom_staking_membership_code_id: parseInt(refs.getCodeId(network, DENOM_STAKING_MEMBERSHIP)),
+          nft_staking_membership_code_id: parseInt(refs.getCodeId(network, NFT_STAKING_MEMBERSHIP)),
+          multisig_membership_code_id: parseInt(refs.getCodeId(network, MULTISIG_MEMBERSHIP)),
         }
       }
     })

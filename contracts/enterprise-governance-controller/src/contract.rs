@@ -351,11 +351,10 @@ fn create_proposal(
 
     let create_poll_submsg = create_poll(ctx, gov_config, msg, deposit, General, proposer)?;
 
-    // TODO: extract somewhere to enterprise as a query (like DaoAddress or sth), we might change which contract we're considering the DAO
-    let treasury_address = query_enterprise_treasury_addr(ctx.deps.as_ref())?;
+    let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
     Ok(
-        execute_create_proposal_response(treasury_address.to_string())
+        execute_create_proposal_response(dao_address.to_string())
             .add_submessage(create_poll_submsg),
     )
 }
@@ -415,10 +414,10 @@ fn create_council_proposal(
                 ctx.info.sender.clone(),
             )?;
 
-            let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+            let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
             Ok(
-                execute_create_council_proposal_response(enterprise_contract.to_string())
+                execute_create_council_proposal_response(dao_address.to_string())
                     .add_submessage(create_poll_submsg),
             )
         }
@@ -555,10 +554,10 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
         }
     })?;
 
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
     Ok(execute_cast_vote_response(
-        enterprise_contract.to_string(),
+        dao_address.to_string(),
         msg.proposal_id,
         ctx.info.sender.to_string(),
         msg.outcome,
@@ -605,10 +604,10 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControlle
                 vec![],
             )?);
 
-            let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+            let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
             Ok(execute_cast_council_vote_response(
-                enterprise_contract.to_string(),
+                dao_address.to_string(),
                 msg.proposal_id,
                 ctx.info.sender.to_string(),
                 msg.outcome,
@@ -641,10 +640,10 @@ fn execute_proposal(
 
     let submsgs = end_proposal(ctx, &msg, proposal_info.proposal_type.clone())?;
 
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
     Ok(execute_execute_proposal_response(
-        enterprise_contract.to_string(),
+        dao_address.to_string(),
         msg.proposal_id,
         proposal_info.proposal_type,
     )
@@ -2035,6 +2034,10 @@ fn query_enterprise_governance_addr(deps: Deps) -> GovernanceControllerResult<Ad
 
 fn query_enterprise_treasury_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.enterprise_treasury_contract)
+}
+
+fn query_main_dao_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
+    query_enterprise_treasury_addr(deps)
 }
 
 fn query_enterprise_cross_chain_deployments(
