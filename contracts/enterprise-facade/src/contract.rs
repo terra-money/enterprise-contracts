@@ -1,12 +1,20 @@
 use crate::facade::get_facade;
 use crate::state::{ENTERPRISE_FACADE_V1, ENTERPRISE_FACADE_V2};
 use cosmwasm_std::{
-    entry_point, wasm_execute, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg,
+    entry_point, to_binary, wasm_execute, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    SubMsg,
 };
 use cw2::set_contract_version;
+use enterprise_facade_api::api::{
+    AdapterResponse, AssetWhitelistResponse, ClaimsResponse, DaoInfoResponse, MemberInfoResponse,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalResponse,
+    ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, StakedNftsResponse,
+    TotalStakedAmountResponse, TreasuryAddressResponse, UserStakeResponse,
+};
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::TreasuryAddress;
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use enterprise_protocol::api::CrossChainTreasuriesResponse;
 use ExecuteMsg::ExecuteProposal;
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
@@ -72,269 +80,323 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
     let response = match msg {
         TreasuryAddress { contract } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: TreasuryAddressResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &TreasuryAddress {
                     contract: facade.dao_address,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         DaoInfo { contract } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: DaoInfoResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &DaoInfo {
                     contract: facade.dao_address,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         MemberInfo { contract, msg } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: MemberInfoResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &MemberInfo {
                     contract: facade.dao_address,
                     msg,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         ListMultisigMembers { contract, msg } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: MultisigMembersResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &ListMultisigMembers {
                     contract: facade.dao_address,
                     msg,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         AssetWhitelist { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AssetWhitelistResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &AssetWhitelist {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         NftWhitelist { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: NftWhitelistResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &NftWhitelist {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         Proposal { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: ProposalResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &Proposal {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         Proposals { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: ProposalsResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &Proposals {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         ProposalStatus { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: ProposalStatusResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &ProposalStatus {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         MemberVote { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: MemberVoteResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &MemberVote {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         ProposalVotes { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: ProposalVotesResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &ProposalVotes {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         UserStake { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: UserStakeResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &UserStake {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         TotalStakedAmount { contract } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: TotalStakedAmountResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &TotalStakedAmount {
                     contract: facade.dao_address,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         StakedNfts { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: StakedNftsResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &StakedNfts {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         Claims { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: ClaimsResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &Claims {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         ReleasableClaims { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: ClaimsResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &ReleasableClaims {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CrossChainTreasuries { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: CrossChainTreasuriesResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CrossChainTreasuries {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CreateProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CreateProposalAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CreateProposalWithDenomDepositAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CreateProposalWithDenomDepositAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CreateProposalWithTokenDepositAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CreateProposalWithTokenDepositAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CreateProposalWithNftDepositAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CreateProposalWithNftDepositAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CreateCouncilProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CreateCouncilProposalAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CastVoteAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CastVoteAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         CastCouncilVoteAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CastCouncilVoteAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         StakeAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &StakeAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         UnstakeAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &UnstakeAdapted {
                     contract: facade.dao_address,
                     params,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
         ClaimAdapted { contract } => {
             let facade = get_facade(deps, contract)?;
-            deps.querier.query_wasm_smart(
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &ClaimAdapted {
                     contract: facade.dao_address,
                 },
-            )?
+            )?;
+            to_binary(&response)?
         }
     };
     Ok(response)

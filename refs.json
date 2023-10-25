@@ -28,8 +28,8 @@
       "address": "terra1qu7jug0a8j2k5zyg8uz6y0rusgugzy7lvcczh903kwzasggt67mq5rlkvk"
     },
     "enterprise-facade": {
-      "codeId": "10635",
-      "address": "terra1dhxwcfy8fk7897k6gjzvmg7sc0veyltzlgeu4u8t9sf5gk4hp6nshdnnz9"
+      "codeId": "10955",
+      "address": "terra1gpypqhqvsz780yqcm2uhkvqyzap6x5r3zrm8avn774vwdj3dyx9s9z66yl"
     },
     "enterprise-versioning": {
       "codeId": "10309",
@@ -71,6 +71,14 @@
     },
     "nft-staking-membership": {
       "codeId": "10938"
+    },
+    "enterprise-facade-v1": {
+      "codeId": "10950",
+      "address": "terra17ymdt4n29ugpeaamcl6gdnptf4tjxqyxhlgjcgxzex8es6vj5wrse0z2ny"
+    },
+    "enterprise-facade-v2": {
+      "codeId": "10952",
+      "address": "terra1c4rs8v9pmslcfg6x863k3hdj5dlp452wpnc2x3hpkmscea4q0lhqpuruhp"
     }
   },
   "mainnet": {

@@ -5,6 +5,8 @@ const ATTESTATION = "attestation";
 const DENOM_STAKING_MEMBERSHIP = "denom-staking-membership";
 const ENTERPRISE = "enterprise";
 const ENTERPRISE_FACADE = "enterprise-facade";
+const ENTERPRISE_FACADE_V1 = "enterprise-facade-v1";
+const ENTERPRISE_FACADE_V2 = "enterprise-facade-v2";
 const ENTERPRISE_FACTORY = "enterprise-factory";
 const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_GOVERNANCE_CONTROLLER = "enterprise-governance-controller";
@@ -23,8 +25,8 @@ const DENOM_AXL_WBTC = "ibc/05D299885B07905B6886F554B39346EA6761246076A1120B1950
 const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341C7EC6752E674";
 
 task(async ({ network, deployer, executor, signer, refs }) => {
-  // deployer.buildContract(ENTERPRISE);
-  // deployer.optimizeContract(ENTERPRISE);
+  deployer.buildContract(ENTERPRISE);
+  deployer.optimizeContract(ENTERPRISE);
 
   // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
@@ -35,19 +37,6 @@ task(async ({ network, deployer, executor, signer, refs }) => {
   // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 2, 0);
 
   // await instantiateDao(refs, network, executor);
-
-  try {
-    await executor.execute(
-        "terra197rges8u3wtwvrdkv80ku77ejc5quch76vhgzs9znargumgre7jsvx3wh0",
-        {
-          execute_proposal: {
-            proposal_id: 1
-          }
-        }
-    )
-  } catch (e) {
-    console.log(e);
-  }
 
   // try {
   //   await deployer.instantiate(MULTISIG_MEMBERSHIP, {
@@ -60,12 +49,36 @@ task(async ({ network, deployer, executor, signer, refs }) => {
 });
 
 const deployEnterpriseFacade = async (refs: Refs, network: string, deployer: Deployer, signer: Signer): Promise<void> => {
+  await deployer.storeCode(ENTERPRISE_FACADE_V1);
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  await deployer.storeCode(ENTERPRISE_FACADE_V2);
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
   await deployer.storeCode(ENTERPRISE_FACADE);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
   try {
-    await deployer.instantiate("enterprise-facade", {
+    await deployer.instantiate(ENTERPRISE_FACADE_V1, {
           enterprise_versioning: refs.getAddress(network, ENTERPRISE_VERSIONING),
+        },
+        {
+          admin: signer.key.accAddress,
+          label: "Enterprise facade V1",
+        });
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    await deployer.instantiate(ENTERPRISE_FACADE_V2,
+        {},
+        {
+          admin: signer.key.accAddress,
+          label: "Enterprise facade V2",
+        });
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    await deployer.instantiate(ENTERPRISE_FACADE, {
+          enterprise_facade_v1: refs.getAddress(network, ENTERPRISE_FACADE_V1),
+          enterprise_facade_v2: refs.getAddress(network, ENTERPRISE_FACADE_V2),
         },
         {
           admin: signer.key.accAddress,
