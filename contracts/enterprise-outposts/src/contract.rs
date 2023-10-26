@@ -18,10 +18,9 @@ use cw_asset::AssetInfoUnchecked;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_outposts_api::api::{
-    AddCrossChainProxyMsg, AddCrossChainTreasuryMsg, CrossChainDeploymentsParams,
-    CrossChainDeploymentsResponse, CrossChainMsgSpec, CrossChainTreasuriesParams,
-    CrossChainTreasuriesResponse, CrossChainTreasury, DeployCrossChainTreasuryMsg,
-    ExecuteMsgReplyCallbackMsg,
+    CrossChainDeploymentsParams, CrossChainDeploymentsResponse, CrossChainMsgSpec,
+    CrossChainTreasuriesParams, CrossChainTreasuriesResponse, CrossChainTreasury,
+    DeployCrossChainTreasuryMsg, ExecuteMsgReplyCallbackMsg,
 };
 use enterprise_outposts_api::error::EnterpriseOutpostsError::{
     ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId, Unauthorized,
@@ -68,8 +67,6 @@ pub fn execute(
     let ctx = &mut Context { deps, env, info };
 
     match msg {
-        ExecuteMsg::AddCrossChainProxy(msg) => add_cross_chain_proxy(ctx, msg),
-        ExecuteMsg::AddCrossChainTreasury(msg) => add_cross_chain_treasury(ctx, msg),
         ExecuteMsg::DeployCrossChainTreasury(msg) => deploy_cross_chain_treasury(ctx, msg),
         ExecuteMsg::ExecuteMsgReplyCallback(msg) => execute_msg_reply_callback(ctx, msg),
     }
@@ -77,14 +74,15 @@ pub fn execute(
 
 fn add_cross_chain_proxy(
     ctx: &mut Context,
-    msg: AddCrossChainProxyMsg,
+    chain_id: String,
+    proxy_addr: String,
 ) -> EnterpriseOutpostsResult<Response> {
     enterprise_governance_controller_caller_only(ctx)?;
 
-    if CROSS_CHAIN_PROXIES.has(ctx.deps.storage, msg.chain_id.clone()) {
+    if CROSS_CHAIN_PROXIES.has(ctx.deps.storage, chain_id.clone()) {
         Err(ProxyAlreadyExistsForChainId)
     } else {
-        CROSS_CHAIN_PROXIES.save(ctx.deps.storage, msg.chain_id, &msg.proxy_addr)?;
+        CROSS_CHAIN_PROXIES.save(ctx.deps.storage, chain_id, &proxy_addr)?;
 
         Ok(execute_add_cross_chain_proxy_response())
     }
@@ -92,14 +90,15 @@ fn add_cross_chain_proxy(
 
 fn add_cross_chain_treasury(
     ctx: &mut Context,
-    msg: AddCrossChainTreasuryMsg,
+    chain_id: String,
+    treasury_addr: String,
 ) -> EnterpriseOutpostsResult<Response> {
     enterprise_governance_controller_caller_only(ctx)?;
 
-    if CROSS_CHAIN_TREASURIES.has(ctx.deps.storage, msg.chain_id.clone()) {
+    if CROSS_CHAIN_TREASURIES.has(ctx.deps.storage, chain_id.clone()) {
         Err(TreasuryAlreadyExistsForChainId)
     } else {
-        CROSS_CHAIN_TREASURIES.save(ctx.deps.storage, msg.chain_id, &msg.treasury_addr)?;
+        CROSS_CHAIN_TREASURIES.save(ctx.deps.storage, chain_id, &treasury_addr)?;
 
         Ok(execute_add_cross_chain_treasury_response())
     }
@@ -308,13 +307,7 @@ fn handle_instantiate_proxy_reply_callback(
 ) -> EnterpriseOutpostsResult<Response> {
     let proxy_addr = parse_reply_instantiate_data(reply)?.contract_address;
 
-    add_cross_chain_proxy(
-        ctx,
-        AddCrossChainProxyMsg {
-            chain_id,
-            proxy_addr: proxy_addr.clone(),
-        },
-    )?;
+    add_cross_chain_proxy(ctx, chain_id, proxy_addr.clone())?;
 
     let instantiate_treasury_submsg = instantiate_remote_treasury(
         ctx.deps.branch(),
@@ -336,13 +329,7 @@ fn handle_instantiate_treasury_reply_callback(
 ) -> EnterpriseOutpostsResult<Response> {
     let treasury_addr = parse_reply_instantiate_data(reply)?.contract_address;
 
-    add_cross_chain_treasury(
-        ctx,
-        AddCrossChainTreasuryMsg {
-            chain_id,
-            treasury_addr,
-        },
-    )?;
+    add_cross_chain_treasury(ctx, chain_id, treasury_addr)?;
 
     Ok(execute_execute_msg_reply_callback_response())
 }

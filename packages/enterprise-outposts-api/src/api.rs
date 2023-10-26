@@ -3,18 +3,6 @@ use cosmwasm_std::{Binary, Event};
 use cw_asset::AssetInfoUnchecked;
 
 #[cw_serde]
-pub struct AddCrossChainProxyMsg {
-    pub chain_id: String,
-    pub proxy_addr: String,
-}
-
-#[cw_serde]
-pub struct AddCrossChainTreasuryMsg {
-    pub chain_id: String,
-    pub treasury_addr: String,
-}
-
-#[cw_serde]
 pub struct CrossChainTreasury {
     pub chain_id: String,
     pub treasury_addr: String,
