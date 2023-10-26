@@ -58,7 +58,6 @@ denom-staking-api = { path = "../../packages/denom-staking-api" }
 nft-staking-api = { path = "../../packages/nft-staking-api" }
 multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 poll-engine-api = { path = "../../packages/poll-engine-api" }
-prost = "0.11.9"
 serde-json-wasm = "0.5.0"
 
 [dev-dependencies]

@@ -17,6 +17,9 @@ pub enum EnterpriseOutpostsError {
 
     #[error("Trying to add a treasury for a chain ID that already has a treasury deployed")]
     TreasuryAlreadyExistsForChainId,
+
+    #[error("No cross chain deployment has been deployed for the given chain ID")]
+    NoCrossChainDeploymentForGivenChainId,
 }
 
 impl EnterpriseOutpostsError {

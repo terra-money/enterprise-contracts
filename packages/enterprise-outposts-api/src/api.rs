@@ -34,6 +34,19 @@ pub struct CrossChainMsgSpec {
 }
 
 #[cw_serde]
+pub struct ExecuteCrossChainTreasuryMsg {
+    pub msg: enterprise_treasury_api::msg::ExecuteMsg,
+    pub treasury_target: RemoteTreasuryTarget,
+}
+
+#[cw_serde]
+pub struct RemoteTreasuryTarget {
+    /// Spec for the cross-chain message to send.
+    /// Treasury address will be determined using chain-id given in the spec.
+    pub cross_chain_msg_spec: CrossChainMsgSpec,
+}
+
+#[cw_serde]
 pub struct ExecuteMsgReplyCallbackMsg {
     pub callback_id: u32,
     pub events: Vec<Event>,

@@ -10,8 +10,8 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
-    StdResult, SubMsg, SubMsgResponse, SubMsgResult,
+    entry_point, to_binary, wasm_execute, Binary, Deps, DepsMut, Env, MessageInfo, Order, Reply,
+    Response, StdResult, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfoUnchecked;
@@ -20,17 +20,19 @@ use cw_utils::parse_reply_instantiate_data;
 use enterprise_outposts_api::api::{
     CrossChainDeploymentsParams, CrossChainDeploymentsResponse, CrossChainMsgSpec,
     CrossChainTreasuriesParams, CrossChainTreasuriesResponse, CrossChainTreasury,
-    DeployCrossChainTreasuryMsg, ExecuteMsgReplyCallbackMsg,
+    DeployCrossChainTreasuryMsg, ExecuteCrossChainTreasuryMsg, ExecuteMsgReplyCallbackMsg,
 };
 use enterprise_outposts_api::error::EnterpriseOutpostsError::{
-    ProxyAlreadyExistsForChainId, TreasuryAlreadyExistsForChainId, Unauthorized,
+    NoCrossChainDeploymentForGivenChainId, ProxyAlreadyExistsForChainId,
+    TreasuryAlreadyExistsForChainId, Unauthorized,
 };
 use enterprise_outposts_api::error::EnterpriseOutpostsResult;
 use enterprise_outposts_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::response::{
     execute_add_cross_chain_proxy_response, execute_add_cross_chain_treasury_response,
     execute_deploy_cross_chain_proxy_response, execute_deploy_cross_chain_treasury_response,
-    execute_execute_msg_reply_callback_response, instantiate_response,
+    execute_execute_cross_chain_treasury_response, execute_execute_msg_reply_callback_response,
+    instantiate_response,
 };
 
 // version info for migration info
@@ -68,6 +70,7 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::DeployCrossChainTreasury(msg) => deploy_cross_chain_treasury(ctx, msg),
+        ExecuteMsg::ExecuteCrossChainTreasury(msg) => execute_cross_chain_treasury(ctx, msg),
         ExecuteMsg::ExecuteMsgReplyCallback(msg) => execute_msg_reply_callback(ctx, msg),
     }
 }
@@ -243,6 +246,39 @@ fn instantiate_remote_treasury(
         Some(callback_id),
     )?;
     Ok(instantiate_treasury_msg)
+}
+
+fn execute_cross_chain_treasury(
+    ctx: &mut Context,
+    msg: ExecuteCrossChainTreasuryMsg,
+) -> EnterpriseOutpostsResult<Response> {
+    let qctx = QueryContext {
+        deps: ctx.deps.as_ref(),
+        env: ctx.env.clone(),
+    };
+    let response = query_cross_chain_deployments(
+        qctx,
+        CrossChainDeploymentsParams {
+            chain_id: msg.treasury_target.cross_chain_msg_spec.chain_id.clone(),
+        },
+    )?;
+
+    let proxy_addr = response
+        .proxy_addr
+        .ok_or(NoCrossChainDeploymentForGivenChainId)?;
+    let treasury_addr = response
+        .treasury_addr
+        .ok_or(NoCrossChainDeploymentForGivenChainId)?;
+
+    let execute_treasury_submsg = ibc_hooks_msg_to_ics_proxy_contract(
+        &ctx.env,
+        wasm_execute(treasury_addr, &msg.msg, vec![])?.into(),
+        proxy_addr,
+        msg.treasury_target.cross_chain_msg_spec,
+        None,
+    )?;
+
+    Ok(execute_execute_cross_chain_treasury_response().add_submessage(execute_treasury_submsg))
 }
 
 pub fn execute_msg_reply_callback(

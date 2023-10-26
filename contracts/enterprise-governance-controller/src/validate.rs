@@ -11,7 +11,7 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 use enterprise_governance_controller_api::api::{
     CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteTreasuryMsgsMsg,
     GovConfig, ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
-    RemoteTreasuryTarget, RequestFundingFromDaoMsg, UpdateGovConfigMsg,
+    RequestFundingFromDaoMsg, UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     Dao, DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument,
@@ -21,6 +21,7 @@ use enterprise_governance_controller_api::error::GovernanceControllerError::{
 use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
 };
+use enterprise_outposts_api::api::RemoteTreasuryTarget;
 use enterprise_protocol::api::DaoType::Multisig;
 use enterprise_protocol::api::{DaoInfoResponse, DaoType, UpgradeDaoMsg};
 use enterprise_protocol::error::DaoError::{

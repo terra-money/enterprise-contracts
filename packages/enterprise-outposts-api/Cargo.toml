@@ -17,6 +17,7 @@ cw-utils = "1.0.1"
 schemars = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_with = { version = "2", features = ["json", "macros"] }
+enterprise-treasury-api = { path = "../enterprise-treasury-api" }
 strum = "0.24"
 strum_macros = "0.24"
 serde-json-wasm = "0.5.0"

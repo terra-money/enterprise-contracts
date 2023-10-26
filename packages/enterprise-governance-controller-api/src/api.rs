@@ -3,7 +3,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::{Duration, Expiration};
-use enterprise_outposts_api::api::{CrossChainMsgSpec, DeployCrossChainTreasuryMsg};
+use enterprise_outposts_api::api::{DeployCrossChainTreasuryMsg, RemoteTreasuryTarget};
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
 use multisig_membership_api::api::UserWeight;
 use nft_staking_api::api::NftTokenId;
@@ -209,13 +209,6 @@ pub struct UpdateNftWhitelistProposalActionMsg {
     pub add: Vec<String>,
     /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
     pub remove: Vec<String>,
-}
-
-#[cw_serde]
-pub struct RemoteTreasuryTarget {
-    /// Spec for the cross-chain message to send.
-    /// Treasury address will be determined using chain-id given in the spec.
-    pub cross_chain_msg_spec: CrossChainMsgSpec,
 }
 
 #[cw_serde]

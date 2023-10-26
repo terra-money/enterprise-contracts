@@ -1,6 +1,7 @@
 use crate::api::{
     CrossChainDeploymentsParams, CrossChainDeploymentsResponse, CrossChainTreasuriesParams,
-    CrossChainTreasuriesResponse, DeployCrossChainTreasuryMsg, ExecuteMsgReplyCallbackMsg,
+    CrossChainTreasuriesResponse, DeployCrossChainTreasuryMsg, ExecuteCrossChainTreasuryMsg,
+    ExecuteMsgReplyCallbackMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
@@ -12,6 +13,8 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     DeployCrossChainTreasury(DeployCrossChainTreasuryMsg),
+
+    ExecuteCrossChainTreasury(ExecuteCrossChainTreasuryMsg),
 
     /// Callback from the ICS proxy contract.
     ExecuteMsgReplyCallback(ExecuteMsgReplyCallbackMsg),
