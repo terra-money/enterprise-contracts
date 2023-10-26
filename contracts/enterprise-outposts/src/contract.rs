@@ -29,7 +29,6 @@ use enterprise_outposts_api::error::EnterpriseOutpostsError::{
 use enterprise_outposts_api::error::EnterpriseOutpostsResult;
 use enterprise_outposts_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::response::{
-    execute_add_cross_chain_proxy_response, execute_add_cross_chain_treasury_response,
     execute_deploy_cross_chain_proxy_response, execute_deploy_cross_chain_treasury_response,
     execute_execute_cross_chain_treasury_response, execute_execute_msg_reply_callback_response,
     instantiate_response,
@@ -75,42 +74,12 @@ pub fn execute(
     }
 }
 
-fn add_cross_chain_proxy(
-    ctx: &mut Context,
-    chain_id: String,
-    proxy_addr: String,
-) -> EnterpriseOutpostsResult<Response> {
-    enterprise_governance_controller_caller_only(ctx)?;
-
-    if CROSS_CHAIN_PROXIES.has(ctx.deps.storage, chain_id.clone()) {
-        Err(ProxyAlreadyExistsForChainId)
-    } else {
-        CROSS_CHAIN_PROXIES.save(ctx.deps.storage, chain_id, &proxy_addr)?;
-
-        Ok(execute_add_cross_chain_proxy_response())
-    }
-}
-
-fn add_cross_chain_treasury(
-    ctx: &mut Context,
-    chain_id: String,
-    treasury_addr: String,
-) -> EnterpriseOutpostsResult<Response> {
-    enterprise_governance_controller_caller_only(ctx)?;
-
-    if CROSS_CHAIN_TREASURIES.has(ctx.deps.storage, chain_id.clone()) {
-        Err(TreasuryAlreadyExistsForChainId)
-    } else {
-        CROSS_CHAIN_TREASURIES.save(ctx.deps.storage, chain_id, &treasury_addr)?;
-
-        Ok(execute_add_cross_chain_treasury_response())
-    }
-}
-
 fn deploy_cross_chain_treasury(
     ctx: &mut Context,
     msg: DeployCrossChainTreasuryMsg,
 ) -> EnterpriseOutpostsResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
     let qctx = QueryContext {
         deps: ctx.deps.as_ref(),
         env: ctx.env.clone(),
@@ -199,6 +168,34 @@ fn deploy_cross_chain_treasury(
     }
 }
 
+fn add_cross_chain_proxy(
+    ctx: &mut Context,
+    chain_id: String,
+    proxy_addr: String,
+) -> EnterpriseOutpostsResult<()> {
+    if CROSS_CHAIN_PROXIES.has(ctx.deps.storage, chain_id.clone()) {
+        Err(ProxyAlreadyExistsForChainId)
+    } else {
+        CROSS_CHAIN_PROXIES.save(ctx.deps.storage, chain_id, &proxy_addr)?;
+
+        Ok(())
+    }
+}
+
+fn add_cross_chain_treasury(
+    ctx: &mut Context,
+    chain_id: String,
+    treasury_addr: String,
+) -> EnterpriseOutpostsResult<()> {
+    if CROSS_CHAIN_TREASURIES.has(ctx.deps.storage, chain_id.clone()) {
+        Err(TreasuryAlreadyExistsForChainId)
+    } else {
+        CROSS_CHAIN_TREASURIES.save(ctx.deps.storage, chain_id, &treasury_addr)?;
+
+        Ok(())
+    }
+}
+
 fn instantiate_remote_treasury(
     deps: DepsMut,
     env: Env,
@@ -252,6 +249,8 @@ fn execute_cross_chain_treasury(
     ctx: &mut Context,
     msg: ExecuteCrossChainTreasuryMsg,
 ) -> EnterpriseOutpostsResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
     let qctx = QueryContext {
         deps: ctx.deps.as_ref(),
         env: ctx.env.clone(),
