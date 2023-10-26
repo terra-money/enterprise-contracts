@@ -26,7 +26,7 @@ const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341
 
 task(async ({ network, deployer, executor, signer, refs }) => {
   // deployer.buildContract(ENTERPRISE);
-  // deployer.optimizeContract(ENTERPRISE);
+  deployer.optimizeContract(ENTERPRISE);
 
   // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
@@ -34,7 +34,7 @@ task(async ({ network, deployer, executor, signer, refs }) => {
 
   // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-  await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 4, 0);
+  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 4, 0);
 
   // await instantiateDao(refs, network, executor);
 

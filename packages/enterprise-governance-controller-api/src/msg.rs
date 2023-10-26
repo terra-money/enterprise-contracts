@@ -1,9 +1,9 @@
 use crate::api::{
     CastVoteMsg, ConfigResponse, CreateProposalMsg, CreateProposalWithNftDepositMsg,
-    DaoCouncilSpec, ExecuteMsgReplyCallbackMsg, ExecuteProposalMsg, GovConfig, GovConfigResponse,
-    MemberVoteParams, MemberVoteResponse, ProposalId, ProposalInfo, ProposalParams,
-    ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
-    ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    DaoCouncilSpec, ExecuteProposalMsg, GovConfig, GovConfigResponse, MemberVoteParams,
+    MemberVoteResponse, ProposalId, ProposalInfo, ProposalParams, ProposalResponse,
+    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
@@ -29,9 +29,6 @@ pub enum ExecuteMsg {
     ExecuteProposal(ExecuteProposalMsg),
     Receive(Cw20ReceiveMsg),
     WeightsChanged(WeightsChangedMsg),
-
-    /// Callback from the ICS proxy contract.
-    ExecuteMsgReplyCallback(ExecuteMsgReplyCallbackMsg),
 }
 
 #[cw_serde]
