@@ -1108,6 +1108,9 @@ fn map_proposal_status(
         enterprise_governance_controller_api::api::ProposalStatus::InProgress => {
             ProposalStatus::InProgress
         }
+        enterprise_governance_controller_api::api::ProposalStatus::InProgressCanExecuteEarly => {
+            ProposalStatus::InProgressCanExecuteEarly
+        }
         enterprise_governance_controller_api::api::ProposalStatus::Passed => ProposalStatus::Passed,
         enterprise_governance_controller_api::api::ProposalStatus::Rejected => {
             ProposalStatus::Rejected

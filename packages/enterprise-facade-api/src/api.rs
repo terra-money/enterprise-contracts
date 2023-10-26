@@ -309,6 +309,7 @@ pub struct ProposalStatusResponse {
 #[cw_serde]
 pub enum ProposalStatus {
     InProgress,
+    InProgressCanExecuteEarly,
     Passed,
     Rejected,
     Executed,

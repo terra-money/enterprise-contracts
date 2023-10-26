@@ -95,7 +95,9 @@ use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
-use PollRejectionReason::{IsVetoOutcome, QuorumNotReached};
+use PollRejectionReason::{
+    IsVetoOutcome, QuorumAndThresholdNotReached, QuorumNotReached, ThresholdNotReached,
+};
 use ProposalAction::{DeployCrossChainTreasury, ExecuteTreasuryMsgs};
 
 // version info for migration info
@@ -1578,7 +1580,38 @@ fn poll_to_proposal_response(
                     )?
                 } else {
                     // poll still in progress
-                    ProposalStatus::InProgress
+                    // let's first check if it can be executed right now
+
+                    let allows_early_execution = true; // TODO: calculate properly
+                    let past_earliest_execution =
+                        proposal_info.past_earliest_execution(env.block.time);
+
+                    if allows_early_execution && past_earliest_execution {
+                        let status = simulate_end_proposal_status(
+                            deps,
+                            poll.id,
+                            total_available_votes(
+                                deps,
+                                Never {},
+                                proposal_info.proposal_type.clone(),
+                            )?,
+                        )?;
+                        match status.status {
+                            PollStatus::InProgress { .. } => ProposalStatus::InProgress,
+                            PollStatus::Passed { .. } => ProposalStatus::InProgressCanExecuteEarly,
+                            PollStatus::Rejected { reason } => {
+                                match reason {
+                                    // if any of the quorum or threshold not reached, cannot early execute
+                                    QuorumNotReached
+                                    | ThresholdNotReached
+                                    | QuorumAndThresholdNotReached => ProposalStatus::InProgress,
+                                    _ => ProposalStatus::InProgressCanExecuteEarly,
+                                }
+                            }
+                        }
+                    } else {
+                        ProposalStatus::InProgress
+                    }
                 }
             }
             PollStatus::Passed { .. } => ProposalStatus::Passed,

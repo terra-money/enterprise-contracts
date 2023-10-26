@@ -25,6 +25,14 @@ pub struct ProposalInfo {
     pub proposal_actions: Vec<ProposalAction>,
 }
 
+impl ProposalInfo {
+    pub fn past_earliest_execution(&self, now: Timestamp) -> bool {
+        self.earliest_execution
+            .map(|earliest_execution| now >= earliest_execution)
+            .unwrap_or(true)
+    }
+}
+
 #[cw_serde]
 pub struct GovConfig {
     /// Portion of total available votes cast in a proposal to consider it valid
@@ -320,6 +328,7 @@ pub struct ProposalStatusResponse {
 #[cw_serde]
 pub enum ProposalStatus {
     InProgress,
+    InProgressCanExecuteEarly,
     Passed,
     Rejected,
     Executed,
