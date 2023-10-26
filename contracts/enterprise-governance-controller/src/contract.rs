@@ -14,7 +14,7 @@ use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -1555,29 +1555,39 @@ fn poll_to_proposal_response(
     env: &Env,
     poll: &Poll,
 ) -> GovernanceControllerResult<ProposalResponse> {
-    let actions_opt = get_proposal_actions(deps.storage, poll.id)?;
+    let proposal_info = PROPOSAL_INFOS.may_load(deps.storage, poll.id)?;
 
-    let actions = match actions_opt {
+    let proposal_info = match proposal_info {
         None => return Err(NoSuchProposal),
-        Some(actions) => actions,
+        Some(proposal_info) => proposal_info,
     };
 
-    let status = match poll.status {
-        PollStatus::InProgress { .. } => ProposalStatus::InProgress,
-        PollStatus::Passed { .. } => {
-            if is_proposal_executed(deps.storage, poll.id)? {
-                ProposalStatus::Executed
-            } else {
-                ProposalStatus::Passed
+    let status = if proposal_info.executed_at.is_some() {
+        ProposalStatus::Executed
+    } else {
+        match poll.status {
+            PollStatus::InProgress { ends_at } => {
+                // check if the poll has ended
+                if env.block.time >= ends_at {
+                    // poll ended, let's see what's the status
+                    determine_final_status_of_ended_poll(
+                        deps,
+                        ends_at,
+                        poll.id,
+                        proposal_info.proposal_type.clone(),
+                    )?
+                } else {
+                    // poll still in progress
+                    ProposalStatus::InProgress
+                }
             }
+            PollStatus::Passed { .. } => ProposalStatus::Passed,
+            PollStatus::Rejected { .. } => ProposalStatus::Rejected,
         }
-        PollStatus::Rejected { .. } => ProposalStatus::Rejected,
     };
-
-    let info = PROPOSAL_INFOS.load(deps.storage, poll.id)?;
 
     let proposal = Proposal {
-        proposal_type: info.proposal_type.clone(),
+        proposal_type: proposal_info.proposal_type.clone(),
         id: poll.id,
         proposer: poll.proposer.clone(),
         title: poll.label.clone(),
@@ -1585,10 +1595,10 @@ fn poll_to_proposal_response(
         status: status.clone(),
         started_at: poll.started_at,
         expires: AtTime(poll.ends_at),
-        proposal_actions: actions,
+        proposal_actions: proposal_info.proposal_actions,
     };
 
-    let expiration = match info.executed_at {
+    let expiration = match proposal_info.executed_at {
         Some(executed_block) => match proposal.expires {
             AtHeight(height) => AtHeight(min(height, executed_block.height)),
             AtTime(time) => AtTime(min(time, executed_block.time)),
@@ -1613,7 +1623,8 @@ fn poll_to_proposal_response(
         },
     };
 
-    let total_votes_available = total_available_votes(deps, expiration, info.proposal_type)?;
+    let total_votes_available =
+        total_available_votes(deps, expiration, proposal_info.proposal_type)?;
 
     Ok(ProposalResponse {
         proposal,
@@ -1621,6 +1632,25 @@ fn poll_to_proposal_response(
         results: poll.results.clone(),
         total_votes_available,
     })
+}
+
+fn determine_final_status_of_ended_poll(
+    deps: Deps,
+    ended_at: Timestamp,
+    poll_id: PollId,
+    proposal_type: ProposalType,
+) -> GovernanceControllerResult<ProposalStatus> {
+    let available_votes = total_available_votes(deps, AtTime(ended_at), proposal_type)?;
+    let status = simulate_end_proposal_status(deps, poll_id, available_votes)?;
+
+    match status.status {
+        PollStatus::InProgress { .. } => {
+            // should be impossible scenario
+            Err(StdError::generic_err("internal error simulating proposal's current status").into())
+        }
+        PollStatus::Passed { .. } => Ok(ProposalStatus::Passed),
+        PollStatus::Rejected { .. } => Ok(ProposalStatus::Rejected),
+    }
 }
 
 fn total_available_votes(
