@@ -20,7 +20,7 @@
   },
   "testnet": {
     "enterprise": {
-      "codeId": "10958",
+      "codeId": "10991",
       "address": "terra1rl9fnr4xce4ca5we9rwnqyyv89h422rwe3fpe7ycrpjn0egfulrsp2n4l9"
     },
     "enterprise-factory": {
@@ -28,8 +28,8 @@
       "address": "terra1qu7jug0a8j2k5zyg8uz6y0rusgugzy7lvcczh903kwzasggt67mq5rlkvk"
     },
     "enterprise-facade": {
-      "codeId": "10955",
-      "address": "terra1gpypqhqvsz780yqcm2uhkvqyzap6x5r3zrm8avn774vwdj3dyx9s9z66yl"
+      "codeId": "10989",
+      "address": "terra10f7anzl5fqe338aweusj0qy54jcyda3vhmw9dmzvnu7mt85xfmfqs2qel4"
     },
     "enterprise-versioning": {
       "codeId": "10309",
@@ -45,40 +45,40 @@
       "codeId": "5351"
     },
     "enterprise-governance": {
-      "codeId": "10959"
+      "codeId": "10992"
     },
     "funds-distributor": {
-      "codeId": "10962"
+      "codeId": "10995"
     },
     "attestation": {
-      "codeId": "10956"
+      "codeId": "10990"
     },
     "denom-staking-membership": {
-      "codeId": "10957"
+      "codeId": "10997"
     },
     "enterprise-governance-controller": {
-      "codeId": "10960"
+      "codeId": "10993"
     },
     "enterprise-treasury": {
-      "codeId": "10961"
+      "codeId": "10994"
     },
     "multisig-membership": {
-      "codeId": "10963",
+      "codeId": "10999",
       "address": "terra1dryw8sss8ucjvg97cjq40nxla0g04r7xjugave6jyhd6efm4r0dqeqk67v"
     },
     "token-staking-membership": {
-      "codeId": "10964"
+      "codeId": "10996"
     },
     "nft-staking-membership": {
-      "codeId": "10965"
+      "codeId": "10998"
     },
     "enterprise-facade-v1": {
-      "codeId": "10950",
-      "address": "terra17ymdt4n29ugpeaamcl6gdnptf4tjxqyxhlgjcgxzex8es6vj5wrse0z2ny"
+      "codeId": "10987",
+      "address": "terra1mtye6yj62d9yxxm2jjkd9dh6ny3xjz0g54ttmskmlxa0jv6dp9aq7gdwz7"
     },
     "enterprise-facade-v2": {
-      "codeId": "10952",
-      "address": "terra1c4rs8v9pmslcfg6x863k3hdj5dlp452wpnc2x3hpkmscea4q0lhqpuruhp"
+      "codeId": "10988",
+      "address": "terra1g96rh7e253vxh22wzlw7f2gnglqlek9rnf9jc2jg025jd43gcynqc6306h"
     }
   },
   "mainnet": {
