@@ -53,7 +53,7 @@ task(async ({ network, deployer, executor, signer, refs }) => {
 
   // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 5, 0);
+  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 6, 0);
 
   // await instantiateDao(refs, network, executor);
 
@@ -114,7 +114,7 @@ task(async ({ network, deployer, executor, signer, refs }) => {
     //
     // await castYesVote(executor, governance_controller, proposal_id);
     //
-    await executeProposal(executor, governance_controller, proposal_id)
+    // await executeProposal(executor, governance_controller, proposal_id)
   } catch (e) {
     console.log(e);
   }

@@ -9,6 +9,9 @@ use enterprise_outposts_api::api::{CrossChainMsgSpec, DeployCrossChainTreasuryMs
 use enterprise_outposts_api::error::EnterpriseOutpostsResult;
 use sha2::{Digest, Sha256};
 
+// 15 minutes in nanos
+const DEFAULT_IBC_TIMEOUT_NANOS: u64 = 15 * 60 * 1_000_000_000;
+
 #[cw_serde]
 pub struct IcsProxyInstantiateMsg {
     /// This is a flag that can block this contract from executing cross-chain messages.
@@ -115,6 +118,15 @@ pub fn ibc_hooks_msg_to_ics_proxy_contract(
             }),
         },
     };
+    let timeout_timestamp = env
+        .block
+        .time
+        .plus_nanos(
+            cross_chain_msg_spec
+                .timeout_nanos
+                .unwrap_or(DEFAULT_IBC_TIMEOUT_NANOS),
+        )
+        .nanos();
     let stargate_msg = Stargate {
         type_url: "/ibc.applications.transfer.v1.MsgTransfer".to_string(),
         value: MsgTransfer {
@@ -126,9 +138,7 @@ pub fn ibc_hooks_msg_to_ics_proxy_contract(
             }),
             sender: env.contract.address.to_string(),
             receiver: proxy_contract,
-            timeout_timestamp: cross_chain_msg_spec
-                .timeout_nanos
-                .unwrap_or_else(|| env.block.time.plus_hours(1).nanos()),
+            timeout_timestamp,
             memo: serde_json_wasm::to_string(&memo)?,
         }
         .encode_to_vec()
