@@ -31,7 +31,9 @@ use enterprise_treasury_api::msg::ExecuteMsg::FinalizeMigration;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use multisig_membership_api::api::UserWeight;
 use nft_staking_api::api::NftTokenId;
+use nft_staking_api::msg::Cw721HookMsg::AddClaim;
 use token_staking_api::api::{UserClaim, UserStake};
+use token_staking_api::msg::Cw20HookMsg::AddClaims;
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -608,7 +610,21 @@ pub fn membership_contract_created(
         DaoType::Nft => {
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
-            migrate_cw721_stakes_submsg(deps.as_ref(), cw721_contract, membership_contract.clone())?
+            let mut migrate_stakes_submsgs = migrate_cw721_stakes_submsgs(
+                deps.as_ref(),
+                cw721_contract.clone(),
+                membership_contract.clone(),
+            )?;
+
+            let mut claim_submsgs = migrate_cw721_claims_submsgs(
+                deps.as_ref(),
+                cw721_contract,
+                membership_contract.clone(),
+            )?;
+
+            migrate_stakes_submsgs.append(&mut claim_submsgs);
+
+            migrate_stakes_submsgs
         }
         DaoType::Multisig => vec![],
     };
@@ -684,7 +700,7 @@ fn migrate_cw20_claims_submsg(
         &cw20::Cw20ExecuteMsg::Send {
             contract: membership_contract.to_string(),
             amount: total_claims_amount,
-            msg: to_binary(&token_staking_api::msg::Cw20HookMsg::AddClaims { claims })?,
+            msg: to_binary(&AddClaims { claims })?,
         },
         vec![],
     )?);
@@ -692,7 +708,7 @@ fn migrate_cw20_claims_submsg(
     Ok(migrate_claims_submsg)
 }
 
-fn migrate_cw721_stakes_submsg(
+fn migrate_cw721_stakes_submsgs(
     deps: Deps,
     cw721_contract: Addr,
     membership_contract: Addr,
@@ -718,6 +734,43 @@ fn migrate_cw721_stakes_submsg(
     }
 
     Ok(migrate_stakes_submsgs)
+}
+
+fn migrate_cw721_claims_submsgs(
+    deps: Deps,
+    cw721_contract: Addr,
+    membership_contract: Addr,
+) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
+    let mut claim_submsgs = vec![];
+
+    for claim_res in CLAIMS.range(deps.storage, None, None, Ascending) {
+        let (user, claims) = claim_res?;
+
+        for claim in claims {
+            match claim.asset {
+                ClaimAsset::Cw20(_) => continue,
+                ClaimAsset::Cw721(asset) => {
+                    for token in asset.tokens {
+                        let submsg = SubMsg::new(wasm_execute(
+                            cw721_contract.to_string(),
+                            &cw721::Cw721ExecuteMsg::SendNft {
+                                contract: membership_contract.to_string(),
+                                token_id: token,
+                                msg: to_binary(&AddClaim {
+                                    user: user.to_string(),
+                                    release_at: claim.release_at.clone(),
+                                })?,
+                            },
+                            vec![],
+                        )?);
+                        claim_submsgs.push(submsg);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(claim_submsgs)
 }
 
 pub fn create_enterprise_outposts_contract(

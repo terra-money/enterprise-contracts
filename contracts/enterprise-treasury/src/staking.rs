@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, BlockInfo, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint128};
 use cw_storage_plus::{Map, SnapshotItem, Strategy};
 
 pub const CW20_STAKES: Map<Addr, Uint128> = Map::new("stakes");
@@ -31,15 +31,4 @@ pub fn load_total_staked_at_time(store: &dyn Storage, time: Timestamp) -> StdRes
     Ok(TOTAL_STAKED_SECONDS_SNAPSHOT
         .may_load_at_height(store, time.seconds())?
         .unwrap_or_default())
-}
-
-pub fn save_total_staked(
-    store: &mut dyn Storage,
-    amount: &Uint128,
-    block: &BlockInfo,
-) -> StdResult<()> {
-    TOTAL_STAKED_HEIGHT_SNAPSHOT.save(store, amount, block.height)?;
-    TOTAL_STAKED_SECONDS_SNAPSHOT.save(store, amount, block.time.seconds())?;
-
-    Ok(())
 }
