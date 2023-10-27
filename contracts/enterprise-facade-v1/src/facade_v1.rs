@@ -139,58 +139,11 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         let response: ProposalResponse =
             self.query_enterprise_contract(qctx.deps, &v1_structs::QueryV1Msg::Proposal(params))?;
 
-        let status = match response.proposal_status {
-            ProposalStatus::InProgress => {
-                let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
+        let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
 
-                if response.proposal.expires.is_expired(&qctx.env.block) {
-                    // proposal expired but stands as InProgress, let's resolve whether it passed or not
-                    let poll_status =
-                        self.resolve_in_progress_proposal_status(&response, gov_config)?;
+        let fixed_response = self.fix_proposal_response(&qctx, response, &gov_config)?;
 
-                    match poll_status {
-                        PollStatus::InProgress { .. } => return Err(StdError::generic_err("invalid state - resolved proposal status to 'in progress' after it ended").into()),
-                        PollStatus::Passed { .. } => ProposalStatus::Passed,
-                        PollStatus::Rejected { .. } => ProposalStatus::Rejected,
-                    }
-                } else {
-                    // proposal still in progress, let's see if it can be executed early
-
-                    let allows_early_ending = match response.proposal.proposal_type {
-                        ProposalType::General => gov_config.allow_early_proposal_execution,
-                        ProposalType::Council => true,
-                    };
-
-                    if allows_early_ending {
-                        let poll_status =
-                            self.resolve_in_progress_proposal_status(&response, gov_config)?;
-
-                        match poll_status {
-                            PollStatus::InProgress { .. } => ProposalStatus::InProgress,
-                            PollStatus::Passed { .. } => ProposalStatus::InProgressCanExecuteEarly,
-                            PollStatus::Rejected { reason } => match reason {
-                                QuorumNotReached
-                                | ThresholdNotReached
-                                | QuorumAndThresholdNotReached => ProposalStatus::InProgress,
-                                _ => ProposalStatus::InProgressCanExecuteEarly,
-                            },
-                        }
-                    } else {
-                        ProposalStatus::InProgress
-                    }
-                }
-            }
-            _ => response.proposal_status,
-        };
-
-        Ok(ProposalResponse {
-            proposal: Proposal {
-                status: status.clone(),
-                ..response.proposal
-            },
-            proposal_status: status,
-            ..response
-        })
+        Ok(fixed_response)
     }
 
     fn query_proposals(
@@ -198,7 +151,22 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: ProposalsParams,
     ) -> EnterpriseFacadeResult<ProposalsResponse> {
-        self.query_enterprise_contract(qctx.deps, &Proposals(params))
+        let response: ProposalsResponse =
+            self.query_enterprise_contract(qctx.deps, &Proposals(params))?;
+
+        let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
+
+        let fixed_responses = response
+            .proposals
+            .into_iter()
+            .map(|proposal_response| {
+                self.fix_proposal_response(&qctx, proposal_response, &gov_config)
+            })
+            .collect::<EnterpriseFacadeResult<Vec<ProposalResponse>>>()?;
+
+        Ok(ProposalsResponse {
+            proposals: fixed_responses,
+        })
     }
 
     fn query_proposal_status(
@@ -206,7 +174,18 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: ProposalStatusParams,
     ) -> EnterpriseFacadeResult<ProposalStatusResponse> {
-        self.query_enterprise_contract(qctx.deps, &v1_structs::QueryV1Msg::ProposalStatus(params))
+        let response = self.query_proposal(
+            qctx,
+            ProposalParams {
+                proposal_id: params.proposal_id,
+            },
+        )?;
+
+        Ok(ProposalStatusResponse {
+            status: response.proposal_status,
+            expires: response.proposal.expires,
+            results: response.results,
+        })
     }
 
     fn query_member_vote(
@@ -455,7 +434,7 @@ impl EnterpriseFacadeV1 {
     fn resolve_in_progress_proposal_status(
         &self,
         response: &ProposalResponse,
-        gov_config: GovConfigV1,
+        gov_config: &GovConfigV1,
     ) -> EnterpriseFacadeResult<PollStatus> {
         // in reality, there were only AtTime expirations for proposals
         let ends_at = match response.proposal.expires {
@@ -564,5 +543,65 @@ impl EnterpriseFacadeV1 {
             description: msg.description,
             proposal_actions,
         })
+    }
+
+    fn fix_proposal_response(
+        &self,
+        qctx: &QueryContext,
+        response: ProposalResponse,
+        gov_config: &GovConfigV1,
+    ) -> EnterpriseFacadeResult<ProposalResponse> {
+        let status = match response.proposal_status {
+            ProposalStatus::InProgress => {
+                if response.proposal.expires.is_expired(&qctx.env.block) {
+                    // proposal expired but stands as InProgress, let's resolve whether it passed or not
+                    let poll_status =
+                        self.resolve_in_progress_proposal_status(&response, gov_config)?;
+
+                    match poll_status {
+                        PollStatus::InProgress { .. } => return Err(StdError::generic_err("invalid state - resolved proposal status to 'in progress' after it ended").into()),
+                        PollStatus::Passed { .. } => ProposalStatus::Passed,
+                        PollStatus::Rejected { .. } => ProposalStatus::Rejected,
+                    }
+                } else {
+                    // proposal still in progress, let's see if it can be executed early
+
+                    let allows_early_ending = match response.proposal.proposal_type {
+                        ProposalType::General => gov_config.allow_early_proposal_execution,
+                        ProposalType::Council => true,
+                    };
+
+                    if allows_early_ending {
+                        let poll_status =
+                            self.resolve_in_progress_proposal_status(&response, gov_config)?;
+
+                        match poll_status {
+                            PollStatus::InProgress { .. } => ProposalStatus::InProgress,
+                            PollStatus::Passed { .. } => ProposalStatus::InProgressCanExecuteEarly,
+                            PollStatus::Rejected { reason } => match reason {
+                                QuorumNotReached
+                                | ThresholdNotReached
+                                | QuorumAndThresholdNotReached => ProposalStatus::InProgress,
+                                _ => ProposalStatus::InProgressCanExecuteEarly,
+                            },
+                        }
+                    } else {
+                        ProposalStatus::InProgress
+                    }
+                }
+            }
+            _ => response.proposal_status,
+        };
+
+        let fixed_response = ProposalResponse {
+            proposal: Proposal {
+                status: status.clone(),
+                ..response.proposal
+            },
+            proposal_status: status,
+            ..response
+        };
+
+        Ok(fixed_response)
     }
 }
