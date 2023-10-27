@@ -6,16 +6,6 @@ use enterprise_governance_controller_api::error::GovernanceControllerResult;
 
 pub const PROPOSAL_INFOS: Map<ProposalId, ProposalInfo> = Map::new("proposal_infos");
 
-pub fn is_proposal_executed(
-    store: &dyn Storage,
-    proposal_id: ProposalId,
-) -> GovernanceControllerResult<bool> {
-    PROPOSAL_INFOS
-        .may_load(store, proposal_id)?
-        .map(|info| info.executed_at.is_some())
-        .ok_or(NoSuchProposal)
-}
-
 pub fn set_proposal_executed(
     store: &mut dyn Storage,
     proposal_id: ProposalId,

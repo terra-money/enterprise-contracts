@@ -1,6 +1,4 @@
-use crate::proposals::{
-    get_proposal_actions, is_proposal_executed, set_proposal_executed, PROPOSAL_INFOS,
-};
+use crate::proposals::{get_proposal_actions, set_proposal_executed, PROPOSAL_INFOS};
 use crate::state::{
     ProposalBeingVotedOn, ProposalExecutabilityStatus, State, COUNCIL_GOV_CONFIG,
     ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
@@ -702,14 +700,6 @@ fn end_proposal(
         return Err(NoVotesAvailable);
     }
 
-    let allow_early_ending = match proposal_type {
-        General => {
-            let gov_config = GOV_CONFIG.load(ctx.deps.storage)?;
-            gov_config.allow_early_proposal_execution
-        }
-        Council => true,
-    };
-
     let governance_contract = query_enterprise_governance_addr(ctx.deps.as_ref())?;
     let end_poll_submsg = SubMsg::reply_on_success(
         wasm_execute(
@@ -718,7 +708,7 @@ fn end_proposal(
                 poll_id: msg.proposal_id.into(),
                 maximum_available_votes: total_available_votes,
                 error_if_already_ended: false,
-                allow_early_ending,
+                allow_early_ending: allows_early_ending(ctx.deps.as_ref(), &proposal_type)?,
             }),
             vec![],
         )?,
@@ -741,6 +731,20 @@ fn end_proposal(
     )?;
 
     Ok(vec![end_poll_submsg])
+}
+
+fn allows_early_ending(
+    deps: Deps,
+    proposal_type: &ProposalType,
+) -> GovernanceControllerResult<bool> {
+    let allow_early_ending = match proposal_type {
+        General => {
+            let gov_config = GOV_CONFIG.load(deps.storage)?;
+            gov_config.allow_early_proposal_execution
+        }
+        Council => true,
+    };
+    Ok(allow_early_ending)
 }
 
 fn resolve_ended_proposal(
@@ -1520,17 +1524,17 @@ pub fn query_proposal_status(
 ) -> GovernanceControllerResult<ProposalStatusResponse> {
     let poll_status = query_poll_status(&qctx, msg.proposal_id)?;
 
-    let status = match poll_status.status {
-        PollStatus::InProgress { .. } => ProposalStatus::InProgress,
-        PollStatus::Passed { .. } => {
-            if is_proposal_executed(qctx.deps.storage, msg.proposal_id)? {
-                ProposalStatus::Executed
-            } else {
-                ProposalStatus::Passed
-            }
-        }
-        PollStatus::Rejected { .. } => ProposalStatus::Rejected,
-    };
+    let proposal_info = PROPOSAL_INFOS
+        .may_load(qctx.deps.storage, msg.proposal_id)?
+        .ok_or(NoSuchProposal)?;
+
+    let status = fix_poll_status(
+        qctx.deps,
+        msg.proposal_id,
+        poll_status.status,
+        qctx.env.block.time,
+        &proposal_info,
+    )?;
 
     Ok(ProposalStatusResponse {
         status,
@@ -1564,60 +1568,13 @@ fn poll_to_proposal_response(
         Some(proposal_info) => proposal_info,
     };
 
-    let status = if proposal_info.executed_at.is_some() {
-        ProposalStatus::Executed
-    } else {
-        match poll.status {
-            PollStatus::InProgress { ends_at } => {
-                // check if the poll has ended
-                if env.block.time >= ends_at {
-                    // poll ended, let's see what's the status
-                    determine_final_status_of_ended_poll(
-                        deps,
-                        ends_at,
-                        poll.id,
-                        proposal_info.proposal_type.clone(),
-                    )?
-                } else {
-                    // poll still in progress
-                    // let's first check if it can be executed right now
-
-                    let allows_early_execution = true; // TODO: calculate properly
-                    let past_earliest_execution =
-                        proposal_info.past_earliest_execution(env.block.time);
-
-                    if allows_early_execution && past_earliest_execution {
-                        let status = simulate_end_proposal_status(
-                            deps,
-                            poll.id,
-                            total_available_votes(
-                                deps,
-                                Never {},
-                                proposal_info.proposal_type.clone(),
-                            )?,
-                        )?;
-                        match status.status {
-                            PollStatus::InProgress { .. } => ProposalStatus::InProgress,
-                            PollStatus::Passed { .. } => ProposalStatus::InProgressCanExecuteEarly,
-                            PollStatus::Rejected { reason } => {
-                                match reason {
-                                    // if any of the quorum or threshold not reached, cannot early execute
-                                    QuorumNotReached
-                                    | ThresholdNotReached
-                                    | QuorumAndThresholdNotReached => ProposalStatus::InProgress,
-                                    _ => ProposalStatus::InProgressCanExecuteEarly,
-                                }
-                            }
-                        }
-                    } else {
-                        ProposalStatus::InProgress
-                    }
-                }
-            }
-            PollStatus::Passed { .. } => ProposalStatus::Passed,
-            PollStatus::Rejected { .. } => ProposalStatus::Rejected,
-        }
-    };
+    let status = fix_poll_status(
+        deps,
+        poll.id,
+        poll.status.clone(),
+        env.block.time,
+        &proposal_info,
+    )?;
 
     let proposal = Proposal {
         proposal_type: proposal_info.proposal_type.clone(),
@@ -1665,6 +1622,73 @@ fn poll_to_proposal_response(
         results: poll.results.clone(),
         total_votes_available,
     })
+}
+
+/// Status received from governance contract is not really telling the whole picture.
+/// Polls there remain 'in_progress' even past their voting period. Also, they don't tell us
+/// whether we can execute early or not.
+fn fix_poll_status(
+    deps: Deps,
+    poll_id: PollId,
+    poll_status: PollStatus,
+    now: Timestamp,
+    proposal_info: &ProposalInfo,
+) -> GovernanceControllerResult<ProposalStatus> {
+    let status = if proposal_info.executed_at.is_some() {
+        ProposalStatus::Executed
+    } else {
+        match poll_status {
+            PollStatus::InProgress { ends_at } => {
+                // check if the poll has ended
+                if now >= ends_at {
+                    // poll ended, let's see what's the status
+                    determine_final_status_of_ended_poll(
+                        deps,
+                        ends_at,
+                        poll_id,
+                        proposal_info.proposal_type.clone(),
+                    )?
+                } else {
+                    // poll still in progress
+                    // let's first check if it can be executed right now
+
+                    let allows_early_execution =
+                        allows_early_ending(deps, &proposal_info.proposal_type)?;
+                    let past_earliest_execution = proposal_info.past_earliest_execution(now);
+
+                    if allows_early_execution && past_earliest_execution {
+                        let status = simulate_end_proposal_status(
+                            deps,
+                            poll_id,
+                            total_available_votes(
+                                deps,
+                                Never {},
+                                proposal_info.proposal_type.clone(),
+                            )?,
+                        )?;
+                        match status.status {
+                            PollStatus::InProgress { .. } => ProposalStatus::InProgress,
+                            PollStatus::Passed { .. } => ProposalStatus::InProgressCanExecuteEarly,
+                            PollStatus::Rejected { reason } => {
+                                match reason {
+                                    // if any of the quorum or threshold not reached, cannot early execute
+                                    QuorumNotReached
+                                    | ThresholdNotReached
+                                    | QuorumAndThresholdNotReached => ProposalStatus::InProgress,
+                                    _ => ProposalStatus::InProgressCanExecuteEarly,
+                                }
+                            }
+                        }
+                    } else {
+                        ProposalStatus::InProgress
+                    }
+                }
+            }
+            PollStatus::Passed { .. } => ProposalStatus::Passed,
+            PollStatus::Rejected { .. } => ProposalStatus::Rejected,
+        }
+    };
+    Ok(status)
 }
 
 fn determine_final_status_of_ended_poll(
