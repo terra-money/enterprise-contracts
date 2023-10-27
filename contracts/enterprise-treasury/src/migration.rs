@@ -3,6 +3,8 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
+use crate::nft_staking::NFT_STAKES;
+use crate::staking::{load_total_staked, CW20_STAKES};
 use crate::state::{Config, CONFIG};
 use common::cw::Context;
 use cosmwasm_schema::cw_serde;
@@ -28,6 +30,7 @@ use enterprise_treasury_api::error::EnterpriseTreasuryResult;
 use enterprise_treasury_api::msg::ExecuteMsg::FinalizeMigration;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use multisig_membership_api::api::UserWeight;
+use token_staking_api::api::UserStake;
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -518,6 +521,64 @@ pub fn membership_contract_created(
 ) -> EnterpriseTreasuryResult<Response> {
     let migration_info = MIGRATION_INFO.load(deps.storage)?;
 
+    let dao_type = DAO_TYPE.load(deps.storage)?;
+
+    let finalize_membership_msgs = match dao_type {
+        DaoType::Denom => {
+            return Err(Std(StdError::generic_err(
+                "Denom membership was not supported prior to this migration!",
+            )))
+        }
+        DaoType::Token => {
+            let cw20_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+
+            let total_staked = load_total_staked(deps.storage)?;
+
+            let stakers = CW20_STAKES
+                .range(deps.storage, None, None, Ascending)
+                .map(|res| {
+                    res.map(|(user, amount)| UserStake {
+                        user: user.to_string(),
+                        staked_amount: amount,
+                    })
+                })
+                .collect::<StdResult<Vec<UserStake>>>()?;
+
+            vec![SubMsg::new(
+                Asset::cw20(cw20_contract, total_staked).send_msg(
+                    membership_contract.clone(),
+                    to_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers { stakers })?,
+                )?,
+            )]
+        }
+        DaoType::Nft => {
+            let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
+
+            let mut migrate_stakes_submsgs = vec![];
+
+            for stake_res in NFT_STAKES().range(deps.storage, None, None, Ascending) {
+                let (_, stake) = stake_res?;
+
+                let submsg = wasm_execute(
+                    cw721_contract.to_string(),
+                    &cw721::Cw721ExecuteMsg::SendNft {
+                        contract: membership_contract.to_string(),
+                        token_id: stake.token_id,
+                        msg: to_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
+                            user: stake.staker.to_string(),
+                        })?,
+                    },
+                    vec![],
+                )?;
+
+                migrate_stakes_submsgs.push(SubMsg::new(submsg));
+            }
+
+            migrate_stakes_submsgs
+        }
+        DaoType::Multisig => vec![],
+    };
+
     MIGRATION_INFO.save(
         deps.storage,
         &MigrationInfo {
@@ -526,7 +587,7 @@ pub fn membership_contract_created(
         },
     )?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_submessages(finalize_membership_msgs))
 }
 
 pub fn create_enterprise_outposts_contract(

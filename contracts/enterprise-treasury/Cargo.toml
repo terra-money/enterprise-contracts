@@ -39,6 +39,7 @@ cosmwasm-std = "1"
 cw-asset = "2.4.0"
 cw-storage-plus = "1.0.1"
 cw2 = "1.0.1"
+cw721 = "0.16.0"
 cw-utils = "1.0.1"
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
