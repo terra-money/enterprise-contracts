@@ -5,7 +5,8 @@ use crate::contract::{
 };
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{
-    get_height_checkpoints, get_seconds_checkpoints, load_total_staked, CW20_STAKES,
+    get_height_checkpoints, get_multisig_height_checkpoints, get_multisig_seconds_checkpoints,
+    get_seconds_checkpoints, load_total_staked, CW20_STAKES,
 };
 use crate::state::{Config, CONFIG};
 use common::commons::ModifyValue;
@@ -845,10 +846,10 @@ pub fn create_enterprise_membership_contract(
                     enterprise_contract: enterprise_contract.to_string(),
                     initial_weights: Some(initial_weights),
                     weight_change_hooks,
-                    total_weight_by_height_checkpoints: Some(get_height_checkpoints(
+                    total_weight_by_height_checkpoints: Some(get_multisig_height_checkpoints(
                         deps.as_ref(),
                     )?),
-                    total_weight_by_seconds_checkpoints: Some(get_seconds_checkpoints(
+                    total_weight_by_seconds_checkpoints: Some(get_multisig_seconds_checkpoints(
                         deps.as_ref(),
                     )?),
                 })?,
