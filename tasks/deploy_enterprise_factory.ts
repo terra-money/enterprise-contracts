@@ -11,6 +11,7 @@ const ENTERPRISE_FACTORY = "enterprise-factory";
 const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_GOVERNANCE_CONTROLLER = "enterprise-governance-controller";
 const ENTERPRISE_TREASURY = "enterprise-treasury";
+const ENTERPRISE_OUTPOSTS = "enterprise-outposts";
 const ENTERPRISE_VERSIONING = "enterprise-versioning";
 const FUNDS_DISTRIBUTOR = "funds-distributor";
 const MULTISIG_MEMBERSHIP = "multisig-membership";
@@ -24,29 +25,149 @@ const DENOM_AXL_USDT = "ibc/CBF67A2BCF6CAE343FDF251E510C8E18C361FC02B23430C12111
 const DENOM_AXL_WBTC = "ibc/05D299885B07905B6886F554B39346EA6761246076A1120B1950049B92B922DD";
 const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341C7EC6752E674";
 
+type ComponentContracts = {
+    enterprise_factory_contract: string,
+    enterprise_governance_contract: string,
+    enterprise_governance_controller_contract: string,
+    enterprise_outposts_contract: string,
+    enterprise_treasury_contract: string,
+    funds_distributor_contract: string,
+    membership_contract: string,
+    council_membership_contract: string,
+    attestation_contract: string | undefined,
+}
+
+type TokenConfig = {
+  enterprise_contract: string,
+  token_contract: string,
+  unlocking_period: Object,
+}
+
 task(async ({ network, deployer, executor, signer, refs }) => {
   // deployer.buildContract(ENTERPRISE);
   // deployer.optimizeContract(ENTERPRISE);
 
   // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
-  await deployEnterpriseFacade(refs, network, deployer, signer);
+  // await deployEnterpriseFacade(refs, network, deployer, signer);
 
   // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-  await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 5, 0);
+  // await deployNewEnterpriseVersion(refs, network, deployer, executor, 2, 5, 0);
 
   // await instantiateDao(refs, network, executor);
 
-  // try {
-  //   await deployer.instantiate(MULTISIG_MEMBERSHIP, {
-  //     enterprise_contract: "terra14zwkusypmm9pdhdlnqygmzu0d7mpmz7ml0aw3aw0m968wwfna97s540dh7",
-  //     initial_weights: []
-  //   });
-  // } catch (e) {
-  //   console.log(e);
-  // }
+  try {
+    const enterprise_contract = "terra1uw3atczy5vdhx5er8q3npxd23t659hrmemg7ae94ypnupj4vda7svrzzrn";
+
+    const component_contracts = await executor.query(enterprise_contract, { component_contracts: {} }) as ComponentContracts;
+
+    const membership_contract = component_contracts.membership_contract;
+    const governance_controller = component_contracts.enterprise_governance_controller_contract;
+
+    const token_config = await executor.query(membership_contract, { token_config: {} }) as TokenConfig;
+
+    const token_contract = token_config.token_contract;
+
+    const proposal_id = 1;
+
+    // await stakeTokens(executor, token_contract, membership_contract);
+
+    const executeMsgProposalAction = {
+      execute_msgs: {
+        action_type: "it is what it is",
+        msgs: [
+          "{\"stargate\":{\"type_url\":\"/ibc.applications.transfer.v1.MsgTransfer\",\"value\":\"Cgh0cmFuc2ZlchIJY2hhbm5lbC0yGgoKBXVsdW5hEgExIkB0ZXJyYTF0dTl6MHFnZmh0Z242a3o2cjJ4ZGY3cWFhMDUycXA3OTJ1NHVubGt6dnFodG1oemdqampxcWZsbHBtKj9qdW5vMW44eWF1OHk2NXhsNDdoNWR5ajlycjU2dWN5bmp5ZGQyOTBwZ2g0ZHI1Z3ZzMnFmdTJ5cnF2MHJ5MjM41u7hjc7aoMcXQooFeyJ3YXNtIjp7ImNvbnRyYWN0IjoianVubzFuOHlhdTh5NjV4bDQ3aDVkeWo5cnI1NnVjeW5qeWRkMjkwcGdoNGRyNWd2czJxZnUyeXJxdjByeTIzIiwibXNnIjp7ImV4ZWN1dGVfbXNncyI6eyJtc2dzIjpbeyJtc2ciOnsid2FzbSI6eyJpbnN0YW50aWF0ZSI6eyJhZG1pbiI6bnVsbCwiY29kZV9pZCI6MzY4OSwibXNnIjoiZXlKaGJHeHZkMTlqY205emMxOWphR0ZwYmw5dGMyZHpJanAwY25WbExDSnZkMjVsY2lJNkltcDFibTh4Wm1Nd2N6ZzNZMkV5YzIxNll6VXpaalJ4ZW1kamVYVTJhbmR0Y2pSM2VIWjNPRFptTWpJNGJYSmtOMlJrT0dwNGNuQmxjWGxuTTJWdU15SXNJbmRvYVhSbGJHbHpkQ0k2Ym5Wc2JDd2liWE5uY3lJNmJuVnNiSDA9IiwiZnVuZHMiOltdLCJsYWJlbCI6IlByb3h5IGNvbnRyYWN0In19fSwicmVwbHlfY2FsbGJhY2siOnsiY2FsbGJhY2tfaWQiOjEsImliY19wb3J0IjoidHJhbnNmZXIiLCJpYmNfY2hhbm5lbCI6ImNoYW5uZWwtODYiLCJkZW5vbSI6ImliYy8xMDdEMTUyQkIzMTc2RkFFQkY0QzJBODRDNUZGREVFQTdDN0NCNEZFMUJCREFCNzEwRjFGRDI1QkNEMDU1Q0JGIiwicmVjZWl2ZXIiOiJ0ZXJyYTF0dTl6MHFnZmh0Z242a3o2cjJ4ZGY3cWFhMDUycXA3OTJ1NHVubGt6dnFodG1oemdqampxcWZsbHBtIn19XX19fX0=\"}}"
+        ]
+      }
+    };
+
+    const deployCrossChainTreasuryProposalAction = {
+      deploy_cross_chain_treasury: {
+        cross_chain_msg_spec: {
+          chain_id: "injective-888",
+          chain_bech32_prefix: "inj",
+          src_ibc_port: "transfer",
+          src_ibc_channel: "channel-352",
+          dest_ibc_port: "transfer",
+          dest_ibc_channel: "channel-126",
+          uluna_denom: "ibc/97498452BF27CC90656FD7D6EFDA287FA2BFFFF3E84691C84CB9E0451F6DF0A4"
+        },
+        ics_proxy_code_id: 3689,
+        enterprise_treasury_code_id: 3690,
+        chain_global_proxy: "juno1n8yau8y65xl47h5dyj9rr56ucynjydd290pgh4dr5gvs2qfu2yrqv0ry23"
+      }
+    };
+
+    const upgradeDaoProposalAction = {
+      upgrade_dao: {
+        new_version: {
+          major: 2,
+          minor: 1,
+          patch: 0,
+        },
+        migrate_msgs: [],
+      }
+    };
+
+    // await createProposal(executor, governance_controller, deployCrossChainTreasuryProposalAction);
+    //
+    // await castYesVote(executor, governance_controller, proposal_id);
+    //
+    await executeProposal(executor, governance_controller, proposal_id)
+  } catch (e) {
+    console.log(e);
+  }
 });
+
+const stakeTokens = async (executor: Executor, token_contract: string, membership_contract: string): Promise<void> => {
+  await executor.execute(
+      token_contract,
+      {
+        send: {
+          contract: membership_contract,
+          amount: "10000",
+          msg: "eyJzdGFrZSI6eyJ1c2VyIjoidGVycmExeDV6c2ZkZnhqNnhnNXBxbTA5OTlsYWdtY2NtcndrNTQ0OTVlOXYifX0=",
+        }
+      }
+  );
+  await waitForNewBlock();
+}
+
+const createProposal = async (executor: Executor, governance_controller: string, proposalAction: Object): Promise<void> => {
+  await executor.execute(
+      governance_controller,
+      {
+        create_proposal: {
+          title: "Test proposal",
+          description: "yeye whatevs",
+          proposal_actions: [proposalAction]
+        }
+      }
+  );
+  await waitForNewBlock();
+}
+
+const castYesVote = async (executor: Executor, governance_controller: string, proposal_id: number): Promise<void> => {
+  await executor.execute(governance_controller,
+      {
+        cast_vote: {
+          proposal_id: proposal_id,
+          outcome: "yes",
+        }
+      });
+}
+
+function executeProposal(executor: Executor, governance_controller: string, proposal_id: number) {
+  return executor.execute(governance_controller,
+      {
+        execute_proposal: {
+          proposal_id: proposal_id,
+        }
+      });
+}
+
+const waitForNewBlock = async (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5000))
 
 const deployEnterpriseFacade = async (refs: Refs, network: string, deployer: Deployer, signer: Signer): Promise<void> => {
   await deployer.storeCode(ENTERPRISE_FACADE_V1);
@@ -141,35 +262,38 @@ const deployEnterpriseFactory = async (refs: Refs, network: string, deployer: De
 }
 
 const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer: Deployer, executor: Executor, major: number, minor: number, patch: number): Promise<void> => {
-  await deployer.storeCode(ATTESTATION);
+  // await deployer.storeCode(ATTESTATION);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE_GOVERNANCE);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE_TREASURY);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  await deployer.storeCode(ENTERPRISE_OUTPOSTS);
   await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE_GOVERNANCE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE_TREASURY);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(FUNDS_DISTRIBUTOR);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(MULTISIG_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(FUNDS_DISTRIBUTOR);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(MULTISIG_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const enterpriseVersioningAddr = refs.getAddress(network, ENTERPRISE_VERSIONING);
 
@@ -188,6 +312,7 @@ const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer:
           enterprise_governance_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE)),
           enterprise_governance_controller_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE_CONTROLLER)),
           enterprise_treasury_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_TREASURY)),
+          enterprise_outposts_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_OUTPOSTS)),
           funds_distributor_code_id: parseInt(refs.getCodeId(network, FUNDS_DISTRIBUTOR)),
           token_staking_membership_code_id: parseInt(refs.getCodeId(network, TOKEN_STAKING_MEMBERSHIP)),
           denom_staking_membership_code_id: parseInt(refs.getCodeId(network, DENOM_STAKING_MEMBERSHIP)),
@@ -214,7 +339,7 @@ const instantiateDao = async(refs: Refs, network: string, executor: Executor): P
         dao_metadata: TEST_DAO_METADATA,
         gov_config: TEST_GOV_CONFIG,
         // dao_council: TEST_DAO_COUNCIL,
-        dao_membership: TEST_NEW_CW721_DAO_MEMBERSHIP,
+        dao_membership: TEST_NEW_CW20_DAO_MEMBERSHIP,
         // asset_whitelist: [
         //   {native: DENOM_LUNA},
         // ],

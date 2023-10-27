@@ -17,6 +17,14 @@
       "uluna_denom": "ibc/FB5148EF12F450C2971DA04DB83D3E740CAB82C6F66D7C2A2B231534142445E2",
       "src_ibc_channel": "channel-412",
       "dest_ibc_channel": "channel-792"
+    },
+    "injective-888": {
+      "chain_global_proxy": "",
+      "enterprise_treasury_code_id": 0,
+      "ics_proxy_code_id": 0,
+      "uluna_denom": "ibc/97498452BF27CC90656FD7D6EFDA287FA2BFFFF3E84691C84CB9E0451F6DF0A4",
+      "src_ibc_channel": "channel-352",
+      "dest_ibc_channel": "channel-126"
     }
   }
 }
