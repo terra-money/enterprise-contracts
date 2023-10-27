@@ -8,24 +8,28 @@ use crate::staking::{
     get_height_checkpoints, get_seconds_checkpoints, load_total_staked, CW20_STAKES,
 };
 use crate::state::{Config, CONFIG};
+use common::commons::ModifyValue;
 use common::cw::{Context, ReleaseAt};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::{Instantiate, Migrate, UpdateAdmin};
 use cosmwasm_std::{
-    to_binary, wasm_execute, Addr, BlockInfo, Decimal, Deps, DepsMut, Env, Response, StdError,
-    StdResult, Storage, SubMsg, Uint128, Uint64,
+    from_binary, to_binary, wasm_execute, Addr, Binary, BlockInfo, Decimal, Deps, DepsMut, Env,
+    Response, StdError, StdResult, Storage, SubMsg, Uint128, Uint64,
 };
-use cw_asset::Asset;
+use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
 use enterprise_governance_controller_api::api::{
     DaoCouncilSpec, GovConfig, ProposalAction, ProposalActionType, ProposalDeposit,
     ProposalDepositAsset, ProposalId, ProposalInfo, ProposalType,
+    UpdateAssetWhitelistProposalActionMsg, UpdateNftWhitelistProposalActionMsg,
 };
-use enterprise_protocol::api::{DaoMetadata, DaoType, FinalizeInstantiationMsg};
+use enterprise_protocol::api::{
+    DaoMetadata, DaoType, FinalizeInstantiationMsg, Logo, VersionMigrateMsg,
+};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
 use enterprise_treasury_api::error::EnterpriseTreasuryError::{Std, Unauthorized};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
@@ -119,7 +123,7 @@ pub struct ProposalInfoV5 {
     pub proposal_type: ProposalType,
     pub executed_at: Option<BlockInfo>,
     pub proposal_deposit: Option<ProposalDepositV5>,
-    pub proposal_actions: Vec<ProposalAction>,
+    pub proposal_actions: Vec<ProposalActionV5>,
 }
 
 impl ProposalInfoV5 {
@@ -135,7 +139,123 @@ impl ProposalInfoV5 {
                     amount: deposit.amount,
                 },
             }),
-            proposal_actions: self.proposal_actions,
+            proposal_actions: self
+                .proposal_actions
+                .into_iter()
+                .map(|it| it.to_proposal_action())
+                .collect(),
+        }
+    }
+}
+
+impl ProposalActionV5 {
+    pub fn to_proposal_action(self) -> ProposalAction {
+        match self {
+            ProposalActionV5::UpdateMetadata(msg) => {
+                ProposalAction::UpdateMetadata(enterprise_protocol::api::UpdateMetadataMsg {
+                    name: msg.name,
+                    description: msg.description,
+                    logo: msg.logo,
+                    github_username: msg.github_username,
+                    discord_username: msg.discord_username,
+                    twitter_username: msg.twitter_username,
+                    telegram_username: msg.telegram_username,
+                })
+            }
+            ProposalActionV5::UpdateGovConfig(msg) => ProposalAction::UpdateGovConfig(
+                enterprise_governance_controller_api::api::UpdateGovConfigMsg {
+                    quorum: msg.quorum,
+                    threshold: msg.threshold,
+                    veto_threshold: msg.veto_threshold,
+                    voting_duration: msg.voting_duration,
+                    unlocking_period: msg.unlocking_period,
+                    minimum_deposit: msg.minimum_deposit,
+                    allow_early_proposal_execution: msg.allow_early_proposal_execution,
+                },
+            ),
+            ProposalActionV5::UpdateCouncil(msg) => ProposalAction::UpdateCouncil(
+                enterprise_governance_controller_api::api::UpdateCouncilMsg {
+                    dao_council: msg.dao_council,
+                },
+            ),
+            ProposalActionV5::UpdateAssetWhitelist(msg) => {
+                ProposalAction::UpdateAssetWhitelist(UpdateAssetWhitelistProposalActionMsg {
+                    remote_treasury_target: None,
+                    add: msg.add.into_iter().map(AssetInfoUnchecked::from).collect(),
+                    remove: msg
+                        .remove
+                        .into_iter()
+                        .map(AssetInfoUnchecked::from)
+                        .collect(),
+                })
+            }
+            ProposalActionV5::UpdateNftWhitelist(msg) => {
+                ProposalAction::UpdateNftWhitelist(UpdateNftWhitelistProposalActionMsg {
+                    remote_treasury_target: None,
+                    add: msg.add.into_iter().map(|addr| addr.to_string()).collect(),
+                    remove: msg
+                        .remove
+                        .into_iter()
+                        .map(|addr| addr.to_string())
+                        .collect(),
+                })
+            }
+            ProposalActionV5::RequestFundingFromDao(msg) => ProposalAction::RequestFundingFromDao(
+                enterprise_governance_controller_api::api::RequestFundingFromDaoMsg {
+                    remote_treasury_target: None,
+                    recipient: msg.recipient,
+                    assets: msg.assets.into_iter().map(AssetUnchecked::from).collect(),
+                },
+            ),
+            ProposalActionV5::UpgradeDao(msg) => {
+                ProposalAction::UpgradeDao(enterprise_protocol::api::UpgradeDaoMsg {
+                    new_version: Version {
+                        major: 0,
+                        minor: msg.new_dao_code_id,
+                        patch: 0,
+                    },
+                    migrate_msgs: vec![VersionMigrateMsg {
+                        version: Version {
+                            major: 0,
+                            minor: msg.new_dao_code_id,
+                            patch: 0,
+                        },
+                        migrate_msg: from_binary(&msg.migrate_msg).unwrap_or_default(),
+                    }],
+                })
+            }
+            ProposalActionV5::ExecuteMsgs(msg) => ProposalAction::ExecuteMsgs(
+                enterprise_governance_controller_api::api::ExecuteMsgsMsg {
+                    action_type: msg.action_type,
+                    msgs: msg.msgs,
+                },
+            ),
+            ProposalActionV5::ModifyMultisigMembership(msg) => {
+                ProposalAction::ModifyMultisigMembership(
+                    enterprise_governance_controller_api::api::ModifyMultisigMembershipMsg {
+                        edit_members: msg
+                            .edit_members
+                            .into_iter()
+                            .map(|it| UserWeight {
+                                user: it.address,
+                                weight: it.weight,
+                            })
+                            .collect(),
+                    },
+                )
+            }
+            ProposalActionV5::DistributeFunds(msg) => ProposalAction::DistributeFunds(
+                enterprise_governance_controller_api::api::DistributeFundsMsg {
+                    funds: msg.funds.into_iter().map(AssetUnchecked::from).collect(),
+                },
+            ),
+            ProposalActionV5::UpdateMinimumWeightForRewards(msg) => {
+                ProposalAction::UpdateMinimumWeightForRewards(
+                    enterprise_governance_controller_api::api::UpdateMinimumWeightForRewardsMsg {
+                        minimum_weight_for_rewards: msg.minimum_weight_for_rewards,
+                    },
+                )
+            }
         }
     }
 }
@@ -144,6 +264,145 @@ impl ProposalInfoV5 {
 pub struct ProposalDepositV5 {
     pub depositor: Addr,
     pub amount: Uint128,
+}
+
+#[cw_serde]
+pub enum ProposalActionTypeV5 {
+    UpdateMetadata,
+    UpdateGovConfig,
+    UpdateCouncil,
+    UpdateAssetWhitelist,
+    UpdateNftWhitelist,
+    RequestFundingFromDao,
+    UpgradeDao,
+    ExecuteMsgs,
+    ModifyMultisigMembership,
+    DistributeFunds,
+    UpdateMinimumWeightForRewards,
+}
+
+impl ProposalActionTypeV5 {
+    pub fn map_to_proposal_action_type(self) -> ProposalActionType {
+        match self {
+            ProposalActionTypeV5::UpdateMetadata => ProposalActionType::UpdateMetadata,
+            ProposalActionTypeV5::UpdateGovConfig => ProposalActionType::UpdateGovConfig,
+            ProposalActionTypeV5::UpdateCouncil => ProposalActionType::UpdateCouncil,
+            ProposalActionTypeV5::UpdateAssetWhitelist => ProposalActionType::UpdateAssetWhitelist,
+            ProposalActionTypeV5::UpdateNftWhitelist => ProposalActionType::UpdateNftWhitelist,
+            ProposalActionTypeV5::RequestFundingFromDao => {
+                ProposalActionType::RequestFundingFromDao
+            }
+            ProposalActionTypeV5::UpgradeDao => ProposalActionType::UpgradeDao,
+            ProposalActionTypeV5::ExecuteMsgs => ProposalActionType::ExecuteMsgs,
+            ProposalActionTypeV5::ModifyMultisigMembership => {
+                ProposalActionType::ModifyMultisigMembership
+            }
+            ProposalActionTypeV5::DistributeFunds => ProposalActionType::DistributeFunds,
+            ProposalActionTypeV5::UpdateMinimumWeightForRewards => {
+                ProposalActionType::UpdateMinimumWeightForRewards
+            }
+        }
+    }
+}
+
+#[cw_serde]
+pub enum ProposalActionV5 {
+    UpdateMetadata(UpdateMetadataMsg),
+    UpdateGovConfig(UpdateGovConfigMsg),
+    UpdateCouncil(UpdateCouncilMsg),
+    UpdateAssetWhitelist(UpdateAssetWhitelistMsg),
+    UpdateNftWhitelist(UpdateNftWhitelistMsg),
+    RequestFundingFromDao(RequestFundingFromDaoMsg),
+    UpgradeDao(UpgradeDaoMsg),
+    ExecuteMsgs(ExecuteMsgsMsg),
+    ModifyMultisigMembership(ModifyMultisigMembershipMsg),
+    DistributeFunds(DistributeFundsMsg),
+    UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
+}
+
+#[cw_serde]
+pub struct UpdateMetadataMsg {
+    pub name: ModifyValue<String>,
+    pub description: ModifyValue<Option<String>>,
+    pub logo: ModifyValue<Logo>,
+    pub github_username: ModifyValue<Option<String>>,
+    pub discord_username: ModifyValue<Option<String>>,
+    pub twitter_username: ModifyValue<Option<String>>,
+    pub telegram_username: ModifyValue<Option<String>>,
+}
+
+#[cw_serde]
+pub struct UpdateGovConfigMsg {
+    pub quorum: ModifyValue<Decimal>,
+    pub threshold: ModifyValue<Decimal>,
+    pub veto_threshold: ModifyValue<Option<Decimal>>,
+    pub voting_duration: ModifyValue<Uint64>,
+    pub unlocking_period: ModifyValue<Duration>,
+    pub minimum_deposit: ModifyValue<Option<Uint128>>,
+    pub allow_early_proposal_execution: ModifyValue<bool>,
+}
+
+#[cw_serde]
+pub struct UpdateCouncilMsg {
+    pub dao_council: Option<DaoCouncilSpec>,
+}
+
+#[cw_serde]
+pub struct UpdateAssetWhitelistMsg {
+    /// New assets to add to the whitelist. Will ignore assets that are already whitelisted.
+    pub add: Vec<AssetInfo>,
+    /// Assets to remove from the whitelist. Will ignore assets that are not already whitelisted.
+    pub remove: Vec<AssetInfo>,
+}
+
+#[cw_serde]
+pub struct UpdateNftWhitelistMsg {
+    /// New NFTs to add to the whitelist. Will ignore NFTs that are already whitelisted.
+    pub add: Vec<Addr>,
+    /// NFTs to remove from the whitelist. Will ignore NFTs that are not already whitelisted.
+    pub remove: Vec<Addr>,
+}
+
+#[cw_serde]
+pub struct RequestFundingFromDaoMsg {
+    pub recipient: String,
+    pub assets: Vec<Asset>,
+}
+
+#[cw_serde]
+pub struct UpgradeDaoMsg {
+    pub new_dao_code_id: u64,
+    pub migrate_msg: Binary,
+}
+
+#[cw_serde]
+pub struct ExecuteMsgsMsg {
+    pub action_type: String,
+    pub msgs: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ModifyMultisigMembershipMsg {
+    /// Members to be edited.
+    /// Can contain existing members, in which case their new weight will be the one specified in
+    /// this message. This effectively allows removing of members (by setting their weight to 0).
+    pub edit_members: Vec<MultisigMember>,
+}
+
+#[cw_serde]
+pub struct MultisigMember {
+    pub address: String,
+    pub weight: Uint128,
+}
+
+#[cw_serde]
+pub struct DistributeFundsMsg {
+    pub funds: Vec<Asset>,
+}
+
+#[cw_serde]
+pub struct UpdateMinimumWeightForRewardsMsg {
+    pub minimum_weight_for_rewards: Uint128,
 }
 
 #[cw_serde]
@@ -195,7 +454,7 @@ pub struct DaoGovConfig {
 #[cw_serde]
 pub struct DaoCouncil {
     pub members: Vec<Addr>,
-    pub allowed_proposal_action_types: Vec<ProposalActionType>,
+    pub allowed_proposal_action_types: Vec<ProposalActionTypeV5>,
     pub quorum: Decimal,
     pub threshold: Decimal,
 }
@@ -404,7 +663,13 @@ pub fn create_governance_controller_contract(
                         .into_iter()
                         .map(|addr| addr.to_string())
                         .collect(),
-                    allowed_proposal_action_types: Some(council.allowed_proposal_action_types),
+                    allowed_proposal_action_types: Some(
+                        council
+                            .allowed_proposal_action_types
+                            .into_iter()
+                            .map(|it| it.map_to_proposal_action_type())
+                            .collect(),
+                    ),
                     quorum: council.quorum,
                     threshold: council.threshold,
                 }),
