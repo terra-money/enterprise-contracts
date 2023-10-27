@@ -1,4 +1,5 @@
 use crate::state::ENTERPRISE_VERSIONING;
+use crate::v1_structs;
 use crate::v1_structs::ExecuteV1Msg::{
     CastCouncilVote, CastVote, Claim, CreateCouncilProposal, CreateProposal, Unstake,
 };
@@ -7,10 +8,9 @@ use crate::v1_structs::ProposalActionV1::{
     UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
-use crate::v1_structs::QueryV1Msg::ProposalStatus;
 use crate::v1_structs::QueryV1Msg::{
     AssetWhitelist, Claims, DaoInfo, ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist,
-    Proposal, ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
+    ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
 };
 use crate::v1_structs::{
     CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
@@ -22,16 +22,18 @@ use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{
     to_binary, wasm_execute, Addr, Deps, Empty, Response, StdError, StdResult, SubMsg,
 };
+use cw_utils::Expiration;
 use enterprise_facade_api::api::{
     adapter_response_single_msg, AdaptedMsg, AdapterResponse, AssetWhitelistParams,
     AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType,
-    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    Proposal, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
+    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
+    UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -40,7 +42,10 @@ use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
+use poll_engine::state::PollHelpers;
+use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
 use EnterpriseFacadeError::UnsupportedOperation;
+use PollRejectionReason::{QuorumAndThresholdNotReached, QuorumNotReached, ThresholdNotReached};
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
 pub struct EnterpriseFacadeV1 {
@@ -131,7 +136,61 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: ProposalParams,
     ) -> EnterpriseFacadeResult<ProposalResponse> {
-        self.query_enterprise_contract(qctx.deps, &Proposal(params))
+        let response: ProposalResponse =
+            self.query_enterprise_contract(qctx.deps, &v1_structs::QueryV1Msg::Proposal(params))?;
+
+        let status = match response.proposal_status {
+            ProposalStatus::InProgress => {
+                let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
+
+                if response.proposal.expires.is_expired(&qctx.env.block) {
+                    // proposal expired but stands as InProgress, let's resolve whether it passed or not
+                    let poll_status =
+                        self.resolve_in_progress_proposal_status(&response, gov_config)?;
+
+                    match poll_status {
+                        PollStatus::InProgress { .. } => return Err(StdError::generic_err("invalid state - resolved proposal status to 'in progress' after it ended").into()),
+                        PollStatus::Passed { .. } => ProposalStatus::Passed,
+                        PollStatus::Rejected { .. } => ProposalStatus::Rejected,
+                    }
+                } else {
+                    // proposal still in progress, let's see if it can be executed early
+
+                    let allows_early_ending = match response.proposal.proposal_type {
+                        ProposalType::General => gov_config.allow_early_proposal_execution,
+                        ProposalType::Council => true,
+                    };
+
+                    if allows_early_ending {
+                        let poll_status =
+                            self.resolve_in_progress_proposal_status(&response, gov_config)?;
+
+                        match poll_status {
+                            PollStatus::InProgress { .. } => ProposalStatus::InProgress,
+                            PollStatus::Passed { .. } => ProposalStatus::InProgressCanExecuteEarly,
+                            PollStatus::Rejected { reason } => match reason {
+                                QuorumNotReached
+                                | ThresholdNotReached
+                                | QuorumAndThresholdNotReached => ProposalStatus::InProgress,
+                                _ => ProposalStatus::InProgressCanExecuteEarly,
+                            },
+                        }
+                    } else {
+                        ProposalStatus::InProgress
+                    }
+                }
+            }
+            _ => response.proposal_status,
+        };
+
+        Ok(ProposalResponse {
+            proposal: Proposal {
+                status: status.clone(),
+                ..response.proposal
+            },
+            proposal_status: status,
+            ..response
+        })
     }
 
     fn query_proposals(
@@ -147,7 +206,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: ProposalStatusParams,
     ) -> EnterpriseFacadeResult<ProposalStatusResponse> {
-        self.query_enterprise_contract(qctx.deps, &ProposalStatus(params))
+        self.query_enterprise_contract(qctx.deps, &v1_structs::QueryV1Msg::ProposalStatus(params))
     }
 
     fn query_member_vote(
@@ -391,6 +450,38 @@ impl EnterpriseFacadeV1 {
         Ok(deps
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &msg)?)
+    }
+
+    fn resolve_in_progress_proposal_status(
+        &self,
+        response: &ProposalResponse,
+        gov_config: GovConfigV1,
+    ) -> EnterpriseFacadeResult<PollStatus> {
+        // in reality, there were only AtTime expirations for proposals
+        let ends_at = match response.proposal.expires {
+            Expiration::AtTime(time) => time,
+            _ => return Err(StdError::generic_err("invalid type of proposal expiry").into()),
+        };
+
+        let poll = Poll {
+            id: response.proposal.id,
+            proposer: response.proposal.proposer.clone(),
+            deposit_amount: 0,
+            label: response.proposal.title.clone(),
+            description: response.proposal.description.clone(),
+            scheme: VotingScheme::CoinVoting,
+            status: PollStatus::InProgress { ends_at },
+            started_at: response.proposal.started_at,
+            ends_at,
+            quorum: gov_config.quorum,
+            threshold: gov_config.threshold,
+            veto_threshold: gov_config.veto_threshold,
+            results: response.results.clone(),
+        };
+
+        let poll_status = poll.final_status(response.total_votes_available)?;
+
+        Ok(poll_status)
     }
 
     fn map_proposal_action_to_v5(

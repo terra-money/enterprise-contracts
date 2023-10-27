@@ -15,6 +15,9 @@ pub enum EnterpriseFacadeError {
     #[error("{0}")]
     Dao(#[from] DaoError),
 
+    #[error("{0}")]
+    Poll(#[from] PollError),
+
     #[error("Could not properly identify the contract and its relation to Enterprise, facade cannot be created")]
     CannotCreateFacade,
 
