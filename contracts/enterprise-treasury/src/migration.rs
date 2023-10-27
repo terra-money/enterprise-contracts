@@ -6,14 +6,14 @@ use crate::contract::{
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{load_total_staked, CW20_STAKES};
 use crate::state::{Config, CONFIG};
-use common::cw::Context;
+use common::cw::{Context, ReleaseAt};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::{Instantiate, Migrate, UpdateAdmin};
 use cosmwasm_std::{
     to_binary, wasm_execute, Addr, BlockInfo, Decimal, Deps, DepsMut, Env, Response, StdError,
-    StdResult, SubMsg, Uint128, Uint64,
+    StdResult, Storage, SubMsg, Uint128, Uint64,
 };
 use cw_asset::Asset;
 use cw_storage_plus::{Item, Map};
@@ -30,7 +30,8 @@ use enterprise_treasury_api::error::EnterpriseTreasuryResult;
 use enterprise_treasury_api::msg::ExecuteMsg::FinalizeMigration;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use multisig_membership_api::api::UserWeight;
-use token_staking_api::api::UserStake;
+use nft_staking_api::api::NftTokenId;
+use token_staking_api::api::{UserClaim, UserStake};
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -50,6 +51,64 @@ const FUNDS_DISTRIBUTOR_CONTRACT: Item<Addr> = Item::new("funds_distributor_cont
 const ENTERPRISE_FACTORY_CONTRACT: Item<Addr> = Item::new("enterprise_factory_contract");
 
 const PROPOSAL_INFOS: Map<ProposalId, ProposalInfoV5> = Map::new("proposal_infos");
+
+pub const CLAIMS: Map<&Addr, Vec<Claim>> = Map::new("claims");
+
+#[cw_serde]
+pub struct Claim {
+    pub asset: ClaimAsset,
+    pub release_at: ReleaseAt,
+}
+
+#[cw_serde]
+pub enum ClaimAsset {
+    Cw20(Cw20ClaimAsset),
+    Cw721(Cw721ClaimAsset),
+}
+
+#[cw_serde]
+pub struct Cw20ClaimAsset {
+    pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct Cw721ClaimAsset {
+    pub tokens: Vec<NftTokenId>,
+}
+
+pub fn total_cw20_claims(storage: &dyn Storage) -> StdResult<Uint128> {
+    let amount = CLAIMS
+        .range(storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
+        .into_iter()
+        .flat_map(|(_, claims)| claims)
+        .fold(Uint128::zero(), |acc, next| {
+            if let ClaimAsset::Cw20(asset) = next.asset {
+                acc + asset.amount
+            } else {
+                acc
+            }
+        });
+
+    Ok(amount)
+}
+
+pub fn is_nft_token_id_claimed(storage: &dyn Storage, token_id: NftTokenId) -> StdResult<bool> {
+    let contains_nft_token_id = CLAIMS
+        .range(storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
+        .into_iter()
+        .flat_map(|(_, claims)| claims)
+        .any(|claim| {
+            if let ClaimAsset::Cw721(asset) = claim.asset {
+                asset.tokens.contains(&token_id)
+            } else {
+                false
+            }
+        });
+
+    Ok(contains_nft_token_id)
+}
 
 #[cw_serde]
 pub struct ProposalInfoV5 {
@@ -532,24 +591,19 @@ pub fn membership_contract_created(
         DaoType::Token => {
             let cw20_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
-            let total_staked = load_total_staked(deps.storage)?;
+            let migrate_stakes_submsg = migrate_cw20_stakes_submsg(
+                deps.as_ref(),
+                cw20_contract.clone(),
+                membership_contract.clone(),
+            )?;
 
-            let stakers = CW20_STAKES
-                .range(deps.storage, None, None, Ascending)
-                .map(|res| {
-                    res.map(|(user, amount)| UserStake {
-                        user: user.to_string(),
-                        staked_amount: amount,
-                    })
-                })
-                .collect::<StdResult<Vec<UserStake>>>()?;
+            let migrate_claims_submsg = migrate_cw20_claims_submsg(
+                deps.as_ref(),
+                cw20_contract,
+                membership_contract.clone(),
+            )?;
 
-            vec![SubMsg::new(
-                Asset::cw20(cw20_contract, total_staked).send_msg(
-                    membership_contract.clone(),
-                    to_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers { stakers })?,
-                )?,
-            )]
+            vec![migrate_stakes_submsg, migrate_claims_submsg]
         }
         DaoType::Nft => {
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
@@ -588,6 +642,74 @@ pub fn membership_contract_created(
     )?;
 
     Ok(Response::new().add_submessages(finalize_membership_msgs))
+}
+
+fn migrate_cw20_stakes_submsg(
+    deps: Deps,
+    cw20_contract: Addr,
+    membership_contract: Addr,
+) -> EnterpriseTreasuryResult<SubMsg> {
+    let total_staked = load_total_staked(deps.storage)?;
+
+    let stakers = CW20_STAKES
+        .range(deps.storage, None, None, Ascending)
+        .map(|res| {
+            res.map(|(user, amount)| UserStake {
+                user: user.to_string(),
+                staked_amount: amount,
+            })
+        })
+        .collect::<StdResult<Vec<UserStake>>>()?;
+
+    Ok(SubMsg::new(
+        Asset::cw20(cw20_contract, total_staked).send_msg(
+            membership_contract,
+            to_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers { stakers })?,
+        )?,
+    ))
+}
+
+fn migrate_cw20_claims_submsg(
+    deps: Deps,
+    cw20_contract: Addr,
+    membership_contract: Addr,
+) -> EnterpriseTreasuryResult<SubMsg> {
+    let mut total_claims_amount = Uint128::zero();
+
+    let claims = CLAIMS
+        .range(deps.storage, None, None, Ascending)
+        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
+        .into_iter()
+        .flat_map(|(user, claims)| {
+            claims
+                .into_iter()
+                .filter_map(|claim| {
+                    if let ClaimAsset::Cw20(asset) = claim.asset {
+                        total_claims_amount += asset.amount;
+                        Some(UserClaim {
+                            user: user.to_string(),
+                            claim_amount: asset.amount,
+                            release_at: claim.release_at,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<UserClaim>>()
+        })
+        .collect::<Vec<UserClaim>>();
+
+    let migrate_claims_submsg = SubMsg::new(wasm_execute(
+        cw20_contract.to_string(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: membership_contract.to_string(),
+            amount: total_claims_amount,
+            msg: to_binary(&token_staking_api::msg::Cw20HookMsg::AddClaims { claims })?,
+        },
+        vec![],
+    )?);
+
+    Ok(migrate_claims_submsg)
 }
 
 pub fn create_enterprise_outposts_contract(
