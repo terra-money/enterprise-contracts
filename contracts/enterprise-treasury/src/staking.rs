@@ -1,9 +1,10 @@
-use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::{Addr, Deps, StdResult, Storage, Uint128};
 use cw_storage_plus::{Map, SnapshotItem, Strategy};
+use membership_common_api::api::TotalWeightCheckpoint;
 
 pub const CW20_STAKES: Map<Addr, Uint128> = Map::new("stakes");
 
-// TODO: uses double the storage, can we avoid this somehow? we do need timestamp snapshots after all
 const TOTAL_STAKED_HEIGHT_SNAPSHOT: SnapshotItem<Uint128> = SnapshotItem::new(
     "total_staked_block_height_snapshot",
     "total_staked_block_height_checkpoints",
@@ -21,14 +22,43 @@ pub fn load_total_staked(store: &dyn Storage) -> StdResult<Uint128> {
     TOTAL_STAKED_HEIGHT_SNAPSHOT.load(store)
 }
 
-pub fn load_total_staked_at_height(store: &dyn Storage, height: u64) -> StdResult<Uint128> {
-    Ok(TOTAL_STAKED_HEIGHT_SNAPSHOT
-        .may_load_at_height(store, height)?
-        .unwrap_or_default())
+pub fn get_seconds_checkpoints(deps: Deps) -> StdResult<Vec<TotalWeightCheckpoint>> {
+    get_checkpoints(deps, TOTAL_STAKED_SECONDS_SNAPSHOT)
 }
 
-pub fn load_total_staked_at_time(store: &dyn Storage, time: Timestamp) -> StdResult<Uint128> {
-    Ok(TOTAL_STAKED_SECONDS_SNAPSHOT
-        .may_load_at_height(store, time.seconds())?
-        .unwrap_or_default())
+pub fn get_height_checkpoints(deps: Deps) -> StdResult<Vec<TotalWeightCheckpoint>> {
+    get_checkpoints(deps, TOTAL_STAKED_HEIGHT_SNAPSHOT)
+}
+
+pub fn get_checkpoints(
+    deps: Deps,
+    snapshot_item: SnapshotItem<Uint128>,
+) -> StdResult<Vec<TotalWeightCheckpoint>> {
+    let mut checkpoints = vec![];
+
+    let mut last_seen_key: Option<u64> = None;
+
+    for change_key_res in snapshot_item
+        .changelog()
+        .keys(deps.storage, None, None, Ascending)
+    {
+        let change_key = change_key_res?;
+
+        if let Some(last_seen_key) = last_seen_key {
+            let old_value = snapshot_item
+                .changelog()
+                .may_load(deps.storage, change_key)?
+                .and_then(|changeset| changeset.old);
+            if let Some(total_weight) = old_value {
+                checkpoints.push(TotalWeightCheckpoint {
+                    height: last_seen_key,
+                    total_weight,
+                });
+            }
+        }
+
+        last_seen_key = Some(change_key);
+    }
+
+    Ok(checkpoints)
 }

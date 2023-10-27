@@ -7,8 +7,8 @@ use common::cw::ReleaseAt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
 use membership_common_api::api::{
-    MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
-    UserWeightResponse, WeightChangeHookMsg,
+    MembersParams, MembersResponse, TotalWeightCheckpoint, TotalWeightParams, TotalWeightResponse,
+    UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
 };
 
 #[cw_serde]
@@ -17,6 +17,8 @@ pub struct InstantiateMsg {
     pub nft_contract: String,
     pub unlocking_period: Duration,
     pub weight_change_hooks: Option<Vec<String>>,
+    pub total_weight_by_height_checkpoints: Option<Vec<TotalWeightCheckpoint>>,
+    pub total_weight_by_seconds_checkpoints: Option<Vec<TotalWeightCheckpoint>>,
 }
 
 #[cw_serde]

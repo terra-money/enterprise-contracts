@@ -110,6 +110,8 @@ pub fn instantiate_multisig_membership_contract(
                 enterprise_contract: enterprise_contract.to_string(),
                 initial_weights: Some(initial_weights),
                 weight_change_hooks,
+                total_weight_by_height_checkpoints: None,
+                total_weight_by_seconds_checkpoints: None,
             })?,
             funds: vec![],
             label: "Multisig staking membership".to_string(),

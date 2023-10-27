@@ -4,7 +4,9 @@ use crate::contract::{
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use crate::nft_staking::NFT_STAKES;
-use crate::staking::{load_total_staked, CW20_STAKES};
+use crate::staking::{
+    get_height_checkpoints, get_seconds_checkpoints, load_total_staked, CW20_STAKES,
+};
 use crate::state::{Config, CONFIG};
 use common::cw::{Context, ReleaseAt};
 use cosmwasm_schema::cw_serde;
@@ -330,6 +332,8 @@ pub fn create_dao_council_membership_contract(
                 enterprise_contract: enterprise_contract.to_string(),
                 initial_weights: Some(council_members),
                 weight_change_hooks: Some(vec![governance_controller_contract.to_string()]),
+                total_weight_by_height_checkpoints: None,
+                total_weight_by_seconds_checkpoints: None,
             })?,
             funds: vec![],
             label: "Dao council membership".to_string(),
@@ -525,6 +529,12 @@ pub fn create_enterprise_membership_contract(
                     token_contract: cw20_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
                     weight_change_hooks,
+                    total_weight_by_height_checkpoints: Some(get_height_checkpoints(
+                        deps.as_ref(),
+                    )?),
+                    total_weight_by_seconds_checkpoints: Some(get_seconds_checkpoints(
+                        deps.as_ref(),
+                    )?),
                 })?,
                 funds: vec![],
                 label: "Token staking membership".to_string(),
@@ -541,6 +551,12 @@ pub fn create_enterprise_membership_contract(
                     nft_contract: cw721_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
                     weight_change_hooks,
+                    total_weight_by_height_checkpoints: Some(get_height_checkpoints(
+                        deps.as_ref(),
+                    )?),
+                    total_weight_by_seconds_checkpoints: Some(get_seconds_checkpoints(
+                        deps.as_ref(),
+                    )?),
                 })?,
                 funds: vec![],
                 label: "NFT staking membership".to_string(),
@@ -564,6 +580,12 @@ pub fn create_enterprise_membership_contract(
                     enterprise_contract: enterprise_contract.to_string(),
                     initial_weights: Some(initial_weights),
                     weight_change_hooks,
+                    total_weight_by_height_checkpoints: Some(get_height_checkpoints(
+                        deps.as_ref(),
+                    )?),
+                    total_weight_by_seconds_checkpoints: Some(get_seconds_checkpoints(
+                        deps.as_ref(),
+                    )?),
                 })?,
                 funds: vec![],
                 label: "Multisig membership".to_string(),

@@ -99,6 +99,8 @@ pub fn instantiate_nft_staking_membership_contract(
                 nft_contract: cw721_address.to_string(),
                 unlocking_period,
                 weight_change_hooks,
+                total_weight_by_height_checkpoints: None,
+                total_weight_by_seconds_checkpoints: None,
             })?,
             funds: vec![],
             label: "Nft staking membership".to_string(),

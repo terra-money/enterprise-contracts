@@ -1025,7 +1025,6 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Nft => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
-                // TODO: send user as None after we add support
                 Ok(adapter_response_single_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&nft_staking_api::msg::ExecuteMsg::Claim(

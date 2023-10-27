@@ -1,6 +1,7 @@
 use common::cw::Context;
 use cosmwasm_std::{BlockInfo, StdResult, Storage, Timestamp, Uint128};
 use cw_storage_plus::{SnapshotItem, Strategy};
+use membership_common_api::api::TotalWeightCheckpoint;
 
 pub fn increment_total_weight(ctx: &mut Context, amount: Uint128) -> StdResult<Uint128> {
     let total_weight = load_total_weight(ctx.deps.storage)?;
@@ -56,6 +57,22 @@ pub fn save_total_weight(
 ) -> StdResult<()> {
     TOTAL_WEIGHT_HEIGHT_SNAPSHOT.save(store, amount, block.height)?;
     TOTAL_WEIGHT_SECONDS_SNAPSHOT.save(store, amount, block.time.seconds())?;
+
+    Ok(())
+}
+
+pub fn save_initial_total_weight_checkpoints(
+    store: &mut dyn Storage,
+    total_weight_checkpoints_by_height: Vec<TotalWeightCheckpoint>,
+    total_weight_checkpoints_by_seconds: Vec<TotalWeightCheckpoint>,
+) -> StdResult<()> {
+    for checkpoint in total_weight_checkpoints_by_height {
+        TOTAL_WEIGHT_HEIGHT_SNAPSHOT.save(store, &checkpoint.total_weight, checkpoint.height)?;
+    }
+
+    for checkpoint in total_weight_checkpoints_by_seconds {
+        TOTAL_WEIGHT_SECONDS_SNAPSHOT.save(store, &checkpoint.total_weight, checkpoint.height)?;
+    }
 
     Ok(())
 }

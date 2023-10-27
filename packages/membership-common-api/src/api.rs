@@ -3,6 +3,12 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_utils::Expiration;
 
 #[cw_serde]
+pub struct TotalWeightCheckpoint {
+    pub height: u64,
+    pub total_weight: Uint128,
+}
+
+#[cw_serde]
 pub struct UserWeightParams {
     pub user: String,
 }

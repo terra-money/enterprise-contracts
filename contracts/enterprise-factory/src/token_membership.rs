@@ -172,6 +172,8 @@ pub fn instantiate_token_staking_membership_contract(
                 token_contract: cw20_address.to_string(),
                 unlocking_period,
                 weight_change_hooks,
+                total_weight_by_height_checkpoints: None,
+                total_weight_by_seconds_checkpoints: None,
             })?,
             funds: vec![],
             label: "Token staking membership".to_string(),
