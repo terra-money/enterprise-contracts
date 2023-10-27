@@ -36,17 +36,11 @@ pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg,
+    _msg: ExecuteMsg,
 ) -> EnterpriseFacadeResult<Response> {
-    let ctx = &mut Context { deps, env, info };
+    let _ctx = &mut Context { deps, env, info };
 
-    match msg {
-        ExecuteMsg::ExecuteProposal { contract, msg } => {
-            let facade = get_facade(contract)?;
-
-            facade.execute_proposal(ctx, msg)
-        }
-    }
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -154,6 +148,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
         QueryMsg::CastCouncilVoteAdapted { contract, params } => {
             let facade = get_facade(contract)?;
             to_binary(&facade.adapt_cast_council_vote(qctx, params)?)?
+        }
+        QueryMsg::ExecuteProposalAdapted { contract, params } => {
+            let facade = get_facade(contract)?;
+            to_binary(&facade.adapt_execute_proposal(qctx, params)?)?
         }
         QueryMsg::StakeAdapted { contract, params } => {
             let facade = get_facade(contract)?;

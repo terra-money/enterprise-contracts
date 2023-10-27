@@ -1,16 +1,14 @@
-use crate::util::adapter_response_single_msg;
-use common::cw::{Context, QueryContext};
-use cosmwasm_std::{
-    coins, to_binary, wasm_execute, Addr, Decimal, Deps, Response, SubMsg, Uint128, Uint64,
-};
+use common::cw::QueryContext;
+use cosmwasm_std::{coins, to_binary, Addr, Decimal, Deps, Uint128, Uint64};
 use cw721::Cw721ExecuteMsg::Approve;
 use cw_utils::Duration;
 use cw_utils::Expiration::Never;
 use denom_staking_api::api::DenomConfigResponse;
 use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_facade_api::api::{
-    AdaptedMsg, AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim,
-    ClaimAsset, ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
+    adapter_response_single_execute_msg, AdaptedBankMsg, AdaptedExecuteMsg, AdaptedMsg,
+    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimAsset,
+    ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
     CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
     DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomUserStake, ExecuteProposalMsg,
     GovConfigV1, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
@@ -27,7 +25,7 @@ use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{
-    CreateProposalWithNftDepositMsg, GovConfigResponse,
+    CreateProposalWithNftDepositMsg, GovConfigResponse, ProposalAction,
 };
 use enterprise_governance_controller_api::msg::ExecuteMsg::{
     CreateProposal, CreateProposalWithNftDeposit, ExecuteProposal,
@@ -53,28 +51,6 @@ pub struct EnterpriseFacadeV2 {
 }
 
 impl EnterpriseFacade for EnterpriseFacadeV2 {
-    fn execute_proposal(
-        &self,
-        ctx: &mut Context,
-        msg: ExecuteProposalMsg,
-    ) -> EnterpriseFacadeResult<Response> {
-        let component_contracts = self.component_contracts(ctx.deps.as_ref())?;
-
-        let governance_controller_contract =
-            component_contracts.enterprise_governance_controller_contract;
-        let submsg = SubMsg::new(wasm_execute(
-            governance_controller_contract.to_string(),
-            &ExecuteProposal(
-                enterprise_governance_controller_api::api::ExecuteProposalMsg {
-                    proposal_id: msg.proposal_id,
-                },
-            ),
-            vec![],
-        )?);
-
-        Ok(Response::new().add_submessage(submsg))
-    }
-
     fn query_treasury_address(
         &self,
         qctx: QueryContext,
@@ -679,7 +655,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             .component_contracts(qctx.deps)?
             .enterprise_governance_controller_contract;
 
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             governance_controller,
             serde_json_wasm::to_string(&CreateProposal(
                 enterprise_governance_controller_api::api::CreateProposalMsg {
@@ -715,7 +691,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             .querier
             .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
 
-        let create_proposal_with_denom_deposit_msg = AdaptedMsg {
+        let create_proposal_with_denom_deposit_msg = AdaptedMsg::Execute(AdaptedExecuteMsg {
             target_contract: governance_controller,
             msg: serde_json_wasm::to_string(&CreateProposal(
                 enterprise_governance_controller_api::api::CreateProposalMsg {
@@ -725,7 +701,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 },
             ))?,
             funds: coins(params.deposit_amount.u128(), denom_config.denom),
-        };
+        });
 
         Ok(AdapterResponse {
             msgs: vec![create_proposal_with_denom_deposit_msg],
@@ -751,7 +727,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     .querier
                     .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
 
-                Ok(adapter_response_single_msg(
+                Ok(adapter_response_single_execute_msg(
                     token_config.token_contract,
                     serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                         contract: governance_controller.to_string(),
@@ -810,21 +786,23 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 })
             })
             .map(|msg_json_res| {
-                msg_json_res.map(|msg_json| AdaptedMsg {
-                    target_contract: nft_config.nft_contract.clone(),
-                    msg: msg_json,
-                    funds: vec![],
+                msg_json_res.map(|msg_json| {
+                    AdaptedMsg::Execute(AdaptedExecuteMsg {
+                        target_contract: nft_config.nft_contract.clone(),
+                        msg: msg_json,
+                        funds: vec![],
+                    })
                 })
             })
             .collect::<serde_json_wasm::ser::Result<Vec<AdaptedMsg>>>()?;
 
         let mut msgs = allow_deposit_tokens_for_governance_controller;
 
-        let create_proposal_with_nft_deposit_msg = AdaptedMsg {
+        let create_proposal_with_nft_deposit_msg = AdaptedMsg::Execute(AdaptedExecuteMsg {
             target_contract: governance_controller,
             msg: serde_json_wasm::to_string(&CreateProposalWithNftDeposit(params))?,
             funds: vec![],
-        };
+        });
 
         msgs.push(create_proposal_with_nft_deposit_msg);
 
@@ -840,7 +818,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             .component_contracts(qctx.deps)?
             .enterprise_governance_controller_contract;
 
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             governance_controller,
             serde_json_wasm::to_string(
                 &enterprise_governance_controller_api::msg::ExecuteMsg::CreateCouncilProposal(
@@ -864,7 +842,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             .component_contracts(qctx.deps)?
             .enterprise_governance_controller_contract;
 
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             governance_controller,
             serde_json_wasm::to_string(
                 &enterprise_governance_controller_api::msg::ExecuteMsg::CastVote(
@@ -887,7 +865,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             .component_contracts(qctx.deps)?
             .enterprise_governance_controller_contract;
 
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             governance_controller,
             serde_json_wasm::to_string(
                 &enterprise_governance_controller_api::msg::ExecuteMsg::CastCouncilVote(
@@ -899,6 +877,54 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             )?,
             vec![],
         ))
+    }
+
+    fn adapt_execute_proposal(
+        &self,
+        qctx: QueryContext,
+        params: ExecuteProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let proposal_response = self.query_proposal(
+            qctx.clone(),
+            ProposalParams {
+                proposal_id: params.proposal_id,
+            },
+        )?;
+
+        let treasury_cross_chain_msgs_count = proposal_response
+            .proposal
+            .proposal_actions
+            .into_iter()
+            .filter(|action| match action {
+                ProposalAction::UpdateAssetWhitelist(msg) => msg.remote_treasury_target.is_some(),
+                ProposalAction::UpdateNftWhitelist(msg) => msg.remote_treasury_target.is_some(),
+                ProposalAction::RequestFundingFromDao(msg) => msg.remote_treasury_target.is_some(),
+                ProposalAction::ExecuteTreasuryMsgs(msg) => msg.remote_treasury_target.is_some(),
+                ProposalAction::DeployCrossChainTreasury(_) => true,
+                _ => false,
+            })
+            .count() as u128;
+
+        let component_contracts = self.component_contracts(qctx.deps)?;
+
+        let fund_outposts_contract_submsg = AdaptedMsg::Bank(AdaptedBankMsg {
+            receiver: component_contracts.enterprise_outposts_contract,
+            funds: coins(treasury_cross_chain_msgs_count, "uluna"),
+        });
+
+        let execute_proposal_submsg = AdaptedMsg::Execute(AdaptedExecuteMsg {
+            target_contract: component_contracts.enterprise_governance_controller_contract,
+            msg: serde_json_wasm::to_string(&ExecuteProposal(
+                enterprise_governance_controller_api::api::ExecuteProposalMsg {
+                    proposal_id: params.proposal_id,
+                },
+            ))?,
+            funds: vec![],
+        });
+
+        Ok(AdapterResponse {
+            msgs: vec![fund_outposts_contract_submsg, execute_proposal_submsg],
+        })
     }
 
     fn adapt_stake(
@@ -919,7 +945,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     amount: msg.amount,
                     msg: to_binary(&token_staking_api::msg::Cw20HookMsg::Stake { user: msg.user })?,
                 };
-                Ok(adapter_response_single_msg(
+                Ok(adapter_response_single_execute_msg(
                     token_config.token_contract,
                     serde_json_wasm::to_string(&msg)?,
                     vec![],
@@ -945,11 +971,11 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     })
                     .map(|send_nft_msg| {
                         serde_json_wasm::to_string(&send_nft_msg).map(|send_nft_msg_json| {
-                            AdaptedMsg {
+                            AdaptedMsg::Execute(AdaptedExecuteMsg {
                                 target_contract: nft_config.nft_contract.clone(),
                                 msg: send_nft_msg_json,
                                 funds: vec![],
-                            }
+                            })
                         })
                     })
                     .collect::<serde_json_wasm::ser::Result<Vec<AdaptedMsg>>>()?;
@@ -960,7 +986,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     .deps
                     .querier
                     .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
-                Ok(adapter_response_single_msg(
+                Ok(adapter_response_single_execute_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&denom_staking_api::msg::ExecuteMsg::Stake {})?,
                     coins(msg.amount.u128(), denom_config.denom),
@@ -977,14 +1003,14 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
         match params {
-            UnstakeMsg::Cw20(msg) => Ok(adapter_response_single_msg(
+            UnstakeMsg::Cw20(msg) => Ok(adapter_response_single_execute_msg(
                 membership_contract,
                 serde_json_wasm::to_string(&token_staking_api::msg::ExecuteMsg::Unstake(
                     token_staking_api::api::UnstakeMsg { amount: msg.amount },
                 ))?,
                 vec![],
             )),
-            UnstakeMsg::Cw721(msg) => Ok(adapter_response_single_msg(
+            UnstakeMsg::Cw721(msg) => Ok(adapter_response_single_execute_msg(
                 membership_contract,
                 serde_json_wasm::to_string(&nft_staking_api::msg::ExecuteMsg::Unstake(
                     nft_staking_api::api::UnstakeMsg {
@@ -1003,7 +1029,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Denom => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
-                Ok(adapter_response_single_msg(
+                Ok(adapter_response_single_execute_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&denom_staking_api::msg::ExecuteMsg::Claim(
                         denom_staking_api::api::ClaimMsg { user: None },
@@ -1014,7 +1040,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
-                Ok(adapter_response_single_msg(
+                Ok(adapter_response_single_execute_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&token_staking_api::msg::ExecuteMsg::Claim(
                         token_staking_api::api::ClaimMsg { user: None },
@@ -1025,7 +1051,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Nft => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
-                Ok(adapter_response_single_msg(
+                Ok(adapter_response_single_execute_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&nft_staking_api::msg::ExecuteMsg::Claim(
                         nft_staking_api::api::ClaimMsg { user: None },

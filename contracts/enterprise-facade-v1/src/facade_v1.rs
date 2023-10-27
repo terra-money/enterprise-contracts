@@ -16,24 +16,22 @@ use crate::v1_structs::{
     CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
     ProposalActionV1, UpgradeDaoV1Msg, UserStakeV1Params,
 };
-use common::cw::{Context, QueryContext};
+use common::cw::QueryContext;
 use cosmwasm_schema::serde::de::DeserializeOwned;
 use cosmwasm_schema::serde::Serialize;
-use cosmwasm_std::{
-    to_binary, wasm_execute, Addr, Deps, Empty, Response, StdError, StdResult, SubMsg,
-};
+use cosmwasm_std::{to_binary, Addr, Deps, Empty, StdError, StdResult};
 use cw_utils::Expiration;
 use enterprise_facade_api::api::{
-    adapter_response_single_msg, AdaptedMsg, AdapterResponse, AssetWhitelistParams,
-    AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse, CreateProposalMsg,
-    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType,
-    ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    Proposal, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse,
+    adapter_response_single_execute_msg, AdaptedExecuteMsg, AdaptedMsg, AdapterResponse,
+    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
+    CreateProposalMsg, CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg,
+    DaoInfoResponse, DaoType, ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg,
+    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
+    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse,
+    ProposalStatus, ProposalStatusParams, ProposalStatusResponse, ProposalType,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
+    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -45,6 +43,7 @@ use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use poll_engine::state::PollHelpers;
 use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
 use EnterpriseFacadeError::UnsupportedOperation;
+use ExecuteV1Msg::ExecuteProposal;
 use PollRejectionReason::{QuorumAndThresholdNotReached, QuorumNotReached, ThresholdNotReached};
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
@@ -53,19 +52,6 @@ pub struct EnterpriseFacadeV1 {
 }
 
 impl EnterpriseFacade for EnterpriseFacadeV1 {
-    fn execute_proposal(
-        &self,
-        _ctx: &mut Context,
-        msg: ExecuteProposalMsg,
-    ) -> EnterpriseFacadeResult<Response> {
-        let submsg = SubMsg::new(wasm_execute(
-            self.enterprise_address.to_string(),
-            &ExecuteV1Msg::ExecuteProposal(msg),
-            vec![],
-        )?);
-        Ok(Response::new().add_submessage(submsg))
-    }
-
     fn query_treasury_address(
         &self,
         _: QueryContext,
@@ -259,7 +245,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&CreateProposal(
                 self.map_create_proposal_msg(qctx.deps, params)?,
@@ -285,7 +271,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         let dao_type = dao_info.dao_type;
 
         match dao_type {
-            DaoType::Token => Ok(adapter_response_single_msg(
+            DaoType::Token => Ok(adapter_response_single_execute_msg(
                 dao_info.dao_membership_contract,
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
@@ -317,7 +303,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&CreateCouncilProposal(
                 self.map_create_proposal_msg(qctx.deps, params)?,
@@ -331,7 +317,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         _: QueryContext,
         params: CastVoteMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&CastVote(params))?,
             vec![],
@@ -343,9 +329,21 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         _: QueryContext,
         params: CastVoteMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&CastCouncilVote(params))?,
+            vec![],
+        ))
+    }
+
+    fn adapt_execute_proposal(
+        &self,
+        _: QueryContext,
+        params: ExecuteProposalMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        Ok(adapter_response_single_execute_msg(
+            self.enterprise_address.clone(),
+            serde_json_wasm::to_string(&ExecuteProposal(params))?,
             vec![],
         ))
     }
@@ -363,7 +361,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                     amount: msg.amount,
                     msg: to_binary(&Cw20HookV1Msg::Stake {})?,
                 };
-                Ok(adapter_response_single_msg(
+                Ok(adapter_response_single_execute_msg(
                     token_addr,
                     serde_json_wasm::to_string(&msg)?,
                     vec![],
@@ -384,11 +382,11 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                     })
                     .map(|send_nft_msg| {
                         serde_json_wasm::to_string(&send_nft_msg).map(|send_nft_msg_json| {
-                            AdaptedMsg {
+                            AdaptedMsg::Execute(AdaptedExecuteMsg {
                                 target_contract: nft_addr.clone(),
                                 msg: send_nft_msg_json,
                                 funds: vec![],
-                            }
+                            })
                         })
                     })
                     .collect::<serde_json_wasm::ser::Result<Vec<AdaptedMsg>>>()?;
@@ -404,7 +402,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         _: QueryContext,
         params: UnstakeMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&Unstake(params))?,
             vec![],
@@ -412,7 +410,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     }
 
     fn adapt_claim(&self, _: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
-        Ok(adapter_response_single_msg(
+        Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&Claim {})?,
             vec![],

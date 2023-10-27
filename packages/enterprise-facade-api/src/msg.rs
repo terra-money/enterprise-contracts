@@ -21,12 +21,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-pub enum ExecuteMsg {
-    ExecuteProposal {
-        contract: Addr,
-        msg: ExecuteProposalMsg,
-    },
-}
+pub struct ExecuteMsg {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -146,6 +141,12 @@ pub enum QueryMsg {
 
     #[returns(AdapterResponse)]
     CastCouncilVoteAdapted { contract: Addr, params: CastVoteMsg },
+
+    #[returns(AdapterResponse)]
+    ExecuteProposalAdapted {
+        contract: Addr,
+        params: ExecuteProposalMsg,
+    },
 
     #[returns(AdapterResponse)]
     StakeAdapted { contract: Addr, params: StakeMsg },

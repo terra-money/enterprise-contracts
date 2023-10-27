@@ -1,8 +1,7 @@
 use crate::facade::get_facade;
 use crate::state::{ENTERPRISE_FACADE_V1, ENTERPRISE_FACADE_V2};
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_execute, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    SubMsg,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
 use enterprise_facade_api::api::{
@@ -12,10 +11,9 @@ use enterprise_facade_api::api::{
     TotalStakedAmountResponse, TreasuryAddressResponse, UserStakeResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
-use enterprise_facade_api::msg::QueryMsg::TreasuryAddress;
+use enterprise_facade_api::msg::QueryMsg::{ExecuteProposalAdapted, TreasuryAddress};
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
-use ExecuteMsg::ExecuteProposal;
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
     CreateCouncilProposalAdapted, CreateProposalAdapted, CreateProposalWithDenomDepositAdapted,
@@ -49,25 +47,12 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    msg: ExecuteMsg,
+    _msg: ExecuteMsg,
 ) -> EnterpriseFacadeResult<Response> {
-    match msg {
-        ExecuteProposal { contract, msg } => {
-            let facade = get_facade(deps.as_ref(), contract)?;
-
-            Ok(Response::new().add_submessage(SubMsg::new(wasm_execute(
-                facade.facade_address.to_string(),
-                &ExecuteProposal {
-                    contract: facade.dao_address,
-                    msg,
-                },
-                vec![],
-            )?)))
-        }
-    }
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -357,6 +342,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
             let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &CastCouncilVoteAdapted {
+                    contract: facade.dao_address,
+                    params,
+                },
+            )?;
+            to_binary(&response)?
+        }
+        ExecuteProposalAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
+                facade.facade_address.to_string(),
+                &ExecuteProposalAdapted {
                     contract: facade.dao_address,
                     params,
                 },

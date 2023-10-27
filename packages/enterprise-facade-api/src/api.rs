@@ -458,17 +458,17 @@ pub struct AdapterResponse {
     pub msgs: Vec<AdaptedMsg>,
 }
 
-pub fn adapter_response_single_msg(
+pub fn adapter_response_single_execute_msg(
     target_contract: Addr,
     msg: String,
     funds: Vec<Coin>,
 ) -> AdapterResponse {
     AdapterResponse {
-        msgs: vec![AdaptedMsg {
+        msgs: vec![AdaptedMsg::Execute(AdaptedExecuteMsg {
             target_contract,
             msg,
             funds,
-        }],
+        })],
     }
 }
 
@@ -476,8 +476,20 @@ pub fn adapter_response_single_msg(
 /// make with which pre-compiled message in order to achieve desired behavior, regardless of
 /// Enterprise version being used.
 #[cw_serde]
-pub struct AdaptedMsg {
+pub enum AdaptedMsg {
+    Execute(AdaptedExecuteMsg),
+    Bank(AdaptedBankMsg),
+}
+
+#[cw_serde]
+pub struct AdaptedExecuteMsg {
     pub target_contract: Addr,
     pub msg: String,
+    pub funds: Vec<Coin>,
+}
+
+#[cw_serde]
+pub struct AdaptedBankMsg {
+    pub receiver: Addr,
     pub funds: Vec<Coin>,
 }

@@ -1,5 +1,4 @@
-use common::cw::{Context, QueryContext};
-use cosmwasm_std::Response;
+use common::cw::QueryContext;
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
     ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
@@ -16,12 +15,6 @@ use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 
 pub trait EnterpriseFacade {
-    fn execute_proposal(
-        &self,
-        ctx: &mut Context,
-        msg: ExecuteProposalMsg,
-    ) -> EnterpriseFacadeResult<Response>;
-
     fn query_treasury_address(
         &self,
         qctx: QueryContext,
@@ -158,6 +151,12 @@ pub trait EnterpriseFacade {
         &self,
         qctx: QueryContext,
         params: CastVoteMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
+
+    fn adapt_execute_proposal(
+        &self,
+        qctx: QueryContext,
+        params: ExecuteProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse>;
 
     fn adapt_stake(

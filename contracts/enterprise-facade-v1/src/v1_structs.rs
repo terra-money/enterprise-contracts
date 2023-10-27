@@ -210,13 +210,11 @@ impl From<UpdateMinimumWeightForRewardsMsg> for UpdateMinimumWeightForRewardsV1M
 /// This is what execute messages for Enterprise contract looked like for v1.
 #[cw_serde]
 pub enum ExecuteV1Msg {
-    // facaded part
-    ExecuteProposal(ExecuteProposalMsg),
-    // adapted part
     CreateProposal(CreateProposalV1Msg),
     CreateCouncilProposal(CreateProposalV1Msg),
     CastVote(CastVoteMsg),
     CastCouncilVote(CastVoteMsg),
+    ExecuteProposal(ExecuteProposalMsg),
     Unstake(UnstakeMsg),
     Claim {},
 }
