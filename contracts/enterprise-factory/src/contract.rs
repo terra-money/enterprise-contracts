@@ -155,6 +155,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         enterprise_versioning_contract: config.enterprise_versioning.to_string(),
         dao_type,
         dao_version: latest_version.version,
+        dao_creation_date: None,
     };
     let create_dao_submsg = SubMsg::reply_on_success(
         Instantiate {

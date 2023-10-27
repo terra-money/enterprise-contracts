@@ -17,7 +17,7 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::{Instantiate, Migrate, UpdateAdmin};
 use cosmwasm_std::{
     from_binary, to_binary, wasm_execute, Addr, Binary, BlockInfo, Decimal, Deps, DepsMut, Env,
-    Response, StdError, StdResult, Storage, SubMsg, Uint128, Uint64,
+    Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64,
 };
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 use cw_storage_plus::{Item, Map};
@@ -47,6 +47,8 @@ const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
 
 const DAO_METADATA: Item<DaoMetadata> = Item::new("dao_metadata");
 const DAO_TYPE: Item<DaoType> = Item::new("dao_type");
+
+const DAO_CREATION_DATE: Item<Timestamp> = Item::new("dao_creation_date");
 
 const DAO_MEMBERSHIP_CONTRACT: Item<Addr> = Item::new("dao_membership_contract");
 
@@ -83,40 +85,6 @@ pub struct Cw20ClaimAsset {
 #[cw_serde]
 pub struct Cw721ClaimAsset {
     pub tokens: Vec<NftTokenId>,
-}
-
-pub fn total_cw20_claims(storage: &dyn Storage) -> StdResult<Uint128> {
-    let amount = CLAIMS
-        .range(storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
-        .into_iter()
-        .flat_map(|(_, claims)| claims)
-        .fold(Uint128::zero(), |acc, next| {
-            if let ClaimAsset::Cw20(asset) = next.asset {
-                acc + asset.amount
-            } else {
-                acc
-            }
-        });
-
-    Ok(amount)
-}
-
-pub fn is_nft_token_id_claimed(storage: &dyn Storage, token_id: NftTokenId) -> StdResult<bool> {
-    let contains_nft_token_id = CLAIMS
-        .range(storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
-        .into_iter()
-        .flat_map(|(_, claims)| claims)
-        .any(|claim| {
-            if let ClaimAsset::Cw721(asset) = claim.asset {
-                asset.tokens.contains(&token_id)
-            } else {
-                false
-            }
-        });
-
-    Ok(contains_nft_token_id)
 }
 
 #[cw_serde]
@@ -461,6 +429,16 @@ pub struct DaoCouncil {
 }
 
 pub fn migrate_to_rewrite(deps: DepsMut, env: Env) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
+    let dao_code_version = DAO_CODE_VERSION.load(deps.storage)?;
+
+    if dao_code_version < Uint64::from(5u8) {
+        return Err(StdError::generic_err(format!(
+            "code version {} is too old to migrate to 1.0.0",
+            dao_code_version
+        ))
+        .into());
+    }
+
     let enterprise_factory = ENTERPRISE_FACTORY_CONTRACT.load(deps.storage)?;
     let enterprise_factory_config: ConfigResponse = deps.querier.query_wasm_smart(
         enterprise_factory.to_string(),
@@ -521,6 +499,7 @@ pub fn create_enterprise_contract(
     dao_metadata: DaoMetadata,
 ) -> EnterpriseTreasuryResult<SubMsg> {
     let dao_type = DAO_TYPE.load(deps.storage)?;
+    let dao_creation_date = DAO_CREATION_DATE.load(deps.storage)?;
 
     let submsg = SubMsg::reply_on_success(
         Wasm(Instantiate {
@@ -530,6 +509,7 @@ pub fn create_enterprise_contract(
                 enterprise_factory_contract: enterprise_factory.to_string(),
                 enterprise_versioning_contract: enterprise_versioning.to_string(),
                 dao_metadata,
+                dao_creation_date: Some(dao_creation_date),
                 dao_type,
                 dao_version: Version {
                     major: 1,
@@ -1195,6 +1175,7 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
 
     DAO_METADATA.remove(ctx.deps.storage);
     DAO_TYPE.remove(ctx.deps.storage);
+    DAO_CREATION_DATE.remove(ctx.deps.storage);
     DAO_MEMBERSHIP_CONTRACT.remove(ctx.deps.storage);
 
     DAO_CODE_VERSION.remove(ctx.deps.storage);

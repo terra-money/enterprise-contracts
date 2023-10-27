@@ -55,7 +55,10 @@ pub fn instantiate(
 ) -> DaoResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    DAO_CREATION_DATE.save(deps.storage, &env.block.time)?;
+    DAO_CREATION_DATE.save(
+        deps.storage,
+        &msg.dao_creation_date.unwrap_or(env.block.time),
+    )?;
 
     let enterprise_factory_contract = deps.api.addr_validate(&msg.enterprise_factory_contract)?;
     ENTERPRISE_FACTORY_CONTRACT.save(deps.storage, &enterprise_factory_contract)?;
