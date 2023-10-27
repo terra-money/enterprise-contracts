@@ -608,27 +608,7 @@ pub fn membership_contract_created(
         DaoType::Nft => {
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
-            let mut migrate_stakes_submsgs = vec![];
-
-            for stake_res in NFT_STAKES().range(deps.storage, None, None, Ascending) {
-                let (_, stake) = stake_res?;
-
-                let submsg = wasm_execute(
-                    cw721_contract.to_string(),
-                    &cw721::Cw721ExecuteMsg::SendNft {
-                        contract: membership_contract.to_string(),
-                        token_id: stake.token_id,
-                        msg: to_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
-                            user: stake.staker.to_string(),
-                        })?,
-                    },
-                    vec![],
-                )?;
-
-                migrate_stakes_submsgs.push(SubMsg::new(submsg));
-            }
-
-            migrate_stakes_submsgs
+            migrate_cw721_stakes_submsg(deps.as_ref(), cw721_contract, membership_contract.clone())?
         }
         DaoType::Multisig => vec![],
     };
@@ -710,6 +690,34 @@ fn migrate_cw20_claims_submsg(
     )?);
 
     Ok(migrate_claims_submsg)
+}
+
+fn migrate_cw721_stakes_submsg(
+    deps: Deps,
+    cw721_contract: Addr,
+    membership_contract: Addr,
+) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
+    let mut migrate_stakes_submsgs = vec![];
+
+    for stake_res in NFT_STAKES().range(deps.storage, None, None, Ascending) {
+        let (_, stake) = stake_res?;
+
+        let submsg = wasm_execute(
+            cw721_contract.to_string(),
+            &cw721::Cw721ExecuteMsg::SendNft {
+                contract: membership_contract.to_string(),
+                token_id: stake.token_id,
+                msg: to_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
+                    user: stake.staker.to_string(),
+                })?,
+            },
+            vec![],
+        )?;
+
+        migrate_stakes_submsgs.push(SubMsg::new(submsg));
+    }
+
+    Ok(migrate_stakes_submsgs)
 }
 
 pub fn create_enterprise_outposts_contract(
