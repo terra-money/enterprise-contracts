@@ -28,8 +28,8 @@
       "address": "terra1qu7jug0a8j2k5zyg8uz6y0rusgugzy7lvcczh903kwzasggt67mq5rlkvk"
     },
     "enterprise-facade": {
-      "codeId": "10989",
-      "address": "terra10f7anzl5fqe338aweusj0qy54jcyda3vhmw9dmzvnu7mt85xfmfqs2qel4"
+      "codeId": "11063",
+      "address": "terra1mylm8wax2sh7h00unfhm70uvjthskf6pdf04chnje3x72cfvefrsryvqaq"
     },
     "enterprise-versioning": {
       "codeId": "11002",
@@ -73,12 +73,12 @@
       "codeId": "10998"
     },
     "enterprise-facade-v1": {
-      "codeId": "10987",
-      "address": "terra1mtye6yj62d9yxxm2jjkd9dh6ny3xjz0g54ttmskmlxa0jv6dp9aq7gdwz7"
+      "codeId": "11061",
+      "address": "terra1m7dr3savgvmpeyj6dcvuehjftnhqug3mpnuys3xfkglttc6lmrfqarxsud"
     },
     "enterprise-facade-v2": {
-      "codeId": "10988",
-      "address": "terra1g96rh7e253vxh22wzlw7f2gnglqlek9rnf9jc2jg025jd43gcynqc6306h"
+      "codeId": "11062",
+      "address": "terra1fylwn0ak4l5pnlspatkd2gqp8zfa76fgxwvtyzn7dn3p3yszc79qn50hx8"
     },
     "enterprise-outposts": {
       "codeId": "11030"
@@ -93,8 +93,8 @@
       "address": "terra15h7mdcp6yzagvz339e6unkw98duj7xel7n00yuslun0fvpjjyr8qh7yhsw"
     },
     "enterprise-facade": {
-      "codeId": "1976",
-      "address": "terra1kd33sr99tz452djrdcczc7xqw4h7dvu4r8ylrkl3qk3ec53hh0ns6pg6rj"
+      "codeId": "1992",
+      "address": "terra19dpedsuet4wrvpwcqqy0pwt2f2wkhg4sfxl4jfhc73zpcf7dsz4smmn8vz"
     },
     "enterprise-versioning": {
       "codeId": "1972",
@@ -140,12 +140,12 @@
       "codeId": "1987"
     },
     "enterprise-facade-v1": {
-      "codeId": "1974",
-      "address": "terra1r02e2lkntszcmj7ke47azj87mf7qggjfss0jytlfydzm8hrpu58s5r9vx0"
+      "codeId": "1990",
+      "address": "terra1rtr4g82efvs24p657fqkh3cjmh9pp7why7t4hmc5suwrx8xv54fq48kx39"
     },
     "enterprise-facade-v2": {
-      "codeId": "1975",
-      "address": "terra1rrd45qvuzlensgpyt54xf2f3258m37u3n4yscrmszjlf0hna2grq4mhvc4"
+      "codeId": "1991",
+      "address": "terra1qerdh7vjcvxdlra42yapf06mf7xzkh5z6t849kuku9dvnem7hvysumhyqr"
     }
   }
 }
