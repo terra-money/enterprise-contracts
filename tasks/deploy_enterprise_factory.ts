@@ -6,6 +6,8 @@ const ATTESTATION = "attestation";
 const DENOM_STAKING_MEMBERSHIP = "denom-staking-membership";
 const ENTERPRISE = "enterprise";
 const ENTERPRISE_FACADE = "enterprise-facade";
+const ENTERPRISE_FACADE_V1 = "enterprise-facade-v1";
+const ENTERPRISE_FACADE_V2 = "enterprise-facade-v2";
 const ENTERPRISE_FACTORY = "enterprise-factory";
 const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_GOVERNANCE_CONTROLLER = "enterprise-governance-controller";
@@ -37,7 +39,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 3, 0);
+    await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 1, 0);
 
     // await instantiateDao(refs, network, executor);
 
@@ -47,7 +49,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
         const governance_controller = "terra1ljkexswu0vrax86zwjzcuy07axcky67pjw448rsfpxcv6y7fm2msmngpla";
         const outposts = "terra1kjnmnxw028ktqu3t0htl3nh3txhx42sdrjf8g84uje3sz6ud289qxk3dtt";
 
-        const proposal_id = 1;
+        const proposal_id = 8;
 
         // await stakeTokens(executor, token_contract, membership_contract);
 
@@ -105,54 +107,43 @@ task(async ({network, deployer, executor, signer, refs}) => {
             }
         };
 
-        // await createProposal(executor, governance_controller, deployCrossChainTreasuryProposalAction);
+        const spendTreasuryToJunoProposalAction = {
+            execute_treasury_msgs: {
+                action_type: "spend_treasury_cross_chain",
+                msgs: [
+                    "{\"stargate\":{\"type_url\":\"/ibc.applications.transfer.v1.MsgTransfer\",\"value\":\"Cgh0cmFuc2ZlchIJY2hhbm5lbC0yGg4KBXVsdW5hEgUxMDAwMCJAdGVycmExd3ZuajZjZHRwbGNxYXcwYXhzd2g0ZzR5ZDBudDI4NTN4NGFjMGt1ODI2YXI5Y2VhanRjc3J3NDU5OCo/anVubzE0ajBuY3d3dXVkbmZuZ3ZqMG1mN3V2dms2NnRscnQ0djk3NmVkZ3FyaHF2OTdjY2F1cXZzeGZxaGU3OICArprFhIvJFw==\"}}"
+                ],
+            }
+        }
+
+        const delegateTreasuryOnJunoProposalAction = {
+            execute_treasury_msgs: {
+                action_type: "spend_treasury_cross_chain",
+                msgs: [
+                    "{\"staking\":{\"delegate\":{\"validator\":\"junovaloper1t8ehvswxjfn3ejzkjtntcyrqwvmvuknzmvtaaa\",\"amount\":{\"denom\":\"ujuno\",\"amount\":\"100\"}}}}"
+                ],
+                remote_treasury_target: {
+                    cross_chain_msg_spec: {
+                        chain_id: "juno-1",
+                        chain_bech32_prefix: "juno",
+                        src_ibc_port: "transfer",
+                        src_ibc_channel: "channel-2",
+                        dest_ibc_port: "transfer",
+                        dest_ibc_channel: "channel-86",
+                        uluna_denom: "ibc/107D152BB3176FAEBF4C2A84C5FFDEEA7C7CB4FE1BBDAB710F1FD25BCD055CBF",
+                    }
+                }
+            }
+        }
+
+        // await createProposal(executor, governance_controller, delegateTreasuryOnJunoProposalAction);
         //
         // await castYesVote(executor, governance_controller, proposal_id);
 
-        await executeProposal(executor, governance_controller, proposal_id)
+        // await executeProposal(executor, governance_controller, proposal_id)
     } catch (e) {
         console.log(e);
     }
-
-    // try {
-    //     await deployer.storeCode(ICS_PROXY);
-    // } catch (e) {
-    //     console.log(e);
-    // }
-
-    // try {
-    //     await deployer.instantiate(ICS_PROXY, {
-    //         allow_cross_chain_msgs: true,
-    //     });
-    // } catch (e) {
-    //     console.log(e);
-    // }
-
-    // refs.saveRefs();
-
-    // const stargate_msg = {
-    //     stargate: {
-    //         type_url: "/ibc.applications.transfer.v1.MsgTransfer",
-    //         value: "Cgh0cmFuc2ZlchIJY2hhbm5lbC0yGgoKBXVsdW5hEgExIkB0ZXJyYTFwOHZ2d21ndTQ0ZnZ6enUyYWw1enN1Nzh2Y3pzbmVyOXF1Z3VqcGczZG5zbmVjcWU0dHNzbDRoNTY1Kj9qdW5vMWgyMmZmd3Nja2hxc3ZoczhtOGszd3Q0eGZ2MGN5ejBoa3hwZGYzazI0eHN3OHcwM3EyZXFqZzY5cWE4gMCg8v6AsMQXQqwFeyJ3YXNtIjp7ImNvbnRyYWN0IjoianVubzFoMjJmZndzY2tocXN2aHM4bThrM3d0NHhmdjBjeXowaGt4cGRmM2syNHhzdzh3MDNxMmVxamc2OXFhIiwibXNnIjp7ImV4ZWN1dGVfbXNncyI6eyJtc2dzIjpbeyJtc2ciOnsid2FzbSI6eyJpbnN0YW50aWF0ZSI6eyJhZG1pbiI6Imp1bm8xczhod3Y2eDJzeHE2MzBsZGozZzY3bXE3ZWtza2Q2cHlxNjZxNGdrNXJ6d3kybG5rN2trc3U0ZGhzdyIsICJjb2RlX2lkIjozNjg2LCAibXNnIjogImV5SmhiR3h2ZDE5amNtOXpjMTlqYUdGcGJsOXRjMmR6SWpvZ2RISjFaU3dnSW05M2JtVnlJam9nSW1wMWJtOHhjemhvZDNZMmVESnplSEUyTXpCc1pHb3paelkzYlhFM1pXdHphMlEyY0hseE5qWnhOR2RyTlhKNmQza3liRzVyTjJ0cmMzVTBaR2h6ZHlKOSIsICJmdW5kcyI6W10sICJsYWJlbCI6IkRhby1zcGVjaWZpYyBwcm94eSJ9fX0sInJlcGx5X2NhbGxiYWNrIjp7ImNhbGxiYWNrX2lkIjo1LCJpYmNfcG9ydCI6InRyYW5zZmVyIiwiaWJjX2NoYW5uZWwiOiJjaGFubmVsLTg2IiwiZGVub20iOiJpYmMvMTA3RDE1MkJCMzE3NkZBRUJGNEMyQTg0QzVGRkRFRUE3QzdDQjRGRTFCQkRBQjcxMEYxRkQyNUJDRDA1NUNCRiIsInJlY2VpdmVyIjoidGVycmExcDh2dndtZ3U0NGZ2enp1MmFsNXpzdTc4dmN6c25lcjlxdWd1anBnM2Ruc25lY3FlNHRzc2w0aDU2NSJ9fV19fX19"
-    //     }
-    // };
-    //
-    // try {
-    //   await executor.execute(ICS_PROXY, {
-    //     execute_msgs: {
-    //       msgs: [
-    //         {
-    //           msg: stargate_msg,
-    //         }
-    //       ]
-    //     },
-    //   },
-    //       {
-    //         coins: [new Coin("uluna", 10)]
-    //       });
-    // } catch (e) {
-    //   console.log(e);
-    // }
 });
 
 const stakeTokens = async (executor: Executor, token_contract: string, membership_contract: string): Promise<void> => {
@@ -205,20 +196,42 @@ function executeProposal(executor: Executor, governance_controller: string, prop
 const waitForNewBlock = async (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5000))
 
 const deployEnterpriseFacade = async (refs: Refs, network: string, deployer: Deployer, signer: Signer): Promise<void> => {
-    await deployer.storeCode(ENTERPRISE_FACADE);
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(ENTERPRISE_FACADE_V1);
+    await waitForNewBlock();
+    await deployer.storeCode(ENTERPRISE_FACADE_V2);
+    await waitForNewBlock();
 
-  try {
-    await deployer.instantiate("enterprise-facade", {
-          enterprise_versioning: refs.getAddress(network, ENTERPRISE_VERSIONING),
-        },
-        {
-          admin: signer.key.accAddress,
-          label: "Enterprise facade",
-        });
-      await waitForNewBlock();
-  } catch (err) {
-    console.log(err);
+    await deployer.storeCode(ENTERPRISE_FACADE);
+    await waitForNewBlock();
+
+    try {
+        await deployer.instantiate(ENTERPRISE_FACADE_V1, {
+                enterprise_versioning: refs.getAddress(network, ENTERPRISE_VERSIONING),
+            },
+            {
+                admin: signer.key.accAddress,
+                label: "Enterprise facade V1",
+            });
+        await waitForNewBlock();
+
+        await deployer.instantiate(ENTERPRISE_FACADE_V2, {},
+            {
+                admin: signer.key.accAddress,
+                label: "Enterprise facade V2",
+            });
+
+        await deployer.instantiate(ENTERPRISE_FACADE, {
+                enterprise_facade_v1: refs.getAddress(network, ENTERPRISE_FACADE_V1),
+                enterprise_facade_v2: refs.getAddress(network, ENTERPRISE_FACADE_V2),
+            },
+            {
+                admin: signer.key.accAddress,
+                label: "Enterprise facade",
+            });
+        await waitForNewBlock();
+
+    } catch (err) {
+        console.log(err);
   }
 
     refs.saveRefs();
@@ -278,10 +291,10 @@ const deployEnterpriseFactory = async (refs: Refs, network: string, deployer: De
 const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer: Deployer, executor: Executor, major: number, minor: number, patch: number): Promise<void> => {
     // const attestationCodeId = await deployer.storeCode(ATTESTATION);
     // await new Promise((resolve) => setTimeout(resolve, 5000));
-    //
+
     // const denomStakingMembershipCodeId = await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
     // await new Promise((resolve) => setTimeout(resolve, 5000));
-
+    //
     // let enterpriseCodeId;
     // try {
     //     enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
@@ -289,30 +302,30 @@ const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer:
     // } catch (e) {
     //     console.log(e);
     // }
-
+    //
     // const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
     // await new Promise((resolve) => setTimeout(resolve, 5000));
-
+    //
     // const enterpriseGovernanceControllerCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
     // await new Promise((resolve) => setTimeout(resolve, 5000));
-    //
+
     // const enterpriseTreasuryCodeId = await deployer.storeCode(ENTERPRISE_TREASURY);
     // await new Promise((resolve) => setTimeout(resolve, 5000));
-    //
+
     // const enterpriseOutpostsCodeId = await deployer.storeCode(ENTERPRISE_OUTPOSTS);
     // await new Promise((resolve) => setTimeout(resolve, 5000));
+    //
+    // const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
+    // await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
+    const multisigMembershipCodeId = await deployer.storeCode(MULTISIG_MEMBERSHIP);
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    // const multisigMembershipCodeId = await deployer.storeCode(MULTISIG_MEMBERSHIP);
-    // await new Promise((resolve) => setTimeout(resolve, 5000));
+    const tokenStakingMembershipCodeId = await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    // const tokenStakingMembershipCodeId = await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
-    // await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    // const nftStakingMembershipCodeId = await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
-    // await new Promise((resolve) => setTimeout(resolve, 5000));
+    const nftStakingMembershipCodeId = await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     const enterpriseVersioningAddr = refs.getAddress(network, ENTERPRISE_VERSIONING);
 
