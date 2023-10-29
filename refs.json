@@ -86,7 +86,7 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "1981"
+      "codeId": "1995"
     },
     "enterprise-factory": {
       "codeId": "1977",
@@ -110,34 +110,34 @@
       "codeId": "1318"
     },
     "enterprise-governance": {
-      "codeId": "1982"
+      "codeId": "1996"
     },
     "funds-distributor": {
-      "codeId": "1986"
+      "codeId": "2000"
     },
     "attestation": {
-      "codeId": "1979"
+      "codeId": "1994"
     },
     "denom-staking-membership": {
-      "codeId": "1980"
+      "codeId": "2002"
     },
     "enterprise-governance-controller": {
-      "codeId": "1983"
+      "codeId": "1997"
     },
     "enterprise-treasury": {
-      "codeId": "1984"
+      "codeId": "1998"
     },
     "enterprise-outposts": {
-      "codeId": "1985"
+      "codeId": "1999"
     },
     "token-staking-membership": {
-      "codeId": "1988"
+      "codeId": "2001"
     },
     "nft-staking-membership": {
-      "codeId": "1989"
+      "codeId": "2003"
     },
     "multisig-membership": {
-      "codeId": "1987"
+      "codeId": "2004"
     },
     "enterprise-facade-v1": {
       "codeId": "1990",
