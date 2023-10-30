@@ -1325,6 +1325,13 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
                     },
                 )?;
 
+                let dao_type = query_dao_type(deps.as_ref())?;
+
+                if dao_type == Multisig {
+                    // nothing to modify in multisig DAOs - they don't need a delay
+                    return Ok(Response::new());
+                }
+
                 let proposal_info =
                     PROPOSAL_INFOS.load(deps.storage, proposal_being_voted_on.proposal_id)?;
 
