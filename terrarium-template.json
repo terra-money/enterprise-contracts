@@ -19,32 +19,60 @@
     "copy_refs_to": []
   },
   "contracts": {
-    "enterprise-factory": {
-      "src": "./contracts/enterprise-factory/",
-      "deploy_script": "./tasks/deploy_enterprise_factory.ts"
+    "attestation": {
+      "src": "./contracts/attestation/"
+    },
+    "denom-staking-membership": {
+      "src": "./contracts/denom-staking-membership/"
     },
     "enterprise": {
       "src": "./contracts/enterprise/"
     },
-    "test-contract": {
-      "src": "./contracts/test-contract/",
-      "deploy_script": "./tasks/deploy_test_contract.ts"
+    "enterprise-facade": {
+      "src": "./contracts/enterprise-facade/"
+    },
+    "enterprise-facade-v1": {
+      "src": "./contracts/enterprise-facade-v1/"
+    },
+    "enterprise-facade-v2": {
+      "src": "./contracts/enterprise-facade-v1/"
+    },
+    "enterprise-factory": {
+      "src": "./contracts/enterprise-factory/",
+      "deploy_script": "./tasks/deploy_enterprise_factory.ts"
     },
     "enterprise-governance": {
       "src": "./contracts/enterprise-governance/"
     },
+    "enterprise-governance-controller": {
+      "src": "./contracts/enterprise-governance-controller/"
+    },
+    "enterprise-treasury": {
+      "src": "./contracts/enterprise-treasury/"
+    },
+    "enterprise-outposts": {
+      "src": "./contracts/enterprise-outposts/"
+    },
+    "enterprise-versioning": {
+      "src": "./contracts/enterprise-versioning/"
+    },
     "funds-distributor": {
       "src": "./contracts/funds-distributor/"
     },
-    "token-staking": {
-      "src": "./contracts/token-staking/"
+    "multisig-membership": {
+      "src": "./contracts/multisig-membership/"
     },
-    "nft-staking": {
-      "src": "./contracts/nft-staking/"
+    "nft-staking-membership": {
+      "src": "./contracts/nft-staking-membership/"
     },
+    "token-staking-membership": {
+      "src": "./contracts/token-staking-membership/"
+    },
+    "ics-proxy": {},
     "cw20_base": {},
     "cw3_fixed_multisig": {},
-    "cw721_base": {}
+    "cw721_base": {},
+    "cw721_metadata_onchain": {}
   },
   "signers": {
     "pisco": {
