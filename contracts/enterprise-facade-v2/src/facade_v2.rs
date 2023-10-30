@@ -907,11 +907,6 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
         let component_contracts = self.component_contracts(qctx.deps)?;
 
-        let fund_outposts_contract_submsg = AdaptedMsg::Bank(AdaptedBankMsg {
-            receiver: component_contracts.enterprise_outposts_contract,
-            funds: coins(treasury_cross_chain_msgs_count, "uluna"),
-        });
-
         let execute_proposal_submsg = AdaptedMsg::Execute(AdaptedExecuteMsg {
             target_contract: component_contracts.enterprise_governance_controller_contract,
             msg: serde_json_wasm::to_string(&ExecuteProposal(
@@ -922,9 +917,17 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             funds: vec![],
         });
 
-        Ok(AdapterResponse {
-            msgs: vec![fund_outposts_contract_submsg, execute_proposal_submsg],
-        })
+        let msgs = if treasury_cross_chain_msgs_count != 0u128 {
+            let fund_outposts_contract_submsg = AdaptedMsg::Bank(AdaptedBankMsg {
+                receiver: component_contracts.enterprise_outposts_contract,
+                funds: coins(treasury_cross_chain_msgs_count, "uluna"),
+            });
+            vec![fund_outposts_contract_submsg, execute_proposal_submsg]
+        } else {
+            vec![execute_proposal_submsg]
+        };
+
+        Ok(AdapterResponse { msgs })
     }
 
     fn adapt_stake(
