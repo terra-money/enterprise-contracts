@@ -46,6 +46,7 @@ pub const MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 2;
 pub const COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID: u64 = 3;
 pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 4;
 pub const ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID: u64 = 5;
+pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 6;
 
 const DEFAULT_QUERY_LIMIT: u8 = 30;
 const MAX_QUERY_LIMIT: u8 = 100;
@@ -253,6 +254,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> EnterpriseTreasuryResult<R
                 parse_instantiated_contract_addr(deps.as_ref(), msg)?;
 
             enterprise_outposts_contract_created(deps, enterprise_outposts_contract)
+        }
+        EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
+            // no actions, regardless of the result
+            // here for compatibility while migrating old DAOs
+            Ok(Response::new())
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }

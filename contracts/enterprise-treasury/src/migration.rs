@@ -874,6 +874,9 @@ pub fn membership_contract_created(
             )?;
 
             vec![migrate_stakes_submsg, migrate_claims_submsg]
+                .into_iter()
+                .flatten()
+                .collect()
         }
         DaoType::Nft => {
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
@@ -912,8 +915,12 @@ fn migrate_cw20_stakes_submsg(
     deps: Deps,
     cw20_contract: Addr,
     membership_contract: Addr,
-) -> EnterpriseTreasuryResult<SubMsg> {
+) -> EnterpriseTreasuryResult<Option<SubMsg>> {
     let total_staked = load_total_staked(deps.storage)?;
+
+    if total_staked.is_zero() {
+        return Ok(None);
+    }
 
     let stakers = CW20_STAKES
         .range(deps.storage, None, None, Ascending)
@@ -925,19 +932,19 @@ fn migrate_cw20_stakes_submsg(
         })
         .collect::<StdResult<Vec<UserStake>>>()?;
 
-    Ok(SubMsg::new(
+    Ok(Some(SubMsg::new(
         Asset::cw20(cw20_contract, total_staked).send_msg(
             membership_contract,
             to_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers { stakers })?,
         )?,
-    ))
+    )))
 }
 
 fn migrate_cw20_claims_submsg(
     deps: Deps,
     cw20_contract: Addr,
     membership_contract: Addr,
-) -> EnterpriseTreasuryResult<SubMsg> {
+) -> EnterpriseTreasuryResult<Option<SubMsg>> {
     let mut total_claims_amount = Uint128::zero();
 
     let claims = CLAIMS
@@ -963,17 +970,21 @@ fn migrate_cw20_claims_submsg(
         })
         .collect::<Vec<UserClaim>>();
 
-    let migrate_claims_submsg = SubMsg::new(wasm_execute(
-        cw20_contract.to_string(),
-        &cw20::Cw20ExecuteMsg::Send {
-            contract: membership_contract.to_string(),
-            amount: total_claims_amount,
-            msg: to_binary(&AddClaims { claims })?,
-        },
-        vec![],
-    )?);
+    if total_claims_amount.is_zero() {
+        Ok(None)
+    } else {
+        let migrate_claims_submsg = SubMsg::new(wasm_execute(
+            cw20_contract.to_string(),
+            &cw20::Cw20ExecuteMsg::Send {
+                contract: membership_contract.to_string(),
+                amount: total_claims_amount,
+                msg: to_binary(&AddClaims { claims })?,
+            },
+            vec![],
+        )?);
 
-    Ok(migrate_claims_submsg)
+        Ok(Some(migrate_claims_submsg))
+    }
 }
 
 fn migrate_cw721_stakes_submsgs(
