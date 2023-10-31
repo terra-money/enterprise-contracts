@@ -10,8 +10,8 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_execute, Binary, Deps, DepsMut, Env, MessageInfo, Order, Reply,
-    Response, StdResult, SubMsg, SubMsgResponse, SubMsgResult,
+    entry_point, to_binary, wasm_execute, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+    Reply, Response, StdResult, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfoUnchecked;
@@ -33,6 +33,8 @@ use enterprise_outposts_api::response::{
     execute_execute_cross_chain_treasury_response, execute_execute_msg_reply_callback_response,
     instantiate_response,
 };
+use enterprise_protocol::api::ComponentContractsResponse;
+use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-outposts";
@@ -354,7 +356,12 @@ fn handle_instantiate_proxy_reply_callback(
         deploy_treasury_msg.cross_chain_msg_spec,
     )?;
 
-    Ok(execute_execute_msg_reply_callback_response().add_submessage(instantiate_treasury_submsg))
+    let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
+
+    Ok(
+        execute_execute_msg_reply_callback_response(dao_address.to_string())
+            .add_submessage(instantiate_treasury_submsg),
+    )
 }
 
 fn handle_instantiate_treasury_reply_callback(
@@ -366,7 +373,11 @@ fn handle_instantiate_treasury_reply_callback(
 
     add_cross_chain_treasury(ctx, chain_id, treasury_addr)?;
 
-    Ok(execute_execute_msg_reply_callback_response())
+    let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
+
+    Ok(execute_execute_msg_reply_callback_response(
+        dao_address.to_string(),
+    ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -426,6 +437,16 @@ fn query_cross_chain_deployments(
         proxy_addr,
         treasury_addr,
     })
+}
+
+fn query_main_dao_addr(deps: Deps) -> EnterpriseOutpostsResult<Addr> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
+
+    let component_contracts: ComponentContractsResponse = deps
+        .querier
+        .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
+
+    Ok(component_contracts.enterprise_treasury_contract)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

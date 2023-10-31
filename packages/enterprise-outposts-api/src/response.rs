@@ -16,6 +16,8 @@ pub fn execute_execute_cross_chain_treasury_response() -> Response {
     Response::new().add_attribute("action", "execute_cross_chain_treasury")
 }
 
-pub fn execute_execute_msg_reply_callback_response() -> Response {
-    Response::new().add_attribute("action", "execute_msg_reply_callback")
+pub fn execute_execute_msg_reply_callback_response(dao_address: String) -> Response {
+    Response::new()
+        .add_attribute("action", "execute_msg_reply_callback")
+        .add_attribute("dao_address", dao_address)
 }

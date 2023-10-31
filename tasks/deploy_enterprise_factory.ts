@@ -54,21 +54,21 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 2, 0);
+    await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 3, 1);
 
     // await instantiateDao(refs, network, executor);
 
     try {
-        const enterprise_contract = "terra1mg4gvn7svq7clshyn8qt6evwsv4yjrvfpfdjjpt29tmqdlcc700srphtm3";
-
-        const component_contracts = await executor.query(enterprise_contract, {component_contracts: {}}) as ComponentContracts;
-
-        const membership_contract = component_contracts.membership_contract;
-        const governance_controller = component_contracts.enterprise_governance_controller_contract;
-
-        const token_config = await executor.query(membership_contract, {token_config: {}}) as TokenConfig;
-
-        const token_contract = token_config.token_contract;
+        // const enterprise_contract = "terra1mg4gvn7svq7clshyn8qt6evwsv4yjrvfpfdjjpt29tmqdlcc700srphtm3";
+        //
+        // const component_contracts = await executor.query(enterprise_contract, {component_contracts: {}}) as ComponentContracts;
+        //
+        // const membership_contract = component_contracts.membership_contract;
+        // const governance_controller = component_contracts.enterprise_governance_controller_contract;
+        //
+        // const token_config = await executor.query(membership_contract, {token_config: {}}) as TokenConfig;
+        //
+        // const token_contract = token_config.token_contract;
 
         const proposal_id = 1;
 
@@ -295,38 +295,38 @@ const deployEnterpriseFactory = async (refs: Refs, network: string, deployer: De
 }
 
 const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer: Deployer, executor: Executor, major: number, minor: number, patch: number): Promise<void> => {
-  await deployer.storeCode(ATTESTATION);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE_GOVERNANCE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE_TREASURY);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // await deployer.storeCode(ATTESTATION);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE_GOVERNANCE);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(ENTERPRISE_TREASURY);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
 
   await deployer.storeCode(ENTERPRISE_OUTPOSTS);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(FUNDS_DISTRIBUTOR);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(MULTISIG_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // await deployer.storeCode(FUNDS_DISTRIBUTOR);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
+  //
+  // await deployer.storeCode(MULTISIG_MEMBERSHIP);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const enterpriseVersioningAddr = refs.getAddress(network, ENTERPRISE_VERSIONING);
 

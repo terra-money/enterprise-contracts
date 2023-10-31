@@ -81,7 +81,7 @@
       "address": "terra1e9gtcjpudc936j2q0dak8jfctwvk5fpgptfl9a2ve5lyntw0ppmsreql50"
     },
     "enterprise-outposts": {
-      "codeId": "11074"
+      "codeId": "11133"
     }
   },
   "mainnet": {
@@ -128,7 +128,7 @@
       "codeId": "1998"
     },
     "enterprise-outposts": {
-      "codeId": "1999"
+      "codeId": "2008"
     },
     "token-staking-membership": {
       "codeId": "2001"
