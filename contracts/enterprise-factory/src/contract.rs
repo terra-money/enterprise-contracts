@@ -41,7 +41,7 @@ use enterprise_protocol::error::DaoError::{MultisigDaoWithNoInitialMembers, Unau
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
 use enterprise_treasury_api::api::{AssetWhitelistResponse, NftWhitelistResponse};
-use enterprise_versioning_api::api::VersionResponse;
+use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
@@ -735,7 +735,25 @@ pub fn query_is_enterprise_code_id(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    migrate_config(deps.branch(), msg.enterprise_versioning_addr)?;
+    migrate_config(deps.branch(), msg.enterprise_versioning_addr.clone())?;
+
+    // for backwards compatibility (so that old DAOs can migrate to 1.0.0) we need to store
+    // the code ID for 1.0.0
+    let version_1 = Version {
+        major: 1,
+        minor: 0,
+        patch: 0,
+    };
+    let version_1_response: VersionResponse = deps.querier.query_wasm_smart(
+        msg.enterprise_versioning_addr,
+        &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams { version: version_1 }),
+    )?;
+
+    ENTERPRISE_CODE_IDS.save(
+        deps.storage,
+        version_1_response.version.enterprise_treasury_code_id,
+        &(),
+    )?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
