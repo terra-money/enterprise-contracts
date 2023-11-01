@@ -157,3 +157,9 @@ pub enum QueryMsg {
     #[returns(AdapterResponse)]
     ClaimAdapted { contract: Addr },
 }
+
+#[cw_serde]
+pub struct MigrateMsg {
+    pub enterprise_facade_v1: Option<String>,
+    pub enterprise_facade_v2: Option<String>,
+}

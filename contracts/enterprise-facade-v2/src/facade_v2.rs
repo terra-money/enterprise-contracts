@@ -41,7 +41,7 @@ use membership_common_api::api::{
 };
 use membership_common_api::msg::QueryMsg::{Members, TotalWeight, UserWeight};
 use nft_staking_api::api::{NftConfigResponse, UserNftStakeParams, UserNftStakeResponse};
-use nft_staking_api::msg::QueryMsg::NftConfig;
+use nft_staking_api::msg::QueryMsg::{NftConfig, StakedNfts};
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
 
@@ -455,11 +455,11 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Nft => {
                 let nft_stake: UserNftStakeResponse = qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
-                    &UserNftStakeParams {
+                    &nft_staking_api::msg::QueryMsg::UserStake(UserNftStakeParams {
                         user: params.user,
                         start_after: params.start_after,
                         limit: params.limit,
-                    },
+                    }),
                 )?;
 
                 Ok(UserStakeResponse {
@@ -515,10 +515,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 let staked_nfts_response: nft_staking_api::api::StakedNftsResponse =
                     qctx.deps.querier.query_wasm_smart(
                         nft_membership_contract.to_string(),
-                        &nft_staking_api::api::StakedNftsParams {
+                        &StakedNfts(nft_staking_api::api::StakedNftsParams {
                             start_after: params.start_after,
                             limit: params.limit,
-                        },
+                        }),
                     )?;
 
                 Ok(StakedNftsResponse {

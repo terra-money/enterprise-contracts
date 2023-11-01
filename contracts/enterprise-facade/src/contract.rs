@@ -12,7 +12,7 @@ use enterprise_facade_api::api::{
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::{ExecuteProposalAdapted, TreasuryAddress};
-use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
@@ -397,4 +397,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
         }
     };
     Ok(response)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> EnterpriseFacadeResult<Response> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    if let Some(enterprise_facade_v1) = msg.enterprise_facade_v1 {
+        ENTERPRISE_FACADE_V1.save(
+            deps.storage,
+            &deps.api.addr_validate(&enterprise_facade_v1)?,
+        )?;
+    }
+
+    if let Some(enterprise_facade_v2) = msg.enterprise_facade_v2 {
+        ENTERPRISE_FACADE_V2.save(
+            deps.storage,
+            &deps.api.addr_validate(&enterprise_facade_v2)?,
+        )?;
+    }
+
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
