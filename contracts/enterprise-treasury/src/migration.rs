@@ -850,6 +850,21 @@ pub fn membership_contract_created(
 ) -> EnterpriseTreasuryResult<Response> {
     let migration_info = MIGRATION_INFO.load(deps.storage)?;
 
+    MIGRATION_INFO.save(
+        deps.storage,
+        &MigrationInfo {
+            membership_contract: Some(membership_contract),
+            ..migration_info
+        },
+    )?;
+
+    Ok(Response::new())
+}
+
+fn finalize_membership_contract_submsgs(
+    deps: Deps,
+    membership_contract: Addr,
+) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
     let finalize_membership_msgs = match dao_type {
@@ -862,16 +877,13 @@ pub fn membership_contract_created(
             let cw20_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
             let migrate_stakes_submsg = migrate_cw20_stakes_submsg(
-                deps.as_ref(),
+                deps,
                 cw20_contract.clone(),
                 membership_contract.clone(),
             )?;
 
-            let migrate_claims_submsg = migrate_cw20_claims_submsg(
-                deps.as_ref(),
-                cw20_contract,
-                membership_contract.clone(),
-            )?;
+            let migrate_claims_submsg =
+                migrate_cw20_claims_submsg(deps, cw20_contract, membership_contract)?;
 
             vec![migrate_stakes_submsg, migrate_claims_submsg]
                 .into_iter()
@@ -882,16 +894,13 @@ pub fn membership_contract_created(
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
             let mut migrate_stakes_submsgs = migrate_cw721_stakes_submsgs(
-                deps.as_ref(),
+                deps,
                 cw721_contract.clone(),
                 membership_contract.clone(),
             )?;
 
-            let mut claim_submsgs = migrate_cw721_claims_submsgs(
-                deps.as_ref(),
-                cw721_contract,
-                membership_contract.clone(),
-            )?;
+            let mut claim_submsgs =
+                migrate_cw721_claims_submsgs(deps, cw721_contract, membership_contract)?;
 
             migrate_stakes_submsgs.append(&mut claim_submsgs);
 
@@ -900,15 +909,7 @@ pub fn membership_contract_created(
         DaoType::Multisig => vec![],
     };
 
-    MIGRATION_INFO.save(
-        deps.storage,
-        &MigrationInfo {
-            membership_contract: Some(membership_contract),
-            ..migration_info
-        },
-    )?;
-
-    Ok(Response::new().add_submessages(finalize_membership_msgs))
+    Ok(finalize_membership_msgs)
 }
 
 fn migrate_cw20_stakes_submsg(
@@ -1179,6 +1180,9 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         vec![],
     )?);
 
+    let finalize_membership_contract_submsgs =
+        finalize_membership_contract_submsgs(ctx.deps.as_ref(), membership_contract)?;
+
     // remove all the old storage
 
     DAO_GOV_CONFIG.remove(ctx.deps.storage);
@@ -1209,5 +1213,6 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         .add_submessage(update_treasury_admin)
         .add_submessage(update_funds_distributor_admin)
         .add_submessage(update_enterprise_governance_admin)
-        .add_submessage(finalize_enterprise_instantiation))
+        .add_submessage(finalize_enterprise_instantiation)
+        .add_submessages(finalize_membership_contract_submsgs))
 }
