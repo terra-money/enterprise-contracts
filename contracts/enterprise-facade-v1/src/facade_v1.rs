@@ -77,7 +77,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
             gov_config: dao_info_v5.gov_config,
             dao_council: dao_info_v5.dao_council,
             dao_type: dao_info_v5.dao_type,
-            dao_membership_contract: dao_info_v5.dao_membership_contract,
+            dao_membership_contract: dao_info_v5.dao_membership_contract.to_string(),
             enterprise_factory_contract: dao_info_v5.enterprise_factory_contract,
             funds_distributor_contract: dao_info_v5.funds_distributor_contract,
             dao_code_version: dao_info_v5.dao_code_version,
@@ -272,7 +272,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
         match dao_type {
             DaoType::Token => Ok(adapter_response_single_execute_msg(
-                dao_info.dao_membership_contract,
+                qctx.deps.api.addr_validate(&dao_info.dao_membership_contract)?,
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: params.deposit_amount,
@@ -362,13 +362,14 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                     msg: to_binary(&Cw20HookV1Msg::Stake {})?,
                 };
                 Ok(adapter_response_single_execute_msg(
-                    token_addr,
+                    qctx.deps.api.addr_validate(&token_addr)?,
                     serde_json_wasm::to_string(&msg)?,
                     vec![],
                 ))
             }
             StakeMsg::Cw721(msg) => {
                 let nft_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
+                let nft_addr = qctx.deps.api.addr_validate(&nft_addr)?;
 
                 let stake_msg_binary = to_binary(&Cw721HookV1Msg::Stake {})?;
 

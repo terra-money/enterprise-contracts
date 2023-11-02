@@ -86,9 +86,8 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     gov_config.dao_membership_contract.to_string(),
                     &DenomConfig {},
                 )?;
-                // address doesn't make too much sense, but kept for backwards-compatibility since this best fits what was the previous behavior
                 (
-                    self.enterprise_address.clone(),
+                    denom_config.denom,
                     denom_config.unlocking_period,
                 )
             }
@@ -97,18 +96,18 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     gov_config.dao_membership_contract.to_string(),
                     &TokenConfig {},
                 )?;
-                (token_config.token_contract, token_config.unlocking_period)
+                (token_config.token_contract.to_string(), token_config.unlocking_period)
             }
             DaoType::Nft => {
                 let nft_config: NftConfigResponse = qctx.deps.querier.query_wasm_smart(
                     gov_config.dao_membership_contract.to_string(),
                     &NftConfig {},
                 )?;
-                (nft_config.nft_contract, nft_config.unlocking_period)
+                (nft_config.nft_contract.to_string(), nft_config.unlocking_period)
             }
             DaoType::Multisig => {
                 // doesn't make too much sense, but kept for backwards-compatibility since this was the previous behavior
-                (self.enterprise_address.clone(), Duration::Time(0))
+                (self.enterprise_address.to_string(), Duration::Time(0))
             }
         };
 
