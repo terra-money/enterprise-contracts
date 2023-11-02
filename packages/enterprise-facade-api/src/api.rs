@@ -56,6 +56,15 @@ impl From<enterprise_protocol::api::Logo> for Logo {
     }
 }
 
+impl From<Logo> for enterprise_protocol::api::Logo {
+    fn from(value: Logo) -> Self {
+        match value {
+            Logo::Url(url) => enterprise_protocol::api::Logo::Url(url),
+            Logo::None => enterprise_protocol::api::Logo::None,
+        }
+    }
+}
+
 #[cw_serde]
 pub struct DaoSocialData {
     pub github_username: Option<String>,

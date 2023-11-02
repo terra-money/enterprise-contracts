@@ -1,22 +1,27 @@
 use common::commons::ModifyValue;
 use common::commons::ModifyValue::{Change, NoChange};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{from_json, Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
-use cw_utils::Duration;
+use cw_utils::{Duration, Expiration};
 use enterprise_facade_api::api::{
     AssetWhitelistParams, CastVoteMsg, ClaimsParams, CreateProposalMsg, DaoCouncil, DaoMetadata,
     DaoType, ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, Logo, MemberVoteParams,
-    NftWhitelistParams, ProposalParams, ProposalStatusParams, ProposalVotesParams, ProposalsParams,
+    NftWhitelistParams, Proposal, ProposalId, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusParams, ProposalType, ProposalVotesParams, ProposalsParams, ProposalsResponse,
     QueryMemberInfoMsg, StakedNftsParams, UnstakeMsg,
 };
 use enterprise_governance_controller_api::api::{
     DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
-    RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
+    ProposalAction, RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg,
+    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
+    UpdateNftWhitelistProposalActionMsg,
 };
-use enterprise_protocol::api::UpdateMetadataMsg;
+use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg, VersionMigrateMsg};
+use enterprise_versioning_api::api::Version;
 use multisig_membership_api::api::UserWeight;
+use serde_with::serde_as;
+use std::collections::BTreeMap;
 
 #[cw_serde]
 pub struct UpdateMetadataV1Msg {
@@ -37,6 +42,25 @@ impl From<UpdateMetadataMsg> for UpdateMetadataV1Msg {
         };
 
         UpdateMetadataV1Msg {
+            name: value.name,
+            description: value.description,
+            logo,
+            github_username: value.github_username,
+            discord_username: value.discord_username,
+            twitter_username: value.twitter_username,
+            telegram_username: value.telegram_username,
+        }
+    }
+}
+
+impl From<UpdateMetadataV1Msg> for UpdateMetadataMsg {
+    fn from(value: UpdateMetadataV1Msg) -> Self {
+        let logo = match value.logo {
+            Change(logo) => Change(logo.into()),
+            NoChange => NoChange,
+        };
+
+        UpdateMetadataMsg {
             name: value.name,
             description: value.description,
             logo,
@@ -73,6 +97,20 @@ impl From<UpdateGovConfigMsg> for UpdateGovConfigV1Msg {
     }
 }
 
+impl From<UpdateGovConfigV1Msg> for UpdateGovConfigMsg {
+    fn from(value: UpdateGovConfigV1Msg) -> Self {
+        UpdateGovConfigMsg {
+            quorum: value.quorum,
+            threshold: value.threshold,
+            veto_threshold: value.veto_threshold,
+            voting_duration: value.voting_duration,
+            unlocking_period: value.unlocking_period,
+            minimum_deposit: value.minimum_deposit,
+            allow_early_proposal_execution: value.allow_early_proposal_execution,
+        }
+    }
+}
+
 #[cw_serde]
 pub struct UpdateCouncilV1Msg {
     pub dao_council: Option<DaoCouncilSpec>,
@@ -81,6 +119,14 @@ pub struct UpdateCouncilV1Msg {
 impl From<UpdateCouncilMsg> for UpdateCouncilV1Msg {
     fn from(value: UpdateCouncilMsg) -> Self {
         UpdateCouncilV1Msg {
+            dao_council: value.dao_council,
+        }
+    }
+}
+
+impl From<UpdateCouncilV1Msg> for UpdateCouncilMsg {
+    fn from(value: UpdateCouncilV1Msg) -> Self {
+        UpdateCouncilMsg {
             dao_council: value.dao_council,
         }
     }
@@ -95,6 +141,16 @@ pub struct UpdateAssetWhitelistV1Msg {
 impl From<UpdateAssetWhitelistProposalActionMsg> for UpdateAssetWhitelistV1Msg {
     fn from(value: UpdateAssetWhitelistProposalActionMsg) -> Self {
         UpdateAssetWhitelistV1Msg {
+            add: value.add,
+            remove: value.remove,
+        }
+    }
+}
+
+impl From<UpdateAssetWhitelistV1Msg> for UpdateAssetWhitelistProposalActionMsg {
+    fn from(value: UpdateAssetWhitelistV1Msg) -> Self {
+        UpdateAssetWhitelistProposalActionMsg {
+            remote_treasury_target: None,
             add: value.add,
             remove: value.remove,
         }
@@ -116,6 +172,16 @@ impl From<UpdateNftWhitelistProposalActionMsg> for UpdateNftWhitelistV1Msg {
     }
 }
 
+impl From<UpdateNftWhitelistV1Msg> for UpdateNftWhitelistProposalActionMsg {
+    fn from(value: UpdateNftWhitelistV1Msg) -> Self {
+        UpdateNftWhitelistProposalActionMsg {
+            remote_treasury_target: None,
+            add: value.add,
+            remove: value.remove,
+        }
+    }
+}
+
 #[cw_serde]
 pub struct RequestFundingFromDaoV1Msg {
     pub recipient: String,
@@ -131,10 +197,40 @@ impl From<RequestFundingFromDaoMsg> for RequestFundingFromDaoV1Msg {
     }
 }
 
+impl From<RequestFundingFromDaoV1Msg> for RequestFundingFromDaoMsg {
+    fn from(value: RequestFundingFromDaoV1Msg) -> Self {
+        RequestFundingFromDaoMsg {
+            remote_treasury_target: None,
+            recipient: value.recipient,
+            assets: value.assets,
+        }
+    }
+}
+
 #[cw_serde]
 pub struct UpgradeDaoV1Msg {
     pub new_dao_code_id: u64,
     pub migrate_msg: Binary,
+}
+
+impl From<UpgradeDaoV1Msg> for UpgradeDaoMsg {
+    fn from(value: UpgradeDaoV1Msg) -> Self {
+        UpgradeDaoMsg {
+            new_version: Version {
+                major: 0,
+                minor: value.new_dao_code_id,
+                patch: 0,
+            },
+            migrate_msgs: vec![VersionMigrateMsg {
+                version: Version {
+                    major: 0,
+                    minor: value.new_dao_code_id,
+                    patch: 0,
+                },
+                migrate_msg: from_json(&value.migrate_msg).unwrap_or_default(),
+            }],
+        }
+    }
 }
 
 #[cw_serde]
@@ -146,6 +242,15 @@ pub struct ExecuteMsgsV1Msg {
 impl From<ExecuteMsgsMsg> for ExecuteMsgsV1Msg {
     fn from(value: ExecuteMsgsMsg) -> Self {
         ExecuteMsgsV1Msg {
+            action_type: value.action_type,
+            msgs: value.msgs,
+        }
+    }
+}
+
+impl From<ExecuteMsgsV1Msg> for ExecuteMsgsMsg {
+    fn from(value: ExecuteMsgsV1Msg) -> Self {
+        ExecuteMsgsMsg {
             action_type: value.action_type,
             msgs: value.msgs,
         }
@@ -168,6 +273,14 @@ impl From<ModifyMultisigMembershipMsg> for ModifyMultisigMembershipV1Msg {
     }
 }
 
+impl From<ModifyMultisigMembershipV1Msg> for ModifyMultisigMembershipMsg {
+    fn from(value: ModifyMultisigMembershipV1Msg) -> Self {
+        ModifyMultisigMembershipMsg {
+            edit_members: value.edit_members.into_iter().map(|it| it.into()).collect(),
+        }
+    }
+}
+
 #[cw_serde]
 pub struct MultisigMemberV1 {
     pub address: String,
@@ -178,6 +291,15 @@ impl From<UserWeight> for MultisigMemberV1 {
     fn from(value: UserWeight) -> Self {
         MultisigMemberV1 {
             address: value.user,
+            weight: value.weight,
+        }
+    }
+}
+
+impl From<MultisigMemberV1> for UserWeight {
+    fn from(value: MultisigMemberV1) -> Self {
+        UserWeight {
+            user: value.address,
             weight: value.weight,
         }
     }
@@ -194,6 +316,12 @@ impl From<DistributeFundsMsg> for DistributeFundsV1Msg {
     }
 }
 
+impl From<DistributeFundsV1Msg> for DistributeFundsMsg {
+    fn from(value: DistributeFundsV1Msg) -> Self {
+        DistributeFundsMsg { funds: value.funds }
+    }
+}
+
 #[cw_serde]
 pub struct UpdateMinimumWeightForRewardsV1Msg {
     pub minimum_weight_for_rewards: Uint128,
@@ -202,6 +330,14 @@ pub struct UpdateMinimumWeightForRewardsV1Msg {
 impl From<UpdateMinimumWeightForRewardsMsg> for UpdateMinimumWeightForRewardsV1Msg {
     fn from(value: UpdateMinimumWeightForRewardsMsg) -> Self {
         UpdateMinimumWeightForRewardsV1Msg {
+            minimum_weight_for_rewards: value.minimum_weight_for_rewards,
+        }
+    }
+}
+
+impl From<UpdateMinimumWeightForRewardsV1Msg> for UpdateMinimumWeightForRewardsMsg {
+    fn from(value: UpdateMinimumWeightForRewardsV1Msg) -> Self {
+        UpdateMinimumWeightForRewardsMsg {
             minimum_weight_for_rewards: value.minimum_weight_for_rewards,
         }
     }
@@ -244,6 +380,86 @@ pub enum ProposalActionV1 {
     UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsV1Msg),
 }
 
+impl From<ProposalActionV1> for ProposalAction {
+    fn from(value: ProposalActionV1) -> Self {
+        match value {
+            ProposalActionV1::UpdateMetadata(msg) => ProposalAction::UpdateMetadata(msg.into()),
+            ProposalActionV1::UpdateGovConfig(msg) => ProposalAction::UpdateGovConfig(msg.into()),
+            ProposalActionV1::UpdateCouncil(msg) => ProposalAction::UpdateCouncil(msg.into()),
+            ProposalActionV1::UpdateAssetWhitelist(msg) => {
+                ProposalAction::UpdateAssetWhitelist(msg.into())
+            }
+            ProposalActionV1::UpdateNftWhitelist(msg) => {
+                ProposalAction::UpdateNftWhitelist(msg.into())
+            }
+            ProposalActionV1::RequestFundingFromDao(msg) => {
+                ProposalAction::RequestFundingFromDao(msg.into())
+            }
+            ProposalActionV1::UpgradeDao(msg) => ProposalAction::UpgradeDao(msg.into()),
+            ProposalActionV1::ExecuteMsgs(msg) => ProposalAction::ExecuteMsgs(msg.into()),
+            ProposalActionV1::ModifyMultisigMembership(msg) => {
+                ProposalAction::ModifyMultisigMembership(msg.into())
+            }
+            ProposalActionV1::DistributeFunds(msg) => ProposalAction::DistributeFunds(msg.into()),
+            ProposalActionV1::UpdateMinimumWeightForRewards(msg) => {
+                ProposalAction::UpdateMinimumWeightForRewards(msg.into())
+            }
+        }
+    }
+}
+
+#[cw_serde]
+pub enum ProposalStatusV1 {
+    InProgress,
+    Passed,
+    Rejected,
+    Executed,
+}
+
+impl From<ProposalStatusV1> for ProposalStatus {
+    fn from(value: ProposalStatusV1) -> Self {
+        match value {
+            ProposalStatusV1::InProgress => ProposalStatus::InProgress,
+            ProposalStatusV1::Passed => ProposalStatus::Passed,
+            ProposalStatusV1::Rejected => ProposalStatus::Rejected,
+            ProposalStatusV1::Executed => ProposalStatus::Executed,
+        }
+    }
+}
+
+#[cw_serde]
+pub struct ProposalV1 {
+    pub proposal_type: ProposalType,
+    pub id: ProposalId,
+    pub proposer: Addr,
+    pub title: String,
+    pub description: String,
+    pub status: ProposalStatusV1,
+    pub started_at: Timestamp,
+    pub expires: Expiration,
+    pub proposal_actions: Vec<ProposalActionV1>,
+}
+
+impl From<ProposalV1> for Proposal {
+    fn from(value: ProposalV1) -> Self {
+        Proposal {
+            proposal_type: value.proposal_type,
+            id: value.id,
+            proposer: value.proposer,
+            title: value.title,
+            description: value.description,
+            status: value.status.into(),
+            started_at: value.started_at,
+            expires: value.expires,
+            proposal_actions: value
+                .proposal_actions
+                .into_iter()
+                .map(|action| action.into())
+                .collect(),
+        }
+    }
+}
+
 /// This is what CW20-receive hook messages for Enterprise contract looked like for v1.
 #[cw_serde]
 pub enum Cw20HookV1Msg {
@@ -277,6 +493,49 @@ pub enum QueryV1Msg {
     StakedNfts(StakedNftsParams),
     Claims(ClaimsParams),
     ReleasableClaims(ClaimsParams),
+}
+
+#[serde_as]
+#[cw_serde]
+pub struct ProposalResponseV1 {
+    pub proposal: ProposalV1,
+
+    pub proposal_status: ProposalStatusV1,
+
+    #[schemars(with = "Vec<(u8, Uint128)>")]
+    #[serde_as(as = "Vec<(_, _)>")]
+    /// Total vote-count (value) for each outcome (key).
+    pub results: BTreeMap<u8, u128>,
+
+    pub total_votes_available: Uint128,
+}
+
+impl From<ProposalResponseV1> for ProposalResponse {
+    fn from(value: ProposalResponseV1) -> Self {
+        ProposalResponse {
+            proposal: value.proposal.into(),
+            proposal_status: value.proposal_status.into(),
+            results: value.results,
+            total_votes_available: value.total_votes_available,
+        }
+    }
+}
+
+#[cw_serde]
+pub struct ProposalsResponseV1 {
+    pub proposals: Vec<ProposalResponseV1>,
+}
+
+impl From<ProposalsResponseV1> for ProposalsResponse {
+    fn from(value: ProposalsResponseV1) -> Self {
+        ProposalsResponse {
+            proposals: value
+                .proposals
+                .into_iter()
+                .map(|proposal| proposal.into())
+                .collect(),
+        }
+    }
 }
 
 #[cw_serde]

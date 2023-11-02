@@ -14,7 +14,7 @@ use crate::v1_structs::QueryV1Msg::{
 };
 use crate::v1_structs::{
     CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
-    ProposalActionV1, UpgradeDaoV1Msg, UserStakeV1Params,
+    ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, UpgradeDaoV1Msg, UserStakeV1Params,
 };
 use common::cw::QueryContext;
 use cosmwasm_schema::serde::de::DeserializeOwned;
@@ -122,12 +122,12 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: ProposalParams,
     ) -> EnterpriseFacadeResult<ProposalResponse> {
-        let response: ProposalResponse =
+        let response: ProposalResponseV1 =
             self.query_enterprise_contract(qctx.deps, &v1_structs::QueryV1Msg::Proposal(params))?;
 
         let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
 
-        let fixed_response = self.fix_proposal_response(&qctx, response, &gov_config)?;
+        let fixed_response = self.fix_proposal_response(&qctx, response.into(), &gov_config)?;
 
         Ok(fixed_response)
     }
@@ -137,7 +137,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         qctx: QueryContext,
         params: ProposalsParams,
     ) -> EnterpriseFacadeResult<ProposalsResponse> {
-        let response: ProposalsResponse =
+        let response: ProposalsResponseV1 =
             self.query_enterprise_contract(qctx.deps, &Proposals(params))?;
 
         let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
@@ -146,7 +146,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
             .proposals
             .into_iter()
             .map(|proposal_response| {
-                self.fix_proposal_response(&qctx, proposal_response, &gov_config)
+                self.fix_proposal_response(&qctx, proposal_response.into(), &gov_config)
             })
             .collect::<EnterpriseFacadeResult<Vec<ProposalResponse>>>()?;
 
@@ -272,7 +272,9 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
         match dao_type {
             DaoType::Token => Ok(adapter_response_single_execute_msg(
-                qctx.deps.api.addr_validate(&dao_info.dao_membership_contract)?,
+                qctx.deps
+                    .api
+                    .addr_validate(&dao_info.dao_membership_contract)?,
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: params.deposit_amount,
