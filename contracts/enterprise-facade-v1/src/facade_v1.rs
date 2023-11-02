@@ -237,7 +237,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         _: QueryContext,
         _: CrossChainTreasuriesParams,
     ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse> {
-        Err(UnsupportedOperation)
+        Ok(CrossChainTreasuriesResponse { treasuries: vec![] })
     }
 
     fn adapt_create_proposal(
