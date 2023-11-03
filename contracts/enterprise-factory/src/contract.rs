@@ -517,37 +517,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let weight_change_hooks =
                 Some(vec![enterprise_governance_controller_contract.to_string()]);
 
-            let membership_submsg = match create_dao_msg.dao_membership {
-                NewDenom(msg) => instantiate_denom_staking_membership_contract(
-                    deps.branch(),
-                    msg.denom,
-                    msg.unlocking_period,
-                    weight_change_hooks.clone(),
-                )?,
-                ImportCw20(msg) => {
-                    import_cw20_membership(deps.branch(), msg, weight_change_hooks.clone())?
-                }
-                NewCw20(msg) => instantiate_new_cw20_membership(deps.branch(), *msg)?,
-                ImportCw721(msg) => {
-                    import_cw721_membership(deps.branch(), msg, weight_change_hooks.clone())?
-                }
-                NewCw721(msg) => instantiate_new_cw721_membership(deps.branch(), msg)?,
-                ImportCw3(msg) => {
-                    import_cw3_membership(deps.branch(), msg, weight_change_hooks.clone())?
-                }
-                NewMultisig(msg) => {
-                    // multisig DAO with no initial members is meaningless - it's locked from the get-go
-                    if msg.multisig_members.is_empty() {
-                        return Err(MultisigDaoWithNoInitialMembers);
-                    }
-                    instantiate_new_multisig_membership(
-                        deps.branch(),
-                        msg,
-                        weight_change_hooks.clone(),
-                    )?
-                }
-            };
-
             let council_members = create_dao_msg
                 .dao_council
                 .map(|council| council.members)
@@ -568,7 +537,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             let response = Response::new()
                 .add_submessage(funds_distributor_submsg)
                 .add_submessage(enterprise_governance_submsg)
-                .add_submessage(membership_submsg)
                 .add_submessage(council_membership_submsg)
                 .add_submessage(enterprise_outposts_submsg)
                 .add_submessage(enterprise_treasury_submsg);
@@ -623,15 +591,53 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             // we're saving enterprise-treasury as DAO address for consistency with previous behaviors
             DAO_ADDRESSES.save(deps.storage, id, &enterprise_treasury_contract)?;
 
-            DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
-                Ok(DaoBeingCreated {
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+
+            DAO_BEING_CREATED.save(
+                deps.storage,
+                &DaoBeingCreated {
                     enterprise_treasury_address: Some(enterprise_treasury_contract.clone()),
-                    ..info
-                })
-            })?;
+                    ..dao_being_created.clone()
+                },
+            )?;
+
+            let create_dao_msg = dao_being_created.require_create_dao_msg()?;
+            let enterprise_governance_controller_contract =
+                dao_being_created.require_enterprise_governance_controller_address()?;
+
+            let weight_change_hooks =
+                Some(vec![enterprise_governance_controller_contract.to_string()]);
+
+            let membership_submsg = match create_dao_msg.dao_membership {
+                NewDenom(msg) => instantiate_denom_staking_membership_contract(
+                    deps.branch(),
+                    msg.denom,
+                    msg.unlocking_period,
+                    weight_change_hooks,
+                )?,
+                ImportCw20(msg) => import_cw20_membership(deps.branch(), msg, weight_change_hooks)?,
+                NewCw20(msg) => instantiate_new_cw20_membership(
+                    deps.branch(),
+                    enterprise_treasury_contract.clone(),
+                    *msg,
+                )?,
+                ImportCw721(msg) => {
+                    import_cw721_membership(deps.branch(), msg, weight_change_hooks)?
+                }
+                NewCw721(msg) => instantiate_new_cw721_membership(deps.branch(), msg)?,
+                ImportCw3(msg) => import_cw3_membership(deps.branch(), msg, weight_change_hooks)?,
+                NewMultisig(msg) => {
+                    // multisig DAO with no initial members is meaningless - it's locked from the get-go
+                    if msg.multisig_members.is_empty() {
+                        return Err(MultisigDaoWithNoInitialMembers);
+                    }
+                    instantiate_new_multisig_membership(deps.branch(), msg, weight_change_hooks)?
+                }
+            };
 
             Ok(Response::new()
-                .add_attribute("dao_address", enterprise_treasury_contract.to_string()))
+                .add_attribute("dao_address", enterprise_treasury_contract.to_string())
+                .add_submessage(membership_submsg))
         }
         ATTESTATION_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)

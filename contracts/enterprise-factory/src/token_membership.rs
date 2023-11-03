@@ -55,6 +55,7 @@ pub fn import_cw20_membership(
 
 pub fn instantiate_new_cw20_membership(
     deps: DepsMut,
+    enterprise_treasury_contract: Addr,
     msg: NewCw20MembershipMsg,
 ) -> DaoResult<SubMsg> {
     if let Some(initial_dao_balance) = msg.initial_dao_balance {
@@ -111,7 +112,7 @@ pub fn instantiate_new_cw20_membership(
         Some(initial_dao_balance) => {
             let mut token_balances = msg.initial_token_balances;
             token_balances.push(Cw20Coin {
-                address: enterprise_address.to_string(),
+                address: enterprise_treasury_contract.to_string(),
                 amount: initial_dao_balance,
             });
             token_balances
