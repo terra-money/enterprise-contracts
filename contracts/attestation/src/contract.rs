@@ -5,7 +5,7 @@ use attestation_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use attestation_api::response::{execute_sign_response, instantiate_response};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
 
@@ -58,8 +58,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> AttestationResult<Binary> {
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::AttestationText {} => to_binary(&query_attestation_text(qctx)?)?,
-        QueryMsg::HasUserSigned(params) => to_binary(&query_has_user_signed(qctx, params)?)?,
+        QueryMsg::AttestationText {} => to_json_binary(&query_attestation_text(qctx)?)?,
+        QueryMsg::HasUserSigned(params) => to_json_binary(&query_has_user_signed(qctx, params)?)?,
     };
 
     Ok(response)

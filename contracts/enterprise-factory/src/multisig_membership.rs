@@ -3,7 +3,7 @@ use crate::state::{DaoBeingCreated, DAO_BEING_CREATED};
 use crate::validate::validate_existing_cw3_contract;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
-use cosmwasm_std::{to_binary, DepsMut, SubMsg, Uint128};
+use cosmwasm_std::{to_json_binary, DepsMut, SubMsg, Uint128};
 use cw3::Cw3QueryMsg::ListVoters;
 use cw3::VoterListResponse;
 use enterprise_factory_api::api::{ImportCw3MembershipMsg, NewMultisigMembershipMsg};
@@ -106,7 +106,7 @@ pub fn instantiate_multisig_membership_contract(
         Wasm(Instantiate {
             admin: Some(enterprise_contract.to_string()),
             code_id: version_info.multisig_membership_code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 initial_weights: Some(initial_weights),
                 weight_change_hooks,

@@ -11,8 +11,8 @@ use crate::validate::{
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64,
+    entry_point, from_json, to_json_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -1166,7 +1166,7 @@ pub fn receive_cw20(
     ctx: &mut Context,
     cw20_msg: Cw20ReceiveMsg,
 ) -> GovernanceControllerResult<Response> {
-    match from_binary(&cw20_msg.msg) {
+    match from_json(&cw20_msg.msg) {
         Ok(Cw20HookMsg::CreateProposal(msg)) => {
             // only membership CW20 contract can execute this message
             let dao_type = query_dao_type(ctx.deps.as_ref())?;
@@ -1422,13 +1422,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> GovernanceControllerResult<
     let qctx = QueryContext::from(deps, env);
 
     let response = match msg {
-        QueryMsg::Config {} => to_binary(&query_config(qctx)?)?,
-        QueryMsg::GovConfig {} => to_binary(&query_gov_config(qctx)?)?,
-        QueryMsg::Proposal(params) => to_binary(&query_proposal(qctx, params)?)?,
-        QueryMsg::Proposals(params) => to_binary(&query_proposals(qctx, params)?)?,
-        QueryMsg::ProposalStatus(params) => to_binary(&query_proposal_status(qctx, params)?)?,
-        QueryMsg::MemberVote(params) => to_binary(&query_member_vote(qctx, params)?)?,
-        QueryMsg::ProposalVotes(params) => to_binary(&query_proposal_votes(qctx, params)?)?,
+        QueryMsg::Config {} => to_json_binary(&query_config(qctx)?)?,
+        QueryMsg::GovConfig {} => to_json_binary(&query_gov_config(qctx)?)?,
+        QueryMsg::Proposal(params) => to_json_binary(&query_proposal(qctx, params)?)?,
+        QueryMsg::Proposals(params) => to_json_binary(&query_proposals(qctx, params)?)?,
+        QueryMsg::ProposalStatus(params) => to_json_binary(&query_proposal_status(qctx, params)?)?,
+        QueryMsg::MemberVote(params) => to_json_binary(&query_member_vote(qctx, params)?)?,
+        QueryMsg::ProposalVotes(params) => to_json_binary(&query_proposal_votes(qctx, params)?)?,
     };
     Ok(response)
 }

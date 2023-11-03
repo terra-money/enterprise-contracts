@@ -3,7 +3,7 @@ use crate::state::{DaoBeingCreated, DAO_BEING_CREATED};
 use crate::validate::validate_unlocking_period;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
-use cosmwasm_std::{to_binary, DepsMut, StdResult, SubMsg};
+use cosmwasm_std::{to_json_binary, DepsMut, StdResult, SubMsg};
 use cw_utils::Duration;
 use denom_staking_api::msg::InstantiateMsg;
 use enterprise_protocol::error::DaoResult;
@@ -34,7 +34,7 @@ pub fn instantiate_denom_staking_membership_contract(
         Wasm(Instantiate {
             admin: Some(enterprise_contract.to_string()),
             code_id: version_info.denom_staking_membership_code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 denom,
                 unlocking_period,

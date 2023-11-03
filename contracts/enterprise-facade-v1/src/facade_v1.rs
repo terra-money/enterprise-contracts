@@ -20,7 +20,7 @@ use crate::v1_structs::{
 use common::cw::QueryContext;
 use cosmwasm_schema::serde::de::DeserializeOwned;
 use cosmwasm_schema::serde::Serialize;
-use cosmwasm_std::{to_binary, Addr, Deps, Empty, StdError, StdResult};
+use cosmwasm_std::{to_json_binary, Addr, Deps, Empty, StdError, StdResult};
 use cw_utils::Expiration;
 use enterprise_facade_api::api::{
     adapter_response_single_execute_msg, AdaptedExecuteMsg, AdaptedMsg, AdapterResponse,
@@ -279,7 +279,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: params.deposit_amount,
-                    msg: to_binary(&Cw20HookV1Msg::CreateProposal(CreateProposalMsg {
+                    msg: to_json_binary(&Cw20HookV1Msg::CreateProposal(CreateProposalMsg {
                         title: params.create_proposal_msg.title,
                         description: params.create_proposal_msg.description,
                         proposal_actions: params.create_proposal_msg.proposal_actions,
@@ -362,7 +362,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                 let msg = cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: msg.amount,
-                    msg: to_binary(&Cw20HookV1Msg::Stake {})?,
+                    msg: to_json_binary(&Cw20HookV1Msg::Stake {})?,
                 };
                 Ok(adapter_response_single_execute_msg(
                     qctx.deps.api.addr_validate(&token_addr)?,
@@ -374,7 +374,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                 let nft_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
                 let nft_addr = qctx.deps.api.addr_validate(&nft_addr)?;
 
-                let stake_msg_binary = to_binary(&Cw721HookV1Msg::Stake {})?;
+                let stake_msg_binary = to_json_binary(&Cw721HookV1Msg::Stake {})?;
 
                 let msgs = msg
                     .tokens
@@ -501,7 +501,7 @@ impl EnterpriseFacadeV1 {
                     Ok(UpgradeDao(UpgradeDaoV1Msg {
                         // send enterprise_treasury_code_id, since it takes the address of old enterprise contract
                         new_dao_code_id: version_1_0_0_info.version.enterprise_treasury_code_id,
-                        migrate_msg: to_binary(&enterprise_treasury_api::msg::MigrateMsg {})?,
+                        migrate_msg: to_json_binary(&enterprise_treasury_api::msg::MigrateMsg {})?,
                     }))
                 } else {
                     // we're migrating old DAO to a newer version of old DAO code
@@ -513,7 +513,7 @@ impl EnterpriseFacadeV1 {
                     )?;
                     Ok(UpgradeDao(UpgradeDaoV1Msg {
                         new_dao_code_id: version_info.version.enterprise_code_id,
-                        migrate_msg: to_binary(&Empty {})?,
+                        migrate_msg: to_json_binary(&Empty {})?,
                     }))
                 }
             }

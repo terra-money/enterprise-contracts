@@ -9,7 +9,8 @@ use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -66,7 +67,7 @@ pub fn execute(
 }
 
 fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DistributorResult<Response> {
-    match from_binary(&cw20_msg.msg) {
+    match from_json(&cw20_msg.msg) {
         Ok(Cw20HookMsg::Distribute {}) => distribute_cw20(ctx, cw20_msg),
         _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
     }
@@ -82,8 +83,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::UserRewards(params) => to_binary(&query_user_rewards(qctx, params)?)?,
-        QueryMsg::MinimumEligibleWeight {} => to_binary(&query_minimum_eligible_weight(qctx)?)?,
+        QueryMsg::UserRewards(params) => to_json_binary(&query_user_rewards(qctx, params)?)?,
+        QueryMsg::MinimumEligibleWeight {} => {
+            to_json_binary(&query_minimum_eligible_weight(qctx)?)?
+        }
     };
     Ok(response)
 }

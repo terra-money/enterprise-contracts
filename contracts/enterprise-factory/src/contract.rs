@@ -20,7 +20,7 @@ use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_execute, wasm_instantiate, Addr, Binary, Deps, DepsMut, Env,
+    entry_point, to_json_binary, wasm_execute, wasm_instantiate, Addr, Binary, Deps, DepsMut, Env,
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -161,7 +161,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         Instantiate {
             admin: Some(env.contract.address.to_string()),
             code_id: enterprise_code_id,
-            msg: to_binary(&instantiate_enterprise_msg)?,
+            msg: to_json_binary(&instantiate_enterprise_msg)?,
             funds: vec![],
             label: msg.dao_metadata.name,
         },
@@ -272,13 +272,15 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 Wasm(Instantiate {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.enterprise_governance_controller_code_id,
-                    msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
-                        enterprise_contract: enterprise_contract.to_string(),
-                        dao_type,
-                        gov_config: create_dao_msg.gov_config,
-                        council_gov_config: create_dao_msg.dao_council,
-                        proposal_infos: None, // no proposal infos to migrate, it's a fresh DAO
-                    })?,
+                    msg: to_json_binary(
+                        &enterprise_governance_controller_api::msg::InstantiateMsg {
+                            enterprise_contract: enterprise_contract.to_string(),
+                            dao_type,
+                            gov_config: create_dao_msg.gov_config,
+                            council_gov_config: create_dao_msg.dao_council,
+                            proposal_infos: None, // no proposal infos to migrate, it's a fresh DAO
+                        },
+                    )?,
                     funds: vec![],
                     label: "Enterprise governance controller".to_string(),
                 }),
@@ -451,7 +453,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 Wasm(Instantiate {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.funds_distributor_code_id,
-                    msg: to_binary(&funds_distributor_api::msg::InstantiateMsg {
+                    msg: to_json_binary(&funds_distributor_api::msg::InstantiateMsg {
                         admin: enterprise_governance_controller_contract.to_string(),
                         enterprise_contract: enterprise_contract.to_string(),
                         initial_weights,
@@ -467,7 +469,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 Wasm(Instantiate {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.enterprise_governance_code_id,
-                    msg: to_binary(&enterprise_governance_api::msg::InstantiateMsg {
+                    msg: to_json_binary(&enterprise_governance_api::msg::InstantiateMsg {
                         admin: enterprise_governance_controller_contract.to_string(),
                     })?,
                     funds: vec![],
@@ -480,7 +482,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 Wasm(Instantiate {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.enterprise_outposts_code_id,
-                    msg: to_binary(&enterprise_outposts_api::msg::InstantiateMsg {
+                    msg: to_json_binary(&enterprise_outposts_api::msg::InstantiateMsg {
                         enterprise_contract: enterprise_contract.to_string(),
                     })?,
                     funds: vec![],
@@ -503,7 +505,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 Wasm(Instantiate {
                     admin: Some(enterprise_contract.to_string()),
                     code_id: version_info.enterprise_treasury_code_id,
-                    msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
+                    msg: to_json_binary(&enterprise_treasury_api::msg::InstantiateMsg {
                         admin: enterprise_governance_controller_contract.to_string(),
                         asset_whitelist: Some(asset_whitelist),
                         nft_whitelist: Some(nft_whitelist),
@@ -663,12 +665,14 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> DaoResult<Binary> {
     let response = match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?)?,
-        QueryMsg::AllDaos(msg) => to_binary(&query_all_daos(deps, msg)?)?,
-        QueryMsg::EnterpriseCodeIds(msg) => to_binary(&query_enterprise_code_ids(deps, msg)?)?,
-        QueryMsg::IsEnterpriseCodeId(msg) => to_binary(&query_is_enterprise_code_id(deps, msg)?)?,
-        QueryMsg::GlobalAssetWhitelist {} => to_binary(&query_asset_whitelist(deps)?)?,
-        QueryMsg::GlobalNftWhitelist {} => to_binary(&query_nft_whitelist(deps)?)?,
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?)?,
+        QueryMsg::AllDaos(msg) => to_json_binary(&query_all_daos(deps, msg)?)?,
+        QueryMsg::EnterpriseCodeIds(msg) => to_json_binary(&query_enterprise_code_ids(deps, msg)?)?,
+        QueryMsg::IsEnterpriseCodeId(msg) => {
+            to_json_binary(&query_is_enterprise_code_id(deps, msg)?)?
+        }
+        QueryMsg::GlobalAssetWhitelist {} => to_json_binary(&query_asset_whitelist(deps)?)?,
+        QueryMsg::GlobalNftWhitelist {} => to_json_binary(&query_nft_whitelist(deps)?)?,
     };
     Ok(response)
 }

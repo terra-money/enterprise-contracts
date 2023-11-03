@@ -1,6 +1,6 @@
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
 use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
@@ -63,14 +63,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::NftConfig {} => to_binary(&query_nft_config(&qctx)?)?,
-        QueryMsg::UserStake(params) => to_binary(&query_user_nft_stake(&qctx, params)?)?,
-        QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
-        QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,
-        QueryMsg::Claims(params) => to_binary(&query_claims(&qctx, params)?)?,
-        QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(&qctx, params)?)?,
-        QueryMsg::Members(params) => to_binary(&query_members(&qctx, params)?)?,
-        QueryMsg::StakedNfts(params) => to_binary(&query_staked_nfts(&qctx, params)?)?,
+        QueryMsg::NftConfig {} => to_json_binary(&query_nft_config(&qctx)?)?,
+        QueryMsg::UserStake(params) => to_json_binary(&query_user_nft_stake(&qctx, params)?)?,
+        QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(&qctx, params)?)?,
+        QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(&qctx, params)?)?,
+        QueryMsg::Claims(params) => to_json_binary(&query_claims(&qctx, params)?)?,
+        QueryMsg::ReleasableClaims(params) => {
+            to_json_binary(&query_releasable_claims(&qctx, params)?)?
+        }
+        QueryMsg::Members(params) => to_json_binary(&query_members(&qctx, params)?)?,
+        QueryMsg::StakedNfts(params) => to_json_binary(&query_staked_nfts(&qctx, params)?)?,
     };
 
     Ok(response)

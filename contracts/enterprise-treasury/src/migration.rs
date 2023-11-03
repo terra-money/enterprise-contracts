@@ -16,7 +16,7 @@ use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::{Instantiate, Migrate, UpdateAdmin};
 use cosmwasm_std::{
-    from_binary, to_binary, wasm_execute, Addr, Binary, BlockInfo, Decimal, Deps, DepsMut, Env,
+    from_json, to_json_binary, wasm_execute, Addr, Binary, BlockInfo, Decimal, Deps, DepsMut, Env,
     Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64,
 };
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked, AssetUnchecked};
@@ -189,7 +189,7 @@ impl ProposalActionV5 {
                             minor: msg.new_dao_code_id,
                             patch: 0,
                         },
-                        migrate_msg: from_binary(&msg.migrate_msg).unwrap_or_default(),
+                        migrate_msg: from_json(&msg.migrate_msg).unwrap_or_default(),
                     }],
                 })
             }
@@ -505,7 +505,7 @@ pub fn create_enterprise_contract(
         Wasm(Instantiate {
             admin: Some(env.contract.address.to_string()),
             code_id: enterprise_code_id,
-            msg: to_binary(&enterprise_protocol::msg::InstantiateMsg {
+            msg: to_json_binary(&enterprise_protocol::msg::InstantiateMsg {
                 enterprise_factory_contract: enterprise_factory.to_string(),
                 enterprise_versioning_contract: enterprise_versioning.to_string(),
                 dao_metadata,
@@ -568,7 +568,7 @@ pub fn create_dao_council_membership_contract(
         Wasm(Instantiate {
             admin: Some(enterprise_contract.to_string()),
             code_id: multisig_membership_code_id,
-            msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
+            msg: to_json_binary(&multisig_membership_api::msg::InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 initial_weights: Some(council_members),
                 weight_change_hooks: Some(vec![governance_controller_contract.to_string()]),
@@ -627,7 +627,7 @@ pub fn create_governance_controller_contract(
         Wasm(Instantiate {
             admin: Some(enterprise_contract.to_string()),
             code_id: version_info.enterprise_governance_controller_code_id,
-            msg: to_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
+            msg: to_json_binary(&enterprise_governance_controller_api::msg::InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 dao_type,
                 gov_config: GovConfig {
@@ -770,7 +770,7 @@ pub fn create_enterprise_membership_contract(
             Wasm(Instantiate {
                 admin: Some(enterprise_contract.to_string()),
                 code_id: token_membership_code_id,
-                msg: to_binary(&token_staking_api::msg::InstantiateMsg {
+                msg: to_json_binary(&token_staking_api::msg::InstantiateMsg {
                     enterprise_contract: enterprise_contract.to_string(),
                     token_contract: cw20_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
@@ -792,7 +792,7 @@ pub fn create_enterprise_membership_contract(
             Wasm(Instantiate {
                 admin: Some(enterprise_contract.to_string()),
                 code_id: nft_membership_code_id,
-                msg: to_binary(&nft_staking_api::msg::InstantiateMsg {
+                msg: to_json_binary(&nft_staking_api::msg::InstantiateMsg {
                     enterprise_contract: enterprise_contract.to_string(),
                     nft_contract: cw721_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
@@ -822,7 +822,7 @@ pub fn create_enterprise_membership_contract(
             Wasm(Instantiate {
                 admin: Some(enterprise_contract.to_string()),
                 code_id: multisig_membership_code_id,
-                msg: to_binary(&multisig_membership_api::msg::InstantiateMsg {
+                msg: to_json_binary(&multisig_membership_api::msg::InstantiateMsg {
                     enterprise_contract: enterprise_contract.to_string(),
                     initial_weights: Some(initial_weights),
                     weight_change_hooks,
@@ -936,7 +936,7 @@ fn migrate_cw20_stakes_submsg(
     Ok(Some(SubMsg::new(
         Asset::cw20(cw20_contract, total_staked).send_msg(
             membership_contract,
-            to_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers { stakers })?,
+            to_json_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers { stakers })?,
         )?,
     )))
 }
@@ -979,7 +979,7 @@ fn migrate_cw20_claims_submsg(
             &cw20::Cw20ExecuteMsg::Send {
                 contract: membership_contract.to_string(),
                 amount: total_claims_amount,
-                msg: to_binary(&AddClaims { claims })?,
+                msg: to_json_binary(&AddClaims { claims })?,
             },
             vec![],
         )?);
@@ -1003,7 +1003,7 @@ fn migrate_cw721_stakes_submsgs(
             &cw721::Cw721ExecuteMsg::SendNft {
                 contract: membership_contract.to_string(),
                 token_id: stake.token_id,
-                msg: to_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
+                msg: to_json_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
                     user: stake.staker.to_string(),
                 })?,
             },
@@ -1036,7 +1036,7 @@ fn migrate_cw721_claims_submsgs(
                             &cw721::Cw721ExecuteMsg::SendNft {
                                 contract: membership_contract.to_string(),
                                 token_id: token,
-                                msg: to_binary(&AddClaim {
+                                msg: to_json_binary(&AddClaim {
                                     user: user.to_string(),
                                     release_at: claim.release_at.clone(),
                                 })?,
@@ -1061,7 +1061,7 @@ pub fn create_enterprise_outposts_contract(
         Wasm(Instantiate {
             admin: Some(enterprise_contract.to_string()),
             code_id: enterprise_outposts_code_id,
-            msg: to_binary(&enterprise_outposts_api::msg::InstantiateMsg {
+            msg: to_json_binary(&enterprise_outposts_api::msg::InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
             })?,
             funds: vec![],
@@ -1128,7 +1128,7 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
     let migrate_funds_distributor = SubMsg::new(Wasm(Migrate {
         contract_addr: funds_distributor.to_string(),
         new_code_id: version_info.funds_distributor_code_id,
-        msg: to_binary(&funds_distributor_api::msg::MigrateMsg {
+        msg: to_json_binary(&funds_distributor_api::msg::MigrateMsg {
             new_admin: governance_controller_contract.to_string(),
             new_enterprise_contract: enterprise_contract.to_string(),
         })?,
@@ -1138,7 +1138,7 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
     let migrate_enterprise_governance_submsg = SubMsg::new(Wasm(Migrate {
         contract_addr: enterprise_governance.to_string(),
         new_code_id: version_info.enterprise_governance_code_id,
-        msg: to_binary(&enterprise_governance_api::msg::MigrateMsg {
+        msg: to_json_binary(&enterprise_governance_api::msg::MigrateMsg {
             new_admin: governance_controller_contract.to_string(),
         })?,
     }));

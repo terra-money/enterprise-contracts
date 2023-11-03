@@ -3,7 +3,7 @@ use crate::rewards::query_user_rewards;
 use common::cw::testing::{mock_ctx, mock_info};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::testing::mock_dependencies;
-use cosmwasm_std::{coins, to_binary, Addr, Coin, Response, SubMsg, Uint128};
+use cosmwasm_std::{coins, to_json_binary, Addr, Coin, Response, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::Asset;
 use funds_distributor_api::api::{
@@ -494,7 +494,7 @@ fn distribute_cw20(
         ExecuteMsg::Receive(Cw20ReceiveMsg {
             sender: ctx.info.sender.to_string(),
             amount: amount.into(),
-            msg: to_binary(&Cw20HookMsg::Distribute {})?,
+            msg: to_json_binary(&Cw20HookMsg::Distribute {})?,
         }),
     )
 }

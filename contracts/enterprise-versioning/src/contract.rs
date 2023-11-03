@@ -2,7 +2,8 @@ use crate::state::{ADMIN, VERSIONS};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdResult,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
@@ -82,10 +83,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseVersioningResult<
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Admin {} => to_binary(&query_admin(&qctx)?)?,
-        QueryMsg::Version(params) => to_binary(&query_version(&qctx, params)?)?,
-        QueryMsg::Versions(params) => to_binary(&query_versions(&qctx, params)?)?,
-        QueryMsg::LatestVersion {} => to_binary(&query_latest_version(&qctx)?)?,
+        QueryMsg::Admin {} => to_json_binary(&query_admin(&qctx)?)?,
+        QueryMsg::Version(params) => to_json_binary(&query_version(&qctx, params)?)?,
+        QueryMsg::Versions(params) => to_json_binary(&query_versions(&qctx, params)?)?,
+        QueryMsg::LatestVersion {} => to_json_binary(&query_latest_version(&qctx)?)?,
     };
 
     Ok(response)

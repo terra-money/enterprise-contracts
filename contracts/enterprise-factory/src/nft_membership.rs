@@ -5,7 +5,7 @@ use crate::state::{DaoBeingCreated, CONFIG, DAO_BEING_CREATED};
 use crate::validate::{validate_existing_cw721_contract, validate_unlocking_period};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
-use cosmwasm_std::{to_binary, Addr, DepsMut, StdResult, SubMsg};
+use cosmwasm_std::{to_json_binary, Addr, DepsMut, StdResult, SubMsg};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{ImportCw721MembershipMsg, NewCw721MembershipMsg};
 use enterprise_protocol::error::DaoResult;
@@ -64,7 +64,7 @@ pub fn instantiate_new_cw721_membership(
         Wasm(Instantiate {
             admin: Some(enterprise_address.to_string()),
             code_id: cw721_code_id,
-            msg: to_binary(&instantiate_msg)?,
+            msg: to_json_binary(&instantiate_msg)?,
             funds: vec![],
             label: msg.nft_name,
         }),
@@ -94,7 +94,7 @@ pub fn instantiate_nft_staking_membership_contract(
         Wasm(Instantiate {
             admin: Some(enterprise_contract.to_string()),
             code_id: version_info.nft_staking_membership_code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 nft_contract: cw721_address.to_string(),
                 unlocking_period,

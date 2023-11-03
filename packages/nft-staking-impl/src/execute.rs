@@ -2,7 +2,7 @@ use crate::claims::{add_claim, get_releasable_claims, NFT_CLAIMS};
 use crate::config::CONFIG;
 use crate::nft_staking::{save_nft_stake, NftStake, NFT_STAKES};
 use common::cw::{Context, ReleaseAt};
-use cosmwasm_std::{from_binary, wasm_execute, Response, SubMsg, Uint128};
+use cosmwasm_std::{from_json, wasm_execute, Response, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::member_weights::{
@@ -30,7 +30,7 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
         return Err(Unauthorized);
     }
 
-    match from_binary(&msg.msg) {
+    match from_json(&msg.msg) {
         Ok(Cw721HookMsg::Stake { user }) => stake_nft(ctx, msg, user),
         Ok(Cw721HookMsg::AddClaim { user, release_at }) => {
             add_nft_claim(ctx, msg, user, release_at)

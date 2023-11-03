@@ -13,8 +13,8 @@ use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    coin, entry_point, to_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
+    coin, entry_point, to_json_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
 use cw_asset::{Asset, AssetInfoUnchecked};
@@ -185,7 +185,7 @@ fn distribute_funds(
                 let asset = Asset::cw20(addr, asset.amount);
                 submsgs.push(SubMsg::new(asset.send_msg(
                     funds_distributor.to_string(),
-                    to_binary(&Distribute {})?,
+                    to_json_binary(&Distribute {})?,
                 )?))
             }
             AssetInfoUnchecked::Cw1155(_, _) => {
@@ -278,9 +278,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseTreasuryResult<Bi
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Config {} => to_binary(&query_config(qctx)?)?,
-        QueryMsg::AssetWhitelist(params) => to_binary(&query_asset_whitelist(qctx, params)?)?,
-        QueryMsg::NftWhitelist(params) => to_binary(&query_nft_whitelist(qctx, params)?)?,
+        QueryMsg::Config {} => to_json_binary(&query_config(qctx)?)?,
+        QueryMsg::AssetWhitelist(params) => to_json_binary(&query_asset_whitelist(qctx, params)?)?,
+        QueryMsg::NftWhitelist(params) => to_json_binary(&query_nft_whitelist(qctx, params)?)?,
     };
 
     Ok(response)

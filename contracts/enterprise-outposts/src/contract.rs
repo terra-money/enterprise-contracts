@@ -10,8 +10,8 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_execute, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order,
-    Reply, Response, StdResult, SubMsg, SubMsgResponse, SubMsgResult,
+    entry_point, to_json_binary, wasm_execute, Addr, Binary, Deps, DepsMut, Env, MessageInfo,
+    Order, Reply, Response, StdResult, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfoUnchecked;
@@ -152,7 +152,7 @@ fn deploy_cross_chain_treasury(
                 Wasm(Instantiate {
                     admin: None,
                     code_id: msg.ics_proxy_code_id,
-                    msg: to_binary(&IcsProxyInstantiateMsg {
+                    msg: to_json_binary(&IcsProxyInstantiateMsg {
                         allow_cross_chain_msgs: true,
                         owner: Some(ibc_hooks_governance_controller_addr),
                         whitelist: None,
@@ -232,7 +232,7 @@ fn instantiate_remote_treasury(
         Wasm(Instantiate {
             admin: Some(proxy_contract.clone()),
             code_id: enterprise_treasury_code_id,
-            msg: to_binary(&enterprise_treasury_api::msg::InstantiateMsg {
+            msg: to_json_binary(&enterprise_treasury_api::msg::InstantiateMsg {
                 admin: proxy_contract.clone(),
                 asset_whitelist,
                 nft_whitelist,
@@ -391,10 +391,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseOutpostsResult<Bi
 
     let response = match msg {
         QueryMsg::CrossChainTreasuries(params) => {
-            to_binary(&query_cross_chain_treasuries(qctx, params)?)?
+            to_json_binary(&query_cross_chain_treasuries(qctx, params)?)?
         }
         QueryMsg::CrossChainDeployments(params) => {
-            to_binary(&query_cross_chain_deployments(qctx, params)?)?
+            to_json_binary(&query_cross_chain_deployments(qctx, params)?)?
         }
     };
     Ok(response)

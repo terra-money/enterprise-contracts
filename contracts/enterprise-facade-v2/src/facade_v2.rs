@@ -1,5 +1,5 @@
 use common::cw::QueryContext;
-use cosmwasm_std::{coins, to_binary, Addr, Decimal, Deps, Uint128, Uint64};
+use cosmwasm_std::{coins, to_json_binary, Addr, Decimal, Deps, Uint128, Uint64};
 use cw721::Cw721ExecuteMsg::Approve;
 use cw_utils::Duration;
 use cw_utils::Expiration::Never;
@@ -734,7 +734,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                         contract: governance_controller.to_string(),
                         amount: params.deposit_amount,
-                        msg: to_binary(
+                        msg: to_json_binary(
                             &enterprise_governance_controller_api::msg::Cw20HookMsg::CreateProposal(
                                 enterprise_governance_controller_api::api::CreateProposalMsg {
                                     title: params.create_proposal_msg.title,
@@ -948,7 +948,9 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 let msg = cw20::Cw20ExecuteMsg::Send {
                     contract: membership_contract.to_string(),
                     amount: msg.amount,
-                    msg: to_binary(&token_staking_api::msg::Cw20HookMsg::Stake { user: msg.user })?,
+                    msg: to_json_binary(&token_staking_api::msg::Cw20HookMsg::Stake {
+                        user: msg.user,
+                    })?,
                 };
                 Ok(adapter_response_single_execute_msg(
                     token_config.token_contract,
@@ -962,9 +964,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     .querier
                     .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
 
-                let stake_msg_binary = to_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
-                    user: msg.user.clone(),
-                })?;
+                let stake_msg_binary =
+                    to_json_binary(&nft_staking_api::msg::Cw721HookMsg::Stake {
+                        user: msg.user.clone(),
+                    })?;
 
                 let msgs = msg
                     .tokens

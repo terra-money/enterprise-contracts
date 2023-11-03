@@ -1,7 +1,7 @@
 use crate::facade::get_facade;
 use crate::state::{ENTERPRISE_FACADE_V1, ENTERPRISE_FACADE_V2};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
 use enterprise_facade_api::api::{
@@ -72,7 +72,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     contract: facade.dao_address,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         DaoInfo { contract } => {
             let facade = get_facade(deps, contract)?;
@@ -83,7 +83,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     contract: facade.dao_address,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         MemberInfo { contract, msg } => {
             let facade = get_facade(deps, contract)?;
@@ -95,7 +95,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     msg,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         ListMultisigMembers { contract, msg } => {
             let facade = get_facade(deps, contract)?;
@@ -107,7 +107,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     msg,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         AssetWhitelist { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -119,7 +119,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         NftWhitelist { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -131,7 +131,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         Proposal { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -143,7 +143,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         Proposals { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -155,7 +155,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         ProposalStatus { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -167,7 +167,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         MemberVote { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -179,7 +179,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         ProposalVotes { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -191,7 +191,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         UserStake { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -203,7 +203,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         TotalStakedAmount { contract } => {
             let facade = get_facade(deps, contract)?;
@@ -214,7 +214,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     contract: facade.dao_address,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         StakedNfts { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -226,7 +226,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         Claims { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -238,7 +238,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         ReleasableClaims { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -250,7 +250,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CrossChainTreasuries { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -262,7 +262,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CreateProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -274,7 +274,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CreateProposalWithDenomDepositAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -286,7 +286,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CreateProposalWithTokenDepositAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -298,7 +298,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CreateProposalWithNftDepositAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -310,7 +310,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CreateCouncilProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -322,7 +322,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CastVoteAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -334,7 +334,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         CastCouncilVoteAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -346,7 +346,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         ExecuteProposalAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -358,7 +358,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         StakeAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -370,7 +370,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         UnstakeAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
@@ -382,7 +382,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     params,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
         ClaimAdapted { contract } => {
             let facade = get_facade(deps, contract)?;
@@ -393,7 +393,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                     contract: facade.dao_address,
                 },
             )?;
-            to_binary(&response)?
+            to_json_binary(&response)?
         }
     };
     Ok(response)

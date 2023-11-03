@@ -2,7 +2,7 @@ use crate::migration::migrate_to_v1_0_0;
 use crate::state::ADMIN;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
 use enterprise_governance_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -123,20 +123,20 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> PollResult<Binary> {
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Poll(params) => to_binary(&query_poll(&qctx, params)?)?,
-        QueryMsg::Polls(params) => to_binary(&query_polls(&qctx, params)?)?,
-        QueryMsg::PollStatus { poll_id } => to_binary(&query_poll_status(&qctx, poll_id)?)?,
+        QueryMsg::Poll(params) => to_json_binary(&query_poll(&qctx, params)?)?,
+        QueryMsg::Polls(params) => to_json_binary(&query_polls(&qctx, params)?)?,
+        QueryMsg::PollStatus { poll_id } => to_json_binary(&query_poll_status(&qctx, poll_id)?)?,
         QueryMsg::SimulateEndPollStatus {
             poll_id,
             maximum_available_votes,
-        } => to_binary(&query_simulate_end_poll_status(
+        } => to_json_binary(&query_simulate_end_poll_status(
             &qctx,
             poll_id,
             maximum_available_votes,
         )?)?,
-        QueryMsg::PollVoter(params) => to_binary(&query_poll_voter(&qctx, params)?)?,
-        QueryMsg::PollVoters(params) => to_binary(&query_poll_voters(&qctx, params)?)?,
-        QueryMsg::Voter(params) => to_binary(&query_voter(
+        QueryMsg::PollVoter(params) => to_json_binary(&query_poll_voter(&qctx, params)?)?,
+        QueryMsg::PollVoters(params) => to_json_binary(&query_poll_voters(&qctx, params)?)?,
+        QueryMsg::Voter(params) => to_json_binary(&query_voter(
             &qctx,
             params.voter_addr,
             params.start_after,

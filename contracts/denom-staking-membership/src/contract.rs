@@ -1,6 +1,6 @@
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
 use denom_staking_api::error::DenomStakingResult;
@@ -63,12 +63,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DenomStakingResult<Binary> 
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::DenomConfig {} => to_binary(&query_denom_config(&qctx)?)?,
-        QueryMsg::UserWeight(params) => to_binary(&query_user_weight(&qctx, params)?)?,
-        QueryMsg::TotalWeight(params) => to_binary(&query_total_weight(&qctx, params)?)?,
-        QueryMsg::Claims(params) => to_binary(&query_claims(&qctx, params)?)?,
-        QueryMsg::ReleasableClaims(params) => to_binary(&query_releasable_claims(&qctx, params)?)?,
-        QueryMsg::Members(params) => to_binary(&query_members(&qctx, params)?)?,
+        QueryMsg::DenomConfig {} => to_json_binary(&query_denom_config(&qctx)?)?,
+        QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(&qctx, params)?)?,
+        QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(&qctx, params)?)?,
+        QueryMsg::Claims(params) => to_json_binary(&query_claims(&qctx, params)?)?,
+        QueryMsg::ReleasableClaims(params) => {
+            to_json_binary(&query_releasable_claims(&qctx, params)?)?
+        }
+        QueryMsg::Members(params) => to_json_binary(&query_members(&qctx, params)?)?,
     };
 
     Ok(response)

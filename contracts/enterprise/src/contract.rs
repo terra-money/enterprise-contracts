@@ -11,7 +11,7 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    entry_point, to_binary, wasm_instantiate, Binary, Deps, DepsMut, Empty, Env, MessageInfo,
+    entry_point, to_json_binary, wasm_instantiate, Binary, Deps, DepsMut, Empty, Env, MessageInfo,
     Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
@@ -230,8 +230,8 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
     for version in versions {
         let msg = migrate_msgs_map.get(&version.version);
         let migrate_msg = match msg {
-            Some(msg) => to_binary(msg)?,
-            None => to_binary(&Empty {})?, // if no msg was supplied, just use an empty one
+            Some(msg) => to_json_binary(msg)?,
+            None => to_json_binary(&Empty {})?, // if no msg was supplied, just use an empty one
         };
 
         submsgs.push(SubMsg::new(Wasm(Migrate {
@@ -364,9 +364,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
     let qctx = QueryContext::from(deps, env);
 
     let response = match msg {
-        QueryMsg::DaoInfo {} => to_binary(&query_dao_info(qctx)?)?,
-        QueryMsg::ComponentContracts {} => to_binary(&query_component_contracts(qctx)?)?,
-        QueryMsg::IsRestrictedUser(params) => to_binary(&query_is_restricted_user(qctx, params)?)?,
+        QueryMsg::DaoInfo {} => to_json_binary(&query_dao_info(qctx)?)?,
+        QueryMsg::ComponentContracts {} => to_json_binary(&query_component_contracts(qctx)?)?,
+        QueryMsg::IsRestrictedUser(params) => {
+            to_json_binary(&query_is_restricted_user(qctx, params)?)?
+        }
     };
     Ok(response)
 }

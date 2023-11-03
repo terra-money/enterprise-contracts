@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Empty};
+use cosmwasm_std::{to_json_binary, Empty};
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::MigrateMsg;
 
@@ -20,7 +20,7 @@ fn initial_test() -> DaoResult<()> {
 
     println!(
         "equal 2: {}",
-        to_binary(&MigrateMsg {}).unwrap() == to_binary(&Empty {}).unwrap()
+        to_json_binary(&MigrateMsg {}).unwrap() == to_json_binary(&Empty {}).unwrap()
     );
 
     Ok(())

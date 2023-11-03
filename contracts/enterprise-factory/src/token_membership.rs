@@ -5,7 +5,7 @@ use crate::state::{DaoBeingCreated, CONFIG, DAO_BEING_CREATED};
 use crate::validate::{validate_existing_cw20_contract, validate_unlocking_period};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
-use cosmwasm_std::{to_binary, Addr, DepsMut, StdResult, SubMsg, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, DepsMut, StdResult, SubMsg, Uint128};
 use cw20::{Cw20Coin, Logo, MinterResponse, TokenInfoResponse};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{ImportCw20MembershipMsg, NewCw20MembershipMsg};
@@ -139,7 +139,7 @@ pub fn instantiate_new_cw20_membership(
         Wasm(Instantiate {
             admin: Some(enterprise_address.to_string()),
             code_id: cw20_code_id,
-            msg: to_binary(&create_token_msg)?,
+            msg: to_json_binary(&create_token_msg)?,
             funds: vec![],
             label: msg.token_name,
         }),
@@ -168,7 +168,7 @@ pub fn instantiate_token_staking_membership_contract(
         Wasm(Instantiate {
             admin: Some(enterprise_contract.to_string()),
             code_id: version_info.token_staking_membership_code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 enterprise_contract: enterprise_contract.to_string(),
                 token_contract: cw20_address.to_string(),
                 unlocking_period,
