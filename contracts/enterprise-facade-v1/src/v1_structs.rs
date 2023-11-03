@@ -7,9 +7,9 @@ use cw_utils::{Duration, Expiration};
 use enterprise_facade_api::api::{
     AssetWhitelistParams, CastVoteMsg, ClaimsParams, CreateProposalMsg, DaoCouncil, DaoMetadata,
     DaoType, ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, Logo, MemberVoteParams,
-    NftWhitelistParams, Proposal, ProposalId, ProposalParams, ProposalResponse, ProposalStatus,
-    ProposalStatusParams, ProposalType, ProposalVotesParams, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakedNftsParams, UnstakeMsg,
+    NftTokenId, NftWhitelistParams, Proposal, ProposalId, ProposalParams, ProposalResponse,
+    ProposalStatus, ProposalStatusParams, ProposalType, ProposalVotesParams, ProposalsParams,
+    ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams,
 };
 use enterprise_governance_controller_api::api::{
     DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
@@ -351,8 +351,24 @@ pub enum ExecuteV1Msg {
     CastVote(CastVoteMsg),
     CastCouncilVote(CastVoteMsg),
     ExecuteProposal(ExecuteProposalMsg),
-    Unstake(UnstakeMsg),
+    Unstake(UnstakeV1Msg),
     Claim {},
+}
+
+#[cw_serde]
+pub enum UnstakeV1Msg {
+    Cw20(UnstakeCw20V1Msg),
+    Cw721(UnstakeCw721V1Msg),
+}
+
+#[cw_serde]
+pub struct UnstakeCw20V1Msg {
+    pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct UnstakeCw721V1Msg {
+    pub tokens: Vec<NftTokenId>,
 }
 
 #[cw_serde]

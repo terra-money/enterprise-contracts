@@ -148,6 +148,7 @@ pub struct StakeDenomMsg {
 pub enum UnstakeMsg {
     Cw20(UnstakeCw20Msg),
     Cw721(UnstakeCw721Msg),
+    Denom(UnstakeDenomMsg),
 }
 
 #[cw_serde]
@@ -158,6 +159,11 @@ pub struct UnstakeCw20Msg {
 #[cw_serde]
 pub struct UnstakeCw721Msg {
     pub tokens: Vec<NftTokenId>,
+}
+
+#[cw_serde]
+pub struct UnstakeDenomMsg {
+    pub amount: Uint128,
 }
 
 #[cw_serde]

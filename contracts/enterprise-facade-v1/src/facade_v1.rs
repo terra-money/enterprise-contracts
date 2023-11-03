@@ -14,7 +14,8 @@ use crate::v1_structs::QueryV1Msg::{
 };
 use crate::v1_structs::{
     CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
-    ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, UpgradeDaoV1Msg, UserStakeV1Params,
+    ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, UnstakeCw20V1Msg, UnstakeCw721V1Msg,
+    UnstakeV1Msg, UpgradeDaoV1Msg, UserStakeV1Params,
 };
 use common::cw::QueryContext;
 use cosmwasm_schema::serde::de::DeserializeOwned;
@@ -405,6 +406,11 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         _: QueryContext,
         params: UnstakeMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
+        let params = match params {
+            UnstakeMsg::Cw20(msg) => UnstakeV1Msg::Cw20(UnstakeCw20V1Msg { amount: msg.amount }),
+            UnstakeMsg::Cw721(msg) => UnstakeV1Msg::Cw721(UnstakeCw721V1Msg { tokens: msg.tokens }),
+            UnstakeMsg::Denom(_) => return Err(UnsupportedOperation),
+        };
         Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&Unstake(params))?,

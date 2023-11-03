@@ -18,7 +18,6 @@ pub struct UserClaim {
 
 #[cw_serde]
 pub struct UnstakeMsg {
-    pub user: String,
     pub amount: Uint128,
 }
 

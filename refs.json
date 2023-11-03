@@ -28,7 +28,7 @@
       "address": "terra1yfcjj7udqfvzge0jz0tf8e8c55hnrm2wa4srmdvxpm3yrpq2yg7s7qursg"
     },
     "enterprise-facade": {
-      "codeId": "11314",
+      "codeId": "11358",
       "address": "terra1yawdq7l530gd0fxz4s9guhaj3ynsy2d3vyx86q0f483gx4tdd2vqsffqq8"
     },
     "enterprise-versioning": {
@@ -54,7 +54,7 @@
       "codeId": "11069"
     },
     "denom-staking-membership": {
-      "codeId": "11077"
+      "codeId": "11355"
     },
     "enterprise-governance-controller": {
       "codeId": "11130"
@@ -73,12 +73,12 @@
       "codeId": "11078"
     },
     "enterprise-facade-v1": {
-      "codeId": "11333",
-      "address": "terra1vr049z72vhccnegmhxqq2zgpvstd00f4d943pa79am9syyrpsk0qlj7epg"
+      "codeId": "11356",
+      "address": "terra12whvj9wlma3ylks5c4c036p2hntzd6adfm0sq8yrdq6n7ddgf4ssp50nnp"
     },
     "enterprise-facade-v2": {
-      "codeId": "11313",
-      "address": "terra1pyyru7d3m3j03vjtmpq44l92pnap6jwzs44ved5ufy50elm690vqlfy5uk"
+      "codeId": "11357",
+      "address": "terra13vjm44fdhl7hw38apv75he0h5ylwuu5v2tptc6j6drpsljl8paxsccgcqv"
     },
     "enterprise-outposts": {
       "codeId": "11133"
@@ -93,7 +93,7 @@
       "address": "terra15h7mdcp6yzagvz339e6unkw98duj7xel7n00yuslun0fvpjjyr8qh7yhsw"
     },
     "enterprise-facade": {
-      "codeId": "2026",
+      "codeId": "2035",
       "address": "terra1wk3nmdhf3qzv8q589pynphkujfg5k06tp5v0p633l6ynhv5l4j7segjpgu"
     },
     "enterprise-versioning": {
@@ -119,7 +119,7 @@
       "codeId": "1994"
     },
     "denom-staking-membership": {
-      "codeId": "2002"
+      "codeId": "2036"
     },
     "enterprise-governance-controller": {
       "codeId": "2007"
@@ -140,12 +140,12 @@
       "codeId": "2004"
     },
     "enterprise-facade-v1": {
-      "codeId": "2028",
-      "address": "terra1dkvhkkw9k5g2eed0vynq8k3c75vqnu6hqeqja6cvuk4fd4s434fqj85ddk"
+      "codeId": "2033",
+      "address": "terra105s972xm0dxp8whezyty0qfrky665u3wjsvvc0zcvnzltz72nkyqhex7ka"
     },
     "enterprise-facade-v2": {
-      "codeId": "2025",
-      "address": "terra1d4h2mx05fzc6r99yhpyq6m089s2pe9e7kdvegwusw28ea3tzvraqk6fvq9"
+      "codeId": "2034",
+      "address": "terra1d3u9lymeq4h6gpvq34letnwqjxangnvcg72cyx4dyyj5ws6m4ewq39kjul"
     }
   }
 }

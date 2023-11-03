@@ -58,12 +58,9 @@ pub fn stake_denom(ctx: &mut Context, user: Option<String>) -> DenomStakingResul
         .add_submessages(report_weight_change_submsgs))
 }
 
-/// Unstake denoms. Only admin can perform this on behalf of a user.
+/// Unstake coins previously staked by the sender.
 pub fn unstake(ctx: &mut Context, msg: UnstakeMsg) -> DenomStakingResult<Response> {
-    // only governance controller can execute this
-    enterprise_governance_controller_only(ctx, None)?;
-
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    let user = ctx.info.sender.clone();
 
     let user_stake = get_member_weight(ctx.deps.storage, user.clone())?;
 

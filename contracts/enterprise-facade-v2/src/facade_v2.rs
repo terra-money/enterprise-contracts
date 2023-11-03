@@ -1024,6 +1024,13 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 ))?,
                 vec![],
             )),
+            UnstakeMsg::Denom(msg) => Ok(adapter_response_single_execute_msg(
+                membership_contract,
+                serde_json_wasm::to_string(&denom_staking_api::msg::ExecuteMsg::Unstake(
+                    denom_staking_api::api::UnstakeMsg { amount: msg.amount },
+                ))?,
+                vec![],
+            )),
         }
     }
 
