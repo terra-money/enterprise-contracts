@@ -13,6 +13,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -103,6 +104,9 @@ pub enum QueryMsg {
         contract: Addr,
         params: CrossChainTreasuriesParams,
     },
+
+    #[returns(HasIncompleteV2MigrationResponse)]
+    HasIncompleteV2Migration { contract: Addr },
 
     // Adapter queries - those are designed to be called to determine which contract should be
     // called with which message to achieve the desired result

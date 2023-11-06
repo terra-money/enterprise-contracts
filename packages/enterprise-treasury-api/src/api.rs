@@ -69,3 +69,8 @@ pub struct AssetWhitelistResponse {
 pub struct NftWhitelistResponse {
     pub nfts: Vec<Addr>,
 }
+
+#[cw_serde]
+pub struct HasIncompleteV2MigrationResponse {
+    pub has_incomplete_migration: bool,
+}

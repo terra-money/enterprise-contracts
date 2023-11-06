@@ -3,6 +3,8 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
+use crate::migration_stages::MigrationStage::{Finalized, InitialMigrationFinished};
+use crate::migration_stages::MIGRATION_TO_V_1_0_0_STAGE;
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{
     get_height_checkpoints, get_multisig_height_checkpoints, get_multisig_seconds_checkpoints,
@@ -17,7 +19,7 @@ use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::{Instantiate, Migrate, UpdateAdmin};
 use cosmwasm_std::{
     from_json, to_json_binary, wasm_execute, Addr, Binary, BlockInfo, Decimal, Deps, DepsMut, Env,
-    Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64,
+    Response, StdError, StdResult, Storage, SubMsg, Timestamp, Uint128, Uint64,
 };
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 use cw_storage_plus::{Item, Map};
@@ -41,6 +43,9 @@ use nft_staking_api::api::NftTokenId;
 use nft_staking_api::msg::Cw721HookMsg::AddClaim;
 use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::AddClaims;
+
+// TODO: figure out the correct number
+const SUBMSGS_LIMIT: u32 = 150;
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -864,6 +869,7 @@ pub fn membership_contract_created(
 fn finalize_membership_contract_submsgs(
     deps: Deps,
     membership_contract: Addr,
+    limit: u32,
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
@@ -897,6 +903,7 @@ fn finalize_membership_contract_submsgs(
                 deps,
                 cw721_contract.clone(),
                 membership_contract.clone(),
+                limit,
             )?;
 
             let mut claim_submsgs =
@@ -992,10 +999,14 @@ fn migrate_cw721_stakes_submsgs(
     deps: Deps,
     cw721_contract: Addr,
     membership_contract: Addr,
+    limit: u32,
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let mut migrate_stakes_submsgs = vec![];
 
-    for stake_res in NFT_STAKES().range(deps.storage, None, None, Ascending) {
+    for stake_res in NFT_STAKES()
+        .range(deps.storage, None, None, Ascending)
+        .take(limit as usize)
+    {
         let (_, stake) = stake_res?;
 
         let submsg = wasm_execute(
@@ -1180,39 +1191,77 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         vec![],
     )?);
 
-    let finalize_membership_contract_submsgs =
-        finalize_membership_contract_submsgs(ctx.deps.as_ref(), membership_contract)?;
-
-    // remove all the old storage
-
-    DAO_GOV_CONFIG.remove(ctx.deps.storage);
-    DAO_COUNCIL.remove(ctx.deps.storage);
-
-    DAO_METADATA.remove(ctx.deps.storage);
-    DAO_TYPE.remove(ctx.deps.storage);
-    DAO_CREATION_DATE.remove(ctx.deps.storage);
-    DAO_MEMBERSHIP_CONTRACT.remove(ctx.deps.storage);
-
-    DAO_CODE_VERSION.remove(ctx.deps.storage);
-
-    MULTISIG_MEMBERS.clear(ctx.deps.storage);
-
-    ENTERPRISE_GOVERNANCE_CONTRACT.remove(ctx.deps.storage);
-    FUNDS_DISTRIBUTOR_CONTRACT.remove(ctx.deps.storage);
-
-    ENTERPRISE_FACTORY_CONTRACT.remove(ctx.deps.storage);
-
-    PROPOSAL_INFOS.clear(ctx.deps.storage);
-
-    MIGRATION_INFO.remove(ctx.deps.storage);
-
-    Ok(Response::new()
+    let response = Response::new()
         .add_submessage(migrate_funds_distributor)
         .add_submessage(migrate_enterprise_governance_submsg)
         .add_submessage(update_enterprise_admin)
         .add_submessage(update_treasury_admin)
         .add_submessage(update_funds_distributor_admin)
         .add_submessage(update_enterprise_governance_admin)
-        .add_submessage(finalize_enterprise_instantiation)
-        .add_submessages(finalize_membership_contract_submsgs))
+        .add_submessage(finalize_enterprise_instantiation);
+
+    let finalize_membership_contract_submsgs = finalize_membership_contract_submsgs(
+        ctx.deps.as_ref(),
+        membership_contract,
+        SUBMSGS_LIMIT + 1,
+    )?;
+
+    let submsgs_count = finalize_membership_contract_submsgs.len() as u32;
+
+    if submsgs_count <= SUBMSGS_LIMIT {
+        remove_old_storage_data(ctx.deps.storage)?;
+        MIGRATION_TO_V_1_0_0_STAGE.save(ctx.deps.storage, &Finalized)?;
+
+        Ok(response.add_submessages(finalize_membership_contract_submsgs))
+    } else {
+        MIGRATION_TO_V_1_0_0_STAGE.save(ctx.deps.storage, &InitialMigrationFinished)?;
+
+        Ok(response)
+    }
+}
+
+pub fn perform_next_migration_step(ctx: &mut Context) -> EnterpriseTreasuryResult<Response> {
+    let migration_info = MIGRATION_INFO.load(ctx.deps.storage)?;
+    let membership_contract =
+        migration_info
+            .membership_contract
+            .ok_or(Std(StdError::generic_err(
+                "invalid state - missing membership address",
+            )))?;
+
+    // TODO: ensure those do not appear again (remove items that have already been sent)
+    let submsgs = finalize_membership_contract_submsgs(
+        ctx.deps.as_ref(),
+        membership_contract,
+        SUBMSGS_LIMIT,
+    )?;
+
+    Ok(Response::new()
+        .add_attribute("action", "perform_next_migration_step")
+        .add_submessages(submsgs))
+}
+
+fn remove_old_storage_data(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {
+    DAO_GOV_CONFIG.remove(storage);
+    DAO_COUNCIL.remove(storage);
+
+    DAO_METADATA.remove(storage);
+    DAO_TYPE.remove(storage);
+    DAO_CREATION_DATE.remove(storage);
+    DAO_MEMBERSHIP_CONTRACT.remove(storage);
+
+    DAO_CODE_VERSION.remove(storage);
+
+    MULTISIG_MEMBERS.clear(storage);
+
+    ENTERPRISE_GOVERNANCE_CONTRACT.remove(storage);
+    FUNDS_DISTRIBUTOR_CONTRACT.remove(storage);
+
+    ENTERPRISE_FACTORY_CONTRACT.remove(storage);
+
+    PROPOSAL_INFOS.clear(storage);
+
+    MIGRATION_INFO.remove(storage);
+
+    Ok(())
 }

@@ -11,7 +11,9 @@ use enterprise_facade_api::api::{
     TotalStakedAmountResponse, TreasuryAddressResponse, UserStakeResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
-use enterprise_facade_api::msg::QueryMsg::{ExecuteProposalAdapted, TreasuryAddress};
+use enterprise_facade_api::msg::QueryMsg::{
+    ExecuteProposalAdapted, HasIncompleteV2Migration, TreasuryAddress,
+};
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
 use QueryMsg::{
@@ -260,6 +262,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                 &CrossChainTreasuries {
                     contract: facade.dao_address,
                     params,
+                },
+            )?;
+            to_json_binary(&response)?
+        }
+        HasIncompleteV2Migration { contract } => {
+            let facade = get_facade(deps, contract)?;
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
+                facade.facade_address.to_string(),
+                &HasIncompleteV2Migration {
+                    contract: facade.dao_address,
                 },
             )?;
             to_json_binary(&response)?

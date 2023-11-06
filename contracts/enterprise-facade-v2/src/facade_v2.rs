@@ -34,7 +34,10 @@ use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasur
 use enterprise_outposts_api::msg::QueryMsg::CrossChainTreasuries;
 use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
-use enterprise_treasury_api::msg::QueryMsg::{AssetWhitelist, NftWhitelist};
+use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
+use enterprise_treasury_api::msg::QueryMsg::{
+    AssetWhitelist, HasIncompleteV2Migration, NftWhitelist,
+};
 use membership_common_api::api::{
     MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
     UserWeightResponse,
@@ -646,6 +649,20 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 .to_string(),
             &CrossChainTreasuries(params),
         )?)
+    }
+
+    fn query_has_incomplete_v2_migration(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse> {
+        let component_contracts = self.component_contracts(qctx.deps)?;
+
+        let response: HasIncompleteV2MigrationResponse = qctx.deps.querier.query_wasm_smart(
+            component_contracts.enterprise_treasury_contract,
+            &HasIncompleteV2Migration {},
+        )?;
+
+        Ok(response)
     }
 
     fn adapt_create_proposal(

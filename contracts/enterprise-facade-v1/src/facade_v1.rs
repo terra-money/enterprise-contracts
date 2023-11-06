@@ -40,6 +40,7 @@ use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
 use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use poll_engine::state::PollHelpers;
 use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
@@ -239,6 +240,15 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         _: CrossChainTreasuriesParams,
     ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse> {
         Ok(CrossChainTreasuriesResponse { treasuries: vec![] })
+    }
+
+    fn query_has_incomplete_v2_migration(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse> {
+        Ok(HasIncompleteV2MigrationResponse {
+            has_incomplete_migration: false,
+        })
     }
 
     fn adapt_create_proposal(

@@ -18,6 +18,7 @@ poll-engine-api = { path = "../poll-engine-api" }
 enterprise-protocol = { path = "../enterprise-protocol" }
 enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
 enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-versioning-api = { path = "../enterprise-versioning-api" }
 serde_with = { version = "2", features = ["json", "macros"] }
 serde-json-wasm = "0.5.0"

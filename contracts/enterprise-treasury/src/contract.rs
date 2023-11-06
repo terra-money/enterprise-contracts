@@ -7,7 +7,10 @@ use crate::migration::{
     council_membership_contract_created, enterprise_contract_created,
     enterprise_outposts_contract_created, finalize_migration,
     governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
+    perform_next_migration_step,
 };
+use crate::migration_stages::MigrationStage::Finalized;
+use crate::migration_stages::MIGRATION_TO_V_1_0_0_STAGE;
 use crate::state::{Config, CONFIG, NFT_WHITELIST};
 use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
@@ -22,8 +25,8 @@ use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_treasury_api::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
-    ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SetAdminMsg, SpendMsg,
-    UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, NftWhitelistParams,
+    NftWhitelistResponse, SetAdminMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::error::EnterpriseTreasuryError::{InvalidCosmosMessage, Std};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
@@ -95,6 +98,8 @@ pub fn execute(
         ExecuteMsg::DistributeFunds(msg) => distribute_funds(ctx, msg),
         ExecuteMsg::ExecuteCosmosMsgs(msg) => execute_cosmos_msgs(ctx, msg),
         ExecuteMsg::FinalizeMigration {} => finalize_migration(ctx),
+
+        ExecuteMsg::PerformNextMigrationStep {} => perform_next_migration_step(ctx),
     }
 }
 
@@ -281,6 +286,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseTreasuryResult<Bi
         QueryMsg::Config {} => to_json_binary(&query_config(qctx)?)?,
         QueryMsg::AssetWhitelist(params) => to_json_binary(&query_asset_whitelist(qctx, params)?)?,
         QueryMsg::NftWhitelist(params) => to_json_binary(&query_nft_whitelist(qctx, params)?)?,
+        QueryMsg::HasIncompleteV2Migration {} => {
+            to_json_binary(&query_has_incomplete_v2_migration(qctx)?)?
+        }
     };
 
     Ok(response)
@@ -349,6 +357,21 @@ pub fn query_nft_whitelist(
         .collect();
 
     Ok(NftWhitelistResponse { nfts })
+}
+
+pub fn query_has_incomplete_v2_migration(
+    qctx: QueryContext,
+) -> EnterpriseTreasuryResult<HasIncompleteV2MigrationResponse> {
+    let migration_stage = MIGRATION_TO_V_1_0_0_STAGE.may_load(qctx.deps.storage)?;
+
+    let has_incomplete_migration = match migration_stage {
+        None => false,
+        Some(migration_stage) => migration_stage != Finalized,
+    };
+
+    Ok(HasIncompleteV2MigrationResponse {
+        has_incomplete_migration,
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

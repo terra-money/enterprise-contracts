@@ -1,7 +1,7 @@
 use crate::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
-    ExecuteCosmosMsgsMsg, NftWhitelistParams, NftWhitelistResponse, SetAdminMsg, SpendMsg,
-    UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, NftWhitelistParams,
+    NftWhitelistResponse, SetAdminMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_asset::AssetInfoUnchecked;
@@ -22,6 +22,9 @@ pub enum ExecuteMsg {
     DistributeFunds(DistributeFundsMsg),
     ExecuteCosmosMsgs(ExecuteCosmosMsgsMsg),
 
+    /// To be called only when there is an unfinished migration from pre-1.0.0 Enterprise
+    PerformNextMigrationStep {},
+
     /// Called by self to finalize migration. Not part of the public API!
     FinalizeMigration {},
 }
@@ -35,6 +38,11 @@ pub enum QueryMsg {
     AssetWhitelist(AssetWhitelistParams),
     #[returns(NftWhitelistResponse)]
     NftWhitelist(NftWhitelistParams),
+
+    /// Used to determine whether this contract is still in the middle of migration from
+    /// old contracts to new contracts.
+    #[returns(HasIncompleteV2MigrationResponse)]
+    HasIncompleteV2Migration {},
 }
 
 #[cw_serde]
