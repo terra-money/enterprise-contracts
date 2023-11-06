@@ -176,6 +176,7 @@ pub struct Claim {
 pub enum ClaimAsset {
     Cw20(Cw20ClaimAsset),
     Cw721(Cw721ClaimAsset),
+    Denom(DenomClaimAsset),
 }
 
 #[cw_serde]
@@ -186,6 +187,11 @@ pub struct Cw20ClaimAsset {
 #[cw_serde]
 pub struct Cw721ClaimAsset {
     pub tokens: Vec<NftTokenId>,
+}
+
+#[cw_serde]
+pub struct DenomClaimAsset {
+    pub amount: Uint128,
 }
 
 #[cw_serde]

@@ -10,9 +10,9 @@ use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimAsset,
     ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
     CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
-    DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomUserStake, ExecuteProposalMsg,
-    GovConfigV1, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
-    MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
+    DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomClaimAsset, DenomUserStake,
+    ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
     NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse, ProposalStatus,
     ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
@@ -547,7 +547,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Denom => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
-                let response: token_staking_api::api::ClaimsResponse =
+                let response: denom_staking_api::api::ClaimsResponse =
                     qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &denom_staking_api::msg::QueryMsg::Claims(
@@ -555,7 +555,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                         ),
                     )?;
 
-                Ok(map_token_claims_response(response))
+                Ok(map_denom_claims_response(response))
             }
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
@@ -598,7 +598,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Denom => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
-                let response: token_staking_api::api::ClaimsResponse =
+                let response: denom_staking_api::api::ClaimsResponse =
                     qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &denom_staking_api::msg::QueryMsg::ReleasableClaims(
@@ -606,7 +606,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                         ),
                     )?;
 
-                Ok(map_token_claims_response(response))
+                Ok(map_denom_claims_response(response))
             }
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
@@ -1116,6 +1116,21 @@ impl EnterpriseFacadeV2 {
             .query_wasm_smart(self.enterprise_address.to_string(), &DaoInfo {})?;
 
         Ok(map_dao_type(dao_info.dao_type))
+    }
+}
+
+fn map_denom_claims_response(response: denom_staking_api::api::ClaimsResponse) -> ClaimsResponse {
+    ClaimsResponse {
+        claims: response
+            .claims
+            .into_iter()
+            .map(|claim| Claim {
+                asset: ClaimAsset::Denom(DenomClaimAsset {
+                    amount: claim.amount,
+                }),
+                release_at: claim.release_at,
+            })
+            .collect(),
     }
 }
 
