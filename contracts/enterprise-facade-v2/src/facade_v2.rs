@@ -11,11 +11,11 @@ use enterprise_facade_api::api::{
     ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
     CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
     DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomClaimAsset, DenomUserStake,
-    ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake, NftWhitelistParams,
-    NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse, ProposalStatus,
-    ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse, ProposalType,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse,
+    MemberVoteParams, MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake,
+    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse,
+    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
+    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
     QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TokenUserStake,
     TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStake, UserStakeParams,
     UserStakeResponse,
@@ -146,6 +146,21 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             .checked_add(minor_component)?
             .checked_add(patch_component)?;
 
+        let veto_threshold = gov_config
+            .gov_config
+            .veto_threshold
+            .unwrap_or(gov_config.gov_config.threshold);
+
+        let gov_config = GovConfigFacade {
+            quorum: gov_config.gov_config.quorum,
+            threshold: gov_config.gov_config.threshold,
+            veto_threshold,
+            vote_duration: gov_config.gov_config.vote_duration,
+            unlocking_period,
+            minimum_deposit: gov_config.gov_config.minimum_deposit,
+            allow_early_proposal_execution: gov_config.gov_config.allow_early_proposal_execution,
+        };
+
         Ok(DaoInfoResponse {
             creation_date: dao_info.creation_date,
             metadata: DaoMetadata {
@@ -159,17 +174,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     telegram_username: dao_info.metadata.socials.telegram_username,
                 },
             },
-            gov_config: GovConfigV1 {
-                quorum: gov_config.gov_config.quorum,
-                threshold: gov_config.gov_config.threshold,
-                veto_threshold: gov_config.gov_config.veto_threshold,
-                vote_duration: gov_config.gov_config.vote_duration,
-                unlocking_period,
-                minimum_deposit: gov_config.gov_config.minimum_deposit,
-                allow_early_proposal_execution: gov_config
-                    .gov_config
-                    .allow_early_proposal_execution,
-            },
+            gov_config,
             dao_council,
             dao_type,
             dao_membership_contract,

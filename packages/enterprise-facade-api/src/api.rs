@@ -219,7 +219,7 @@ pub struct TreasuryAddressResponse {
 pub struct DaoInfoResponse {
     pub creation_date: Timestamp,
     pub metadata: DaoMetadata,
-    pub gov_config: GovConfigV1,
+    pub gov_config: GovConfigFacade,
     pub dao_council: Option<DaoCouncil>,
     pub dao_type: DaoType,
     pub dao_membership_contract: String,
@@ -243,6 +243,31 @@ pub struct GovConfigV1 {
     /// required to veto the proposal.
     /// If None, will default to the threshold set for all proposal options.
     pub veto_threshold: Option<Decimal>,
+    /// Duration of proposals before they end, expressed in seconds
+    pub vote_duration: u64, // TODO: change from u64 to Duration
+    /// Duration that has to pass for unstaked membership tokens to be claimable
+    pub unlocking_period: Duration,
+    /// Optional minimum amount of DAO's governance unit to be required to create a deposit.
+    pub minimum_deposit: Option<Uint128>,
+    /// If set to true, this will allow DAOs to execute proposals that have reached quorum and
+    /// threshold, even before their voting period ends.
+    pub allow_early_proposal_execution: bool,
+}
+
+#[cw_serde]
+pub struct GovConfigFacade {
+    /// Portion of total available votes cast in a proposal to consider it valid
+    /// e.g. quorum of 30% means that 30% of all available votes have to be cast in the proposal,
+    /// otherwise it fails automatically when it expires
+    pub quorum: Decimal,
+    /// Portion of votes assigned to a single option from all the votes cast in the given proposal
+    /// required to determine the 'winning' option
+    /// e.g. 51% threshold means that an option has to have at least 51% of the cast votes to win
+    pub threshold: Decimal,
+    /// Portion of votes assigned to veto option from all the votes cast in the given proposal
+    /// required to veto the proposal.
+    /// Will default to the threshold set for all proposal options.
+    pub veto_threshold: Decimal,
     /// Duration of proposals before they end, expressed in seconds
     pub vote_duration: u64, // TODO: change from u64 to Duration
     /// Duration that has to pass for unstaked membership tokens to be claimable

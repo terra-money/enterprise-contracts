@@ -26,7 +26,7 @@ use enterprise_facade_api::api::{
     adapter_response_single_execute_msg, AdaptedExecuteMsg, AdaptedMsg, AdapterResponse,
     AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
     CreateProposalMsg, CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg,
-    DaoInfoResponse, DaoType, ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg,
+    DaoInfoResponse, DaoType, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg,
     MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
     NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse,
     ProposalStatus, ProposalStatusParams, ProposalStatusResponse, ProposalType,
@@ -73,10 +73,25 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
             patch: 0,
         };
 
+        let veto_threshold = dao_info_v5
+            .gov_config
+            .veto_threshold
+            .unwrap_or(dao_info_v5.gov_config.threshold);
+
+        let gov_config = GovConfigFacade {
+            quorum: dao_info_v5.gov_config.quorum,
+            threshold: dao_info_v5.gov_config.threshold,
+            veto_threshold,
+            vote_duration: dao_info_v5.gov_config.vote_duration,
+            unlocking_period: dao_info_v5.gov_config.unlocking_period,
+            minimum_deposit: dao_info_v5.gov_config.minimum_deposit,
+            allow_early_proposal_execution: dao_info_v5.gov_config.allow_early_proposal_execution,
+        };
+
         Ok(DaoInfoResponse {
             creation_date: dao_info_v5.creation_date,
             metadata: dao_info_v5.metadata,
-            gov_config: dao_info_v5.gov_config,
+            gov_config,
             dao_council: dao_info_v5.dao_council,
             dao_type: dao_info_v5.dao_type,
             dao_membership_contract: dao_info_v5.dao_membership_contract.to_string(),
@@ -451,7 +466,7 @@ impl EnterpriseFacadeV1 {
     fn resolve_in_progress_proposal_status(
         &self,
         response: &ProposalResponse,
-        gov_config: &GovConfigV1,
+        gov_config: &GovConfigFacade,
     ) -> EnterpriseFacadeResult<PollStatus> {
         // in reality, there were only AtTime expirations for proposals
         let ends_at = match response.proposal.expires {
@@ -471,7 +486,7 @@ impl EnterpriseFacadeV1 {
             ends_at,
             quorum: gov_config.quorum,
             threshold: gov_config.threshold,
-            veto_threshold: gov_config.veto_threshold,
+            veto_threshold: Some(gov_config.veto_threshold),
             results: response.results.clone(),
         };
 
@@ -566,7 +581,7 @@ impl EnterpriseFacadeV1 {
         &self,
         qctx: &QueryContext,
         response: ProposalResponse,
-        gov_config: &GovConfigV1,
+        gov_config: &GovConfigFacade,
     ) -> EnterpriseFacadeResult<ProposalResponse> {
         let status = match response.proposal_status {
             ProposalStatus::InProgress => {
