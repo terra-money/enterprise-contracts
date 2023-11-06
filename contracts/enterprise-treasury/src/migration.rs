@@ -867,7 +867,7 @@ pub fn membership_contract_created(
 }
 
 fn finalize_membership_contract_submsgs(
-    deps: Deps,
+    mut deps: DepsMut,
     membership_contract: Addr,
     limit: u32,
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
@@ -883,7 +883,7 @@ fn finalize_membership_contract_submsgs(
             let cw20_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
             let migrate_stakes_submsg = migrate_cw20_stakes_submsg(
-                deps,
+                deps.branch(),
                 cw20_contract.clone(),
                 membership_contract.clone(),
             )?;
@@ -900,7 +900,7 @@ fn finalize_membership_contract_submsgs(
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
             let mut migrate_stakes_submsgs = migrate_cw721_stakes_submsgs(
-                deps,
+                deps.branch(),
                 cw721_contract.clone(),
                 membership_contract.clone(),
                 limit,
@@ -920,7 +920,7 @@ fn finalize_membership_contract_submsgs(
 }
 
 fn migrate_cw20_stakes_submsg(
-    deps: Deps,
+    deps: DepsMut,
     cw20_contract: Addr,
     membership_contract: Addr,
 ) -> EnterpriseTreasuryResult<Option<SubMsg>> {
@@ -940,6 +940,8 @@ fn migrate_cw20_stakes_submsg(
         })
         .collect::<StdResult<Vec<UserStake>>>()?;
 
+    CW20_STAKES.clear(deps.storage);
+
     Ok(Some(SubMsg::new(
         Asset::cw20(cw20_contract, total_staked).send_msg(
             membership_contract,
@@ -949,7 +951,7 @@ fn migrate_cw20_stakes_submsg(
 }
 
 fn migrate_cw20_claims_submsg(
-    deps: Deps,
+    deps: DepsMut,
     cw20_contract: Addr,
     membership_contract: Addr,
 ) -> EnterpriseTreasuryResult<Option<SubMsg>> {
@@ -978,6 +980,8 @@ fn migrate_cw20_claims_submsg(
         })
         .collect::<Vec<UserClaim>>();
 
+    CLAIMS.clear(deps.storage);
+
     if total_claims_amount.is_zero() {
         Ok(None)
     } else {
@@ -996,18 +1000,20 @@ fn migrate_cw20_claims_submsg(
 }
 
 fn migrate_cw721_stakes_submsgs(
-    deps: Deps,
+    deps: DepsMut,
     cw721_contract: Addr,
     membership_contract: Addr,
     limit: u32,
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let mut migrate_stakes_submsgs = vec![];
 
+    let mut stake_keys_to_remove: Vec<NftTokenId> = vec![];
+
     for stake_res in NFT_STAKES()
         .range(deps.storage, None, None, Ascending)
         .take(limit as usize)
     {
-        let (_, stake) = stake_res?;
+        let (key, stake) = stake_res?;
 
         let submsg = wasm_execute(
             cw721_contract.to_string(),
@@ -1022,17 +1028,25 @@ fn migrate_cw721_stakes_submsgs(
         )?;
 
         migrate_stakes_submsgs.push(SubMsg::new(submsg));
+
+        stake_keys_to_remove.push(key);
+    }
+
+    for stake_key in stake_keys_to_remove {
+        NFT_STAKES().remove(deps.storage, stake_key)?;
     }
 
     Ok(migrate_stakes_submsgs)
 }
 
 fn migrate_cw721_claims_submsgs(
-    deps: Deps,
+    deps: DepsMut,
     cw721_contract: Addr,
     membership_contract: Addr,
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let mut claim_submsgs = vec![];
+
+    let mut claim_keys_to_remove: Vec<Addr> = vec![];
 
     for claim_res in CLAIMS.range(deps.storage, None, None, Ascending) {
         let (user, claims) = claim_res?;
@@ -1059,6 +1073,12 @@ fn migrate_cw721_claims_submsgs(
                 }
             }
         }
+
+        claim_keys_to_remove.push(user);
+    }
+
+    for claim_key in claim_keys_to_remove {
+        CLAIMS.remove(deps.storage, &claim_key);
     }
 
     Ok(claim_submsgs)
@@ -1201,7 +1221,7 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         .add_submessage(finalize_enterprise_instantiation);
 
     let finalize_membership_contract_submsgs = finalize_membership_contract_submsgs(
-        ctx.deps.as_ref(),
+        ctx.deps.branch(),
         membership_contract,
         SUBMSGS_LIMIT + 1,
     )?;
@@ -1231,7 +1251,7 @@ pub fn perform_next_migration_step(ctx: &mut Context) -> EnterpriseTreasuryResul
 
     // TODO: ensure those do not appear again (remove items that have already been sent)
     let submsgs = finalize_membership_contract_submsgs(
-        ctx.deps.as_ref(),
+        ctx.deps.branch(),
         membership_contract,
         SUBMSGS_LIMIT,
     )?;
