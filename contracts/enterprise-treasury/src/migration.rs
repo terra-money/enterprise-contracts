@@ -3,7 +3,7 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
-use crate::migration_stages::MigrationStage::{Finalized, InitialMigrationFinished};
+use crate::migration_stages::MigrationStage::{Finalized, InitialMigrationFinished, MigrateAssets};
 use crate::migration_stages::MIGRATION_TO_V_1_0_0_STAGE;
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{
@@ -36,7 +36,7 @@ use enterprise_protocol::api::{
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
 use enterprise_treasury_api::error::EnterpriseTreasuryError::{Std, Unauthorized};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
-use enterprise_treasury_api::msg::ExecuteMsg::FinalizeMigration;
+use enterprise_treasury_api::msg::ExecuteMsg::FinalizeInitialMigrationStep;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use multisig_membership_api::api::UserWeight;
 use nft_staking_api::api::NftTokenId;
@@ -44,8 +44,8 @@ use nft_staking_api::msg::Cw721HookMsg::AddClaim;
 use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::AddClaims;
 
-// TODO: figure out the correct number
-const SUBMSGS_LIMIT: u32 = 150;
+const SUBMSGS_LIMIT: u32 = 200;
+const INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT: u32 = 100;
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -488,7 +488,7 @@ pub fn migrate_to_rewrite(deps: DepsMut, env: Env) -> EnterpriseTreasuryResult<V
 
     let finalize_migration_submsg = SubMsg::new(wasm_execute(
         env.contract.address.to_string(),
-        &FinalizeMigration {},
+        &FinalizeInitialMigrationStep {},
         vec![],
     )?);
 
@@ -906,8 +906,14 @@ fn finalize_membership_contract_submsgs(
                 limit,
             )?;
 
-            let mut claim_submsgs =
-                migrate_cw721_claims_submsgs(deps, cw721_contract, membership_contract)?;
+            let remaining_limit = limit - migrate_stakes_submsgs.len() as u32;
+
+            let mut claim_submsgs = migrate_cw721_claims_submsgs(
+                deps,
+                cw721_contract,
+                membership_contract,
+                remaining_limit,
+            )?;
 
             migrate_stakes_submsgs.append(&mut claim_submsgs);
 
@@ -1043,12 +1049,16 @@ fn migrate_cw721_claims_submsgs(
     deps: DepsMut,
     cw721_contract: Addr,
     membership_contract: Addr,
+    limit: u32,
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let mut claim_submsgs = vec![];
 
     let mut claim_keys_to_remove: Vec<Addr> = vec![];
 
-    for claim_res in CLAIMS.range(deps.storage, None, None, Ascending) {
+    for claim_res in CLAIMS
+        .range(deps.storage, None, None, Ascending)
+        .take(limit as usize)
+    {
         let (user, claims) = claim_res?;
 
         for claim in claims {
@@ -1121,7 +1131,7 @@ pub fn enterprise_outposts_contract_created(
     Ok(Response::new())
 }
 
-pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Response> {
+pub fn finalize_initial_migration_step(ctx: &mut Context) -> EnterpriseTreasuryResult<Response> {
     if ctx.info.sender != ctx.env.contract.address {
         return Err(Unauthorized);
     }
@@ -1211,36 +1221,36 @@ pub fn finalize_migration(ctx: &mut Context) -> EnterpriseTreasuryResult<Respons
         vec![],
     )?);
 
-    let response = Response::new()
+    let finalize_membership_contract_submsgs = finalize_membership_contract_submsgs(
+        ctx.deps.branch(),
+        membership_contract,
+        INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT,
+    )?;
+
+    let submsgs_count = finalize_membership_contract_submsgs.len();
+
+    if submsgs_count < INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT as usize {
+        // there were fewer messages than maximum we allow, just finalize the whole migration
+        set_migration_stage_to_finalized(ctx.deps.storage)?;
+    } else {
+        set_migration_stage_to_initial_step_finished(ctx.deps.storage)?;
+    }
+
+    Ok(Response::new()
         .add_submessage(migrate_funds_distributor)
         .add_submessage(migrate_enterprise_governance_submsg)
         .add_submessage(update_enterprise_admin)
         .add_submessage(update_treasury_admin)
         .add_submessage(update_funds_distributor_admin)
         .add_submessage(update_enterprise_governance_admin)
-        .add_submessage(finalize_enterprise_instantiation);
-
-    let finalize_membership_contract_submsgs = finalize_membership_contract_submsgs(
-        ctx.deps.branch(),
-        membership_contract,
-        SUBMSGS_LIMIT + 1,
-    )?;
-
-    let submsgs_count = finalize_membership_contract_submsgs.len() as u32;
-
-    if submsgs_count <= SUBMSGS_LIMIT {
-        remove_old_storage_data(ctx.deps.storage)?;
-        MIGRATION_TO_V_1_0_0_STAGE.save(ctx.deps.storage, &Finalized)?;
-
-        Ok(response.add_submessages(finalize_membership_contract_submsgs))
-    } else {
-        MIGRATION_TO_V_1_0_0_STAGE.save(ctx.deps.storage, &InitialMigrationFinished)?;
-
-        Ok(response)
-    }
+        .add_submessage(finalize_enterprise_instantiation)
+        .add_submessages(finalize_membership_contract_submsgs))
 }
 
-pub fn perform_next_migration_step(ctx: &mut Context) -> EnterpriseTreasuryResult<Response> {
+pub fn perform_next_migration_step(
+    ctx: &mut Context,
+    submsgs_limit: Option<u32>,
+) -> EnterpriseTreasuryResult<Response> {
     let migration_info = MIGRATION_INFO.load(ctx.deps.storage)?;
     let membership_contract =
         migration_info
@@ -1249,16 +1259,43 @@ pub fn perform_next_migration_step(ctx: &mut Context) -> EnterpriseTreasuryResul
                 "invalid state - missing membership address",
             )))?;
 
-    // TODO: ensure those do not appear again (remove items that have already been sent)
-    let submsgs = finalize_membership_contract_submsgs(
-        ctx.deps.branch(),
-        membership_contract,
-        SUBMSGS_LIMIT,
-    )?;
+    let limit = submsgs_limit.unwrap_or(SUBMSGS_LIMIT);
+
+    let submsgs =
+        finalize_membership_contract_submsgs(ctx.deps.branch(), membership_contract, limit)?;
+
+    if submsgs.len() < limit as usize {
+        set_migration_stage_to_finalized(ctx.deps.storage)?;
+    } else {
+        set_migration_stage_to_migrate_assets(ctx.deps.storage)?;
+    };
 
     Ok(Response::new()
         .add_attribute("action", "perform_next_migration_step")
         .add_submessages(submsgs))
+}
+
+fn set_migration_stage_to_initial_step_finished(
+    storage: &mut dyn Storage,
+) -> EnterpriseTreasuryResult<()> {
+    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &InitialMigrationFinished)?;
+
+    Ok(())
+}
+
+fn set_migration_stage_to_migrate_assets(
+    storage: &mut dyn Storage,
+) -> EnterpriseTreasuryResult<()> {
+    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &MigrateAssets)?;
+
+    Ok(())
+}
+
+fn set_migration_stage_to_finalized(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {
+    remove_old_storage_data(storage)?;
+    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &Finalized)?;
+
+    Ok(())
 }
 
 fn remove_old_storage_data(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {

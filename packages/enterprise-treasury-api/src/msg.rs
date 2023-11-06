@@ -23,10 +23,12 @@ pub enum ExecuteMsg {
     ExecuteCosmosMsgs(ExecuteCosmosMsgsMsg),
 
     /// To be called only when there is an unfinished migration from pre-1.0.0 Enterprise
-    PerformNextMigrationStep {},
+    PerformNextMigrationStep {
+        submsgs_limit: Option<u32>,
+    },
 
-    /// Called by self to finalize migration. Not part of the public API!
-    FinalizeMigration {},
+    /// Called by self to finalize initial migration step. Not part of the public API!
+    FinalizeInitialMigrationStep {},
 }
 
 #[cw_serde]

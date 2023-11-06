@@ -5,7 +5,7 @@ use crate::asset_whitelist::{
 };
 use crate::migration::{
     council_membership_contract_created, enterprise_contract_created,
-    enterprise_outposts_contract_created, finalize_migration,
+    enterprise_outposts_contract_created, finalize_initial_migration_step,
     governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
     perform_next_migration_step,
 };
@@ -97,9 +97,11 @@ pub fn execute(
         ExecuteMsg::Spend(msg) => spend(ctx, msg),
         ExecuteMsg::DistributeFunds(msg) => distribute_funds(ctx, msg),
         ExecuteMsg::ExecuteCosmosMsgs(msg) => execute_cosmos_msgs(ctx, msg),
-        ExecuteMsg::FinalizeMigration {} => finalize_migration(ctx),
 
-        ExecuteMsg::PerformNextMigrationStep {} => perform_next_migration_step(ctx),
+        ExecuteMsg::FinalizeInitialMigrationStep {} => finalize_initial_migration_step(ctx),
+        ExecuteMsg::PerformNextMigrationStep { submsgs_limit } => {
+            perform_next_migration_step(ctx, submsgs_limit)
+        }
     }
 }
 
