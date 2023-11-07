@@ -447,3 +447,14 @@ const TEST_NEW_CW721_DAO_MEMBERSHIP = {
         }
     }
 };
+
+const TEST_NEW_MULTISIG_DAO_MEMBERSHIP = {
+    new_multisig: {
+        multisig_members: [
+            {
+                user: "terra1x5zsfdfxj6xg5pqm0999lagmccmrwk54495e9v",
+                weight: "100"
+            }
+        ]
+    }
+};
