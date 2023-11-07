@@ -16,6 +16,7 @@ use enterprise_facade_api::msg::QueryMsg::{
 };
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
+use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
     CreateCouncilProposalAdapted, CreateProposalAdapted, CreateProposalWithDenomDepositAdapted,
@@ -269,7 +270,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
         HasIncompleteV2Migration { contract } => {
             let facade = get_facade(deps, contract)?;
 
-            let response: AdapterResponse = deps.querier.query_wasm_smart(
+            let response: HasIncompleteV2MigrationResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &HasIncompleteV2Migration {
                     contract: facade.dao_address,
