@@ -120,7 +120,13 @@ pub struct QueryAllDaosMsg {
 
 #[cw_serde]
 pub struct AllDaosResponse {
-    pub daos: Vec<Addr>,
+    pub daos: Vec<DaoRecord>,
+}
+
+#[cw_serde]
+pub struct DaoRecord {
+    pub dao_id: Uint64,
+    pub dao_address: Addr,
 }
 
 #[cw_serde]

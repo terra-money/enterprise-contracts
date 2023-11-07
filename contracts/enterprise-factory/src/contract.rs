@@ -28,8 +28,9 @@ use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_factory_api::api::{
-    AllDaosResponse, ConfigResponse, CreateDaoMembershipMsg, CreateDaoMsg, EnterpriseCodeIdsMsg,
-    EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
+    AllDaosResponse, ConfigResponse, CreateDaoMembershipMsg, CreateDaoMsg, DaoRecord,
+    EnterpriseCodeIdsMsg, EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg,
+    IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
 };
 use enterprise_factory_api::msg::ExecuteMsg::FinalizeDaoCreation;
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -692,10 +693,13 @@ pub fn query_all_daos(deps: Deps, msg: QueryAllDaosMsg) -> DaoResult<AllDaosResp
     let addresses = DAO_ADDRESSES
         .range(deps.storage, start_after, None, Ascending)
         .take(limit as usize)
-        .collect::<StdResult<Vec<(u64, Addr)>>>()?
-        .into_iter()
-        .map(|(_, addr)| addr)
-        .collect_vec();
+        .map(|res| {
+            res.map(|(id, dao_address)| DaoRecord {
+                dao_id: id.into(),
+                dao_address,
+            })
+        })
+        .collect::<StdResult<Vec<DaoRecord>>>()?;
 
     Ok(AllDaosResponse { daos: addresses })
 }

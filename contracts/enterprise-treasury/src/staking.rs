@@ -85,7 +85,10 @@ pub fn get_checkpoints(
     // we need to add the latest known weight at the last checkpoint height we encountered
     if let Some(key) = last_seen_key {
         let current_total_weight = snapshot_item.load(deps.storage)?;
-        checkpoints.push(TotalWeightCheckpoint { height: key, total_weight: current_total_weight });
+        checkpoints.push(TotalWeightCheckpoint {
+            height: key,
+            total_weight: current_total_weight,
+        });
     }
 
     Ok(checkpoints)
