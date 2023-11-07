@@ -1,6 +1,6 @@
 use common::commons::ModifyValue;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Timestamp};
+use cosmwasm_std::{Addr, Binary, Timestamp};
 use enterprise_versioning_api::api::Version;
 use std::fmt;
 use strum_macros::Display;
@@ -73,7 +73,7 @@ pub struct UpdateMetadataMsg {
 #[cw_serde]
 pub struct VersionMigrateMsg {
     pub version: Version,
-    pub migrate_msg: String,
+    pub migrate_msg: Binary,
 }
 
 #[cw_serde]

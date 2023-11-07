@@ -208,7 +208,7 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
 
     enterprise_governance_controller_caller_only(ctx)?;
 
-    let mut migrate_msgs_map: HashMap<Version, String> = HashMap::new();
+    let mut migrate_msgs_map: HashMap<Version, Binary> = HashMap::new();
 
     for version_migrate_msg in msg.migrate_msgs {
         let existing_version_migrate_msg = migrate_msgs_map.insert(
@@ -230,7 +230,7 @@ fn upgrade_dao(ctx: &mut Context, msg: UpgradeDaoMsg) -> DaoResult<Response> {
     for version in versions {
         let msg = migrate_msgs_map.get(&version.version);
         let migrate_msg = match msg {
-            Some(msg) => to_json_binary(msg)?,
+            Some(msg) => Clone::clone(msg),
             None => to_json_binary(&Empty {})?, // if no msg was supplied, just use an empty one
         };
 

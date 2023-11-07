@@ -20,7 +20,7 @@
   },
   "testnet": {
     "enterprise": {
-      "codeId": "11497",
+      "codeId": "11508",
       "address": "terra1rl9fnr4xce4ca5we9rwnqyyv89h422rwe3fpe7ycrpjn0egfulrsp2n4l9"
     },
     "enterprise-factory": {
@@ -86,7 +86,7 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "1995"
+      "codeId": "2055"
     },
     "enterprise-factory": {
       "codeId": "2051",
@@ -122,7 +122,7 @@
       "codeId": "2036"
     },
     "enterprise-governance-controller": {
-      "codeId": "2053"
+      "codeId": "2056"
     },
     "enterprise-treasury": {
       "codeId": "2052"
