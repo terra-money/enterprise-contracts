@@ -28,7 +28,7 @@
       "address": "terra1yfcjj7udqfvzge0jz0tf8e8c55hnrm2wa4srmdvxpm3yrpq2yg7s7qursg"
     },
     "enterprise-facade": {
-      "codeId": "11486",
+      "codeId": "11489",
       "address": "terra1yawdq7l530gd0fxz4s9guhaj3ynsy2d3vyx86q0f483gx4tdd2vqsffqq8"
     },
     "enterprise-versioning": {
@@ -73,12 +73,12 @@
       "codeId": "11078"
     },
     "enterprise-facade-v1": {
-      "codeId": "11484",
-      "address": "terra1y048qrtdhx7hqtfy3505n0gsqgkzqlqsztx9xgqfnwstjqsnr94qltlfqu"
+      "codeId": "11487",
+      "address": "terra1m7levzaqmy5n4a8h8pqyhzs2edhk7l7g0sxtwjpnfrcvj87dzz6sc0pv7m"
     },
     "enterprise-facade-v2": {
-      "codeId": "11485",
-      "address": "terra18rwv5e72nzjmgf62jrchl9lph3dxt43uypzyvfd4jqe68ut6akfss7mx8l"
+      "codeId": "11488",
+      "address": "terra1vw6vnkds0yvwjrvpdl489f67n7y69667w04qvk4jax8mzcy57drsuje3mn"
     },
     "enterprise-outposts": {
       "codeId": "11133"
@@ -93,7 +93,7 @@
       "address": "terra15h7mdcp6yzagvz339e6unkw98duj7xel7n00yuslun0fvpjjyr8qh7yhsw"
     },
     "enterprise-facade": {
-      "codeId": "2035",
+      "codeId": "2045",
       "address": "terra1wk3nmdhf3qzv8q589pynphkujfg5k06tp5v0p633l6ynhv5l4j7segjpgu"
     },
     "enterprise-versioning": {
@@ -140,12 +140,12 @@
       "codeId": "2004"
     },
     "enterprise-facade-v1": {
-      "codeId": "2033",
-      "address": "terra105s972xm0dxp8whezyty0qfrky665u3wjsvvc0zcvnzltz72nkyqhex7ka"
+      "codeId": "2043",
+      "address": "terra1c8w7h2hlgumeq70w3keurgw6xeelcpgdx3akvnwywamrej38djnqt34vld"
     },
     "enterprise-facade-v2": {
-      "codeId": "2034",
-      "address": "terra1d3u9lymeq4h6gpvq34letnwqjxangnvcg72cyx4dyyj5ws6m4ewq39kjul"
+      "codeId": "2044",
+      "address": "terra1fvygd5smjcnn3u9pwz6ffrnef2jf9j7s2wakg0373xd43rmu4xuszf4fq7"
     }
   }
 }
