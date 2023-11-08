@@ -150,6 +150,41 @@ task(async ({network, deployer, executor, signer, refs}) => {
     }
 });
 
+const createMigrationStepsWarpJob = async (refs: Refs, network: string, executor: Executor, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
+    try {
+        const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
+
+        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_phase":{"contract":"${dao_address}"}}`).toString('base64');
+
+        const perform_migration_step_msg_encoded = Buffer.from(`{"perform_next_migration_step":{"submsgs_limit":${submsgs_limit}}`).toString('base64');
+
+        await executor.execute(
+            "terra1fqcfh8vpqsl7l5yjjtq5wwu6sv989txncq5fa756tv7lywqexraq5vnjvt",
+            {
+                create_job: {
+                    name: "Test migration",
+                    description: "Migrates a 'stuck' migration of a DAO",
+                    labels: [],
+                    executions: [
+                        {
+                            condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_in_progress\"},\"op\":\"eq\"}}}",
+                            msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
+                        },
+                    ],
+                    terminate_condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_completed\"},\"op\":\"eq\"}}}",
+                    vars: `[{\"query\":{\"reinitialize\":false,\"name\":\"v2MigrationPhase\",\"init_fn\":{\"query\":{\"wasm\":{\"smart\":{\"contract_addr\":\"${facade_address}\",\"msg\":\"${facade_query_msg_encoded}\"}}},\"selector\":\"$.phase\"},\"update_fn\":{},\"kind\":\"string\",\"encode\":false}}]`,
+                    recurring: true,
+                    requeue_on_evict: false,
+                    reward: "20000",
+                    duration_days: "730",
+                }
+            }
+        );
+    } catch (e) {
+        console.log(e);
+    }
+}
+
 const stakeTokens = async (executor: Executor, token_contract: string, membership_contract: string): Promise<void> => {
     await executor.execute(
         token_contract,
@@ -310,8 +345,8 @@ const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer:
   // await deployer.storeCode(ENTERPRISE_TREASURY);
   // await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(ENTERPRISE_OUTPOSTS);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // await deployer.storeCode(ENTERPRISE_OUTPOSTS);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
 
   // await deployer.storeCode(FUNDS_DISTRIBUTOR);
   // await new Promise((resolve) => setTimeout(resolve, 5000));
