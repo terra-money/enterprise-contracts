@@ -18,7 +18,7 @@ use enterprise_facade_api::api::{
     ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
     QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TokenUserStake,
     TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStake, UserStakeParams,
-    UserStakeResponse,
+    UserStakeResponse, V2MigrationPhase, V2MigrationPhaseResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -47,6 +47,7 @@ use nft_staking_api::api::{NftConfigResponse, UserNftStakeParams, UserNftStakeRe
 use nft_staking_api::msg::QueryMsg::{NftConfig, StakedNfts};
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
+use V2MigrationPhase::{MigrationCompleted, MigrationInProgress};
 
 /// Facade implementation for v1.0.0 of Enterprise contracts (post-contract-rewrite), i.e. DAO v2.
 pub struct EnterpriseFacadeV2 {
@@ -668,6 +669,21 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         )?;
 
         Ok(response)
+    }
+
+    fn query_v2_migration_phase(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<V2MigrationPhaseResponse> {
+        let response = self.query_has_incomplete_v2_migration(qctx)?;
+
+        let phase = if response.has_incomplete_migration {
+            MigrationInProgress
+        } else {
+            MigrationCompleted
+        };
+
+        Ok(V2MigrationPhaseResponse { phase })
     }
 
     fn adapt_create_proposal(

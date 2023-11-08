@@ -496,6 +496,13 @@ pub struct ClaimsParams {
     pub owner: String,
 }
 
+#[cw_serde]
+pub enum V2MigrationPhase {
+    MigrationNotStarted,
+    MigrationInProgress,
+    MigrationCompleted,
+}
+
 /// Used to enable adapter-like behavior, where this contract can tell its consumers what call to
 /// make with which pre-compiled message in order to achieve desired behavior, regardless of
 /// Enterprise version being used.
@@ -538,4 +545,9 @@ pub struct AdaptedExecuteMsg {
 pub struct AdaptedBankMsg {
     pub receiver: Addr,
     pub funds: Vec<Coin>,
+}
+
+#[cw_serde]
+pub struct V2MigrationPhaseResponse {
+    pub phase: V2MigrationPhase,
 }

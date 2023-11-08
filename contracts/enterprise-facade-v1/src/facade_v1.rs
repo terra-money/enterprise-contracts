@@ -32,7 +32,8 @@ use enterprise_facade_api::api::{
     ProposalStatus, ProposalStatusParams, ProposalStatusResponse, ProposalType,
     ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
     QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse, V2MigrationPhase,
+    V2MigrationPhaseResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -47,6 +48,7 @@ use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
 use EnterpriseFacadeError::UnsupportedOperation;
 use ExecuteV1Msg::ExecuteProposal;
 use PollRejectionReason::{QuorumAndThresholdNotReached, QuorumNotReached, ThresholdNotReached};
+use V2MigrationPhase::MigrationNotStarted;
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
 pub struct EnterpriseFacadeV1 {
@@ -263,6 +265,16 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse> {
         Ok(HasIncompleteV2MigrationResponse {
             has_incomplete_migration: false,
+        })
+    }
+
+    fn query_v2_migration_phase(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<V2MigrationPhaseResponse> {
+        // for old DAOs, migration is not started yet
+        Ok(V2MigrationPhaseResponse {
+            phase: MigrationNotStarted,
         })
     }
 

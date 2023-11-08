@@ -7,7 +7,7 @@ use crate::api::{
     ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
     StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse,
+    UserStakeParams, UserStakeResponse, V2MigrationPhaseResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
@@ -107,6 +107,9 @@ pub enum QueryMsg {
 
     #[returns(HasIncompleteV2MigrationResponse)]
     HasIncompleteV2Migration { contract: Addr },
+
+    #[returns(V2MigrationPhaseResponse)]
+    V2MigrationPhase { contract: Addr },
 
     // Adapter queries - those are designed to be called to determine which contract should be
     // called with which message to achieve the desired result

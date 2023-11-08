@@ -8,7 +8,7 @@ use enterprise_facade_api::api::{
     ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
     ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
     StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse,
+    UserStakeParams, UserStakeResponse, V2MigrationPhaseResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
@@ -116,6 +116,11 @@ pub trait EnterpriseFacade {
         &self,
         _: QueryContext,
     ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse>;
+
+    fn query_v2_migration_phase(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<V2MigrationPhaseResponse>;
 
     fn adapt_create_proposal(
         &self,
