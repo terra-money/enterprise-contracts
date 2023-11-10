@@ -45,8 +45,8 @@ type TokenConfig = {
 }
 
 task(async ({network, deployer, executor, signer, refs}) => {
-    // deployer.buildContract(ENTERPRISE);
-    // deployer.optimizeContract(ENTERPRISE);
+    deployer.buildContract(ENTERPRISE);
+    deployer.optimizeContract(ENTERPRISE);
 
     // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
@@ -54,11 +54,11 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 5, 4);
+    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 5, 5);
 
     // await instantiateDao(refs, network, executor);
 
-    await createMigrationStepsOldWarpJob(refs, network, executor, "terra1rzuvhac5jyy00avw6lk0k54gfxktgtvldkvv5kmfgshy0pnj2frqly0z88", "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 100);
+    // await createMigrationStepsOldWarpJob(refs, network, executor, "terra1rzuvhac5jyy00avw6lk0k54gfxktgtvldkvv5kmfgshy0pnj2frqly0z88", "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 100);
 
     try {
         // const enterprise_contract = "terra1mg4gvn7svq7clshyn8qt6evwsv4yjrvfpfdjjpt29tmqdlcc700srphtm3";

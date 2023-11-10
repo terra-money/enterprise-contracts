@@ -93,7 +93,7 @@
       "address": "terra15h7mdcp6yzagvz339e6unkw98duj7xel7n00yuslun0fvpjjyr8qh7yhsw"
     },
     "enterprise-facade": {
-      "codeId": "2060",
+      "codeId": "2076",
       "address": "terra1wk3nmdhf3qzv8q589pynphkujfg5k06tp5v0p633l6ynhv5l4j7segjpgu"
     },
     "enterprise-versioning": {
@@ -140,11 +140,11 @@
       "codeId": "2004"
     },
     "enterprise-facade-v1": {
-      "codeId": "2058",
+      "codeId": "2074",
       "address": "terra15mu9p4y5nwgz6l9kqyddj34dudfrlsjfk3s4wahj53vtnqpy82eqncdwpj"
     },
     "enterprise-facade-v2": {
-      "codeId": "2059",
+      "codeId": "2075",
       "address": "terra1hqck4tqkvlhgcq4ey7rals6u6jte7mscw4za02mptzrtjjve3edshm76uk"
     }
   }

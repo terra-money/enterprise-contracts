@@ -17,6 +17,8 @@
     "migrate:enterprise-factory": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_factory.ts --network testnet --signer pisco",
     "migrate:enterprise-factory:mainnet": "yarn terrariums run tasks/migrate_enterprise_factory.ts --network mainnet --signer phoenix",
     "migrate:enterprise-factory:local": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_factory.ts --network localterra --signer pisco",
+    "migrate:enterprise-facade": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_facade.ts --network testnet --signer pisco",
+    "migrate:enterprise-facade:mainnet": "yarn terrariums run tasks/migrate_enterprise_facade.ts --network mainnet --signer phoenix",
     "docker:enterprise-api": "docker build . -f apps/enterprise-api/Dockerfile -t payments/api",
     "docker:enterprise-indexers": "docker build . -f indexers/enterprise/Dockerfile -t payments/indexers",
     "postinstall": "husky install"
