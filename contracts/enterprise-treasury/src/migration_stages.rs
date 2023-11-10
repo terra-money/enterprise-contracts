@@ -7,11 +7,8 @@ pub const MIGRATION_TO_V_1_0_0_STAGE: Item<MigrationStage> = Item::new("migratio
 pub enum MigrationStage {
     /// Initial state
     MigrationNotStarted,
-    /// Stage where we migrated everything except large items (stakes and claims).
-    InitialMigrationFinished,
-    /// Stage where stakes and claims are being migrated, which possibly requires multiple steps to
-    /// resolve.
-    MigrateAssets,
+    /// Stage where we began migration, but there are still elements to be migrated.
+    MigrationInProgress,
     /// Migration of everything has been completed.
     Finalized,
 }

@@ -3,7 +3,7 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
-use crate::migration_stages::MigrationStage::{Finalized, InitialMigrationFinished, MigrateAssets};
+use crate::migration_stages::MigrationStage::Finalized;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{
@@ -45,7 +45,7 @@ use nft_staking_api::api::NftTokenId;
 use nft_staking_api::msg::Cw721HookMsg::AddClaim;
 use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::AddClaims;
-use MigrationStage::MigrationNotStarted;
+use MigrationStage::{MigrationInProgress, MigrationNotStarted};
 
 const SUBMSGS_LIMIT: u32 = 50;
 const INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT: u32 = 20;
@@ -1236,7 +1236,7 @@ pub fn finalize_initial_migration_step(ctx: &mut Context) -> EnterpriseTreasuryR
         // there were fewer messages than maximum we allow, just finalize the whole migration
         set_migration_stage_to_finalized(ctx.deps.storage)?;
     } else {
-        set_migration_stage_to_initial_step_finished(ctx.deps.storage)?;
+        set_migration_stage_to_in_progress(ctx.deps.storage)?;
     }
 
     Ok(Response::new()
@@ -1256,16 +1256,14 @@ pub fn perform_next_migration_step(
 ) -> EnterpriseTreasuryResult<Response> {
     let migration_stage = MIGRATION_TO_V_1_0_0_STAGE
         .may_load(ctx.deps.storage)?
-        .unwrap_or(InitialMigrationFinished);
+        .unwrap_or(MigrationNotStarted);
 
     match migration_stage {
         MigrationNotStarted | Finalized => {
             // not allowed to perform the operation
             Err(InvalidMigrationStage)
         }
-        InitialMigrationFinished | MigrateAssets => {
-            perform_next_migration_step_safe(ctx, submsgs_limit)
-        }
+        MigrationInProgress => perform_next_migration_step_safe(ctx, submsgs_limit),
     }
 }
 
@@ -1289,7 +1287,7 @@ fn perform_next_migration_step_safe(
     if submsgs.len() < limit as usize {
         set_migration_stage_to_finalized(ctx.deps.storage)?;
     } else {
-        set_migration_stage_to_migrate_assets(ctx.deps.storage)?;
+        set_migration_stage_to_in_progress(ctx.deps.storage)?;
     };
 
     Ok(Response::new()
@@ -1297,18 +1295,8 @@ fn perform_next_migration_step_safe(
         .add_submessages(submsgs))
 }
 
-fn set_migration_stage_to_initial_step_finished(
-    storage: &mut dyn Storage,
-) -> EnterpriseTreasuryResult<()> {
-    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &InitialMigrationFinished)?;
-
-    Ok(())
-}
-
-fn set_migration_stage_to_migrate_assets(
-    storage: &mut dyn Storage,
-) -> EnterpriseTreasuryResult<()> {
-    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &MigrateAssets)?;
+fn set_migration_stage_to_in_progress(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {
+    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &MigrationInProgress)?;
 
     Ok(())
 }
