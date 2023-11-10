@@ -26,6 +26,8 @@ const DENOM_AXL_USDT = "ibc/CBF67A2BCF6CAE343FDF251E510C8E18C361FC02B23430C12111
 const DENOM_AXL_WBTC = "ibc/05D299885B07905B6886F554B39346EA6761246076A1120B1950049B92B922DD";
 const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341C7EC6752E674";
 
+const WARP_CONTROLLER_ADDRESS = "terra1yktu77uyy67838jwf4eyutdnwu87vm6lmmg3xa8xdlessuca2kqqajeqqg";
+
 type ComponentContracts = {
     enterprise_factory_contract: string,
     enterprise_governance_contract: string,
@@ -45,8 +47,8 @@ type TokenConfig = {
 }
 
 task(async ({network, deployer, executor, signer, refs}) => {
-    deployer.buildContract(ENTERPRISE);
-    deployer.optimizeContract(ENTERPRISE);
+    // deployer.buildContract(ENTERPRISE);
+    // deployer.optimizeContract(ENTERPRISE);
 
     // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
@@ -58,7 +60,11 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await instantiateDao(refs, network, executor);
 
-    // await createMigrationStepsOldWarpJob(refs, network, executor, "terra1rzuvhac5jyy00avw6lk0k54gfxktgtvldkvv5kmfgshy0pnj2frqly0z88", "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 100);
+    // await createWarpAccount(executor, WARP_CONTROLLER_ADDRESS, 100_000_000);
+    //
+    // await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
+    //
+    // await executeWarpJob(executor, 22);
 
     try {
         // const enterprise_contract = "terra1mg4gvn7svq7clshyn8qt6evwsv4yjrvfpfdjjpt29tmqdlcc700srphtm3";
@@ -152,6 +158,22 @@ task(async ({network, deployer, executor, signer, refs}) => {
     }
 });
 
+const createWarpAccount = async(executor: Executor, warp_controller_address: string, uluna_deposit: number): Promise<void> => {
+    try {
+        await executor.execute(
+            warp_controller_address,
+            {
+                create_account: {}
+            },
+            {
+                coins: [new Coin('uluna', uluna_deposit)],
+            }
+        )
+    } catch (e) {
+        console.log(e);
+    }
+}
+
 const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, executor: Executor, warp_controller_address: string, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
     try {
         const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
@@ -186,6 +208,26 @@ const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, execu
                     reward: "20000",
                 }
             }
+        );
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+const executeWarpJob = async (executor: Executor, id: number): Promise<void> => {
+    try {
+        await executor.execute(
+            WARP_CONTROLLER_ADDRESS,
+            {
+                execute_job: {
+                    id: id.toString()
+                }
+            },
+            // {
+            //     txOptions: {
+            //         gas: "100000000"
+            //     }
+            // }
         );
     } catch (e) {
         console.log(e);
