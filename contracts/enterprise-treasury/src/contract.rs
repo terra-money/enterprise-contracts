@@ -9,7 +9,7 @@ use crate::migration::{
     governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
     perform_next_migration_step,
 };
-use crate::migration_stages::MigrationStage::Finalized;
+use crate::migration_stages::MigrationStage::{Finalized, InitialMigrationFinished, MigrateAssets};
 use crate::migration_stages::MIGRATION_TO_V_1_0_0_STAGE;
 use crate::state::{Config, CONFIG, NFT_WHITELIST};
 use crate::validate::admin_only;
@@ -368,7 +368,9 @@ pub fn query_has_incomplete_v2_migration(
 
     let has_incomplete_migration = match migration_stage {
         None => false,
-        Some(migration_stage) => migration_stage != Finalized,
+        Some(migration_stage) => {
+            migration_stage == InitialMigrationFinished || migration_stage == MigrateAssets
+        }
     };
 
     Ok(HasIncompleteV2MigrationResponse {

@@ -13,6 +13,9 @@ pub enum EnterpriseTreasuryError {
 
     #[error("Error parsing message into Cosmos message")]
     InvalidCosmosMessage,
+
+    #[error("Cannot perform that operation in the current migration stage")]
+    InvalidMigrationStage,
 }
 
 impl EnterpriseTreasuryError {

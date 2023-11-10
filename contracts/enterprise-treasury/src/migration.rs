@@ -4,7 +4,7 @@ use crate::contract::{
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
 use crate::migration_stages::MigrationStage::{Finalized, InitialMigrationFinished, MigrateAssets};
-use crate::migration_stages::MIGRATION_TO_V_1_0_0_STAGE;
+use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{
     get_height_checkpoints, get_multisig_height_checkpoints, get_multisig_seconds_checkpoints,
@@ -34,7 +34,9 @@ use enterprise_protocol::api::{
     DaoMetadata, DaoType, FinalizeInstantiationMsg, Logo, VersionMigrateMsg,
 };
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
-use enterprise_treasury_api::error::EnterpriseTreasuryError::{Std, Unauthorized};
+use enterprise_treasury_api::error::EnterpriseTreasuryError::{
+    InvalidMigrationStage, Std, Unauthorized,
+};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
 use enterprise_treasury_api::msg::ExecuteMsg::FinalizeInitialMigrationStep;
 use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
@@ -43,9 +45,10 @@ use nft_staking_api::api::NftTokenId;
 use nft_staking_api::msg::Cw721HookMsg::AddClaim;
 use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::AddClaims;
+use MigrationStage::MigrationNotStarted;
 
-const SUBMSGS_LIMIT: u32 = 200;
-const INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT: u32 = 100;
+const SUBMSGS_LIMIT: u32 = 50;
+const INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT: u32 = 20;
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -1248,6 +1251,25 @@ pub fn finalize_initial_migration_step(ctx: &mut Context) -> EnterpriseTreasuryR
 }
 
 pub fn perform_next_migration_step(
+    ctx: &mut Context,
+    submsgs_limit: Option<u32>,
+) -> EnterpriseTreasuryResult<Response> {
+    let migration_stage = MIGRATION_TO_V_1_0_0_STAGE
+        .may_load(ctx.deps.storage)?
+        .unwrap_or(InitialMigrationFinished);
+
+    match migration_stage {
+        MigrationNotStarted | Finalized => {
+            // not allowed to perform the operation
+            Err(InvalidMigrationStage)
+        }
+        InitialMigrationFinished | MigrateAssets => {
+            perform_next_migration_step_safe(ctx, submsgs_limit)
+        }
+    }
+}
+
+fn perform_next_migration_step_safe(
     ctx: &mut Context,
     submsgs_limit: Option<u32>,
 ) -> EnterpriseTreasuryResult<Response> {
