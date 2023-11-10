@@ -39,7 +39,7 @@ use enterprise_treasury_api::response::{
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
 use std::ops::Not;
-use MigrationStage::{Finalized, MigrationNotStarted};
+use MigrationStage::{MigrationCompleted, MigrationNotStarted};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-treasury";
@@ -371,7 +371,7 @@ pub fn query_has_incomplete_v2_migration(
         None => false,
         Some(migration_stage) => match migration_stage {
             MigrationInProgress => true,
-            MigrationNotStarted | Finalized => false,
+            MigrationNotStarted | MigrationCompleted => false,
         },
     };
 

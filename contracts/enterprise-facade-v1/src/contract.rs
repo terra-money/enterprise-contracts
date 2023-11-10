@@ -125,9 +125,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(contract)?;
             to_json_binary(&facade.query_has_incomplete_v2_migration(qctx)?)?
         }
-        QueryMsg::V2MigrationPhase { contract } => {
+        QueryMsg::V2MigrationStage { contract } => {
             let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_v2_migration_phase(qctx)?)?
+            to_json_binary(&facade.query_v2_migration_stage(qctx)?)?
         }
         QueryMsg::CreateProposalAdapted { contract, params } => {
             let facade = get_facade(contract)?;

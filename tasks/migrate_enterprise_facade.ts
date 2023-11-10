@@ -6,8 +6,8 @@ const ENTERPRISE_FACADE_V1 = "enterprise-facade-v1";
 const ENTERPRISE_FACADE_V2 = "enterprise-facade-v2";
 
 task(async ({ deployer, signer, refs, network }) => {
-  // deployer.buildContract(ENTERPRISE_FACADE);
-  // deployer.optimizeContract(ENTERPRISE_FACADE);
+  deployer.buildContract(ENTERPRISE_FACADE);
+  deployer.optimizeContract(ENTERPRISE_FACADE);
 
   await deployer.storeCode(ENTERPRISE_FACADE_V1);
   await waitForNewBlock();

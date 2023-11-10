@@ -10,5 +10,5 @@ pub enum MigrationStage {
     /// Stage where we began migration, but there are still elements to be migrated.
     MigrationInProgress,
     /// Migration of everything has been completed.
-    Finalized,
+    MigrationCompleted,
 }

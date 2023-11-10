@@ -497,7 +497,7 @@ pub struct ClaimsParams {
 }
 
 #[cw_serde]
-pub enum V2MigrationPhase {
+pub enum V2MigrationStage {
     MigrationNotStarted,
     MigrationInProgress,
     MigrationCompleted,
@@ -548,6 +548,6 @@ pub struct AdaptedBankMsg {
 }
 
 #[cw_serde]
-pub struct V2MigrationPhaseResponse {
-    pub phase: V2MigrationPhase,
+pub struct V2MigrationStageResponse {
+    pub stage: V2MigrationStage,
 }

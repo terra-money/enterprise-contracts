@@ -9,11 +9,11 @@ use enterprise_facade_api::api::{
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalResponse,
     ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, StakedNftsResponse,
     TotalStakedAmountResponse, TreasuryAddressResponse, UserStakeResponse,
-    V2MigrationPhaseResponse,
+    V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::{
-    ExecuteProposalAdapted, HasIncompleteV2Migration, TreasuryAddress, V2MigrationPhase,
+    ExecuteProposalAdapted, HasIncompleteV2Migration, TreasuryAddress, V2MigrationStage,
 };
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
@@ -279,12 +279,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
             )?;
             to_json_binary(&response)?
         }
-        V2MigrationPhase { contract } => {
+        V2MigrationStage { contract } => {
             let facade = get_facade(deps, contract)?;
 
-            let response: V2MigrationPhaseResponse = deps.querier.query_wasm_smart(
+            let response: V2MigrationStageResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
-                &V2MigrationPhase {
+                &V2MigrationStage {
                     contract: facade.dao_address,
                 },
             )?;

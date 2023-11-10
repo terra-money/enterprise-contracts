@@ -3,7 +3,7 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
-use crate::migration_stages::MigrationStage::Finalized;
+use crate::migration_stages::MigrationStage::MigrationCompleted;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{
@@ -1234,7 +1234,7 @@ pub fn finalize_initial_migration_step(ctx: &mut Context) -> EnterpriseTreasuryR
 
     if submsgs_count < INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT as usize {
         // there were fewer messages than maximum we allow, just finalize the whole migration
-        set_migration_stage_to_finalized(ctx.deps.storage)?;
+        set_migration_stage_to_completed(ctx.deps.storage)?;
     } else {
         set_migration_stage_to_in_progress(ctx.deps.storage)?;
     }
@@ -1259,7 +1259,7 @@ pub fn perform_next_migration_step(
         .unwrap_or(MigrationNotStarted);
 
     match migration_stage {
-        MigrationNotStarted | Finalized => {
+        MigrationNotStarted | MigrationCompleted => {
             // not allowed to perform the operation
             Err(InvalidMigrationStage)
         }
@@ -1285,7 +1285,7 @@ fn perform_next_migration_step_safe(
         finalize_membership_contract_submsgs(ctx.deps.branch(), membership_contract, limit)?;
 
     if submsgs.len() < limit as usize {
-        set_migration_stage_to_finalized(ctx.deps.storage)?;
+        set_migration_stage_to_completed(ctx.deps.storage)?;
     } else {
         set_migration_stage_to_in_progress(ctx.deps.storage)?;
     };
@@ -1301,9 +1301,9 @@ fn set_migration_stage_to_in_progress(storage: &mut dyn Storage) -> EnterpriseTr
     Ok(())
 }
 
-fn set_migration_stage_to_finalized(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {
+fn set_migration_stage_to_completed(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {
     remove_old_storage_data(storage)?;
-    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &Finalized)?;
+    MIGRATION_TO_V_1_0_0_STAGE.save(storage, &MigrationCompleted)?;
 
     Ok(())
 }
