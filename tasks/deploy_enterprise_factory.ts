@@ -62,7 +62,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await createWarpAccount(executor, WARP_CONTROLLER_ADDRESS, 100_000_000);
     //
-    // await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
+    await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
     //
     // await executeWarpJob(executor, 22);
 
@@ -199,7 +199,7 @@ const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, execu
                     name: "Test migration",
                     description: "Migrates a 'stuck' migration of a DAO",
                     labels: [],
-                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_in_progress\"},\"op\":\"eq\"}}}",
+                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_not_started\"},\"op\":\"neq\"}}}",
                     msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
                     // terminate_condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_completed\"},\"op\":\"eq\"}}}",
                     vars: vars,
