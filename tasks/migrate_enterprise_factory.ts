@@ -19,8 +19,9 @@ task(async ({ deployer, signer, refs, network }) => {
     contract.address!,
     parseInt(contract.codeId!),
     {
+      admin: signer.key.accAddress,
       enterprise_versioning_addr: refs.getAddress(network, ENTERPRISE_VERSIONING),
-      cw721_code_id: refs.getCodeId(network, CW721_METADATA_ONCHAIN),
+      cw721_code_id: parseInt(refs.getCodeId(network, CW721_METADATA_ONCHAIN)),
     }
   );
 
