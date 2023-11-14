@@ -8,7 +8,7 @@ use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
 use crate::nft_staking::NFT_STAKES;
 use crate::staking::{
     get_height_checkpoints, get_multisig_height_checkpoints, get_multisig_seconds_checkpoints,
-    get_seconds_checkpoints, load_total_staked, CW20_STAKES,
+    get_seconds_checkpoints, CW20_STAKES,
 };
 use crate::state::{Config, CONFIG};
 use common::commons::ModifyValue;
@@ -47,7 +47,7 @@ use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::AddClaims;
 use MigrationStage::{MigrationInProgress, MigrationNotStarted};
 
-const SUBMSGS_LIMIT: u32 = 50;
+const DEFAULT_SUBMSGS_LIMIT: u32 = 50;
 const INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT: u32 = 20;
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
@@ -390,6 +390,7 @@ struct MigrationInfo {
     pub enterprise_outposts_contract: Option<Addr>,
     pub membership_contract: Option<Addr>,
     pub council_membership_contract: Option<Addr>,
+    pub initial_submsgs_limit: Option<u32>,
 }
 const MIGRATION_INFO: Item<MigrationInfo> = Item::new("migration_info");
 
@@ -436,7 +437,11 @@ pub struct DaoCouncil {
     pub threshold: Decimal,
 }
 
-pub fn migrate_to_rewrite(deps: DepsMut, env: Env) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
+pub fn migrate_to_rewrite(
+    deps: DepsMut,
+    env: Env,
+    initial_submsgs_limit: Option<u32>,
+) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let dao_code_version = DAO_CODE_VERSION.load(deps.storage)?;
 
     if dao_code_version < Uint64::from(5u8) {
@@ -475,6 +480,7 @@ pub fn migrate_to_rewrite(deps: DepsMut, env: Env) -> EnterpriseTreasuryResult<V
             enterprise_outposts_contract: None,
             membership_contract: None,
             council_membership_contract: None,
+            initial_submsgs_limit,
         },
     )?;
 
@@ -885,24 +891,42 @@ fn finalize_membership_contract_submsgs(
         DaoType::Token => {
             let cw20_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
-            let migrate_stakes_submsg = migrate_cw20_stakes_submsg(
-                deps.branch(),
-                cw20_contract.clone(),
-                membership_contract.clone(),
-            )?;
+            let submsgs = match limit {
+                0 => vec![],
+                1 => {
+                    let submsg = migrate_and_clear_cw20_stakes_submsg(
+                        deps.branch(),
+                        cw20_contract.clone(),
+                        membership_contract.clone(),
+                    )
+                    .transpose()
+                    .or_else(|| {
+                        migrate_and_clear_cw20_claims_submsg(
+                            deps,
+                            cw20_contract,
+                            membership_contract,
+                        )
+                        .transpose()
+                    })
+                    .transpose()?;
+                    vec![submsg]
+                }
+                _ => vec![
+                    migrate_and_clear_cw20_stakes_submsg(
+                        deps.branch(),
+                        cw20_contract.clone(),
+                        membership_contract.clone(),
+                    )?,
+                    migrate_and_clear_cw20_claims_submsg(deps, cw20_contract, membership_contract)?,
+                ],
+            };
 
-            let migrate_claims_submsg =
-                migrate_cw20_claims_submsg(deps, cw20_contract, membership_contract)?;
-
-            vec![migrate_stakes_submsg, migrate_claims_submsg]
-                .into_iter()
-                .flatten()
-                .collect()
+            submsgs.into_iter().flatten().collect()
         }
         DaoType::Nft => {
             let cw721_contract = DAO_MEMBERSHIP_CONTRACT.load(deps.storage)?;
 
-            let mut migrate_stakes_submsgs = migrate_cw721_stakes_submsgs(
+            let mut migrate_stakes_submsgs = migrate_and_clear_cw721_stakes_submsgs(
                 deps.branch(),
                 cw721_contract.clone(),
                 membership_contract.clone(),
@@ -911,7 +935,7 @@ fn finalize_membership_contract_submsgs(
 
             let remaining_limit = limit - migrate_stakes_submsgs.len() as u32;
 
-            let mut claim_submsgs = migrate_cw721_claims_submsgs(
+            let mut claim_submsgs = migrate_and_clear_cw721_claims_submsgs(
                 deps,
                 cw721_contract,
                 membership_contract,
@@ -928,38 +952,43 @@ fn finalize_membership_contract_submsgs(
     Ok(finalize_membership_msgs)
 }
 
-fn migrate_cw20_stakes_submsg(
+fn migrate_and_clear_cw20_stakes_submsg(
     deps: DepsMut,
     cw20_contract: Addr,
     membership_contract: Addr,
 ) -> EnterpriseTreasuryResult<Option<SubMsg>> {
-    let total_staked = load_total_staked(deps.storage)?;
-
-    if total_staked.is_zero() {
-        return Ok(None);
-    }
+    let mut total_stakes = Uint128::zero();
 
     let stakers = CW20_STAKES
         .range(deps.storage, None, None, Ascending)
         .map(|res| {
-            res.map(|(user, amount)| UserStake {
-                user: user.to_string(),
-                staked_amount: amount,
+            res.map(|(user, amount)| {
+                total_stakes += amount;
+                UserStake {
+                    user: user.to_string(),
+                    staked_amount: amount,
+                }
             })
         })
         .collect::<StdResult<Vec<UserStake>>>()?;
 
     CW20_STAKES.clear(deps.storage);
 
-    Ok(Some(SubMsg::new(
-        Asset::cw20(cw20_contract, total_staked).send_msg(
-            membership_contract,
-            to_json_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers { stakers })?,
-        )?,
-    )))
+    if total_stakes.is_zero() {
+        Ok(None)
+    } else {
+        Ok(Some(SubMsg::new(
+            Asset::cw20(cw20_contract, total_stakes).send_msg(
+                membership_contract,
+                to_json_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers {
+                    stakers,
+                })?,
+            )?,
+        )))
+    }
 }
 
-fn migrate_cw20_claims_submsg(
+fn migrate_and_clear_cw20_claims_submsg(
     deps: DepsMut,
     cw20_contract: Addr,
     membership_contract: Addr,
@@ -1008,7 +1037,7 @@ fn migrate_cw20_claims_submsg(
     }
 }
 
-fn migrate_cw721_stakes_submsgs(
+fn migrate_and_clear_cw721_stakes_submsgs(
     deps: DepsMut,
     cw721_contract: Addr,
     membership_contract: Addr,
@@ -1048,7 +1077,7 @@ fn migrate_cw721_stakes_submsgs(
     Ok(migrate_stakes_submsgs)
 }
 
-fn migrate_cw721_claims_submsgs(
+fn migrate_and_clear_cw721_claims_submsgs(
     deps: DepsMut,
     cw721_contract: Addr,
     membership_contract: Addr,
@@ -1224,16 +1253,20 @@ pub fn finalize_initial_migration_step(ctx: &mut Context) -> EnterpriseTreasuryR
         vec![],
     )?);
 
+    let initial_submsgs_limit = migration_info
+        .initial_submsgs_limit
+        .unwrap_or(INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT);
+
     let finalize_membership_contract_submsgs = finalize_membership_contract_submsgs(
         ctx.deps.branch(),
         membership_contract,
-        INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT,
+        initial_submsgs_limit,
     )?;
 
     let submsgs_count = finalize_membership_contract_submsgs.len();
 
-    if submsgs_count < INITIAL_MIGRATION_STEP_SUBMSGS_LIMIT as usize {
-        // there were fewer messages than maximum we allow, just finalize the whole migration
+    if submsgs_count < initial_submsgs_limit as usize {
+        // there were fewer messages than the maximum we allow, just finalize the whole migration
         set_migration_stage_to_completed(ctx.deps.storage)?;
     } else {
         set_migration_stage_to_in_progress(ctx.deps.storage)?;
@@ -1279,7 +1312,7 @@ fn perform_next_migration_step_safe(
                 "invalid state - missing membership address",
             )))?;
 
-    let limit = submsgs_limit.unwrap_or(SUBMSGS_LIMIT);
+    let limit = submsgs_limit.unwrap_or(DEFAULT_SUBMSGS_LIMIT);
 
     let submsgs =
         finalize_membership_contract_submsgs(ctx.deps.branch(), membership_contract, limit)?;

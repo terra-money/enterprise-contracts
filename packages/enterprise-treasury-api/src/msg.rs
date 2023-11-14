@@ -48,4 +48,6 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub initial_submsgs_limit: Option<u32>,
+}

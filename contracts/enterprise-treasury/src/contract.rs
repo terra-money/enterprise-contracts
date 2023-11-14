@@ -381,14 +381,10 @@ pub fn query_has_incomplete_v2_migration(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(
-    mut deps: DepsMut,
-    env: Env,
-    _msg: MigrateMsg,
-) -> EnterpriseTreasuryResult<Response> {
+pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> EnterpriseTreasuryResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let submsgs = migrate_to_rewrite(deps.branch(), env)?;
+    let submsgs = migrate_to_rewrite(deps.branch(), env, msg.initial_submsgs_limit)?;
 
     Ok(Response::new()
         .add_attribute("action", "migrate")

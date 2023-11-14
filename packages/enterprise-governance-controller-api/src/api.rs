@@ -26,7 +26,7 @@ pub struct ProposalInfo {
 }
 
 impl ProposalInfo {
-    pub fn past_earliest_execution(&self, now: Timestamp) -> bool {
+    pub fn is_past_earliest_execution(&self, now: Timestamp) -> bool {
         self.earliest_execution
             .map(|earliest_execution| now >= earliest_execution)
             .unwrap_or(true)

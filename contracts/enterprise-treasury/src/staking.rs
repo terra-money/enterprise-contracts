@@ -1,5 +1,5 @@
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Deps, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
 use cw_storage_plus::{Map, SnapshotItem, Strategy};
 use membership_common_api::api::TotalWeightCheckpoint;
 
@@ -31,10 +31,6 @@ const TOTAL_MULTISIG_WEIGHT_AT_HEIGHT: SnapshotItem<Uint128> = SnapshotItem::new
     "total_multisig_weight_changelog_height",
     Strategy::EveryBlock,
 );
-
-pub fn load_total_staked(store: &dyn Storage) -> StdResult<Uint128> {
-    TOTAL_STAKED_HEIGHT_SNAPSHOT.load(store)
-}
 
 pub fn get_seconds_checkpoints(deps: Deps) -> StdResult<Vec<TotalWeightCheckpoint>> {
     get_checkpoints(deps, TOTAL_STAKED_SECONDS_SNAPSHOT)

@@ -93,9 +93,7 @@ use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
-use PollRejectionReason::{
-    IsVetoOutcome, QuorumAndThresholdNotReached, QuorumNotReached, ThresholdNotReached,
-};
+use PollRejectionReason::{IsRejectingOutcome, IsVetoOutcome, QuorumNotReached};
 use ProposalAction::{DeployCrossChainTreasury, ExecuteTreasuryMsgs};
 
 // version info for migration info
@@ -1668,9 +1666,9 @@ fn fix_poll_status(
 
                     let allows_early_execution =
                         allows_early_ending(deps, &proposal_info.proposal_type)?;
-                    let past_earliest_execution = proposal_info.past_earliest_execution(now);
+                    let is_past_earliest_execution = proposal_info.is_past_earliest_execution(now);
 
-                    if allows_early_execution && past_earliest_execution {
+                    if allows_early_execution && is_past_earliest_execution {
                         let status = simulate_end_proposal_status(
                             deps,
                             poll_id,
@@ -1683,15 +1681,12 @@ fn fix_poll_status(
                         match status.status {
                             PollStatus::InProgress { .. } => ProposalStatus::InProgress,
                             PollStatus::Passed { .. } => ProposalStatus::InProgressCanExecuteEarly,
-                            PollStatus::Rejected { reason } => {
-                                match reason {
-                                    // if any of the quorum or threshold not reached, cannot early execute
-                                    QuorumNotReached
-                                    | ThresholdNotReached
-                                    | QuorumAndThresholdNotReached => ProposalStatus::InProgress,
-                                    _ => ProposalStatus::InProgressCanExecuteEarly,
+                            PollStatus::Rejected { reason } => match reason {
+                                IsRejectingOutcome | IsVetoOutcome => {
+                                    ProposalStatus::InProgressCanExecuteEarly
                                 }
-                            }
+                                _ => ProposalStatus::InProgress,
+                            },
                         }
                     } else {
                         ProposalStatus::InProgress

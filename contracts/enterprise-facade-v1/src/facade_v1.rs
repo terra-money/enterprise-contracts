@@ -538,7 +538,9 @@ impl EnterpriseFacadeV1 {
                     Ok(UpgradeDao(UpgradeDaoV1Msg {
                         // send enterprise_treasury_code_id, since it takes the address of old enterprise contract
                         new_dao_code_id: version_1_0_0_info.version.enterprise_treasury_code_id,
-                        migrate_msg: to_json_binary(&enterprise_treasury_api::msg::MigrateMsg {})?,
+                        migrate_msg: to_json_binary(&enterprise_treasury_api::msg::MigrateMsg {
+                            initial_submsgs_limit: None,
+                        })?,
                     }))
                 } else {
                     // we're migrating old DAO to a newer version of old DAO code
