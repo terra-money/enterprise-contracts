@@ -21,9 +21,11 @@ const OLD_CONFIG: Item<OldConfig> = Item::new("config");
 pub fn migrate_config(deps: DepsMut, msg: MigrateMsg) -> DaoResult<()> {
     let old_config = OLD_CONFIG.load(deps.storage)?;
 
+    let admin = deps.api.addr_validate(&msg.admin)?;
     let enterprise_versioning = deps.api.addr_validate(&msg.enterprise_versioning_addr)?;
 
     let new_config = Config {
+        admin,
         enterprise_versioning,
         cw20_code_id: msg.cw20_code_id.unwrap_or(old_config.cw20_code_id),
         cw721_code_id: msg.cw721_code_id.unwrap_or(old_config.cw721_code_id),

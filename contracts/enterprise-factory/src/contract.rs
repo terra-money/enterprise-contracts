@@ -177,10 +177,18 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
 fn update_config(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: UpdateConfigMsg,
 ) -> DaoResult<Response> {
     let mut config = CONFIG.load(deps.storage)?;
+
+    if config.admin != info.sender {
+        return Err(Unauthorized);
+    }
+
+    if let Some(new_admin) = msg.new_admin {
+        config.admin = deps.api.addr_validate(&new_admin)?;
+    }
 
     if let Some(new_enterprise_versioning) = msg.new_enterprise_versioning {
         config.enterprise_versioning = deps.api.addr_validate(&new_enterprise_versioning)?;

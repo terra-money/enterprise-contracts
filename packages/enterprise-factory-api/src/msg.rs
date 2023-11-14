@@ -28,6 +28,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct MigrateMsg {
+    pub admin: String,
     pub enterprise_versioning_addr: String,
     pub cw20_code_id: Option<u64>,
     pub cw721_code_id: Option<u64>,

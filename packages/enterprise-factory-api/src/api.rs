@@ -9,6 +9,7 @@ use multisig_membership_api::api::UserWeight;
 
 #[cw_serde]
 pub struct Config {
+    pub admin: Addr,
     pub enterprise_versioning: Addr,
     pub cw20_code_id: u64,
     pub cw721_code_id: u64,
