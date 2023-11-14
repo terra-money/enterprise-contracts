@@ -1,6 +1,6 @@
 use crate::state::ProposalExecutabilityStatus::{Draw, NotExecutable, Passed, Rejected};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw_storage_plus::Item;
 use enterprise_governance_controller_api::api::ProposalInfo;
 use enterprise_governance_controller_api::api::{CouncilGovConfig, GovConfig, ProposalId};
@@ -69,3 +69,5 @@ pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract");
 pub const GOV_CONFIG: Item<GovConfig> = Item::new("gov_config");
 
 pub const COUNCIL_GOV_CONFIG: Item<Option<CouncilGovConfig>> = Item::new("council_gov_config");
+
+pub const CREATION_DATE: Item<Timestamp> = Item::new("creation_date");

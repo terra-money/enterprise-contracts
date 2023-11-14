@@ -1,6 +1,6 @@
 use crate::proposals::{get_proposal_actions, set_proposal_executed, PROPOSAL_INFOS};
 use crate::state::{
-    ProposalBeingVotedOn, ProposalExecutabilityStatus, State, COUNCIL_GOV_CONFIG,
+    ProposalBeingVotedOn, ProposalExecutabilityStatus, State, COUNCIL_GOV_CONFIG, CREATION_DATE,
     ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
 };
 use crate::validate::{
@@ -111,7 +111,7 @@ pub const MAX_QUERY_LIMIT: u8 = 100;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> GovernanceControllerResult<Response> {
@@ -138,6 +138,8 @@ pub fn instantiate(
     for (proposal_id, proposal_info) in msg.proposal_infos.unwrap_or_default() {
         PROPOSAL_INFOS.save(deps.storage, proposal_id, &proposal_info)?;
     }
+
+    CREATION_DATE.save(deps.storage, &env.block.time)?;
 
     Ok(instantiate_response())
 }
@@ -308,7 +310,7 @@ fn create_proposal(
     deposit: Option<ProposalDeposit>,
     proposer: Addr,
 ) -> GovernanceControllerResult<Response> {
-    assert_no_incomplete_v2_migration(ctx.deps.as_ref())?;
+    assert_no_recent_incomplete_v2_migration(ctx.deps.as_ref(), ctx.env.block.time)?;
 
     unrestricted_users_only(ctx.deps.as_ref(), proposer.to_string())?;
 
@@ -480,7 +482,7 @@ fn create_poll(
 }
 
 fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
-    assert_no_incomplete_v2_migration(ctx.deps.as_ref())?;
+    assert_no_recent_incomplete_v2_migration(ctx.deps.as_ref(), ctx.env.block.time)?;
 
     unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
 
@@ -615,7 +617,7 @@ fn execute_proposal(
     // check if proposal type execution is allowed, in the context of ongoing migrations
     match proposal_info.proposal_type {
         General => {
-            assert_no_incomplete_v2_migration(ctx.deps.as_ref())?;
+            assert_no_recent_incomplete_v2_migration(ctx.deps.as_ref(), ctx.env.block.time)?;
         }
         Council => {
             // no-op, those are allowed even mid-migration
@@ -1893,11 +1895,22 @@ fn query_has_incomplete_migration(deps: Deps) -> GovernanceControllerResult<bool
     Ok(has_incomplete_migration.has_incomplete_migration)
 }
 
-fn assert_no_incomplete_v2_migration(deps: Deps) -> GovernanceControllerResult<()> {
+fn assert_no_recent_incomplete_v2_migration(
+    deps: Deps,
+    now: Timestamp,
+) -> GovernanceControllerResult<()> {
     let has_incomplete_migration = query_has_incomplete_migration(deps)?;
 
     if has_incomplete_migration {
-        Err(HasIncompleteV2Migration)
+        let creation_date = CREATION_DATE.load(deps.storage)?;
+
+        // we only block the actions if the migration was recently started
+        // starting point of migration is determined by this contract's creation date
+        if creation_date.plus_days(3) < now {
+            Err(HasIncompleteV2Migration)
+        } else {
+            Ok(())
+        }
     } else {
         Ok(())
     }
