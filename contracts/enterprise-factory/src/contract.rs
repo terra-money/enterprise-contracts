@@ -749,7 +749,7 @@ pub fn query_is_enterprise_code_id(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    migrate_config(deps.branch(), msg.enterprise_versioning_addr.clone())?;
+    migrate_config(deps.branch(), msg.clone())?;
 
     // for backwards compatibility (so that old DAOs can migrate to 1.0.0) we need to store
     // the code ID for 1.0.0

@@ -19,6 +19,9 @@ const MULTISIG_MEMBERSHIP = "multisig-membership";
 const TOKEN_STAKING_MEMBERSHIP = "token-staking-membership";
 const NFT_STAKING_MEMBERSHIP = "nft-staking-membership";
 
+const CW20_BASE = "cw20_base";
+const CW721_METADATA_ONCHAIN = "cw721_metadata_onchain";
+
 // assets
 const DENOM_LUNA = "uluna";
 const DENOM_AXL_USDC = "ibc/B3504E092456BA618CC28AC671A71FB08C6CA0FD0BE7C8A5B5A3E2DD933CC9E4";
@@ -62,7 +65,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await createWarpAccount(executor, WARP_CONTROLLER_ADDRESS, 100_000_000);
     //
-    await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
+    // await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
     //
     // await executeWarpJob(executor, 22);
 
@@ -390,16 +393,16 @@ const deployEnterpriseVersioning = async (refs: Refs, network: string, deployer:
 }
 
 const deployEnterpriseFactory = async (refs: Refs, network: string, deployer: Deployer, signer: Signer): Promise<void> => {
-    const enterpriseVersioning = refs.getContract(network, ENTERPRISE_VERSIONING);
-    const cw20CodeId = refs.getContract(network, "cw20_base").codeId;
-    const cw721CodeId = refs.getContract(network, "cw721_base").codeId;
+    const enterpriseVersioning = refs.getAddress(network, ENTERPRISE_VERSIONING);
+    const cw20CodeId = refs.getCodeId(network, CW20_BASE);
+    const cw721CodeId = refs.getCodeId(network, CW721_METADATA_ONCHAIN);
 
     await deployer.storeCode(ENTERPRISE_FACTORY);
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
     const factoryInstantiateMsg = {
         config: {
-            enterprise_versioning: enterpriseVersioning.address,
+            enterprise_versioning: enterpriseVersioning,
             cw20_code_id: parseInt(cw20CodeId),
             cw721_code_id: parseInt(cw721CodeId),
         },

@@ -1,24 +1,13 @@
 import { MsgMigrateContract } from "@terra-money/terra.js";
 import task, { info } from "@terra-money/terrariums";
 
-const ENTERPRISE = "enterprise";
-const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_FACTORY = "enterprise-factory";
 const ENTERPRISE_VERSIONING = "enterprise-versioning";
-const FUNDS_DISTRIBUTOR = "funds-distributor";
+const CW721_METADATA_ONCHAIN = "cw721_metadata_onchain";
 
 task(async ({ deployer, signer, refs, network }) => {
   // deployer.buildContract(ENTERPRISE);
   // deployer.optimizeContract(ENTERPRISE);
-
-  // const enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
-  // await new Promise((resolve) => setTimeout(resolve, 5000));
-  //
-  // const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
-  // await new Promise((resolve) => setTimeout(resolve, 5000));
-  //
-  // const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
-  // await new Promise((resolve) => setTimeout(resolve, 5000));
   //
   await deployer.storeCode(ENTERPRISE_FACTORY);
   await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -30,14 +19,10 @@ task(async ({ deployer, signer, refs, network }) => {
     contract.address!,
     parseInt(contract.codeId!),
     {
-      enterprise_versioning_addr: refs.getAddress(network, ENTERPRISE_VERSIONING)
+      enterprise_versioning_addr: refs.getAddress(network, ENTERPRISE_VERSIONING),
+      cw721_code_id: refs.getCodeId(network, CW721_METADATA_ONCHAIN),
     }
   );
-
-  // console.log("enterpriseFactoryCodeId", contract.codeId);
-  // console.log("enterpriseCodeId", enterpriseCodeId);
-  // console.log("enterpriseGovernanceCodeId", enterpriseGovernanceCodeId);
-  // console.log("fundsDistributorCodeId", fundsDistributorCodeId);
 
   try {
     let tx = await signer.createAndSignTx({
