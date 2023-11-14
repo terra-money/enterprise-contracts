@@ -82,6 +82,9 @@
     },
     "enterprise-outposts": {
       "codeId": "11501"
+    },
+    "cw721_metadata_onchain": {
+      "codeId": "11801"
     }
   },
   "mainnet": {
@@ -146,6 +149,9 @@
     "enterprise-facade-v2": {
       "codeId": "2075",
       "address": "terra1hqck4tqkvlhgcq4ey7rals6u6jte7mscw4za02mptzrtjjve3edshm76uk"
+    },
+    "cw721_metadata_onchain": {
+      "codeId": "2111"
     }
   }
 }
