@@ -44,9 +44,9 @@ use enterprise_governance_controller_api::api::{
     UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    CustomError, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil,
-    NoSuchProposal, NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted,
-    ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
+    CustomError, DuplicateNftDeposit, HasIncompleteV2Migration, InvalidCosmosMessage,
+    InvalidDepositType, NoDaoCouncil, NoSuchProposal, NoVotesAvailable, NoVotingPower,
+    ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
     UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
@@ -68,7 +68,8 @@ use enterprise_protocol::api::{
 };
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
 use enterprise_treasury_api::api::{
-    ExecuteCosmosMsgsMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, SpendMsg, UpdateAssetWhitelistMsg,
+    UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::msg::ExecuteMsg::{ExecuteCosmosMsgs, Spend};
 use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
@@ -307,6 +308,8 @@ fn create_proposal(
     deposit: Option<ProposalDeposit>,
     proposer: Addr,
 ) -> GovernanceControllerResult<Response> {
+    assert_no_incomplete_v2_migration(ctx.deps.as_ref())?;
+
     unrestricted_users_only(ctx.deps.as_ref(), proposer.to_string())?;
 
     let gov_config = GOV_CONFIG.load(ctx.deps.storage)?;
@@ -477,6 +480,8 @@ fn create_poll(
 }
 
 fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
+    assert_no_incomplete_v2_migration(ctx.deps.as_ref())?;
+
     unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
 
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
@@ -606,6 +611,16 @@ fn execute_proposal(
     let proposal_info = PROPOSAL_INFOS
         .may_load(ctx.deps.storage, msg.proposal_id)?
         .ok_or(NoSuchProposal)?;
+
+    // check if proposal type execution is allowed, in the context of ongoing migrations
+    match proposal_info.proposal_type {
+        General => {
+            assert_no_incomplete_v2_migration(ctx.deps.as_ref())?;
+        }
+        Council => {
+            // no-op, those are allowed even mid-migration
+        }
+    }
 
     if proposal_info.executed_at.is_some() {
         return Err(ProposalAlreadyExecuted);
@@ -1865,6 +1880,27 @@ fn query_enterprise_outposts_addr(deps: Deps) -> GovernanceControllerResult<Addr
 
 fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.membership_contract)
+}
+
+fn query_has_incomplete_migration(deps: Deps) -> GovernanceControllerResult<bool> {
+    let treasury_address = query_enterprise_treasury_addr(deps)?;
+    let has_incomplete_migration: HasIncompleteV2MigrationResponse =
+        deps.querier.query_wasm_smart(
+            treasury_address.to_string(),
+            &enterprise_treasury_api::msg::QueryMsg::HasIncompleteV2Migration {},
+        )?;
+
+    Ok(has_incomplete_migration.has_incomplete_migration)
+}
+
+fn assert_no_incomplete_v2_migration(deps: Deps) -> GovernanceControllerResult<()> {
+    let has_incomplete_migration = query_has_incomplete_migration(deps)?;
+
+    if has_incomplete_migration {
+        Err(HasIncompleteV2Migration)
+    } else {
+        Ok(())
+    }
 }
 
 /// Query the membership contract for its TokenConfig.

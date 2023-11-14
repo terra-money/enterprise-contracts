@@ -32,6 +32,9 @@ pub enum GovernanceControllerError {
     #[error("The DAO does not have a council specified")]
     NoDaoCouncil,
 
+    #[error("Cannot perform this while contract migration is ongoing")]
+    HasIncompleteV2Migration,
+
     #[error("Proposal action {action} is not supported in council proposals")]
     UnsupportedCouncilProposalAction { action: ProposalActionType },
 
