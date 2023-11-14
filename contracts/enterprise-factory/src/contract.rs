@@ -30,12 +30,13 @@ use cw_utils::parse_reply_instantiate_data;
 use enterprise_factory_api::api::{
     AllDaosResponse, ConfigResponse, CreateDaoMembershipMsg, CreateDaoMsg, DaoRecord,
     EnterpriseCodeIdsMsg, EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg,
-    IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
+    IsEnterpriseCodeIdResponse, QueryAllDaosMsg, UpdateConfigMsg,
 };
 use enterprise_factory_api::msg::ExecuteMsg::FinalizeDaoCreation;
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_factory_api::response::{
-    execute_create_dao_response, execute_finalize_dao_creation_response, instantiate_response,
+    execute_create_dao_response, execute_finalize_dao_creation_response,
+    execute_update_config_response, instantiate_response,
 };
 use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::error::DaoError::{MultisigDaoWithNoInitialMembers, Unauthorized};
@@ -49,7 +50,7 @@ use itertools::Itertools;
 use CreateDaoMembershipMsg::{
     ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewDenom, NewMultisig,
 };
-use ExecuteMsg::CreateDao;
+use ExecuteMsg::{CreateDao, UpdateConfig};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-factory";
@@ -106,6 +107,7 @@ pub fn instantiate(
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DaoResult<Response> {
     match msg {
         CreateDao(msg) => create_dao(deps, env, *msg),
+        UpdateConfig(msg) => update_config(deps, env, info, msg),
         FinalizeDaoCreation {} => finalize_dao_creation(deps, env, info),
     }
 }
@@ -170,6 +172,31 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
     );
 
     Ok(execute_create_dao_response().add_submessage(create_dao_submsg))
+}
+
+fn update_config(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    msg: UpdateConfigMsg,
+) -> DaoResult<Response> {
+    let mut config = CONFIG.load(deps.storage)?;
+
+    if let Some(new_enterprise_versioning) = msg.new_enterprise_versioning {
+        config.enterprise_versioning = deps.api.addr_validate(&new_enterprise_versioning)?;
+    }
+
+    if let Some(new_cw20_code_id) = msg.new_cw20_code_id {
+        config.cw20_code_id = new_cw20_code_id;
+    }
+
+    if let Some(new_cw721_code_id) = msg.new_cw721_code_id {
+        config.cw721_code_id = new_cw721_code_id;
+    }
+
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(execute_update_config_response())
 }
 
 fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResult<Response> {

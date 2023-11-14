@@ -40,6 +40,14 @@ pub struct CreateDaoMsg {
 }
 
 #[cw_serde]
+pub struct UpdateConfigMsg {
+    pub new_admin: Option<String>,
+    pub new_enterprise_versioning: Option<String>,
+    pub new_cw20_code_id: Option<u64>,
+    pub new_cw721_code_id: Option<u64>,
+}
+
+#[cw_serde]
 pub enum CreateDaoMembershipMsg {
     NewDenom(NewDenomMembershipMsg),
     ImportCw20(ImportCw20MembershipMsg),

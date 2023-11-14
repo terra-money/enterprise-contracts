@@ -8,6 +8,10 @@ pub fn execute_create_dao_response() -> Response {
     Response::new().add_attribute("action", "create_dao")
 }
 
+pub fn execute_update_config_response() -> Response {
+    Response::new().add_attribute("action", "update_config")
+}
+
 pub fn execute_finalize_dao_creation_response(
     enterprise_contract: String,
     enterprise_treasury_contract: String,
