@@ -191,20 +191,6 @@ fn update_config(
     }
 
     if let Some(new_enterprise_versioning) = msg.new_enterprise_versioning {
-        // remove the old version 1.0.0 code ID as valid Enterprise code ID
-        let old_version_1_0_0_code_id =
-            query_version_1_0_0_info(deps.as_ref(), config.enterprise_versioning.to_string())?
-                .version
-                .enterprise_treasury_code_id;
-        ENTERPRISE_CODE_IDS.remove(deps.storage, old_version_1_0_0_code_id);
-
-        // store the new 1.0.0 code ID for backwards compatibility
-        let new_version_1_0_0_code_id =
-            query_version_1_0_0_info(deps.as_ref(), new_enterprise_versioning.clone())?
-                .version
-                .enterprise_treasury_code_id;
-        ENTERPRISE_CODE_IDS.save(deps.storage, new_version_1_0_0_code_id, &())?;
-
         config.enterprise_versioning = deps.api.addr_validate(&new_enterprise_versioning)?;
     }
 
@@ -790,7 +776,20 @@ pub fn query_is_enterprise_code_id(
     deps: Deps,
     msg: IsEnterpriseCodeIdMsg,
 ) -> DaoResult<IsEnterpriseCodeIdResponse> {
-    let is_enterprise_code_id = ENTERPRISE_CODE_IDS.has(deps.storage, msg.code_id.u64());
+    let contains_enterprise_code_id = ENTERPRISE_CODE_IDS.has(deps.storage, msg.code_id.u64());
+
+    let is_enterprise_code_id = if contains_enterprise_code_id {
+        true
+    } else {
+        // if the given code ID is not present in this contract's state,
+        // check if it's treasury code ID for version 1.0.0
+        let enterprise_versioning = CONFIG.load(deps.storage)?.enterprise_versioning;
+
+        let version_1_0_0 = query_version_1_0_0_info(deps, enterprise_versioning.to_string())?;
+
+        version_1_0_0.version.enterprise_treasury_code_id == msg.code_id.u64()
+    };
+
     Ok(IsEnterpriseCodeIdResponse {
         is_enterprise_code_id,
     })
@@ -815,18 +814,7 @@ fn query_version_1_0_0_info(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    migrate_config(deps.branch(), msg.clone())?;
-
-    // for backwards compatibility (so that old DAOs can migrate to 1.0.0) we need to store
-    // the code ID for 1.0.0
-    let version_1_response =
-        query_version_1_0_0_info(deps.as_ref(), msg.enterprise_versioning_addr)?;
-
-    ENTERPRISE_CODE_IDS.save(
-        deps.storage,
-        version_1_response.version.enterprise_treasury_code_id,
-        &(),
-    )?;
+    migrate_config(deps.branch(), msg)?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
