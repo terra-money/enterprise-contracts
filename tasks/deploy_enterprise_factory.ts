@@ -29,8 +29,6 @@ const DENOM_AXL_USDT = "ibc/CBF67A2BCF6CAE343FDF251E510C8E18C361FC02B23430C12111
 const DENOM_AXL_WBTC = "ibc/05D299885B07905B6886F554B39346EA6761246076A1120B1950049B92B922DD";
 const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341C7EC6752E674";
 
-const WARP_CONTROLLER_ADDRESS = "terra1yktu77uyy67838jwf4eyutdnwu87vm6lmmg3xa8xdlessuca2kqqajeqqg";
-
 type ComponentContracts = {
     enterprise_factory_contract: string,
     enterprise_governance_contract: string,
@@ -62,12 +60,6 @@ task(async ({network, deployer, executor, signer, refs}) => {
     // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 5, 5);
 
     // await instantiateDao(refs, network, executor);
-
-    // await createWarpAccount(executor, WARP_CONTROLLER_ADDRESS, 100_000_000);
-    //
-    // await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
-    //
-    // await executeWarpJob(executor, 22);
 
     try {
         // const enterprise_contract = "terra1mg4gvn7svq7clshyn8qt6evwsv4yjrvfpfdjjpt29tmqdlcc700srphtm3";
@@ -160,123 +152,6 @@ task(async ({network, deployer, executor, signer, refs}) => {
         console.log(e);
     }
 });
-
-const createWarpAccount = async(executor: Executor, warp_controller_address: string, uluna_deposit: number): Promise<void> => {
-    try {
-        await executor.execute(
-            warp_controller_address,
-            {
-                create_account: {}
-            },
-            {
-                coins: [new Coin('uluna', uluna_deposit)],
-            }
-        )
-    } catch (e) {
-        console.log(e);
-    }
-}
-
-const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, executor: Executor, warp_controller_address: string, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
-    try {
-        const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
-
-        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_phase":{"contract":"${dao_address}"}}`).toString('base64');
-
-        const perform_migration_step_msg_encoded = Buffer.from(`{\"perform_next_migration_step\":{\"submsgs_limit\":${submsgs_limit}}}`).toString('base64');
-
-        console.log("perform migration step msg encoded:", perform_migration_step_msg_encoded);
-
-        const vars = `[{"query":{"reinitialize":false,"name":"v2MigrationPhase","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.phase"},"update_fn":null,"kind":"string","encode":false}}]`;
-
-        console.log("vars:", vars);
-
-        const msgs = `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`;
-
-        console.log("msgs:", msgs);
-
-        await executor.execute(
-            warp_controller_address,
-            {
-                create_job: {
-                    name: "Test migration",
-                    description: "Migrates a 'stuck' migration of a DAO",
-                    labels: [],
-                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_not_started\"},\"op\":\"neq\"}}}",
-                    msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
-                    // terminate_condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_completed\"},\"op\":\"eq\"}}}",
-                    vars: vars,
-                    recurring: true,
-                    requeue_on_evict: false,
-                    reward: "20000",
-                }
-            }
-        );
-    } catch (e) {
-        console.log(e);
-    }
-}
-
-const executeWarpJob = async (executor: Executor, id: number): Promise<void> => {
-    try {
-        await executor.execute(
-            WARP_CONTROLLER_ADDRESS,
-            {
-                execute_job: {
-                    id: id.toString()
-                }
-            },
-            // {
-            //     txOptions: {
-            //         gas: "100000000"
-            //     }
-            // }
-        );
-    } catch (e) {
-        console.log(e);
-    }
-}
-
-const createMigrationStepsWarpJob = async (refs: Refs, network: string, executor: Executor, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
-    try {
-        const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
-
-        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_phase":{"contract":"${dao_address}"}}`).toString('base64');
-
-        const perform_migration_step_msg_encoded = Buffer.from(`{"perform_next_migration_step":{"submsgs_limit":${submsgs_limit}}`).toString('base64');
-
-        const vars = `[{"query":{"reinitialize":false,"name":"v2MigrationPhase","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.phase"},"update_fn":null,"kind":"string","encode":false}}]`;
-
-        console.log("vars:", vars);
-
-        await executor.execute(
-            "terra1fqcfh8vpqsl7l5yjjtq5wwu6sv989txncq5fa756tv7lywqexraq5vnjvt",
-            {
-                create_job: {
-                    name: "Test migration",
-                    description: "Migrates a 'stuck' migration of a DAO",
-                    labels: [],
-                    executions: [
-                        {
-                            condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_in_progress\"},\"op\":\"eq\"}}}",
-                            // condition: "{\"expr\":{\"int\":{\"left\":{\"simple\":1},\"right\":{\"simple\":1},\"op\":\"eq\"}}}",
-                            msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
-                        },
-                    ],
-                    terminate_condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_completed\"},\"op\":\"eq\"}}}",
-                    vars: vars,
-                    // vars: "[]",
-                    recurring: true,
-                    requeue_on_evict: false,
-                    reward: "20000",
-                    duration_days: "730",
-                }
-            }
-        );
-    } catch (e) {
-        console.log(e);
-    }
-}
 
 const stakeTokens = async (executor: Executor, token_contract: string, membership_contract: string): Promise<void> => {
     await executor.execute(
