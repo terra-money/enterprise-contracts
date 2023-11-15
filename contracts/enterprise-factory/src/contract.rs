@@ -191,6 +191,20 @@ fn update_config(
     }
 
     if let Some(new_enterprise_versioning) = msg.new_enterprise_versioning {
+        // remove the old version 1.0.0 code ID as valid Enterprise code ID
+        let old_version_1_0_0_code_id =
+            query_version_1_0_0_info(deps.as_ref(), config.enterprise_versioning.to_string())?
+                .version
+                .enterprise_treasury_code_id;
+        ENTERPRISE_CODE_IDS.remove(deps.storage, old_version_1_0_0_code_id);
+
+        // store the new 1.0.0 code ID for backwards compatibility
+        let new_version_1_0_0_code_id =
+            query_version_1_0_0_info(deps.as_ref(), new_enterprise_versioning.clone())?
+                .version
+                .enterprise_treasury_code_id;
+        ENTERPRISE_CODE_IDS.save(deps.storage, new_version_1_0_0_code_id, &())?;
+
         config.enterprise_versioning = deps.api.addr_validate(&new_enterprise_versioning)?;
     }
 
@@ -782,21 +796,31 @@ pub fn query_is_enterprise_code_id(
     })
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    migrate_config(deps.branch(), msg.clone())?;
-
-    // for backwards compatibility (so that old DAOs can migrate to 1.0.0) we need to store
-    // the code ID for 1.0.0
+fn query_version_1_0_0_info(
+    deps: Deps,
+    enterprise_versioning: String,
+) -> DaoResult<VersionResponse> {
     let version_1 = Version {
         major: 1,
         minor: 0,
         patch: 0,
     };
     let version_1_response: VersionResponse = deps.querier.query_wasm_smart(
-        msg.enterprise_versioning_addr,
+        enterprise_versioning,
         &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams { version: version_1 }),
     )?;
+
+    Ok(version_1_response)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
+    migrate_config(deps.branch(), msg.clone())?;
+
+    // for backwards compatibility (so that old DAOs can migrate to 1.0.0) we need to store
+    // the code ID for 1.0.0
+    let version_1_response =
+        query_version_1_0_0_info(deps.as_ref(), msg.enterprise_versioning_addr)?;
 
     ENTERPRISE_CODE_IDS.save(
         deps.storage,
