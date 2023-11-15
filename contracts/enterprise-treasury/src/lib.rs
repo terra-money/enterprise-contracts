@@ -5,6 +5,7 @@ pub mod contract;
 pub mod migration;
 pub mod migration_stages;
 mod nft_staking;
+mod old_migration;
 mod staking;
 pub mod state;
 pub mod validate;

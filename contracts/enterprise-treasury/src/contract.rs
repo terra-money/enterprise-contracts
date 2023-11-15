@@ -6,11 +6,12 @@ use crate::asset_whitelist::{
 use crate::migration::{
     council_membership_contract_created, enterprise_contract_created,
     enterprise_outposts_contract_created, finalize_initial_migration_step,
-    governance_controller_contract_created, membership_contract_created, migrate_to_rewrite,
+    governance_controller_contract_created, membership_contract_created, migrate_to_v_1_0_0,
     perform_next_migration_step,
 };
 use crate::migration_stages::MigrationStage::MigrationInProgress;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
+use crate::old_migration::migrate_to_v_0_5_0;
 use crate::state::{Config, CONFIG, NFT_WHITELIST};
 use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
@@ -382,11 +383,16 @@ pub fn query_has_incomplete_v2_migration(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> EnterpriseTreasuryResult<Response> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let mut migrate_to_v_0_5_0_submsgs = migrate_to_v_0_5_0(deps.branch())?;
 
-    let submsgs = migrate_to_rewrite(deps.branch(), env, msg.initial_submsgs_limit)?;
+    let mut migrate_to_v_1_0_0_submsgs =
+        migrate_to_v_1_0_0(deps.branch(), env, msg.initial_submsgs_limit)?;
+
+    migrate_to_v_0_5_0_submsgs.append(&mut migrate_to_v_1_0_0_submsgs);
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new()
         .add_attribute("action", "migrate")
-        .add_submessages(submsgs))
+        .add_submessages(migrate_to_v_0_5_0_submsgs))
 }

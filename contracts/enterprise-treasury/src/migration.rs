@@ -437,7 +437,7 @@ pub struct DaoCouncil {
     pub threshold: Decimal,
 }
 
-pub fn migrate_to_rewrite(
+pub fn migrate_to_v_1_0_0(
     deps: DepsMut,
     env: Env,
     initial_submsgs_limit: Option<u32>,
