@@ -4,10 +4,11 @@ import task, { info } from "@terra-money/terrariums";
 const ENTERPRISE_FACADE = "enterprise-facade";
 const ENTERPRISE_FACADE_V1 = "enterprise-facade-v1";
 const ENTERPRISE_FACADE_V2 = "enterprise-facade-v2";
+const ENTERPRISE_VERSIONING = "enterprise-versioning";
 
 task(async ({ deployer, signer, refs, network }) => {
-  deployer.buildContract(ENTERPRISE_FACADE);
-  deployer.optimizeContract(ENTERPRISE_FACADE);
+  // deployer.buildContract(ENTERPRISE_FACADE);
+  // deployer.optimizeContract(ENTERPRISE_FACADE);
 
   await deployer.storeCode(ENTERPRISE_FACADE_V1);
   await waitForNewBlock();
@@ -15,6 +16,12 @@ task(async ({ deployer, signer, refs, network }) => {
   await waitForNewBlock();
 
   await deployer.storeCode(ENTERPRISE_FACADE);
+  await waitForNewBlock();
+
+  await deployer.instantiate(ENTERPRISE_FACADE_V1, { enterprise_versioning: refs.getAddress(network, ENTERPRISE_VERSIONING) });
+  await waitForNewBlock();
+
+  await deployer.instantiate(ENTERPRISE_FACADE_V2, {});
   await waitForNewBlock();
 
   const contract = refs.getContract(network, ENTERPRISE_FACADE);
