@@ -2,7 +2,7 @@ import { Coin } from "@terra-money/terra.js";
 import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
 import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
-const WARP_CONTROLLER_ADDRESS = "terra1yktu77uyy67838jwf4eyutdnwu87vm6lmmg3xa8xdlessuca2kqqajeqqg";
+const WARP_CONTROLLER_ADDRESS = "terra1l0vwdf4f87m8kgw5agrrm548aym9spglu2sw3qggrxpdvdf82e7qevka5c";
 const ENTERPRISE_FACADE = "enterprise-facade";
 
 task(async ({network, executor, refs }) => {
@@ -11,6 +11,21 @@ task(async ({network, executor, refs }) => {
     // await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
     //
     // await executeWarpJob(executor, 22);
+
+    await createMigrationStepsOldWarpJobMultiple(
+        refs,
+        network,
+        executor,
+        WARP_CONTROLLER_ADDRESS,
+        20,
+        [
+            "terra1lyqsev4fzxep0wuaxl9cdg2s3x78ampxh0vavt2a0qyy7ktxr74q2r8lng",
+            "terra1qra6m7sjh8299vwxmgep5gdh9chr45xvcgvydje4e0448tfhrgls69wqlq",
+            "terra1y83dnmx9lmacmckfu7ek2etqxtzkf8kd69gdnykfrkmcmc8q4lnqk48pqa",
+            "terra13yp5fwd77daqm78xz97ad9phtldtx972a5zwcfggl9u4mf3szrzq9nwjqu",
+            "terra1e30kcuznfj52v9t4e9m6hpeurr5hhfjmurp2jmn5lga9ggw9nrtsmraxw3"
+        ]
+    )
 });
 
 const createWarpAccount = async(executor: Executor, warp_controller_address: string, uluna_deposit: number): Promise<void> => {
@@ -29,9 +44,10 @@ const createWarpAccount = async(executor: Executor, warp_controller_address: str
     }
 }
 
-const createMigrationStepsOldWarpJobMultiple = async (refs: Refs, network: string, executor: Executor, warp_controller_address: string, submsgs_limit: number | undefined, daos: [string]): Promise<void> => {
-    for (const dao in daos) {
-        await createMigrationStepsOldWarpJob(refs, network, executor, warp_controller_address, dao, submsgs_limit);
+const createMigrationStepsOldWarpJobMultiple = async (refs: Refs, network: string, executor: Executor, warp_controller_address: string, submsgs_limit: number | undefined, daos: string[]): Promise<void> => {
+    for (const i in daos) {
+        console.log("creating a job for DAO:", daos[i]);
+        await createMigrationStepsOldWarpJob(refs, network, executor, warp_controller_address, daos[i], submsgs_limit);
     }
 }
 
