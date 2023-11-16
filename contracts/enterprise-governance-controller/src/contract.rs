@@ -1906,10 +1906,11 @@ fn assert_no_recent_incomplete_v2_migration(
 
         // we only block the actions if the migration was recently started
         // starting point of migration is determined by this contract's creation date
-        if creation_date.plus_days(3) < now {
-            Err(HasIncompleteV2Migration)
-        } else {
+        let earliest_time_to_enable_governance = creation_date.plus_days(7);
+        if now >= earliest_time_to_enable_governance {
             Ok(())
+        } else {
+            Err(HasIncompleteV2Migration)
         }
     } else {
         Ok(())
