@@ -27,21 +27,22 @@ use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_api::msg::QueryMsg::SimulateEndPollStatus;
 use enterprise_governance_controller_api::api::ProposalAction::{
-    AddAttestation, DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RemoveAttestation,
-    RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
-    UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
+    AddAttestation, DistributeFunds, ExecuteEnterpriseMsgs, ExecuteMsgs, ModifyMultisigMembership,
+    RemoveAttestation, RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig,
+    UpdateMetadata, UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
 use enterprise_governance_controller_api::api::{
     AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg,
-    CreateProposalWithNftDepositMsg, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
-    ExecuteTreasuryMsgsMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
-    ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
-    ProposalDepositAsset, ProposalId, ProposalInfo, ProposalParams, ProposalResponse,
-    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
-    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg,
-    UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
+    CreateProposalWithNftDepositMsg, DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg,
+    ExecuteProposalMsg, ExecuteTreasuryMsgsMsg, GovConfig, GovConfigResponse, MemberVoteParams,
+    MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType,
+    ProposalDeposit, ProposalDepositAsset, ProposalId, ProposalInfo, ProposalParams,
+    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg,
+    UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
+    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, DuplicateNftDeposit, HasIncompleteV2Migration, InvalidCosmosMessage,
@@ -419,6 +420,7 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         UpgradeDao(_) => ProposalActionType::UpgradeDao,
         ExecuteMsgs(_) => ProposalActionType::ExecuteMsgs,
         ExecuteTreasuryMsgs(_) => ProposalActionType::ExecuteTreasuryMsgs,
+        ExecuteEnterpriseMsgs(_) => ProposalActionType::ExecuteEnterpriseMsgs,
         ModifyMultisigMembership(_) => ProposalActionType::ModifyMultisigMembership,
         DistributeFunds(_) => ProposalActionType::DistributeFunds,
         UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
@@ -838,6 +840,7 @@ fn execute_proposal_actions_submsgs(
             UpgradeDao(msg) => upgrade_dao(ctx, msg)?,
             ExecuteMsgs(msg) => execute_msgs(msg)?,
             ExecuteTreasuryMsgs(msg) => execute_treasury_msgs(ctx, msg)?,
+            ExecuteEnterpriseMsgs(msg) => execute_enterprise_msgs(ctx, msg)?,
             ModifyMultisigMembership(msg) => {
                 modify_multisig_membership(ctx.deps.branch(), ctx.env.clone(), msg)?
             }
@@ -1067,6 +1070,23 @@ fn execute_treasury_msgs(
         ExecuteCosmosMsgs(ExecuteCosmosMsgsMsg { msgs: msg.msgs }),
         msg.remote_treasury_target,
     )?;
+
+    Ok(vec![submsg])
+}
+
+fn execute_enterprise_msgs(
+    ctx: &mut Context,
+    msg: ExecuteEnterpriseMsgsMsg,
+) -> GovernanceControllerResult<Vec<SubMsg>> {
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+
+    let submsg = SubMsg::new(wasm_execute(
+        enterprise_contract.to_string(),
+        &enterprise_protocol::msg::ExecuteMsg::ExecuteMsgs(
+            enterprise_protocol::api::ExecuteMsgsMsg { msgs: msg.msgs },
+        ),
+        vec![],
+    )?);
 
     Ok(vec![submsg])
 }

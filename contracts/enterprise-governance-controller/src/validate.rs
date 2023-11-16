@@ -9,9 +9,9 @@ use enterprise_governance_controller_api::api::ProposalAction::{
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::{
-    CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, ExecuteTreasuryMsgsMsg,
-    GovConfig, ModifyMultisigMembershipMsg, ProposalAction, ProposalActionType, ProposalDeposit,
-    RequestFundingFromDaoMsg, UpdateGovConfigMsg,
+    CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg,
+    ExecuteTreasuryMsgsMsg, GovConfig, ModifyMultisigMembershipMsg, ProposalAction,
+    ProposalActionType, ProposalDeposit, RequestFundingFromDaoMsg, UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     Dao, DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument,
@@ -137,6 +137,7 @@ pub fn validate_proposal_actions(
             UpgradeDao(msg) => validate_upgrade_dao(deps, msg)?,
             ExecuteMsgs(msg) => validate_execute_msgs(msg)?,
             ExecuteTreasuryMsgs(msg) => validate_execute_treasury_msgs(msg)?,
+            ProposalAction::ExecuteEnterpriseMsgs(msg) => validate_execute_enterprise_msgs(msg)?,
             ModifyMultisigMembership(msg) => {
                 validate_modify_multisig_membership(deps, dao_type.clone(), msg)?
             }
@@ -373,6 +374,12 @@ fn validate_execute_treasury_msgs(msg: &ExecuteTreasuryMsgsMsg) -> GovernanceCon
     validate_custom_execute_msgs(&msg.msgs)
 }
 
+fn validate_execute_enterprise_msgs(
+    msg: &ExecuteEnterpriseMsgsMsg,
+) -> GovernanceControllerResult<()> {
+    validate_custom_execute_msgs(&msg.msgs)
+}
+
 fn validate_custom_execute_msgs(msgs: &[String]) -> GovernanceControllerResult<()> {
     for msg in msgs.iter() {
         serde_json_wasm::from_str::<CosmosMsg>(msg.as_str()).map_err(|_| InvalidCosmosMessage)?;
@@ -514,6 +521,7 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::RequestFundingFromDao
                     | ProposalActionType::ExecuteMsgs
                     | ProposalActionType::ExecuteTreasuryMsgs
+                    | ProposalActionType::ExecuteEnterpriseMsgs
                     | ProposalActionType::ModifyMultisigMembership
                     | ProposalActionType::DistributeFunds
                     | ProposalActionType::UpdateMinimumWeightForRewards
