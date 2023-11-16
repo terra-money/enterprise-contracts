@@ -7,6 +7,7 @@ edition = "2021"
 [features]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
+interface = ["dep:cw-orch"]
 
 [dependencies]
 cosmwasm-std = "1"
@@ -18,3 +19,4 @@ serde = { version = "1", default-features = false, features = ["derive"] }
 serde-json-wasm = "0.5.0"
 serde_with = { version = "2", features = ["json", "macros"] }
 thiserror = "1"
+cw-orch = {version = "0.18.1", optional = true }
