@@ -2,7 +2,7 @@ import { Coin } from "@terra-money/terra.js";
 import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
 import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
-const WARP_CONTROLLER_ADDRESS = "terra1l0vwdf4f87m8kgw5agrrm548aym9spglu2sw3qggrxpdvdf82e7qevka5c";
+const WARP_CONTROLLER_ADDRESS = "terra1h9dyfgk9e2nq9gf89a2u209ya7tjldnfj4xeflhl9qj3u8tgsqasaf3ft3";
 const ENTERPRISE_FACADE = "enterprise-facade";
 
 task(async ({network, executor, refs }) => {
