@@ -1,0 +1,58 @@
+[package]
+name = "interface"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cw-orch = {version = "0.18.1", optional = true }
+
+# packages
+attestation-api = { path = "../../packages/attestation-api", default-features = false, version = "*", features = ["interface"]}
+common = { path = "../../packages/common", default-features = false, version = "*", features = ["interface"]}
+common-derive = { path = "../../packages/common-derive", default-features = false, version = "*", features = ["interface"]}
+denom-staking-api = { path = "../../packages/denom-staking-api", default-features = false, version = "*", features = ["interface"]}
+denom-staking-impl = { path = "../../packages/denom-staking-impl", default-features = false, version = "*", features = ["interface"]}
+enterprise-facade-api = { path = "../../packages/enterprise-facade-api", default-features = false, version = "*", features = ["interface"]}
+enterprise-facade-common = { path = "../../packages/enterprise-facade-common", default-features = false, version = "*", features = ["interface"]}
+enterprise-factory-api = { path = "../../packages/enterprise-factory-api", default-features = false, version = "*", features = ["interface"]}
+enterprise-governance-api = { path = "../../packages/enterprise-governance-api", default-features = false, version = "*", features = ["interface"]}
+enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api", default-features = false, version = "*", features = ["interface"]}
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api", default-features = false, version = "*", features = ["interface"]}
+enterprise-protocol = { path = "../../packages/enterprise-protocol", default-features = false, version = "*", features = ["interface"]}
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api", default-features = false, version = "*", features = ["interface"]}
+enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api", default-features = false, version = "*", features = ["interface"]}
+funds-distributor-api = { path = "../../packages/funds-distributor-api", default-features = false, version = "*", features = ["interface"]}
+membership-common = { path = "../../packages/membership-common", default-features = false, version = "*", features = ["interface"]}
+membership-common-api = { path = "../../packages/membership-common-api", default-features = false, version = "*", features = ["interface"]}
+multisig-membership-api = { path = "../../packages/multisig-membership-api", default-features = false, version = "*", features = ["interface"]}
+multisig-membership-impl = { path = "../../packages/multisig-membership-impl", default-features = false, version = "*", features = ["interface"]}
+nft-staking-api = { path = "../../packages/nft-staking-api", default-features = false, version = "*", features = ["interface"]}
+nft-staking-impl = { path = "../../packages/nft-staking-impl", default-features = false, version = "*", features = ["interface"]}
+poll-engine = { path = "../../packages/poll-engine", default-features = false, version = "*", features = ["interface"]}
+poll-engine-api = { path = "../../packages/poll-engine-api", default-features = false, version = "*", features = ["interface"]}
+token-staking-api = { path = "../../packages/token-staking-api", default-features = false, version = "*", features = ["interface"]}
+token-staking-impl = { path = "../../packages/token-staking-impl", default-features = false, version = "*", features = ["interface"]}
+
+#contracts
+attestation = { path = "../../contracts/attestation", default-features = false, version = "*", features = ["interface"]}
+denom-staking-membership = { path = "../../contracts/denom-staking-membership", default-features = false, version = "*", features = ["interface"]}
+enterprise = { path = "../../contracts/enterprise", default-features = false, version = "*", features = ["interface"]}
+enterprise-facade = { path = "../../contracts/enterprise-facade", default-features = false, version = "*", features = ["interface"]}
+enterprise-facade-v1 = { path = "../../contracts/enterprise-facade-v1", default-features = false, version = "*", features = ["interface"]}
+enterprise-facade-v2 = { path = "../../contracts/enterprise-facade-v2", default-features = false, version = "*", features = ["interface"]}
+enterprise-factory = { path = "../../contracts/enterprise-factory", default-features = false, version = "*", features = ["interface"]}
+enterprise-governance = { path = "../../contracts/enterprise-governance", default-features = false, version = "*", features = ["interface"]}
+enterprise-governance-controller = { path = "../../contracts/enterprise-governance-controller", default-features = false, version = "*", features = ["interface"]}
+enterprise-outposts = { path = "../../contracts/enterprise-outposts", default-features = false, version = "*", features = ["interface"]}
+enterprise-treasury = { path = "../../contracts/enterprise-treasury", default-features = false, version = "*", features = ["interface"]}
+enterprise-versioning = { path = "../../contracts/enterprise-versioning", default-features = false, version = "*", features = ["interface"]}
+funds-distributor = { path = "../../contracts/funds-distributor", default-features = false, version = "*", features = ["interface"]}
+multisig-membership = { path = "../../contracts/multisig-membership", default-features = false, version = "*", features = ["interface"]}
+nft-staking-membership = { path = "../../contracts/nft-staking-membership", default-features = false, version = "*", features = ["interface"]}
+token-staking-membership = { path = "../../contracts/token-staking-membership", default-features = false, version = "*", features = ["interface"]}
+
