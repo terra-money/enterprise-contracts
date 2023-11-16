@@ -7,6 +7,9 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[features]
+interface = ["dep:cw-orch"]
+
 [dependencies]
 common = { path = "../common" }
 membership-common-api = { path = "../membership-common-api" }
@@ -18,3 +21,4 @@ cw-utils = "1.0.1"
 multisig-membership-api = { path = "../multisig-membership-api" }
 itertools = "0.10.5"
 thiserror = "1"
+cw-orch = {version = "0.18.1", optional = true }

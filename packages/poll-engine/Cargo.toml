@@ -7,6 +7,9 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[features]
+interface = ["dep:cw-orch"]
+
 [dependencies]
 common = { path = "../common" }
 cosmwasm-std = "1"
@@ -15,3 +18,4 @@ cw-storage-plus = "1.0.1"
 itertools = "0.10"
 thiserror = "1"
 poll-engine-api = { path = "../poll-engine-api" }
+cw-orch = {version = "0.18.1", optional = true }

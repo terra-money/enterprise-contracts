@@ -7,6 +7,9 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[features]
+interface = ["dep:cw-orch"]
+
 [dependencies]
 common = { path = "../common" }
 cosmwasm-std = "1"
@@ -28,6 +31,7 @@ enterprise-governance-controller-api = { path = "../enterprise-governance-contro
 enterprise-protocol = { path = "../enterprise-protocol" }
 enterprise-treasury-api = { path = "../enterprise-treasury-api" }
 multisig-membership-api = { path = "../multisig-membership-api" }
+cw-orch = {version = "0.18.1", optional = true }
 
 [dev-dependencies]
 cosmwasm-schema = "1"
