@@ -2,7 +2,7 @@ import { Coin } from "@terra-money/terra.js";
 import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
 import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
-const WARP_CONTROLLER_ADDRESS = "terra1h9dyfgk9e2nq9gf89a2u209ya7tjldnfj4xeflhl9qj3u8tgsqasaf3ft3";
+const WARP_CONTROLLER_ADDRESS = "terra196x8l07ue2mk8gtqxawz4z9dcwhztlg3st4t9we932fwx8rtcz3s9kawlp";
 const ENTERPRISE_FACADE = "enterprise-facade";
 
 task(async ({network, executor, refs }) => {
@@ -10,7 +10,7 @@ task(async ({network, executor, refs }) => {
     //
     // await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
     //
-    // await executeWarpJob(executor, 22);
+    // await executeWarpJob(executor, 1);
 
     await createMigrationStepsOldWarpJobMultiple(
         refs,
@@ -25,7 +25,7 @@ task(async ({network, executor, refs }) => {
             "terra13yp5fwd77daqm78xz97ad9phtldtx972a5zwcfggl9u4mf3szrzq9nwjqu",
             "terra1e30kcuznfj52v9t4e9m6hpeurr5hhfjmurp2jmn5lga9ggw9nrtsmraxw3"
         ]
-    )
+    );
 });
 
 const createWarpAccount = async(executor: Executor, warp_controller_address: string, uluna_deposit: number): Promise<void> => {
@@ -55,13 +55,13 @@ const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, execu
     try {
         const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
 
-        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_phase":{"contract":"${dao_address}"}}`).toString('base64');
+        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_stage":{"contract":"${dao_address}"}}`).toString('base64');
 
         const perform_migration_step_msg_encoded = Buffer.from(`{\"perform_next_migration_step\":{\"submsgs_limit\":${submsgs_limit}}}`).toString('base64');
 
         console.log("perform migration step msg encoded:", perform_migration_step_msg_encoded);
 
-        const vars = `[{"query":{"reinitialize":false,"name":"v2MigrationPhase","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.phase"},"update_fn":null,"kind":"string","encode":false}}]`;
+        const vars = `[{"query":{"reinitialize":false,"name":"v2MigrationStage","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.stage"},"update_fn":null,"kind":"string","encode":false}}]`;
 
         console.log("vars:", vars);
 
@@ -76,7 +76,7 @@ const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, execu
                     name: "Test migration",
                     description: "Migrates a 'stuck' migration of a DAO",
                     labels: [],
-                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_not_started\"},\"op\":\"neq\"}}}",
+                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationStage\"},\"right\":{\"simple\":\"migration_not_started\"},\"op\":\"neq\"}}}",
                     msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
                     vars: vars,
                     recurring: true,
@@ -109,11 +109,11 @@ const createMigrationStepsWarpJob = async (refs: Refs, network: string, executor
     try {
         const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
 
-        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_phase":{"contract":"${dao_address}"}}`).toString('base64');
+        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_stage":{"contract":"${dao_address}"}}`).toString('base64');
 
         const perform_migration_step_msg_encoded = Buffer.from(`{"perform_next_migration_step":{"submsgs_limit":${submsgs_limit}}`).toString('base64');
 
-        const vars = `[{"query":{"reinitialize":false,"name":"v2MigrationPhase","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.phase"},"update_fn":null,"kind":"string","encode":false}}]`;
+        const vars = `[{"query":{"reinitialize":false,"name":"v2MigrationStage","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.stage"},"update_fn":null,"kind":"string","encode":false}}]`;
 
         console.log("vars:", vars);
 
@@ -126,11 +126,11 @@ const createMigrationStepsWarpJob = async (refs: Refs, network: string, executor
                     labels: [],
                     executions: [
                         {
-                            condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_in_progress\"},\"op\":\"eq\"}}}",
+                            condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationStage\"},\"right\":{\"simple\":\"migration_in_progress\"},\"op\":\"eq\"}}}",
                             msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
                         },
                     ],
-                    terminate_condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationPhase\"},\"right\":{\"simple\":\"migration_completed\"},\"op\":\"eq\"}}}",
+                    terminate_condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationStage\"},\"right\":{\"simple\":\"migration_completed\"},\"op\":\"eq\"}}}",
                     vars: vars,
                     recurring: true,
                     requeue_on_evict: false,
