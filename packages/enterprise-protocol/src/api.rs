@@ -108,6 +108,11 @@ pub struct SetAttestationMsg {
 }
 
 #[cw_serde]
+pub struct ExecuteMsgsMsg {
+    pub msgs: Vec<String>,
+}
+
+#[cw_serde]
 pub struct IsRestrictedUserParams {
     pub user: String,
 }

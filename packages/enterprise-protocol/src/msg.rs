@@ -1,7 +1,7 @@
 use crate::api::{
-    ComponentContractsResponse, DaoInfoResponse, DaoMetadata, DaoType, FinalizeInstantiationMsg,
-    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
-    UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoMetadata, DaoType, ExecuteMsgsMsg,
+    FinalizeInstantiationMsg, IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg,
+    UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Timestamp;
@@ -24,6 +24,8 @@ pub enum ExecuteMsg {
 
     SetAttestation(SetAttestationMsg),
     RemoveAttestation {},
+
+    ExecuteMsgs(ExecuteMsgsMsg),
 
     // called only right after instantiation
     FinalizeInstantiation(FinalizeInstantiationMsg),

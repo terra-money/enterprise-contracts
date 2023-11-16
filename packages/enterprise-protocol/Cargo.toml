@@ -15,6 +15,7 @@ enterprise-versioning-api = { path = "../enterprise-versioning-api" }
 schemars = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_with = { version = "2", features = ["json", "macros"] }
+serde-json-wasm = "0.5.0"
 strum = "0.24"
 strum_macros = "0.24"
 thiserror = "1"

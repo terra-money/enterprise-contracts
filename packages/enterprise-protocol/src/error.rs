@@ -49,6 +49,12 @@ pub enum DaoError {
     VoteDurationLongerThanUnstaking,
 }
 
+impl From<serde_json_wasm::de::Error> for DaoError {
+    fn from(value: serde_json_wasm::de::Error) -> Self {
+        DaoError::Std(StdError::generic_err(value.to_string()))
+    }
+}
+
 impl DaoError {
     /// Converts this DaoError into a StdError.
     pub fn std_err(&self) -> StdError {

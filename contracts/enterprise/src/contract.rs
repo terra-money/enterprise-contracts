@@ -11,14 +11,15 @@ use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    entry_point, to_json_binary, wasm_instantiate, Binary, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdError, StdResult, SubMsg,
+    entry_point, to_json_binary, wasm_instantiate, Binary, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, FinalizeInstantiationMsg, IsRestrictedUserParams,
-    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, ExecuteMsgsMsg, FinalizeInstantiationMsg,
+    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
+    UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, DuplicateVersionMigrateMsgFound, MigratingToLowerVersion, Unauthorized,
@@ -26,9 +27,9 @@ use enterprise_protocol::error::DaoError::{
 use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::response::{
-    execute_finalize_instantiation_response, execute_remove_attestation_response,
-    execute_set_attestation_response, execute_update_metadata_response,
-    execute_upgrade_dao_response, instantiate_response,
+    execute_execute_msgs_response, execute_finalize_instantiation_response,
+    execute_remove_attestation_response, execute_set_attestation_response,
+    execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
 };
 use enterprise_versioning_api::api::{
     Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
@@ -89,6 +90,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
         ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
         ExecuteMsg::RemoveAttestation {} => remove_attestation(ctx),
+        ExecuteMsg::ExecuteMsgs(msg) => execute_msgs(ctx, msg),
     }
 }
 
@@ -331,6 +333,18 @@ fn remove_attestation(ctx: &mut Context) -> DaoResult<Response> {
     )?;
 
     Ok(execute_remove_attestation_response())
+}
+
+fn execute_msgs(ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
+    let submsgs = msg
+        .msgs
+        .into_iter()
+        .map(|msg| serde_json_wasm::from_str::<CosmosMsg>(&msg).map(SubMsg::new))
+        .collect::<serde_json_wasm::de::Result<Vec<SubMsg>>>()?;
+
+    Ok(execute_execute_msgs_response().add_submessages(submsgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
