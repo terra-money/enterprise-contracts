@@ -23,6 +23,7 @@ default = ["contract"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use contract feature to enable all instantiate/execute/query exports
 contract = []
+interface = ["dep:cw-orch"]
 
 [package.metadata.scripts]
 optimize = """docker run --rm -v "${process.cwd()}":/code \
@@ -56,6 +57,8 @@ token-staking-api = { path = "../../packages/token-staking-api" }
 multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }
 serde-json-wasm = "0.5.0"
+cw-orch = {version = "0.18.1", optional = true }
+
 
 [dev-dependencies]
 cosmwasm-schema = "1.1.9"

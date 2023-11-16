@@ -23,6 +23,7 @@ default = ["contract"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use contract feature to enable all instantiate/execute/query exports
 contract = []
+interface = ["dep:cw-orch"]
 
 [package.metadata.scripts]
 optimize = """docker run --rm -v "${process.cwd()}":/code \
@@ -38,6 +39,8 @@ cosmwasm-std = "1"
 cw-storage-plus = "1.0.1"
 cw2 = "1.0.1"
 enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
+cw-orch = {version = "0.18.1", optional = true }
+
 
 [dev-dependencies]
 cosmwasm-schema = "1.1.9"

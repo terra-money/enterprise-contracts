@@ -7,9 +7,13 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[features]
+interface = ["dep:cw-orch"]
+
 [dependencies]
 common = { path = "../common" }
 cw-asset = "2.4.0"
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
 thiserror = "1"
+cw-orch = {version = "0.18.1", optional = true }
