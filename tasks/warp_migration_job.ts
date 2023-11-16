@@ -76,7 +76,7 @@ const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, execu
                     name: "Test migration",
                     description: "Migrates a 'stuck' migration of a DAO",
                     labels: [],
-                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationStage\"},\"right\":{\"simple\":\"migration_not_started\"},\"op\":\"neq\"}}}",
+                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationStage\"},\"right\":{\"simple\":\"migration_in_progress\"},\"op\":\"eq\"}}}",
                     msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
                     vars: vars,
                     recurring: true,
