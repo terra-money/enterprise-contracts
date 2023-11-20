@@ -30,8 +30,9 @@ use enterprise_outposts_api::error::EnterpriseOutpostsResult;
 use enterprise_outposts_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::response::{
     execute_deploy_cross_chain_proxy_response, execute_deploy_cross_chain_treasury_response,
-    execute_execute_cross_chain_treasury_response, execute_execute_msg_reply_callback_response,
-    instantiate_response,
+    execute_execute_cross_chain_treasury_response,
+    execute_instantiate_proxy_reply_callback_response,
+    execute_instantiate_treasury_reply_callback_response, instantiate_response,
 };
 use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::ComponentContracts;
@@ -344,13 +345,13 @@ fn handle_instantiate_proxy_reply_callback(
 ) -> EnterpriseOutpostsResult<Response> {
     let proxy_addr = parse_reply_instantiate_data(reply)?.contract_address;
 
-    add_cross_chain_proxy(ctx, chain_id, proxy_addr.clone())?;
+    add_cross_chain_proxy(ctx, chain_id.clone(), proxy_addr.clone())?;
 
     let instantiate_treasury_submsg = instantiate_remote_treasury(
         ctx.deps.branch(),
         ctx.env.clone(),
         deploy_treasury_msg.enterprise_treasury_code_id,
-        proxy_addr,
+        proxy_addr.clone(),
         deploy_treasury_msg.asset_whitelist,
         deploy_treasury_msg.nft_whitelist,
         deploy_treasury_msg.cross_chain_msg_spec,
@@ -358,10 +359,12 @@ fn handle_instantiate_proxy_reply_callback(
 
     let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
-    Ok(
-        execute_execute_msg_reply_callback_response(dao_address.to_string())
-            .add_submessage(instantiate_treasury_submsg),
+    Ok(execute_instantiate_proxy_reply_callback_response(
+        dao_address.to_string(),
+        chain_id,
+        proxy_addr,
     )
+    .add_submessage(instantiate_treasury_submsg))
 }
 
 fn handle_instantiate_treasury_reply_callback(
@@ -371,12 +374,14 @@ fn handle_instantiate_treasury_reply_callback(
 ) -> EnterpriseOutpostsResult<Response> {
     let treasury_addr = parse_reply_instantiate_data(reply)?.contract_address;
 
-    add_cross_chain_treasury(ctx, chain_id, treasury_addr)?;
+    add_cross_chain_treasury(ctx, chain_id.clone(), treasury_addr.clone())?;
 
     let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
-    Ok(execute_execute_msg_reply_callback_response(
+    Ok(execute_instantiate_treasury_reply_callback_response(
         dao_address.to_string(),
+        chain_id,
+        treasury_addr,
     ))
 }
 
