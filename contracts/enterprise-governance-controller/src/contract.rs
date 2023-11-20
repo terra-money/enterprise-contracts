@@ -12,7 +12,8 @@ use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
     entry_point, from_json, to_json_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint64,
+    Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, Timestamp,
+    Uint128, Uint64,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -104,6 +105,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const CREATE_POLL_REPLY_ID: u64 = 1;
 pub const END_POLL_REPLY_ID: u64 = 2;
+pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 3;
 pub const CAST_VOTE_REPLY_ID: u64 = 4;
 
 pub const DEFAULT_QUERY_LIMIT: u8 = 50;
@@ -162,6 +164,7 @@ pub fn execute(
         ExecuteMsg::ExecuteProposal(msg) => execute_proposal(ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::WeightsChanged(msg) => weights_changed(ctx, msg),
+        ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(ctx, msg),
     }
 }
 
@@ -780,15 +783,19 @@ fn resolve_ended_proposal(
         }
         PollStatus::Passed { .. } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
-            let mut execute_proposal_actions_submsgs =
-                execute_proposal_actions_submsgs(ctx, proposal_id)?;
+            let execute_proposal_actions_msg = SubMsg::reply_always(
+                wasm_execute(
+                    ctx.env.contract.address.to_string(),
+                    &ExecuteMsg::ExecuteProposalActions(ExecuteProposalMsg { proposal_id }),
+                    vec![],
+                )?,
+                EXECUTE_PROPOSAL_ACTIONS_REPLY_ID,
+            );
+            let mut submsgs = return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
 
-            let mut return_deposit_submsgs =
-                return_proposal_deposit_submsgs(ctx.deps.branch(), proposal_id)?;
+            submsgs.insert(0, execute_proposal_actions_msg);
 
-            execute_proposal_actions_submsgs.append(&mut return_deposit_submsgs);
-
-            execute_proposal_actions_submsgs
+            submsgs
         }
         PollStatus::Rejected { reason } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
@@ -818,6 +825,23 @@ fn resolve_ended_proposal(
     };
 
     Ok(submsgs)
+}
+
+fn execute_proposal_actions(
+    ctx: &mut Context,
+    msg: ExecuteProposalMsg,
+) -> GovernanceControllerResult<Response> {
+    // only this contract itself can execute this
+    if ctx.info.sender != ctx.env.contract.address {
+        return Err(Unauthorized);
+    }
+
+    let submsgs: Vec<SubMsg> = execute_proposal_actions_submsgs(ctx, msg.proposal_id)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "execute_proposal_actions")
+        .add_attribute("proposal_id", msg.proposal_id.to_string())
+        .add_submessages(submsgs))
 }
 
 fn execute_proposal_actions_submsgs(
@@ -1419,6 +1443,18 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
 
                 Ok(Response::new())
             }
+        }
+        EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
+            // no actions, regardless of the result
+
+            // include an attribute so that it's visible whether proposal actions were executed or not
+            let status = match msg.result {
+                SubMsgResult::Ok(_) => "success",
+                SubMsgResult::Err(_) => "failure",
+            };
+            Ok(Response::new()
+                .add_attribute("action", "execute_proposal_actions")
+                .add_attribute("status", status))
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }

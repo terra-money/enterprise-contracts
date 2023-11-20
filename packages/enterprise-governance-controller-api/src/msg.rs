@@ -29,6 +29,9 @@ pub enum ExecuteMsg {
     ExecuteProposal(ExecuteProposalMsg),
     Receive(Cw20ReceiveMsg),
     WeightsChanged(WeightsChangedMsg),
+
+    /// Only executable by the contract itself. Not part of the public API.
+    ExecuteProposalActions(ExecuteProposalMsg),
 }
 
 #[cw_serde]
