@@ -1025,38 +1025,51 @@ fn migrate_and_clear_cw20_claims_submsg(
     limit: u32,
 ) -> EnterpriseTreasuryResult<ResultWithItemsConsumed<Option<SubMsg>>> {
     let mut total_claims_amount = Uint128::zero();
-    let mut claims_to_remove: Vec<Addr> = vec![];
 
-    let claims = CLAIMS
+    let mut claims_included = 0u32;
+
+    let mut claims_to_replace: Vec<(Addr, Vec<Claim>)> = vec![];
+    let mut claims_to_send: Vec<UserClaim> = vec![];
+
+    for claim in CLAIMS
         .range(deps.storage, None, None, Ascending)
         .take(limit as usize)
-        .collect::<StdResult<Vec<(Addr, Vec<Claim>)>>>()?
-        .into_iter()
-        .flat_map(|(user, claims)| {
-            claims_to_remove.push(user.clone());
-            claims
-                .into_iter()
-                .filter_map(|claim| {
-                    if let ClaimAsset::Cw20(asset) = claim.asset {
-                        total_claims_amount += asset.amount;
-                        Some(UserClaim {
-                            user: user.to_string(),
-                            claim_amount: asset.amount,
-                            release_at: claim.release_at,
-                        })
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<UserClaim>>()
-        })
-        .collect::<Vec<UserClaim>>();
+    {
+        if claims_included >= limit {
+            break;
+        }
 
-    for claim in &claims_to_remove {
-        CLAIMS.remove(deps.storage, claim);
+        let (user, claims) = claim?;
+
+        let mut claims_remaining: Vec<Claim> = vec![];
+
+        for claim in claims {
+            match claim.asset {
+                ClaimAsset::Cw20(asset) if claims_included < limit => {
+                    total_claims_amount += asset.amount;
+                    claims_included += 1;
+                    claims_to_send.push(UserClaim {
+                        user: user.to_string(),
+                        claim_amount: asset.amount,
+                        release_at: claim.release_at,
+                    });
+                }
+                _ => claims_remaining.push(claim),
+            }
+        }
+
+        claims_to_replace.push((user, claims_remaining));
     }
 
-    let items_consumed = claims_to_remove.len() as u32;
+    for (user, claims_remaining) in claims_to_replace {
+        if claims_remaining.is_empty() {
+            CLAIMS.remove(deps.storage, &user);
+        } else {
+            CLAIMS.save(deps.storage, &user, &claims_remaining)?;
+        }
+    }
+
+    let items_consumed = claims_included;
 
     if total_claims_amount.is_zero() {
         Ok(ResultWithItemsConsumed {
@@ -1069,7 +1082,9 @@ fn migrate_and_clear_cw20_claims_submsg(
             &cw20::Cw20ExecuteMsg::Send {
                 contract: membership_contract.to_string(),
                 amount: total_claims_amount,
-                msg: to_json_binary(&AddClaims { claims })?,
+                msg: to_json_binary(&AddClaims {
+                    claims: claims_to_send,
+                })?,
             },
             vec![],
         )?);
