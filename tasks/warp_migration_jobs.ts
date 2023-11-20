@@ -2,7 +2,7 @@ import { Coin } from "@terra-money/terra.js";
 import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
 import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
-const WARP_CONTROLLER_ADDRESS = "terra196x8l07ue2mk8gtqxawz4z9dcwhztlg3st4t9we932fwx8rtcz3s9kawlp";
+const WARP_CONTROLLER_ADDRESS = "terra1pz9r2wtnkh72kyyzw82279nkjh92c9tmwhkc3gw5cgwpke5yw3gszxlnk7";
 const ENTERPRISE_FACADE = "enterprise-facade";
 
 task(async ({network, executor, refs }) => {
@@ -19,11 +19,7 @@ task(async ({network, executor, refs }) => {
         WARP_CONTROLLER_ADDRESS,
         20,
         [
-            "terra1lyqsev4fzxep0wuaxl9cdg2s3x78ampxh0vavt2a0qyy7ktxr74q2r8lng",
-            "terra1qra6m7sjh8299vwxmgep5gdh9chr45xvcgvydje4e0448tfhrgls69wqlq",
-            "terra1y83dnmx9lmacmckfu7ek2etqxtzkf8kd69gdnykfrkmcmc8q4lnqk48pqa",
-            "terra13yp5fwd77daqm78xz97ad9phtldtx972a5zwcfggl9u4mf3szrzq9nwjqu",
-            "terra1e30kcuznfj52v9t4e9m6hpeurr5hhfjmurp2jmn5lga9ggw9nrtsmraxw3"
+            "terra1jhglkunpl9kumrafjnq9xayhq249ardungkrf7gpj8dkdmnt6d9suuy00t"
         ]
     );
 });
@@ -53,7 +49,7 @@ const createMigrationStepsOldWarpJobMultiple = async (refs: Refs, network: strin
 
 const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, executor: Executor, warp_controller_address: string, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
     try {
-        const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
+        const facade_address = "terra1dqg237pzmqklsecd7azzap4vw3jeq58e96u32ch75qh9klrcrq2qsmdu4r";
 
         const facade_query_msg_encoded = Buffer.from(`{"v2_migration_stage":{"contract":"${dao_address}"}}`).toString('base64');
 
