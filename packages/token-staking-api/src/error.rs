@@ -1,4 +1,5 @@
-use cosmwasm_std::StdError;
+use crate::error::TokenStakingError::Std;
+use cosmwasm_std::{OverflowError, StdError};
 use membership_common_api::error::MembershipError;
 use thiserror::Error;
 
@@ -15,20 +16,20 @@ pub enum TokenStakingError {
     #[error("Unauthorized")]
     Unauthorized,
 
-    #[error("Cannot initialize stakes - existing stakes already present")]
-    StakesAlreadyInitialized,
-
-    #[error("A staker is duplicated in the stakers array")]
-    DuplicateInitialStakerFound,
-
-    #[error("Initial stakes amount received does not match the sum of initial user stakes")]
-    IncorrectStakesInitializationAmount,
+    #[error("Received amount different from the total amount of added stakes")]
+    IncorrectStakesAmountReceived,
 
     #[error("Received amount different from the total amount of claims")]
     IncorrectClaimsAmountReceived,
 
     #[error("Insufficient staked amount")]
     InsufficientStake,
+}
+
+impl From<OverflowError> for TokenStakingError {
+    fn from(e: OverflowError) -> Self {
+        Std(StdError::generic_err(e.to_string()))
+    }
 }
 
 impl TokenStakingError {

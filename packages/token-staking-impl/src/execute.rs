@@ -1,28 +1,23 @@
 use crate::claims::{add_claim, get_releasable_claims, TOKEN_CLAIMS};
 use crate::config::CONFIG;
 use common::cw::{Context, ReleaseAt};
-use cosmwasm_std::{from_json, wasm_execute, Addr, Response, SubMsg, Uint128};
+use cosmwasm_std::{from_json, wasm_execute, Response, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight, set_member_weight,
 };
-use membership_common::total_weight::{
-    decrement_total_weight, increment_total_weight, load_total_weight, save_total_weight,
-};
+use membership_common::total_weight::{decrement_total_weight, increment_total_weight};
 use membership_common::validate::{
     enterprise_governance_controller_only, validate_user_not_restricted,
 };
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
-use std::collections::HashSet;
-use std::ops::Not;
 use token_staking_api::api::{
     ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg, UserClaim, UserStake,
 };
 use token_staking_api::error::TokenStakingError::{
-    DuplicateInitialStakerFound, IncorrectClaimsAmountReceived,
-    IncorrectStakesInitializationAmount, InsufficientStake, StakesAlreadyInitialized, Unauthorized,
+    IncorrectClaimsAmountReceived, IncorrectStakesAmountReceived, InsufficientStake, Unauthorized,
 };
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::Cw20HookMsg;
@@ -38,7 +33,7 @@ pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResul
 
     match from_json(&msg.msg) {
         Ok(Cw20HookMsg::Stake { user }) => stake_token(ctx, msg, user),
-        Ok(Cw20HookMsg::InitializeStakers { stakers }) => initialize_stakers(ctx, msg, stakers),
+        Ok(Cw20HookMsg::AddStakes { stakers }) => add_stakes(ctx, msg, stakers),
         Ok(Cw20HookMsg::AddClaims { claims }) => add_token_claims(ctx, msg, claims),
         _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
     }
@@ -73,44 +68,52 @@ fn stake_token(
         .add_submessages(report_weight_change_submsgs))
 }
 
-fn initialize_stakers(
+/// Adds stakes for multiple users.
+/// Will ADD TO existing user stakes, instead of replacing them.
+fn add_stakes(
     ctx: &mut Context,
     msg: Cw20ReceiveMsg,
     stakers: Vec<UserStake>,
 ) -> TokenStakingResult<Response> {
-    let total_staked = load_total_weight(ctx.deps.storage)?;
+    let mut new_user_stakes_sum = Uint128::zero();
 
-    if total_staked.is_zero().not() {
-        return Err(StakesAlreadyInitialized);
-    }
-
-    let mut user_stakes_sum = Uint128::zero();
-
-    let mut initial_stakers_set: HashSet<Addr> = HashSet::new();
+    let mut user_weight_changes: Vec<UserWeightChange> = vec![];
 
     for staker in stakers {
-        let user = ctx.deps.api.addr_validate(&staker.user)?;
-
-        let new_staker = initial_stakers_set.insert(user.clone());
-
-        if !new_staker {
-            return Err(DuplicateInitialStakerFound);
+        if staker.staked_amount.is_zero() {
+            continue;
         }
 
-        user_stakes_sum += staker.staked_amount;
+        validate_user_not_restricted(ctx.deps.as_ref(), staker.user.clone())?;
 
-        set_member_weight(ctx.deps.storage, user, staker.staked_amount)?;
+        let user = ctx.deps.api.addr_validate(&staker.user)?;
+
+        let existing_stake = get_member_weight(ctx.deps.storage, user.clone())?;
+        let new_user_stake = existing_stake.checked_add(staker.staked_amount)?;
+
+        set_member_weight(ctx.deps.storage, user, new_user_stake)?;
+
+        user_weight_changes.push(UserWeightChange {
+            user: staker.user,
+            old_weight: existing_stake,
+            new_weight: new_user_stake,
+        });
+
+        new_user_stakes_sum = new_user_stakes_sum.checked_add(staker.staked_amount)?;
     }
 
-    if user_stakes_sum != msg.amount {
-        return Err(IncorrectStakesInitializationAmount);
+    if new_user_stakes_sum != msg.amount {
+        return Err(IncorrectStakesAmountReceived);
     }
 
-    save_total_weight(ctx.deps.storage, &user_stakes_sum, &ctx.env.block)?;
+    let new_total_staked = increment_total_weight(ctx, new_user_stakes_sum)?;
+
+    let report_weight_change_submsgs = report_weight_change_submsgs(ctx, user_weight_changes)?;
 
     Ok(Response::new()
-        .add_attribute("action", "initialize_stakes")
-        .add_attribute("total_staked", user_stakes_sum.to_string()))
+        .add_attribute("action", "add_stakes")
+        .add_attribute("total_staked", new_total_staked.to_string())
+        .add_submessages(report_weight_change_submsgs))
 }
 
 fn add_token_claims(

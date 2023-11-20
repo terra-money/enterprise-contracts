@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum Cw20HookMsg {
     Stake { user: String },
-    InitializeStakers { stakers: Vec<UserStake> },
+    AddStakes { stakers: Vec<UserStake> },
     AddClaims { claims: Vec<UserClaim> },
 }
 

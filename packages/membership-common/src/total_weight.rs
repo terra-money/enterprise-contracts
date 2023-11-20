@@ -3,6 +3,8 @@ use cosmwasm_std::{BlockInfo, StdResult, Storage, Timestamp, Uint128};
 use cw_storage_plus::{SnapshotItem, Strategy};
 use membership_common_api::api::TotalWeightCheckpoint;
 
+// TODO: use checked add and sub here instead of unchecked operations
+
 pub fn increment_total_weight(ctx: &mut Context, amount: Uint128) -> StdResult<Uint128> {
     let total_weight = load_total_weight(ctx.deps.storage)?;
     let new_total_weight = total_weight + amount;

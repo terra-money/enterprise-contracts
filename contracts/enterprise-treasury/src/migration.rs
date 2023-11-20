@@ -1010,9 +1010,7 @@ fn migrate_and_clear_cw20_stakes_submsg(
             result: Some(SubMsg::new(
                 Asset::cw20(cw20_contract, total_stakes).send_msg(
                     membership_contract,
-                    to_json_binary(&token_staking_api::msg::Cw20HookMsg::InitializeStakers {
-                        stakers,
-                    })?,
+                    to_json_binary(&token_staking_api::msg::Cw20HookMsg::AddStakes { stakers })?,
                 )?,
             )),
             items_consumed,
