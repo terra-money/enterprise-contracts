@@ -1034,7 +1034,9 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
                 Ok(adapter_response_single_execute_msg(
                     membership_contract,
-                    serde_json_wasm::to_string(&denom_staking_api::msg::ExecuteMsg::Stake {})?,
+                    serde_json_wasm::to_string(&denom_staking_api::msg::ExecuteMsg::Stake {
+                        user: msg.user,
+                    })?,
                     coins(msg.amount.u128(), denom_config.denom),
                 ))
             }

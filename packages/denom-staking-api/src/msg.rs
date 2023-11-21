@@ -19,7 +19,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Stake {},
+    Stake { user: String },
     Unstake(UnstakeMsg),
     Claim(ClaimMsg),
     UpdateUnlockingPeriod(UpdateUnlockingPeriodMsg),

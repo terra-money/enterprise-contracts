@@ -141,6 +141,7 @@ pub struct StakeCw721Msg {
 
 #[cw_serde]
 pub struct StakeDenomMsg {
+    pub user: String,
     pub amount: Uint128,
 }
 
