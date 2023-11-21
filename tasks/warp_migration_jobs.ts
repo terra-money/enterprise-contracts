@@ -2,7 +2,7 @@ import { Coin } from "@terra-money/terra.js";
 import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
 import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
-const WARP_CONTROLLER_ADDRESS = "terra1pz9r2wtnkh72kyyzw82279nkjh92c9tmwhkc3gw5cgwpke5yw3gszxlnk7";
+const WARP_CONTROLLER_ADDRESS = "terra1j7nrurs2weglqu2hudc4znkj9zx0sdynh3u65j6ez7cygkxf6cgqe36yrt";
 const ENTERPRISE_FACADE = "enterprise-facade";
 
 task(async ({network, executor, refs }) => {
@@ -103,7 +103,8 @@ const executeWarpJob = async (executor: Executor, id: number): Promise<void> => 
 
 const createMigrationStepsWarpJob = async (refs: Refs, network: string, executor: Executor, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
     try {
-        const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
+        // const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
+        const facade_address = "terra1dzgr060p4hlc54ynu4z75fhky6rchr8xaskhslxr50tf0g5gj4gq7q4tva";
 
         const facade_query_msg_encoded = Buffer.from(`{"v2_migration_stage":{"contract":"${dao_address}"}}`).toString('base64');
 
