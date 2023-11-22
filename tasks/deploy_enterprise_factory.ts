@@ -57,7 +57,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 5, 5);
+    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 0, 0);
 
     // await instantiateDao(refs, network, executor);
 
@@ -89,13 +89,13 @@ task(async ({network, deployer, executor, signer, refs}) => {
         const deployCrossChainTreasuryProposalAction = {
             deploy_cross_chain_treasury: {
                 cross_chain_msg_spec: {
-                    chain_id: "injective-888",
-                    chain_bech32_prefix: "inj",
+                    chain_id: "juno-1",
+                    chain_bech32_prefix: "juno",
                     src_ibc_port: "transfer",
-                    src_ibc_channel: "channel-352",
+                    src_ibc_channel: "channel-2",
                     dest_ibc_port: "transfer",
-                    dest_ibc_channel: "channel-126",
-                    uluna_denom: "ibc/97498452BF27CC90656FD7D6EFDA287FA2BFFFF3E84691C84CB9E0451F6DF0A4"
+                    dest_ibc_channel: "channel-86",
+                    uluna_denom: "ibc/107D152BB3176FAEBF4C2A84C5FFDEEA7C7CB4FE1BBDAB710F1FD25BCD055CBF"
                 },
                 ics_proxy_code_id: 3689,
                 enterprise_treasury_code_id: 3690,
@@ -277,6 +277,7 @@ const deployEnterpriseFactory = async (refs: Refs, network: string, deployer: De
 
     const factoryInstantiateMsg = {
         config: {
+            admin: signer.key.accAddress,
             enterprise_versioning: enterpriseVersioning,
             cw20_code_id: parseInt(cw20CodeId),
             cw721_code_id: parseInt(cw721CodeId),
