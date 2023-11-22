@@ -306,7 +306,7 @@ __metadata:
 
 "@terra-money/terrariums@file:../terrariums::locator=apps-monorepo%40workspace%3A.":
   version: 1.1.9
-  resolution: "@terra-money/terrariums@file:../terrariums#../terrariums::hash=457569&locator=apps-monorepo%40workspace%3A."
+  resolution: "@terra-money/terrariums@file:../terrariums#../terrariums::hash=20cc39&locator=apps-monorepo%40workspace%3A."
   dependencies:
     "@terra-money/terra.js": ^3.1.3
     "@types/node": ^18.0.0
@@ -319,7 +319,7 @@ __metadata:
     yargs: ^17.5.1
   bin:
     terrariums: lib/src/cli.js
-  checksum: 9b0ef769bfbc9a57a535914039a067d8598aa0549b789fda7635a1ed4f2778aca8ce942ee98aa204da9d175867e27c1cabcb52f428bc7d214404ce64cca56b9e
+  checksum: 7ab395d358b61e83c70789413d07e67b61900e5f4382d627c194084936535d1d333e609a903827d4d189bc791d57b08a5319e9cc5ec944c6de563b80fe52824d
   languageName: node
   linkType: hard
 
