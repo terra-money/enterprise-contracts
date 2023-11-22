@@ -108,6 +108,8 @@ pub const END_POLL_REPLY_ID: u64 = 2;
 pub const EXECUTE_PROPOSAL_ACTIONS_REPLY_ID: u64 = 3;
 pub const CAST_VOTE_REPLY_ID: u64 = 4;
 
+const PROPOSAL_ACTIONS_EXECUTION_STATUS: &str = "status";
+
 pub const DEFAULT_QUERY_LIMIT: u8 = 50;
 pub const MAX_QUERY_LIMIT: u8 = 100;
 
@@ -1446,15 +1448,20 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
         }
         EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
             // no actions, regardless of the result
+            let mut response = Response::new().add_attribute("action", "execute_proposal_actions");
 
             // include an attribute so that it's visible whether proposal actions were executed or not
-            let status = match msg.result {
-                SubMsgResult::Ok(_) => "success",
-                SubMsgResult::Err(_) => "failure",
-            };
-            Ok(Response::new()
-                .add_attribute("action", "execute_proposal_actions")
-                .add_attribute("status", status))
+            match msg.result {
+                SubMsgResult::Ok(_) => {
+                    response = response.add_attribute(PROPOSAL_ACTIONS_EXECUTION_STATUS, "success");
+                }
+                SubMsgResult::Err(err) => {
+                    response = response
+                        .add_attribute(PROPOSAL_ACTIONS_EXECUTION_STATUS, "failure")
+                        .add_attribute("execution_error", err);
+                }
+            }
+            Ok(response)
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }
