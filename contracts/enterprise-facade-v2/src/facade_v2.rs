@@ -1035,7 +1035,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 Ok(adapter_response_single_execute_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&denom_staking_api::msg::ExecuteMsg::Stake {
-                        user: msg.user,
+                        user: Some(msg.user),
                     })?,
                     coins(msg.amount.u128(), denom_config.denom),
                 ))

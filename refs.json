@@ -24,7 +24,7 @@
       "address": "terra1rl9fnr4xce4ca5we9rwnqyyv89h422rwe3fpe7ycrpjn0egfulrsp2n4l9"
     },
     "enterprise-factory": {
-      "codeId": "11962",
+      "codeId": "11990",
       "address": "terra1ng4lcxjfg2sataksdy27jwsw3cphcxleckmkxcwx8uh0l56rgpksrjsr4r"
     },
     "enterprise-facade": {
@@ -54,13 +54,13 @@
       "codeId": "11948"
     },
     "denom-staking-membership": {
-      "codeId": "11956"
+      "codeId": "11989"
     },
     "enterprise-governance-controller": {
-      "codeId": "11951"
+      "codeId": "11986"
     },
     "enterprise-treasury": {
-      "codeId": "11952"
+      "codeId": "11987"
     },
     "multisig-membership": {
       "codeId": "11958",
@@ -77,11 +77,11 @@
       "address": "terra1fmj796k7p5upx2x94hmrx05su7fns8why7tsf84ymv5jhgy8plmqdulj6j"
     },
     "enterprise-facade-v2": {
-      "codeId": "11960",
-      "address": "terra1nv9ua58w3ly9c6tvrgzr0aqen75wy6grpqyvpsyp9x9lgg4u5h7qjlpelk"
+      "codeId": "11991",
+      "address": "terra1ftqc6sk9kc82vm376kqwqds5qzh43cntjk9h4jwp4cmsrvxha4ksu8cjl3"
     },
     "enterprise-outposts": {
-      "codeId": "11953"
+      "codeId": "11988"
     },
     "cw721_metadata_onchain": {
       "codeId": "11801"
@@ -122,16 +122,16 @@
       "codeId": "2135"
     },
     "denom-staking-membership": {
-      "codeId": "2143"
+      "codeId": "2158"
     },
     "enterprise-governance-controller": {
-      "codeId": "2151"
+      "codeId": "2155"
     },
     "enterprise-treasury": {
-      "codeId": "2139"
+      "codeId": "2156"
     },
     "enterprise-outposts": {
-      "codeId": "2152"
+      "codeId": "2157"
     },
     "token-staking-membership": {
       "codeId": "2142"
@@ -147,8 +147,8 @@
       "address": "terra1e28p54pnuuapn5zzkrfxsgl3vqs88cwunsdpxk8pcfjzrylc9ykq6dl9my"
     },
     "enterprise-facade-v2": {
-      "codeId": "2147",
-      "address": "terra1gw6uwzqgvcwdxz4z47prtw4t6ragcnssvgqwjyymq3n7l7ty9h7q8cweqw"
+      "codeId": "2159",
+      "address": "terra1mzwy50egry8crzn7089drx43ezmssrl759w9walj6l7smx3u2szsr5fmy2"
     },
     "cw721_metadata_onchain": {
       "codeId": "2111"

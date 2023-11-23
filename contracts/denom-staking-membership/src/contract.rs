@@ -47,7 +47,7 @@ pub fn execute(
         ExecuteMsg::UpdateUnlockingPeriod(msg) => update_unlocking_period(ctx, msg)?,
         ExecuteMsg::AddWeightChangeHook(msg) => add_weight_change_hook(ctx, msg)?,
         ExecuteMsg::RemoveWeightChangeHook(msg) => remove_weight_change_hook(ctx, msg)?,
-        ExecuteMsg::Stake { user } => stake_denom(ctx, Some(user))?,
+        ExecuteMsg::Stake { user } => stake_denom(ctx, user)?,
     };
 
     Ok(response)
