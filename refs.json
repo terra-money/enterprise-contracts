@@ -89,7 +89,7 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2136"
+      "codeId": "2162"
     },
     "enterprise-factory": {
       "codeId": "2150",
@@ -113,34 +113,34 @@
       "codeId": "1318"
     },
     "enterprise-governance": {
-      "codeId": "2137"
+      "codeId": "2163"
     },
     "funds-distributor": {
-      "codeId": "2141"
+      "codeId": "2167"
     },
     "attestation": {
-      "codeId": "2135"
+      "codeId": "2161"
     },
     "denom-staking-membership": {
-      "codeId": "2158"
+      "codeId": "2169"
     },
     "enterprise-governance-controller": {
-      "codeId": "2155"
+      "codeId": "2164"
     },
     "enterprise-treasury": {
-      "codeId": "2156"
+      "codeId": "2165"
     },
     "enterprise-outposts": {
-      "codeId": "2157"
+      "codeId": "2166"
     },
     "token-staking-membership": {
-      "codeId": "2142"
+      "codeId": "2168"
     },
     "nft-staking-membership": {
-      "codeId": "2144"
+      "codeId": "2170"
     },
     "multisig-membership": {
-      "codeId": "2145"
+      "codeId": "2171"
     },
     "enterprise-facade-v1": {
       "codeId": "2146",
