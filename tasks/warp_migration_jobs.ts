@@ -55,7 +55,7 @@ const createMigrationStepsOldWarpJobMultiple = async (refs: Refs, network: strin
 
 const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, executor: Executor, warp_controller_address: string, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
     try {
-        const facade_address = "terra1c9zlzn7w6zy4wh5j89lpttwe8599d3zws9v9nnedhcnc92quzrlqrgmdsu";
+        const facade_address = "terra19aw2v6v7l2m0x50q73utzunxxvw9ccur8672sthgygs4xtum00ws63c7ts";
 
         const facade_query_msg_encoded = Buffer.from(`{"v2_migration_stage":{"contract":"${dao_address}"}}`).toString('base64');
 
