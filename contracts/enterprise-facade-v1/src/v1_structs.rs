@@ -5,11 +5,11 @@ use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_facade_api::api::{
-    AssetWhitelistParams, CastVoteMsg, ClaimsParams, CreateProposalMsg, DaoCouncil, DaoMetadata,
-    DaoType, ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, Logo, MemberVoteParams,
-    NftTokenId, NftWhitelistParams, Proposal, ProposalId, ProposalParams, ProposalResponse,
-    ProposalStatus, ProposalStatusParams, ProposalType, ProposalVotesParams, ProposalsParams,
-    ProposalsResponse, QueryMemberInfoMsg, StakedNftsParams,
+    AssetWhitelistParams, CastVoteMsg, ClaimsParams, DaoCouncil, DaoMetadata, DaoType,
+    ExecuteProposalMsg, GovConfigV1, ListMultisigMembersMsg, Logo, MemberVoteParams, NftTokenId,
+    NftWhitelistParams, Proposal, ProposalId, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusParams, ProposalType, ProposalVotesParams, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, StakedNftsParams,
 };
 use enterprise_governance_controller_api::api::{
     DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
@@ -447,7 +447,7 @@ impl From<ProposalStatusV1> for ProposalStatus {
 pub struct ProposalV1 {
     pub proposal_type: ProposalType,
     pub id: ProposalId,
-    pub proposer: Addr,
+    pub proposer: Option<Addr>,
     pub title: String,
     pub description: String,
     pub status: ProposalStatusV1,
@@ -480,7 +480,7 @@ impl From<ProposalV1> for Proposal {
 #[cw_serde]
 pub enum Cw20HookV1Msg {
     Stake {},
-    CreateProposal(CreateProposalMsg),
+    CreateProposal(CreateProposalV1Msg),
 }
 
 /// This is what CW721-receive hook messages for Enterprise contract looked like for v1.

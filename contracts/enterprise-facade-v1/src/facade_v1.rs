@@ -316,11 +316,9 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: params.deposit_amount,
-                    msg: to_json_binary(&Cw20HookV1Msg::CreateProposal(CreateProposalMsg {
-                        title: params.create_proposal_msg.title,
-                        description: params.create_proposal_msg.description,
-                        proposal_actions: params.create_proposal_msg.proposal_actions,
-                    }))?,
+                    msg: to_json_binary(&Cw20HookV1Msg::CreateProposal(
+                        self.map_create_proposal_msg(qctx.deps, params.create_proposal_msg)?,
+                    ))?,
                 })?,
                 vec![],
             )),
@@ -488,7 +486,11 @@ impl EnterpriseFacadeV1 {
 
         let poll = Poll {
             id: response.proposal.id,
-            proposer: response.proposal.proposer.clone(),
+            proposer: response
+                .proposal
+                .proposer
+                .clone()
+                .unwrap_or(Addr::unchecked("")),
             deposit_amount: 0,
             label: response.proposal.title.clone(),
             description: response.proposal.description.clone(),

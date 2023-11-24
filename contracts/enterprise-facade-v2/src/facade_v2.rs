@@ -1240,7 +1240,7 @@ fn map_proposal(proposal: enterprise_governance_controller_api::api::Proposal) -
     Proposal {
         proposal_type,
         id: proposal.id,
-        proposer: proposal.proposer,
+        proposer: Some(proposal.proposer),
         title: proposal.title,
         description: proposal.description,
         status: map_proposal_status(proposal.status),

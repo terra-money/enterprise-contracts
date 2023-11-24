@@ -424,7 +424,7 @@ pub enum ProposalType {
 pub struct Proposal {
     pub proposal_type: ProposalType,
     pub id: ProposalId,
-    pub proposer: Addr,
+    pub proposer: Option<Addr>,
     pub title: String,
     pub description: String,
     pub status: ProposalStatus,
