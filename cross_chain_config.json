@@ -1,13 +1,13 @@
 {
   "mainnet": {
-    "juno-1": {
-      "chain_global_proxy": "juno1n8yau8y65xl47h5dyj9rr56ucynjydd290pgh4dr5gvs2qfu2yrqv0ry23",
-      "enterprise_treasury_code_id": 3855,
-      "ics_proxy_code_id": 3689,
-      "uluna_denom": "ibc/107D152BB3176FAEBF4C2A84C5FFDEEA7C7CB4FE1BBDAB710F1FD25BCD055CBF",
-      "src_ibc_channel": "channel-2",
-      "dest_ibc_channel": "channel-86"
-    },
+    // "juno-1": {
+    //   "chain_global_proxy": "juno1n8yau8y65xl47h5dyj9rr56ucynjydd290pgh4dr5gvs2qfu2yrqv0ry23",
+    //   "enterprise_treasury_code_id": 3855,
+    //   "ics_proxy_code_id": 3689,
+    //   "uluna_denom": "ibc/107D152BB3176FAEBF4C2A84C5FFDEEA7C7CB4FE1BBDAB710F1FD25BCD055CBF",
+    //   "src_ibc_channel": "channel-2",
+    //   "dest_ibc_channel": "channel-86"
+    // },
     "migaloo-1": {
       "chain_global_proxy": "migaloo1rgfn7x6w2kaj5lxudsf4latrqt4fld3dum4egm9xgvy6ncq2ncfqfv6rq9",
       "enterprise_treasury_code_id": 238,
