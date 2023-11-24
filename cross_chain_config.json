@@ -10,7 +10,7 @@
     },
     "migaloo-1": {
       "chain_global_proxy": "migaloo1rgfn7x6w2kaj5lxudsf4latrqt4fld3dum4egm9xgvy6ncq2ncfqfv6rq9",
-      "enterprise_treasury_code_id": 176,
+      "enterprise_treasury_code_id": 238,
       "ics_proxy_code_id": 175,
       "uluna_denom": "ibc/4627AD2524E3E0523047E35BB76CC90E37D9D57ACF14F0FCBCEB2480705F3CB8",
       "src_ibc_channel": "channel-86",
