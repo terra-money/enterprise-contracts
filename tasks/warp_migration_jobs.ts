@@ -2,32 +2,32 @@ import { Coin } from "@terra-money/terra.js";
 import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
 import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
-const WARP_CONTROLLER_ADDRESS = "terra17tj62d7ah2cd64sgs49hak92sh5c558shzca4reh0t3pc40e6l3qu7uncx";
+const WARP_CONTROLLER_ADDRESS = "terra18xyy7eyuhmu5cszyseecfan880ar7fdc29qq6ad2askllqlpxujs9ru53k";
 const ENTERPRISE_FACADE = "enterprise-facade";
 
 task(async ({network, executor, refs }) => {
-    // await createWarpAccount(executor, WARP_CONTROLLER_ADDRESS, 100_000_000);
+    await createWarpAccount(executor, WARP_CONTROLLER_ADDRESS, 100_000_000);
     //
     // await createMigrationStepsOldWarpJob(refs, network, executor, WARP_CONTROLLER_ADDRESS, "terra1a9qnerqlhnkqummr9vyky6qmenvhqldy2gnvkdd97etsyt7amp6ss3r237", 20);
     //
     // await executeWarpJob(executor, 1);
 
-    await createMigrationStepsOldWarpJobMultiple(
-        refs,
-        network,
-        executor,
-        WARP_CONTROLLER_ADDRESS,
-        20,
-        [
-            "terra17z0n2tqjm4jgej6pmr08zsln8hujxxesw7u7jrta2zghhte77vzq7c5dwt",
-            "terra1a9eaymwfdysgque25j4wlg8stpyd5hyc7vl7j3khszg9ckd5h23qhfe707",
-            "terra1rhqfgzcqsc6rau4pszmzquqmdg9ux46me5aycemc7pfjwxtaqstqfvze6j",
-            "terra1np46gyfy4rpuwfg9e3vpwc6csetpm29v3mnj2nh4qlncfdxp8vfq6vscp5",
-            "terra1rgpl205v8vh938ptd3u9804r86hlawxsu97zzafjyuxn05nvrkjqr7jevr",
-            "terra1vnprhzj76ulfyxla0ecvhw8mrz20qwc2rnsmnezsgtdu7pzzcczqq7mvax",
-            "terra1j39h3p6dk39u36zw3ffwu40zspp5n4ygrg26vaucvdvms88qaxrs3ts9ur",
-        ]
-    );
+    // await createMigrationStepsOldWarpJobMultiple(
+    //     refs,
+    //     network,
+    //     executor,
+    //     WARP_CONTROLLER_ADDRESS,
+    //     20,
+    //     [
+    //         "terra17z0n2tqjm4jgej6pmr08zsln8hujxxesw7u7jrta2zghhte77vzq7c5dwt",
+    //         "terra1a9eaymwfdysgque25j4wlg8stpyd5hyc7vl7j3khszg9ckd5h23qhfe707",
+    //         "terra1rhqfgzcqsc6rau4pszmzquqmdg9ux46me5aycemc7pfjwxtaqstqfvze6j",
+    //         "terra1np46gyfy4rpuwfg9e3vpwc6csetpm29v3mnj2nh4qlncfdxp8vfq6vscp5",
+    //         "terra1rgpl205v8vh938ptd3u9804r86hlawxsu97zzafjyuxn05nvrkjqr7jevr",
+    //         "terra1vnprhzj76ulfyxla0ecvhw8mrz20qwc2rnsmnezsgtdu7pzzcczqq7mvax",
+    //         "terra1j39h3p6dk39u36zw3ffwu40zspp5n4ygrg26vaucvdvms88qaxrs3ts9ur",
+    //     ]
+    // );
 });
 
 const createWarpAccount = async(executor: Executor, warp_controller_address: string, uluna_deposit: number): Promise<void> => {
@@ -55,7 +55,7 @@ const createMigrationStepsOldWarpJobMultiple = async (refs: Refs, network: strin
 
 const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, executor: Executor, warp_controller_address: string, dao_address: string, submsgs_limit: number | undefined): Promise<void> => {
     try {
-        const facade_address = "terra1fyhldp2p6etnj8marasm4z3nuc3z9mwud34tu20gvhk59nesyecqy5t208";
+        const facade_address = "terra1c9zlzn7w6zy4wh5j89lpttwe8599d3zws9v9nnedhcnc92quzrlqrgmdsu";
 
         const facade_query_msg_encoded = Buffer.from(`{"v2_migration_stage":{"contract":"${dao_address}"}}`).toString('base64');
 
