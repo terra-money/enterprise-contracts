@@ -52,6 +52,7 @@ enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" 
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 denom-staking-api = { path = "../../packages/denom-staking-api" }
 nft-staking-api = { path = "../../packages/nft-staking-api" }
+poll-engine-api = { path = "../../packages/poll-engine-api" }
 token-staking-api = { path = "../../packages/token-staking-api" }
 multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }

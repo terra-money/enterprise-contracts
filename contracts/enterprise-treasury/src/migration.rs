@@ -7,13 +7,11 @@ use crate::migration_copy_storage::MIGRATED_USER_WEIGHTS;
 use crate::migration_stages::MigrationStage::MigrationCompleted;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
 use crate::nft_staking::{load_all_nft_stakes_for_user, NFT_STAKES};
-use crate::staking::{
-    get_height_checkpoints, get_multisig_height_checkpoints, get_multisig_seconds_checkpoints,
-    get_seconds_checkpoints, CW20_STAKES,
-};
+use crate::staking::{get_multisig_seconds_checkpoints, get_seconds_checkpoints, CW20_STAKES};
 use crate::state::{Config, CONFIG};
 use common::commons::ModifyValue;
-use common::cw::{Context, ReleaseAt};
+use common::cw;
+use common::cw::{Context, Pagination, ReleaseAt};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
@@ -26,6 +24,7 @@ use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use enterprise_factory_api::api::ConfigResponse;
+use enterprise_governance_api::msg::QueryMsg::Polls;
 use enterprise_governance_controller_api::api::{
     DaoCouncilSpec, GovConfig, ProposalAction, ProposalActionType, ProposalDeposit,
     ProposalDepositAsset, ProposalId, ProposalInfo, ProposalType,
@@ -44,6 +43,7 @@ use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, Versio
 use multisig_membership_api::api::UserWeight;
 use nft_staking_api::api::NftTokenId;
 use nft_staking_api::msg::Cw721HookMsg::AddClaim;
+use poll_engine_api::api::{PollsParams, PollsResponse};
 use token_staking_api::api::{UserClaim, UserStake};
 use token_staking_api::msg::Cw20HookMsg::AddClaims;
 use MigrationStage::{MigrationInProgress, MigrationNotStarted};
@@ -52,6 +52,8 @@ const DEFAULT_CW20_SUBMSGS_LIMIT: u32 = 100;
 const DEFAULT_NFT_SUBMSGS_LIMIT: u32 = 20;
 const INITIAL_NFT_MIGRATION_STEP_SUBMSGS_LIMIT: u32 = 5;
 const INITIAL_CW20_MIGRATION_STEP_SUBMSGS_LIMIT: u32 = 20;
+
+const POLLS_QUERY_LIMIT: u64 = 30;
 
 const DAO_GOV_CONFIG: Item<DaoGovConfig> = Item::new("dao_gov_config");
 const DAO_COUNCIL: Item<Option<DaoCouncil>> = Item::new("dao_council");
@@ -792,11 +794,10 @@ pub fn create_enterprise_membership_contract(
                     token_contract: cw20_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
                     weight_change_hooks,
-                    total_weight_by_height_checkpoints: Some(get_height_checkpoints(
-                        deps.as_ref(),
-                    )?),
+                    total_weight_by_height_checkpoints: None,
                     total_weight_by_seconds_checkpoints: Some(get_seconds_checkpoints(
                         deps.as_ref(),
+                        get_proposal_end_times(deps.as_ref())?,
                     )?),
                 })?,
                 funds: vec![],
@@ -814,11 +815,10 @@ pub fn create_enterprise_membership_contract(
                     nft_contract: cw721_contract.to_string(),
                     unlocking_period: gov_config.unlocking_period,
                     weight_change_hooks,
-                    total_weight_by_height_checkpoints: Some(get_height_checkpoints(
-                        deps.as_ref(),
-                    )?),
+                    total_weight_by_height_checkpoints: None,
                     total_weight_by_seconds_checkpoints: Some(get_seconds_checkpoints(
                         deps.as_ref(),
+                        get_proposal_end_times(deps.as_ref())?,
                     )?),
                 })?,
                 funds: vec![],
@@ -843,11 +843,10 @@ pub fn create_enterprise_membership_contract(
                     enterprise_contract: enterprise_contract.to_string(),
                     initial_weights: Some(initial_weights),
                     weight_change_hooks,
-                    total_weight_by_height_checkpoints: Some(get_multisig_height_checkpoints(
-                        deps.as_ref(),
-                    )?),
+                    total_weight_by_height_checkpoints: None,
                     total_weight_by_seconds_checkpoints: Some(get_multisig_seconds_checkpoints(
                         deps.as_ref(),
+                        get_proposal_end_times(deps.as_ref())?,
                     )?),
                 })?,
                 funds: vec![],
@@ -859,6 +858,53 @@ pub fn create_enterprise_membership_contract(
     let submsg = SubMsg::reply_on_success(msg, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID);
 
     Ok(submsg)
+}
+
+fn get_proposal_end_times(deps: Deps) -> EnterpriseTreasuryResult<Vec<Timestamp>> {
+    let governance_contract = ENTERPRISE_GOVERNANCE_CONTRACT.load(deps.storage)?;
+
+    let mut poll_end_timestamps = vec![];
+
+    let mut start_after: Option<u64> = None;
+    loop {
+        let polls_response = query_polls(
+            deps,
+            governance_contract.to_string(),
+            start_after.map(Uint64::from),
+        )?;
+
+        if polls_response.polls.is_empty() {
+            break;
+        } else {
+            for poll in polls_response.polls {
+                start_after = Some(poll.id);
+                poll_end_timestamps.push(poll.ends_at);
+            }
+        }
+    }
+
+    Ok(poll_end_timestamps)
+}
+
+fn query_polls(
+    deps: Deps,
+    governance_contract: String,
+    start_after: Option<Uint64>,
+) -> EnterpriseTreasuryResult<PollsResponse> {
+    let polls_response = deps.querier.query_wasm_smart(
+        governance_contract,
+        &Polls(PollsParams {
+            filter: None,
+            pagination: Pagination {
+                start_after,
+                end_at: None,
+                limit: Some(POLLS_QUERY_LIMIT),
+                order_by: Some(cw::Order::Ascending),
+            },
+        }),
+    )?;
+
+    Ok(polls_response)
 }
 
 pub fn membership_contract_created(
