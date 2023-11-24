@@ -1832,6 +1832,37 @@ fn general_total_available_votes(
     deps: Deps,
     expiration: Expiration,
 ) -> GovernanceControllerResult<Uint128> {
+    // check if there is an incomplete migration
+    // if the query fails, default to 'false'
+    let has_incomplete_migration = query_has_incomplete_migration(deps).unwrap_or(false);
+
+    if has_incomplete_migration {
+        // query the treasury for total weight, not propagating errors from it
+        let treasury_addr_response: GovernanceControllerResult<TotalWeightResponse> =
+            query_enterprise_treasury_addr(deps).and_then(|addr| {
+                deps.querier
+                    .query_wasm_smart(
+                        addr.to_string(),
+                        &enterprise_treasury_api::msg::QueryMsg::TotalWeight(TotalWeightParams {
+                            expiration,
+                        }),
+                    )
+                    .map_err(Std)
+            });
+
+        match treasury_addr_response {
+            Ok(response) => Ok(response.total_weight),
+            Err(_) => general_total_available_votes_from_membership_contract(deps, expiration),
+        }
+    } else {
+        general_total_available_votes_from_membership_contract(deps, expiration)
+    }
+}
+
+fn general_total_available_votes_from_membership_contract(
+    deps: Deps,
+    expiration: Expiration,
+) -> GovernanceControllerResult<Uint128> {
     let membership_contract = query_membership_addr(deps)?;
 
     let response: TotalWeightResponse = deps.querier.query_wasm_smart(
@@ -1886,6 +1917,38 @@ pub fn query_proposal_votes(
 }
 
 fn get_user_available_votes(qctx: QueryContext, user: Addr) -> GovernanceControllerResult<Uint128> {
+    // check if there is an incomplete migration
+    // if the query fails, default to 'false'
+    let has_incomplete_migration = query_has_incomplete_migration(qctx.deps).unwrap_or(false);
+
+    if has_incomplete_migration {
+        // query the treasury for user weight, not propagating errors from it
+        let treasury_addr_response: GovernanceControllerResult<UserWeightResponse> =
+            query_enterprise_treasury_addr(qctx.deps).and_then(|addr| {
+                qctx.deps
+                    .querier
+                    .query_wasm_smart(
+                        addr.to_string(),
+                        &enterprise_treasury_api::msg::QueryMsg::UserWeight(UserWeightParams {
+                            user: user.to_string(),
+                        }),
+                    )
+                    .map_err(Std)
+            });
+
+        match treasury_addr_response {
+            Ok(response) => Ok(response.weight),
+            Err(_) => get_user_available_votes_from_membership_contract(qctx, user),
+        }
+    } else {
+        get_user_available_votes_from_membership_contract(qctx, user)
+    }
+}
+
+fn get_user_available_votes_from_membership_contract(
+    qctx: QueryContext,
+    user: Addr,
+) -> GovernanceControllerResult<Uint128> {
     let membership_contract = query_membership_addr(qctx.deps)?;
 
     let response: UserWeightResponse = qctx.deps.querier.query_wasm_smart(

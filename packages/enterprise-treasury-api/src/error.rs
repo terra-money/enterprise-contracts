@@ -1,4 +1,5 @@
-use cosmwasm_std::StdError;
+use crate::error::EnterpriseTreasuryError::Std;
+use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
 pub type EnterpriseTreasuryResult<T> = Result<T, EnterpriseTreasuryError>;
@@ -16,6 +17,12 @@ pub enum EnterpriseTreasuryError {
 
     #[error("Cannot perform that operation in the current migration stage")]
     InvalidMigrationStage,
+}
+
+impl From<OverflowError> for EnterpriseTreasuryError {
+    fn from(value: OverflowError) -> Self {
+        Std(StdError::generic_err(value.to_string()))
+    }
 }
 
 impl EnterpriseTreasuryError {

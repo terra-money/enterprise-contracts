@@ -3,9 +3,10 @@ use crate::contract::{
     ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID, ENTERPRISE_INSTANTIATE_REPLY_ID,
     ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID, MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
 };
+use crate::migration_copy_storage::MIGRATED_USER_WEIGHTS;
 use crate::migration_stages::MigrationStage::MigrationCompleted;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
-use crate::nft_staking::NFT_STAKES;
+use crate::nft_staking::{load_all_nft_stakes_for_user, NFT_STAKES};
 use crate::staking::{
     get_height_checkpoints, get_multisig_height_checkpoints, get_multisig_seconds_checkpoints,
     get_seconds_checkpoints, CW20_STAKES,
@@ -977,7 +978,7 @@ fn migrate_and_clear_cw20_stakes_submsg(
     limit: u32,
 ) -> EnterpriseTreasuryResult<ResultWithItemsConsumed<Option<SubMsg>>> {
     let mut total_stakes = Uint128::zero();
-    let mut stakers_to_remove: Vec<Addr> = vec![];
+    let mut stakers_to_remove: Vec<(Addr, Uint128)> = vec![];
 
     let stakers = CW20_STAKES
         .range(deps.storage, None, None, Ascending)
@@ -985,7 +986,7 @@ fn migrate_and_clear_cw20_stakes_submsg(
         .map(|res| {
             res.map(|(user, amount)| {
                 total_stakes += amount;
-                stakers_to_remove.push(user.clone());
+                stakers_to_remove.push((user.clone(), amount));
                 UserStake {
                     user: user.to_string(),
                     staked_amount: amount,
@@ -996,8 +997,9 @@ fn migrate_and_clear_cw20_stakes_submsg(
 
     let items_consumed = stakers_to_remove.len() as u32;
 
-    for staker in stakers_to_remove {
-        CW20_STAKES.remove(deps.storage, staker);
+    for (staker, weight) in stakers_to_remove {
+        CW20_STAKES.remove(deps.storage, staker.clone());
+        MIGRATED_USER_WEIGHTS.save(deps.storage, staker, &weight)?;
     }
 
     if total_stakes.is_zero() {
@@ -1104,7 +1106,7 @@ fn migrate_and_clear_cw721_stakes_submsgs(
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let mut migrate_stakes_submsgs = vec![];
 
-    let mut stake_keys_to_remove: Vec<NftTokenId> = vec![];
+    let mut stakes_to_remove: Vec<(NftTokenId, Addr)> = vec![];
 
     for stake_res in NFT_STAKES()
         .range(deps.storage, None, None, Ascending)
@@ -1126,11 +1128,20 @@ fn migrate_and_clear_cw721_stakes_submsgs(
 
         migrate_stakes_submsgs.push(SubMsg::new(submsg));
 
-        stake_keys_to_remove.push(key);
+        stakes_to_remove.push((key, stake.staker));
     }
 
-    for stake_key in stake_keys_to_remove {
+    for (stake_key, staker) in stakes_to_remove {
         NFT_STAKES().remove(deps.storage, stake_key)?;
+
+        let previously_migrated_stake = MIGRATED_USER_WEIGHTS
+            .may_load(deps.storage, staker.clone())?
+            .unwrap_or_default();
+        MIGRATED_USER_WEIGHTS.save(
+            deps.storage,
+            staker,
+            &(previously_migrated_stake.checked_add(Uint128::one())?),
+        )?;
     }
 
     Ok(migrate_stakes_submsgs)
@@ -1409,33 +1420,28 @@ fn set_migration_stage_to_in_progress(storage: &mut dyn Storage) -> EnterpriseTr
 }
 
 fn set_migration_stage_to_completed(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {
-    remove_old_storage_data(storage)?;
     MIGRATION_TO_V_1_0_0_STAGE.save(storage, &MigrationCompleted)?;
 
     Ok(())
 }
 
-fn remove_old_storage_data(storage: &mut dyn Storage) -> EnterpriseTreasuryResult<()> {
-    DAO_GOV_CONFIG.remove(storage);
-    DAO_COUNCIL.remove(storage);
+/// Loads a user's weight from before migration.
+/// As the migration moves weights over to the membership contract, this weight will be removed
+/// at some point.
+pub fn load_pre_migration_user_weight(
+    deps: Deps,
+    user: Addr,
+) -> EnterpriseTreasuryResult<Option<Uint128>> {
+    let dao_type = DAO_TYPE.load(deps.storage)?;
 
-    DAO_METADATA.remove(storage);
-    DAO_TYPE.remove(storage);
-    DAO_CREATION_DATE.remove(storage);
-    DAO_MEMBERSHIP_CONTRACT.remove(storage);
+    let weight = match dao_type {
+        DaoType::Denom => {
+            return Err(StdError::generic_err("No denom DAOs existed pre-migration!").into());
+        }
+        DaoType::Token => CW20_STAKES.may_load(deps.storage, user)?,
+        DaoType::Nft => load_all_nft_stakes_for_user(deps.storage, user)?,
+        DaoType::Multisig => MULTISIG_MEMBERS.may_load(deps.storage, user)?,
+    };
 
-    DAO_CODE_VERSION.remove(storage);
-
-    MULTISIG_MEMBERS.clear(storage);
-
-    ENTERPRISE_GOVERNANCE_CONTRACT.remove(storage);
-    FUNDS_DISTRIBUTOR_CONTRACT.remove(storage);
-
-    ENTERPRISE_FACTORY_CONTRACT.remove(storage);
-
-    PROPOSAL_INFOS.clear(storage);
-
-    MIGRATION_INFO.remove(storage);
-
-    Ok(())
+    Ok(weight)
 }

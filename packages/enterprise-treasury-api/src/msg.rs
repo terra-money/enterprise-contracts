@@ -5,6 +5,9 @@ use crate::api::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_asset::AssetInfoUnchecked;
+use membership_common_api::api::{
+    TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -40,6 +43,13 @@ pub enum QueryMsg {
     AssetWhitelist(AssetWhitelistParams),
     #[returns(NftWhitelistResponse)]
     NftWhitelist(NftWhitelistParams),
+
+    /// Not part of this contract's API, but kept as a failsafe when performing migration
+    /// from the previous version.
+    #[returns(UserWeightResponse)]
+    UserWeight(UserWeightParams),
+    #[returns(TotalWeightResponse)]
+    TotalWeight(TotalWeightParams),
 
     /// Used to determine whether this contract is still in the middle of migration from
     /// old contracts to new contracts.

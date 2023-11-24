@@ -12,4 +12,5 @@ common = { path = "../common" }
 cw-asset = "2.4.0"
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
+membership-common-api = { path = "../../packages/membership-common-api" }
 thiserror = "1"

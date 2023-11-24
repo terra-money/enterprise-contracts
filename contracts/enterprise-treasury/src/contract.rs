@@ -6,12 +6,14 @@ use crate::asset_whitelist::{
 use crate::migration::{
     council_membership_contract_created, enterprise_contract_created,
     enterprise_outposts_contract_created, finalize_initial_migration_step,
-    governance_controller_contract_created, membership_contract_created, migrate_to_v_1_0_0,
-    perform_next_migration_step,
+    governance_controller_contract_created, load_pre_migration_user_weight,
+    membership_contract_created, migrate_to_v_1_0_0, perform_next_migration_step,
 };
+use crate::migration_copy_storage::MIGRATED_USER_WEIGHTS;
 use crate::migration_stages::MigrationStage::MigrationInProgress;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
 use crate::old_migration::migrate_to_v_0_5_0;
+use crate::staking::{load_total_staked, load_total_staked_at_height, load_total_staked_at_time};
 use crate::state::{Config, CONFIG, NFT_WHITELIST};
 use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
@@ -23,7 +25,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_storage_plus::Bound;
-use cw_utils::parse_reply_instantiate_data;
+use cw_utils::{parse_reply_instantiate_data, Expiration};
 use enterprise_treasury_api::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
     ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, NftWhitelistParams,
@@ -39,6 +41,9 @@ use enterprise_treasury_api::response::{
 };
 use funds_distributor_api::msg::Cw20HookMsg::Distribute;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
+use membership_common_api::api::{
+    TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse,
+};
 use std::ops::Not;
 use MigrationStage::{MigrationCompleted, MigrationNotStarted};
 
@@ -293,6 +298,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseTreasuryResult<Bi
         QueryMsg::HasIncompleteV2Migration {} => {
             to_json_binary(&query_has_incomplete_v2_migration(qctx)?)?
         }
+        QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(qctx, params)?)?,
+        QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(qctx, params)?)?,
     };
 
     Ok(response)
@@ -361,6 +368,36 @@ pub fn query_nft_whitelist(
         .collect();
 
     Ok(NftWhitelistResponse { nfts })
+}
+
+pub fn query_user_weight(
+    qctx: QueryContext,
+    params: UserWeightParams,
+) -> EnterpriseTreasuryResult<UserWeightResponse> {
+    let user = qctx.deps.api.addr_validate(&params.user)?;
+
+    let pre_migration_weight =
+        load_pre_migration_user_weight(qctx.deps, user.clone())?.unwrap_or_default();
+    let migrated_weight = MIGRATED_USER_WEIGHTS
+        .may_load(qctx.deps.storage, user.clone())?
+        .unwrap_or_default();
+
+    let weight = pre_migration_weight.checked_add(migrated_weight)?;
+
+    Ok(UserWeightResponse { user, weight })
+}
+
+pub fn query_total_weight(
+    qctx: QueryContext,
+    params: TotalWeightParams,
+) -> EnterpriseTreasuryResult<TotalWeightResponse> {
+    let total_weight = match params.expiration {
+        Expiration::AtHeight(height) => load_total_staked_at_height(qctx.deps.storage, height)?,
+        Expiration::AtTime(time) => load_total_staked_at_time(qctx.deps.storage, time)?,
+        Expiration::Never {} => load_total_staked(qctx.deps.storage)?,
+    };
+
+    Ok(TotalWeightResponse { total_weight })
 }
 
 pub fn query_has_incomplete_v2_migration(
