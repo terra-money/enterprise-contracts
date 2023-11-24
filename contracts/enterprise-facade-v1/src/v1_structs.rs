@@ -1,7 +1,7 @@
 use common::commons::ModifyValue;
 use common::commons::ModifyValue::{Change, NoChange};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{from_json, Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_facade_api::api::{
@@ -227,7 +227,7 @@ impl From<UpgradeDaoV1Msg> for UpgradeDaoMsg {
                     minor: value.new_dao_code_id,
                     patch: 0,
                 },
-                migrate_msg: from_json(&value.migrate_msg).unwrap_or_default(),
+                migrate_msg: value.migrate_msg,
             }],
         }
     }
