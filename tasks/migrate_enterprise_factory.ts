@@ -9,8 +9,8 @@ task(async ({ deployer, signer, refs, network }) => {
   // deployer.buildContract(ENTERPRISE);
   // deployer.optimizeContract(ENTERPRISE);
   //
-  await deployer.storeCode(ENTERPRISE_FACTORY);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // await deployer.storeCode(ENTERPRISE_FACTORY);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const contract = refs.getContract(network, ENTERPRISE_FACTORY);
 
