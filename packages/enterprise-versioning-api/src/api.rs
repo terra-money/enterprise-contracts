@@ -78,6 +78,23 @@ pub struct AddVersionMsg {
 }
 
 #[cw_serde]
+pub struct EditVersionMsg {
+    pub version: Version,
+    pub changelog: Option<Vec<String>>,
+    pub attestation_code_id: Option<u64>,
+    pub enterprise_code_id: Option<u64>,
+    pub enterprise_governance_code_id: Option<u64>,
+    pub enterprise_governance_controller_code_id: Option<u64>,
+    pub enterprise_outposts_code_id: Option<u64>,
+    pub enterprise_treasury_code_id: Option<u64>,
+    pub funds_distributor_code_id: Option<u64>,
+    pub token_staking_membership_code_id: Option<u64>,
+    pub denom_staking_membership_code_id: Option<u64>,
+    pub nft_staking_membership_code_id: Option<u64>,
+    pub multisig_membership_code_id: Option<u64>,
+}
+
+#[cw_serde]
 pub struct VersionParams {
     pub version: Version,
 }

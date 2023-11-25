@@ -1,5 +1,6 @@
 use crate::api::{
-    AddVersionMsg, AdminResponse, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
+    AddVersionMsg, AdminResponse, EditVersionMsg, VersionParams, VersionResponse, VersionsParams,
+    VersionsResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
@@ -11,6 +12,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AddVersion(AddVersionMsg),
+    EditVersion(EditVersionMsg),
 }
 
 #[cw_serde]
