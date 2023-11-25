@@ -448,5 +448,33 @@ pub fn query_is_restricted_user(
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    Ok(Response::new().add_attribute("action", "migrate"))
+    let versioning_contract = ENTERPRISE_VERSIONING_CONTRACT.load(deps.storage)?;
+
+    // TODO: not optimal, what if someone used a different version deployment?
+    let version_info: VersionResponse = deps.querier.query_wasm_smart(
+        versioning_contract.to_string(),
+        &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams {
+            version: Version {
+                major: 1,
+                minor: 0,
+                patch: 1,
+            },
+        }),
+    )?;
+
+    let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
+
+    let migrate_governance_controller_msg = SubMsg::new(Wasm(Migrate {
+        contract_addr: component_contracts
+            .enterprise_governance_controller_contract
+            .to_string(),
+        new_code_id: version_info
+            .version
+            .enterprise_governance_controller_code_id,
+        msg: to_json_binary(&enterprise_governance_controller_api::msg::MigrateMsg {})?,
+    }));
+
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_submessage(migrate_governance_controller_msg))
 }
