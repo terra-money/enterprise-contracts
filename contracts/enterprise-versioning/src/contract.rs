@@ -8,15 +8,17 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use enterprise_versioning_api::api::{
-    AddVersionMsg, AdminResponse, VersionInfo, VersionParams, VersionResponse, VersionsParams,
-    VersionsResponse,
+    AddVersionMsg, AdminResponse, EditVersionMsg, VersionInfo, VersionParams, VersionResponse,
+    VersionsParams, VersionsResponse,
 };
 use enterprise_versioning_api::error::EnterpriseVersioningError::{
     NoVersionsExist, Unauthorized, VersionAlreadyExists, VersionNotFound,
 };
 use enterprise_versioning_api::error::EnterpriseVersioningResult;
 use enterprise_versioning_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use enterprise_versioning_api::response::{execute_add_version_response, instantiate_response};
+use enterprise_versioning_api::response::{
+    execute_add_version_response, execute_edit_version_response, instantiate_response,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-versioning";
@@ -51,6 +53,7 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::AddVersion(msg) => add_version(ctx, msg),
+        ExecuteMsg::EditVersion(msg) => edit_version(ctx, msg),
     }
 }
 
@@ -71,6 +74,90 @@ fn add_version(ctx: &mut Context, msg: AddVersionMsg) -> EnterpriseVersioningRes
     VERSIONS.save(ctx.deps.storage, version_key, &msg.version)?;
 
     Ok(execute_add_version_response(version.to_string()))
+}
+
+fn edit_version(ctx: &mut Context, msg: EditVersionMsg) -> EnterpriseVersioningResult<Response> {
+    let admin = ADMIN.load(ctx.deps.storage)?;
+
+    if admin != ctx.info.sender {
+        return Err(Unauthorized);
+    }
+
+    let version_key = msg.version.clone().into();
+
+    let version_info = VERSIONS.may_load(ctx.deps.storage, version_key)?;
+
+    match version_info {
+        None => {
+            return Err(VersionNotFound {
+                version: msg.version,
+            })
+        }
+        Some(version_info) => {
+            let edited_version = apply_edit_changes(version_info, &msg)?;
+            VERSIONS.save(ctx.deps.storage, version_key, &edited_version)?;
+        }
+    }
+
+    Ok(execute_edit_version_response(msg.version.to_string()))
+}
+
+fn apply_edit_changes(
+    mut version_info: VersionInfo,
+    msg: &EditVersionMsg,
+) -> EnterpriseVersioningResult<VersionInfo> {
+    if let Some(changelog) = &msg.changelog {
+        version_info.changelog = changelog.clone();
+    }
+
+    if let Some(attestation_code_id) = msg.attestation_code_id {
+        version_info.attestation_code_id = attestation_code_id;
+    }
+
+    if let Some(enterprise_code_id) = msg.enterprise_code_id {
+        version_info.enterprise_code_id = enterprise_code_id;
+    }
+
+    if let Some(enterprise_governance_code_id) = msg.enterprise_governance_code_id {
+        version_info.enterprise_governance_code_id = enterprise_governance_code_id;
+    }
+
+    if let Some(enterprise_governance_controller_code_id) =
+        msg.enterprise_governance_controller_code_id
+    {
+        version_info.enterprise_governance_controller_code_id =
+            enterprise_governance_controller_code_id;
+    }
+
+    if let Some(enterprise_outposts_code_id) = msg.enterprise_outposts_code_id {
+        version_info.enterprise_outposts_code_id = enterprise_outposts_code_id;
+    }
+
+    if let Some(enterprise_treasury_code_id) = msg.enterprise_treasury_code_id {
+        version_info.enterprise_treasury_code_id = enterprise_treasury_code_id;
+    }
+
+    if let Some(funds_distributor_code_id) = msg.funds_distributor_code_id {
+        version_info.funds_distributor_code_id = funds_distributor_code_id;
+    }
+
+    if let Some(token_staking_membership_code_id) = msg.token_staking_membership_code_id {
+        version_info.token_staking_membership_code_id = token_staking_membership_code_id;
+    }
+
+    if let Some(denom_staking_membership_code_id) = msg.denom_staking_membership_code_id {
+        version_info.denom_staking_membership_code_id = denom_staking_membership_code_id;
+    }
+
+    if let Some(nft_staking_membership_code_id) = msg.nft_staking_membership_code_id {
+        version_info.nft_staking_membership_code_id = nft_staking_membership_code_id;
+    }
+
+    if let Some(multisig_membership_code_id) = msg.multisig_membership_code_id {
+        version_info.multisig_membership_code_id = multisig_membership_code_id;
+    }
+
+    Ok(version_info)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

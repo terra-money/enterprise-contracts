@@ -466,11 +466,6 @@ fn create_poll(
     );
 
     let state = STATE.load(ctx.deps.storage)?;
-    if state.proposal_being_created.is_some() {
-        return Err(CustomError {
-            val: "Invalid state - found proposal being created when not expected".to_string(),
-        });
-    }
     STATE.save(
         ctx.deps.storage,
         &State {
@@ -532,19 +527,13 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
             .status;
 
     STATE.update(ctx.deps.storage, |state| -> StdResult<State> {
-        if state.proposal_being_voted_on.is_some() {
-            Err(StdError::generic_err(
-                "Invalid state: proposal being voted on is present when not expected",
-            ))
-        } else {
-            Ok(State {
-                proposal_being_voted_on: Some(ProposalBeingVotedOn {
-                    proposal_id: msg.proposal_id,
-                    executability_status: end_proposal_status.into(),
-                }),
-                ..state
-            })
-        }
+        Ok(State {
+            proposal_being_voted_on: Some(ProposalBeingVotedOn {
+                proposal_id: msg.proposal_id,
+                executability_status: end_proposal_status.into(),
+            }),
+            ..state
+        })
     })?;
 
     let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
@@ -738,11 +727,6 @@ fn end_proposal(
     );
 
     let state = STATE.load(ctx.deps.storage)?;
-    if state.proposal_being_executed.is_some() {
-        return Err(CustomError {
-            val: "Invalid state: proposal being executed is present when not expected".to_string(),
-        });
-    }
 
     STATE.save(
         ctx.deps.storage,
@@ -1371,6 +1355,20 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
             Ok(Response::new().add_submessages(execute_submsgs))
         }
         CAST_VOTE_REPLY_ID => {
+            let state = STATE.load(deps.storage)?;
+
+            let proposal_being_voted_on = state.proposal_being_voted_on.ok_or(CustomError {
+                val: "Invalid state - missing ID of proposal being voted on".to_string(),
+            })?;
+
+            STATE.save(
+                deps.storage,
+                &State {
+                    proposal_being_voted_on: None,
+                    ..state
+                },
+            )?;
+
             let gov_config = GOV_CONFIG.load(deps.storage)?;
 
             if !gov_config.allow_early_proposal_execution {
@@ -1378,20 +1376,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
                 Ok(Response::new())
             } else {
                 // otherwise, let's see if we need to update earliest proposal execution time
-
-                let state = STATE.load(deps.storage)?;
-
-                let proposal_being_voted_on = state.proposal_being_voted_on.ok_or(CustomError {
-                    val: "Invalid state - missing ID of proposal being voted on".to_string(),
-                })?;
-
-                STATE.save(
-                    deps.storage,
-                    &State {
-                        proposal_being_voted_on: None,
-                        ..state
-                    },
-                )?;
 
                 let dao_type = query_dao_type(deps.as_ref())?;
 
@@ -1964,6 +1948,16 @@ fn get_user_available_votes_from_membership_contract(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> GovernanceControllerResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let state = STATE.load(deps.storage)?;
+    STATE.save(
+        deps.storage,
+        &State {
+            proposal_being_created: None,
+            proposal_being_voted_on: None,
+            ..state
+        },
+    )?;
 
     Ok(Response::new().add_attribute("action", "migrate"))
 }

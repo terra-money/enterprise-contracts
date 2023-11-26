@@ -89,7 +89,7 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2178"
+      "codeId": "2223"
     },
     "enterprise-factory": {
       "codeId": "2188",
@@ -100,7 +100,7 @@
       "address": "terra136k05x7uzu0awwxgr8wtqunedjpnv4jzmc4ery40czx5338ht8vq0ja9xq"
     },
     "enterprise-versioning": {
-      "codeId": "2173",
+      "codeId": "2220",
       "address": "terra1vff3unw6t795t6zm62j94grscl8qfeurzpvdtpeclmwc0n5hm5csxuhjmw"
     },
     "cw3_fixed_multisig": {
@@ -125,7 +125,7 @@
       "codeId": "2185"
     },
     "enterprise-governance-controller": {
-      "codeId": "2180"
+      "codeId": "2224"
     },
     "enterprise-treasury": {
       "codeId": "2181"
