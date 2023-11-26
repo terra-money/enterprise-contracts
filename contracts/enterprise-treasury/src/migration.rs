@@ -1076,44 +1076,47 @@ fn migrate_and_clear_cw20_claims_submsg(
 
     let mut claims_included = 0u32;
 
-    let mut claims_to_replace: Vec<(Addr, Vec<Claim>)> = vec![];
     let mut claims_to_send: Vec<UserClaim> = vec![];
 
-    for claim in CLAIMS
-        .range(deps.storage, None, None, Ascending)
-        .take(limit as usize)
-    {
-        if claims_included >= limit {
-            break;
-        }
+    while claims_included < limit && !CLAIMS.is_empty(deps.storage) {
+        let mut claims_to_replace: Vec<(Addr, Vec<Claim>)> = vec![];
 
-        let (user, claims) = claim?;
-
-        let mut claims_remaining: Vec<Claim> = vec![];
-
-        for claim in claims {
-            match claim.asset {
-                ClaimAsset::Cw20(asset) if claims_included < limit => {
-                    total_claims_amount += asset.amount;
-                    claims_included += 1;
-                    claims_to_send.push(UserClaim {
-                        user: user.to_string(),
-                        claim_amount: asset.amount,
-                        release_at: claim.release_at,
-                    });
-                }
-                _ => claims_remaining.push(claim),
+        for claim in CLAIMS
+            .range(deps.storage, None, None, Ascending)
+            .take(limit as usize)
+        {
+            if claims_included >= limit {
+                break;
             }
+
+            let (user, claims) = claim?;
+
+            let mut claims_remaining: Vec<Claim> = vec![];
+
+            for claim in claims {
+                match claim.asset {
+                    ClaimAsset::Cw20(asset) if claims_included < limit => {
+                        total_claims_amount += asset.amount;
+                        claims_included += 1;
+                        claims_to_send.push(UserClaim {
+                            user: user.to_string(),
+                            claim_amount: asset.amount,
+                            release_at: claim.release_at,
+                        });
+                    }
+                    _ => claims_remaining.push(claim),
+                }
+            }
+
+            claims_to_replace.push((user, claims_remaining));
         }
 
-        claims_to_replace.push((user, claims_remaining));
-    }
-
-    for (user, claims_remaining) in claims_to_replace {
-        if claims_remaining.is_empty() {
-            CLAIMS.remove(deps.storage, &user);
-        } else {
-            CLAIMS.save(deps.storage, &user, &claims_remaining)?;
+        for (user, claims_remaining) in claims_to_replace {
+            if claims_remaining.is_empty() {
+                CLAIMS.remove(deps.storage, &user);
+            } else {
+                CLAIMS.save(deps.storage, &user, &claims_remaining)?;
+            }
         }
     }
 
@@ -1201,42 +1204,47 @@ fn migrate_and_clear_cw721_claims_submsgs(
 ) -> EnterpriseTreasuryResult<Vec<SubMsg>> {
     let mut claim_submsgs = vec![];
 
-    let mut claim_keys_to_remove: Vec<Addr> = vec![];
+    let mut claims_included = 0u32;
 
-    for claim_res in CLAIMS
-        .range(deps.storage, None, None, Ascending)
-        .take(limit as usize)
-    {
-        let (user, claims) = claim_res?;
+    while claims_included < limit && !CLAIMS.is_empty(deps.storage) {
+        let mut claim_keys_to_remove: Vec<Addr> = vec![];
 
-        for claim in claims {
-            match claim.asset {
-                ClaimAsset::Cw20(_) => continue,
-                ClaimAsset::Cw721(asset) => {
-                    for token in asset.tokens {
-                        let submsg = SubMsg::new(wasm_execute(
-                            cw721_contract.to_string(),
-                            &cw721::Cw721ExecuteMsg::SendNft {
-                                contract: membership_contract.to_string(),
-                                token_id: token,
-                                msg: to_json_binary(&AddClaim {
-                                    user: user.to_string(),
-                                    release_at: claim.release_at.clone(),
-                                })?,
-                            },
-                            vec![],
-                        )?);
-                        claim_submsgs.push(submsg);
+        for claim_res in CLAIMS
+            .range(deps.storage, None, None, Ascending)
+            .take(limit as usize)
+        {
+            let (user, claims) = claim_res?;
+
+            for claim in claims {
+                match claim.asset {
+                    ClaimAsset::Cw20(_) => continue,
+                    ClaimAsset::Cw721(asset) => {
+                        for token in asset.tokens {
+                            let submsg = SubMsg::new(wasm_execute(
+                                cw721_contract.to_string(),
+                                &cw721::Cw721ExecuteMsg::SendNft {
+                                    contract: membership_contract.to_string(),
+                                    token_id: token,
+                                    msg: to_json_binary(&AddClaim {
+                                        user: user.to_string(),
+                                        release_at: claim.release_at.clone(),
+                                    })?,
+                                },
+                                vec![],
+                            )?);
+                            claim_submsgs.push(submsg);
+                            claims_included += 1;
+                        }
                     }
                 }
             }
+
+            claim_keys_to_remove.push(user);
         }
 
-        claim_keys_to_remove.push(user);
-    }
-
-    for claim_key in claim_keys_to_remove {
-        CLAIMS.remove(deps.storage, &claim_key);
+        for claim_key in claim_keys_to_remove {
+            CLAIMS.remove(deps.storage, &claim_key);
+        }
     }
 
     Ok(claim_submsgs)
