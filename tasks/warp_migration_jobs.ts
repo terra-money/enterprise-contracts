@@ -214,13 +214,13 @@ const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, execu
     try {
         const facade_address = refs.getAddress(network, ENTERPRISE_FACADE);
 
-        const facade_query_msg_encoded = Buffer.from(`{"v2_migration_stage":{"contract":"${dao_address}"}}`).toString('base64');
+        const facade_query_msg_encoded = Buffer.from(`{"has_unmoved_stakes_or_claims":{"contract":"${dao_address}"}}`).toString('base64');
 
         const perform_migration_step_msg_encoded = Buffer.from(`{\"perform_next_migration_step\":{\"submsgs_limit\":${submsgs_limit}}}`).toString('base64');
 
         console.log("perform migration step msg encoded:", perform_migration_step_msg_encoded);
 
-        const vars = `[{"query":{"reinitialize":false,"name":"v2MigrationStage","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.stage"},"update_fn":null,"kind":"string","encode":false}}]`;
+        const vars = `[{"query":{"reinitialize":false,"name":"hasUnmovedStakesOrClaims","init_fn":{"query":{"wasm":{"smart":{"contract_addr":"${facade_address}","msg":"${facade_query_msg_encoded}"}}},"selector":"$.has_unmoved_stakes_or_claims"},"update_fn":null,"kind":"bool","encode":false}}]`;
 
         console.log("vars:", vars);
 
@@ -235,7 +235,7 @@ const createMigrationStepsOldWarpJob = async (refs: Refs, network: string, execu
                     name: `Migration for DAO ${dao_address}`,
                     description: "Performs next migration step for a DAO with migration in progress",
                     labels: [],
-                    condition: "{\"expr\":{\"string\":{\"left\":{\"ref\":\"$warp.variable.v2MigrationStage\"},\"right\":{\"simple\":\"migration_in_progress\"},\"op\":\"eq\"}}}",
+                    condition: "{\"expr\":{\"bool\":\"$warp.variable.hasUnmovedStakesOrClaims\"}}",
                     msgs: `[{\"wasm\":{\"execute\":{\"contract_addr\":\"${dao_address}\",\"msg\":\"${perform_migration_step_msg_encoded}\",\"funds\":[]}}}]`,
                     vars: vars,
                     recurring: true,
