@@ -1,7 +1,8 @@
 use crate::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
-    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, NftWhitelistParams,
-    NftWhitelistResponse, SetAdminMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+    NftWhitelistParams, NftWhitelistResponse, SetAdminMsg, SpendMsg, UpdateAssetWhitelistMsg,
+    UpdateNftWhitelistMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_asset::AssetInfoUnchecked;
@@ -29,9 +30,6 @@ pub enum ExecuteMsg {
     PerformNextMigrationStep {
         submsgs_limit: Option<u32>,
     },
-
-    /// Called by self to finalize initial migration step. Not part of the public API!
-    FinalizeInitialMigrationStep {},
 }
 
 #[cw_serde]
@@ -55,9 +53,12 @@ pub enum QueryMsg {
     /// old contracts to new contracts.
     #[returns(HasIncompleteV2MigrationResponse)]
     HasIncompleteV2Migration {},
+
+    /// Used to determine whether this contract is has a 'corrupted' migration, where some
+    /// stakes and/or claims are left behind in this contract.
+    #[returns(HasUnmovedStakesOrClaimsResponse)]
+    HasUnmovedStakesOrClaims {},
 }
 
 #[cw_serde]
-pub struct MigrateMsg {
-    pub initial_submsgs_limit: Option<u32>,
-}
+pub struct MigrateMsg {}

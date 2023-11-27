@@ -13,7 +13,9 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
-use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
+use enterprise_treasury_api::api::{
+    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -107,6 +109,9 @@ pub enum QueryMsg {
 
     #[returns(HasIncompleteV2MigrationResponse)]
     HasIncompleteV2Migration { contract: Addr },
+
+    #[returns(HasUnmovedStakesOrClaimsResponse)]
+    HasUnmovedStakesOrClaims { contract: Addr },
 
     #[returns(V2MigrationStageResponse)]
     V2MigrationStage { contract: Addr },

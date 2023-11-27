@@ -14,8 +14,8 @@ use crate::v1_structs::QueryV1Msg::{
 };
 use crate::v1_structs::{
     CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
-    ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, UnstakeCw20V1Msg, UnstakeCw721V1Msg,
-    UnstakeV1Msg, UpgradeDaoV1Msg, UserStakeV1Params,
+    ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, TreasuryV1_0_0MigrationMsg,
+    UnstakeCw20V1Msg, UnstakeCw721V1Msg, UnstakeV1Msg, UpgradeDaoV1Msg, UserStakeV1Params,
 };
 use common::cw::QueryContext;
 use cosmwasm_schema::serde::de::DeserializeOwned;
@@ -41,7 +41,9 @@ use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
-use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
+use enterprise_treasury_api::api::{
+    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+};
 use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use poll_engine::state::PollHelpers;
 use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
@@ -265,6 +267,15 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse> {
         Ok(HasIncompleteV2MigrationResponse {
             has_incomplete_migration: false,
+        })
+    }
+
+    fn query_has_unmoved_stakes_or_claims(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<HasUnmovedStakesOrClaimsResponse> {
+        Ok(HasUnmovedStakesOrClaimsResponse {
+            has_unmoved_stakes_or_claims: false,
         })
     }
 
@@ -540,7 +551,7 @@ impl EnterpriseFacadeV1 {
                     Ok(UpgradeDao(UpgradeDaoV1Msg {
                         // send enterprise_treasury_code_id, since it takes the address of old enterprise contract
                         new_dao_code_id: version_1_0_0_info.version.enterprise_treasury_code_id,
-                        migrate_msg: to_json_binary(&enterprise_treasury_api::msg::MigrateMsg {
+                        migrate_msg: to_json_binary(&TreasuryV1_0_0MigrationMsg {
                             initial_submsgs_limit: None,
                         })?,
                     }))

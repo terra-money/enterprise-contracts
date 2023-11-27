@@ -74,3 +74,8 @@ pub struct NftWhitelistResponse {
 pub struct HasIncompleteV2MigrationResponse {
     pub has_incomplete_migration: bool,
 }
+
+#[cw_serde]
+pub struct HasUnmovedStakesOrClaimsResponse {
+    pub has_unmoved_stakes_or_claims: bool,
+}

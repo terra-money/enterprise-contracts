@@ -17,14 +17,16 @@ use enterprise_facade_api::msg::QueryMsg::{
 };
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
-use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
+use enterprise_treasury_api::api::{
+    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+};
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
     CreateCouncilProposalAdapted, CreateProposalAdapted, CreateProposalWithDenomDepositAdapted,
     CreateProposalWithNftDepositAdapted, CreateProposalWithTokenDepositAdapted,
-    CrossChainTreasuries, DaoInfo, ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist,
-    Proposal, ProposalStatus, ProposalVotes, Proposals, ReleasableClaims, StakeAdapted, StakedNfts,
-    TotalStakedAmount, UnstakeAdapted, UserStake,
+    CrossChainTreasuries, DaoInfo, HasUnmovedStakesOrClaims, ListMultisigMembers, MemberInfo,
+    MemberVote, NftWhitelist, Proposal, ProposalStatus, ProposalVotes, Proposals, ReleasableClaims,
+    StakeAdapted, StakedNfts, TotalStakedAmount, UnstakeAdapted, UserStake,
 };
 
 // version info for migration info
@@ -274,6 +276,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
             let response: HasIncompleteV2MigrationResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &HasIncompleteV2Migration {
+                    contract: facade.dao_address,
+                },
+            )?;
+            to_json_binary(&response)?
+        }
+        HasUnmovedStakesOrClaims { contract } => {
+            let facade = get_facade(deps, contract)?;
+
+            let response: HasUnmovedStakesOrClaimsResponse = deps.querier.query_wasm_smart(
+                facade.facade_address.to_string(),
+                &HasUnmovedStakesOrClaims {
                     contract: facade.dao_address,
                 },
             )?;

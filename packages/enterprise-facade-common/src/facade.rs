@@ -13,7 +13,9 @@ use enterprise_facade_api::api::{
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
-use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
+use enterprise_treasury_api::api::{
+    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+};
 
 pub trait EnterpriseFacade {
     fn query_treasury_address(
@@ -116,6 +118,11 @@ pub trait EnterpriseFacade {
         &self,
         _: QueryContext,
     ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse>;
+
+    fn query_has_unmoved_stakes_or_claims(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<HasUnmovedStakesOrClaimsResponse>;
 
     fn query_v2_migration_stage(
         &self,
