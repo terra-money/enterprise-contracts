@@ -1,9 +1,10 @@
+use crate::contract::query_has_unmoved_stakes_or_claims;
 use crate::migration_copy_storage::MIGRATED_USER_WEIGHTS;
 use crate::migration_stages::MigrationStage::MigrationCompleted;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
 use crate::nft_staking::{load_all_nft_stakes_for_user, NFT_STAKES};
 use crate::staking::CW20_STAKES;
-use common::cw::{Context, ReleaseAt};
+use common::cw::{Context, QueryContext, ReleaseAt};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
@@ -406,8 +407,18 @@ pub fn perform_next_migration_step(
             // not allowed to perform the operation
             Err(InvalidMigrationStage)
         }
-        MigrationInProgress | MigrationCompleted => {
-            perform_next_migration_step_safe(ctx, submsgs_limit)
+        MigrationInProgress => perform_next_migration_step_safe(ctx, submsgs_limit),
+        MigrationCompleted => {
+            let qctx = QueryContext {
+                deps: ctx.deps.as_ref(),
+                env: ctx.env.clone(),
+            };
+
+            if query_has_unmoved_stakes_or_claims(qctx)?.has_unmoved_stakes_or_claims {
+                perform_next_migration_step_safe(ctx, submsgs_limit)
+            } else {
+                Err(InvalidMigrationStage)
+            }
         }
     }
 }
