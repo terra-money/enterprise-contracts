@@ -34,10 +34,13 @@ use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasur
 use enterprise_outposts_api::msg::QueryMsg::CrossChainTreasuries;
 use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
-use enterprise_treasury_api::api::HasIncompleteV2MigrationResponse;
-use enterprise_treasury_api::msg::QueryMsg::{
-    AssetWhitelist, HasIncompleteV2Migration, NftWhitelist,
+use enterprise_treasury_api::api::{
+    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
+use enterprise_treasury_api::msg::QueryMsg::{
+    AssetWhitelist, HasIncompleteV2Migration, HasUnmovedStakesOrClaims, NftWhitelist,
+};
+use enterprise_versioning_api::api::Version;
 use membership_common_api::api::{
     MembersParams, MembersResponse, TotalWeightParams, TotalWeightResponse, UserWeightParams,
     UserWeightResponse,
@@ -669,6 +672,35 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         )?;
 
         Ok(response)
+    }
+
+    fn query_has_unmoved_stakes_or_claims(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<HasUnmovedStakesOrClaimsResponse> {
+        let dao_version = self.query_dao_info(qctx.clone())?.dao_version;
+
+        let v1_0_2 = Version {
+            major: 1,
+            minor: 0,
+            patch: 2,
+        };
+
+        if dao_version < v1_0_2 {
+            // this functionality has been introduced in 1.0.2, meaningless to query before
+            Ok(HasUnmovedStakesOrClaimsResponse {
+                has_unmoved_stakes_or_claims: false,
+            })
+        } else {
+            let component_contracts = self.component_contracts(qctx.deps)?;
+
+            let response: HasUnmovedStakesOrClaimsResponse = qctx.deps.querier.query_wasm_smart(
+                component_contracts.enterprise_treasury_contract,
+                &HasUnmovedStakesOrClaims {},
+            )?;
+
+            Ok(response)
+        }
     }
 
     fn query_v2_migration_stage(

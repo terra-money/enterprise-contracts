@@ -396,6 +396,11 @@ pub enum ProposalActionV1 {
     UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsV1Msg),
 }
 
+#[cw_serde]
+pub struct TreasuryV1_0_0MigrationMsg {
+    pub initial_submsgs_limit: Option<u32>,
+}
+
 impl From<ProposalActionV1> for ProposalAction {
     fn from(value: ProposalActionV1) -> Self {
         match value {

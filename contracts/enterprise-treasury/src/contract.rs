@@ -3,33 +3,31 @@ use crate::asset_whitelist::{
     get_whitelisted_assets_starting_with_cw20, get_whitelisted_assets_starting_with_native,
     remove_whitelisted_assets,
 };
-use crate::migration::{
-    council_membership_contract_created, enterprise_contract_created,
-    enterprise_outposts_contract_created, finalize_initial_migration_step,
-    governance_controller_contract_created, load_pre_migration_user_weight,
-    membership_contract_created, migrate_to_v_1_0_0, perform_next_migration_step,
-};
+use crate::migration::{load_pre_migration_user_weight, perform_next_migration_step, CLAIMS};
 use crate::migration_copy_storage::MIGRATED_USER_WEIGHTS;
 use crate::migration_stages::MigrationStage::MigrationInProgress;
 use crate::migration_stages::{MigrationStage, MIGRATION_TO_V_1_0_0_STAGE};
-use crate::old_migration::migrate_to_v_0_5_0;
-use crate::staking::{load_total_staked, load_total_staked_at_height, load_total_staked_at_time};
+use crate::nft_staking::NFT_STAKES;
+use crate::staking::{
+    load_total_staked, load_total_staked_at_height, load_total_staked_at_time, CW20_STAKES,
+};
 use crate::state::{Config, CONFIG, NFT_WHITELIST};
 use crate::validate::admin_only;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     coin, entry_point, to_json_binary, wasm_execute, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
+    Env, MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg,
 };
 use cw2::set_contract_version;
 use cw_asset::{Asset, AssetInfoUnchecked};
 use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_instantiate_data, Expiration};
+use cw_utils::Expiration;
 use enterprise_treasury_api::api::{
     AssetWhitelistParams, AssetWhitelistResponse, ConfigResponse, DistributeFundsMsg,
-    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, NftWhitelistParams,
-    NftWhitelistResponse, SetAdminMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+    NftWhitelistParams, NftWhitelistResponse, SetAdminMsg, SpendMsg, UpdateAssetWhitelistMsg,
+    UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::error::EnterpriseTreasuryError::{InvalidCosmosMessage, Std};
 use enterprise_treasury_api::error::EnterpriseTreasuryResult;
@@ -105,7 +103,6 @@ pub fn execute(
         ExecuteMsg::DistributeFunds(msg) => distribute_funds(ctx, msg),
         ExecuteMsg::ExecuteCosmosMsgs(msg) => execute_cosmos_msgs(ctx, msg),
 
-        ExecuteMsg::FinalizeInitialMigrationStep {} => finalize_initial_migration_step(ctx),
         ExecuteMsg::PerformNextMigrationStep { submsgs_limit } => {
             perform_next_migration_step(ctx, submsgs_limit)
         }
@@ -240,35 +237,9 @@ fn execute_cosmos_msgs(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> EnterpriseTreasuryResult<Response> {
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> EnterpriseTreasuryResult<Response> {
     match msg.id {
-        ENTERPRISE_INSTANTIATE_REPLY_ID => {
-            let enterprise_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
-
-            enterprise_contract_created(deps, enterprise_contract)
-        }
-        ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID => {
-            let governance_controller_contract =
-                parse_instantiated_contract_addr(deps.as_ref(), msg)?;
-
-            governance_controller_contract_created(deps, governance_controller_contract)
-        }
-        COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
-            let council_membership_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
-
-            council_membership_contract_created(deps, council_membership_contract)
-        }
-        MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID => {
-            let membership_contract = parse_instantiated_contract_addr(deps.as_ref(), msg)?;
-
-            membership_contract_created(deps, membership_contract)
-        }
-        ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID => {
-            let enterprise_outposts_contract =
-                parse_instantiated_contract_addr(deps.as_ref(), msg)?;
-
-            enterprise_outposts_contract_created(deps, enterprise_outposts_contract)
-        }
+        // TODO: remove this too
         EXECUTE_PROPOSAL_ACTIONS_REPLY_ID => {
             // no actions, regardless of the result
             // here for compatibility while migrating old DAOs
@@ -276,15 +247,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> EnterpriseTreasuryResult<R
         }
         _ => Err(Std(StdError::generic_err("No such reply ID found"))),
     }
-}
-
-fn parse_instantiated_contract_addr(deps: Deps, msg: Reply) -> EnterpriseTreasuryResult<Addr> {
-    let contract_address = parse_reply_instantiate_data(msg)
-        .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
-        .contract_address;
-    let addr = deps.api.addr_validate(&contract_address)?;
-
-    Ok(addr)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -297,6 +259,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseTreasuryResult<Bi
         QueryMsg::NftWhitelist(params) => to_json_binary(&query_nft_whitelist(qctx, params)?)?,
         QueryMsg::HasIncompleteV2Migration {} => {
             to_json_binary(&query_has_incomplete_v2_migration(qctx)?)?
+        }
+        QueryMsg::HasUnmovedStakesOrClaims {} => {
+            to_json_binary(&query_has_unmoved_stakes_or_claims(qctx)?)?
         }
         QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(qctx, params)?)?,
@@ -418,18 +383,33 @@ pub fn query_has_incomplete_v2_migration(
     })
 }
 
+pub fn query_has_unmoved_stakes_or_claims(
+    qctx: QueryContext,
+) -> EnterpriseTreasuryResult<HasUnmovedStakesOrClaimsResponse> {
+    let has_unmoved_stakes_or_claims = has_cw20_stakes(qctx.deps.storage)
+        || has_nft_stakes(qctx.deps.storage)
+        || has_claims(qctx.deps.storage);
+
+    Ok(HasUnmovedStakesOrClaimsResponse {
+        has_unmoved_stakes_or_claims,
+    })
+}
+
+fn has_cw20_stakes(storage: &dyn Storage) -> bool {
+    CW20_STAKES.is_empty(storage).not()
+}
+
+fn has_nft_stakes(storage: &dyn Storage) -> bool {
+    NFT_STAKES().is_empty(storage).not()
+}
+
+fn has_claims(storage: &dyn Storage) -> bool {
+    CLAIMS.is_empty(storage).not()
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> EnterpriseTreasuryResult<Response> {
-    let mut migrate_to_v_0_5_0_submsgs = migrate_to_v_0_5_0(deps.branch())?;
-
-    let mut migrate_to_v_1_0_0_submsgs =
-        migrate_to_v_1_0_0(deps.branch(), env, msg.initial_submsgs_limit)?;
-
-    migrate_to_v_0_5_0_submsgs.append(&mut migrate_to_v_1_0_0_submsgs);
-
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> EnterpriseTreasuryResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "migrate")
-        .add_submessages(migrate_to_v_0_5_0_submsgs))
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
