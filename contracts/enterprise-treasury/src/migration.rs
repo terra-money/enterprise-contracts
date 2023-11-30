@@ -714,7 +714,17 @@ pub fn governance_controller_contract_created(
             .range(deps.storage, None, None, Ascending)
             .collect::<StdResult<Vec<(ProposalId, ProposalInfoV5)>>>()?
             .into_iter()
-            .filter_map(|(_, proposal_info)| proposal_info.proposal_deposit)
+            .filter_map(|(_, proposal_info)| {
+                let was_executed = proposal_info.executed_at.is_some();
+
+                if was_executed {
+                    // if proposal was executed, deposit was already either returned or kept
+                    None
+                } else {
+                    // if the proposal wasn't executed, move the deposit
+                    proposal_info.proposal_deposit
+                }
+            })
             .map(|deposit| deposit.amount)
             .sum();
 
