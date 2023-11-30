@@ -12,11 +12,12 @@ use common::commons::ModifyValue::Change;
 use common::cw::{Context, Pagination, QueryContext};
 use cosmwasm_std::{
     entry_point, from_json, to_json_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, Timestamp,
+    Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, Timestamp,
     Uint128, Uint64,
 };
 use cw2::set_contract_version;
-use cw20::Cw20ReceiveMsg;
+use cw20::Cw20QueryMsg::Balance;
+use cw20::{BalanceResponse, Cw20ReceiveMsg};
 use cw721::Cw721ExecuteMsg::TransferNft;
 use cw721::Cw721QueryMsg::OwnerOf;
 use cw721::{Approval, OwnerOfResponse};
@@ -1946,20 +1947,66 @@ fn get_user_available_votes_from_membership_contract(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> GovernanceControllerResult<Response> {
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> GovernanceControllerResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let state = STATE.load(deps.storage)?;
-    STATE.save(
-        deps.storage,
-        &State {
-            proposal_being_created: None,
-            proposal_being_voted_on: None,
-            ..state
-        },
-    )?;
+    let dao_type = query_dao_type(deps.as_ref())?;
 
-    Ok(Response::new().add_attribute("action", "migrate"))
+    let base_response = Response::new().add_attribute("action", "migrate");
+
+    // this fix applies only to token DAOs
+    match dao_type {
+        Token => {
+            // Previously, we sent more proposal deposits than we should have
+            // Find those and return them to treasury.
+            // We can easily do this by sending back anything over what we currently owe for deposits.
+
+            let deposits_owed = PROPOSAL_INFOS
+                .range(deps.storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<(u64, ProposalInfo)>>>()?
+                .into_iter()
+                .filter_map(
+                    |(_, info)| match (info.executed_at, info.proposal_deposit) {
+                        (None, Some(deposit)) => {
+                            // only consider proposals whose deposits haven't been resolved yet
+                            // i.e. proposals with deposit that haven't been executed
+                            Some(deposit)
+                        }
+                        _ => None,
+                    },
+                )
+                .map(|deposit| match deposit.asset {
+                    ProposalDepositAsset::Cw20 { amount, .. } => amount,
+                    _ => Uint128::zero(),
+                })
+                .try_fold(Uint128::zero(), |acc, other| acc.checked_add(other))?;
+
+            let dao_token = query_dao_token_config(deps.as_ref())?.token_contract;
+
+            let dao_token_balance = deps
+                .querier
+                .query_wasm_smart::<BalanceResponse>(
+                    dao_token.to_string(),
+                    &Balance {
+                        address: env.contract.address.to_string(),
+                    },
+                )?
+                .balance;
+
+            if dao_token_balance > deposits_owed {
+                let excess_balance = dao_token_balance.checked_sub(deposits_owed)?;
+
+                let treasury_address = query_enterprise_treasury_addr(deps.as_ref())?;
+                let return_excess_balance_msg =
+                    Asset::cw20(dao_token, excess_balance).transfer_msg(treasury_address)?;
+
+                Ok(base_response.add_submessage(SubMsg::new(return_excess_balance_msg)))
+            } else {
+                Ok(base_response)
+            }
+        }
+        _ => Ok(base_response),
+    }
 }
 
 fn query_dao_type(deps: Deps) -> GovernanceControllerResult<DaoType> {
