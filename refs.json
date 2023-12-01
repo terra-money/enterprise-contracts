@@ -89,7 +89,7 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2246"
+      "codeId": "2281"
     },
     "enterprise-factory": {
       "codeId": "2188",
@@ -125,7 +125,7 @@
       "codeId": "2185"
     },
     "enterprise-governance-controller": {
-      "codeId": "2224"
+      "codeId": "2282"
     },
     "enterprise-treasury": {
       "codeId": "2247"
