@@ -75,6 +75,7 @@ use enterprise_treasury_api::api::{
     UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::msg::ExecuteMsg::{ExecuteCosmosMsgs, Spend};
+use enterprise_versioning_api::api::Version;
 use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
 use membership_common_api::api::{
     TotalWeightParams, TotalWeightResponse, UserWeightChange, UserWeightParams, UserWeightResponse,
@@ -1966,11 +1967,25 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> GovernanceControlle
                 .collect::<StdResult<Vec<(u64, ProposalInfo)>>>()?
                 .into_iter()
                 .filter_map(
-                    |(_, info)| match (info.executed_at, info.proposal_deposit) {
+                    |(_, info)| match (&info.executed_at, info.proposal_deposit.clone()) {
                         (None, Some(deposit)) => {
-                            // only consider proposals whose deposits haven't been resolved yet
+                            // include proposals whose deposits haven't been resolved yet
                             // i.e. proposals with deposit that haven't been executed
                             Some(deposit)
+                        }
+                        (Some(executed_at), Some(deposit)) => {
+                            // proposal deposits are returned after execution of proposal actions.
+                            // this means our balance reading is not updated yet here after executing
+                            // a 1.0.2 upgrade proposal, yet the proposal is marked as executed.
+                            //
+                            // TL;DR we have to include the 1.0.2 upgrade proposal in the deposits owed
+                            // as it is not sent out yet
+                            if *executed_at == env.block && contains_upgrade_to_v1_0_2_action(&info)
+                            {
+                                Some(deposit)
+                            } else {
+                                None
+                            }
                         }
                         _ => None,
                     },
@@ -2007,6 +2022,22 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> GovernanceControlle
         }
         _ => Ok(base_response),
     }
+}
+
+fn contains_upgrade_to_v1_0_2_action(proposal_info: &ProposalInfo) -> bool {
+    let v1_0_2 = Version {
+        major: 1,
+        minor: 0,
+        patch: 2,
+    };
+
+    proposal_info
+        .proposal_actions
+        .iter()
+        .any(|action| match action {
+            UpgradeDao(msg) => msg.new_version == v1_0_2,
+            _ => false,
+        })
 }
 
 fn query_dao_type(deps: Deps) -> GovernanceControllerResult<DaoType> {

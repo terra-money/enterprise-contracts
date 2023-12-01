@@ -53,6 +53,7 @@ enterprise-governance-api = { path = "../../packages/enterprise-governance-api" 
 enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
 token-staking-api = { path = "../../packages/token-staking-api" }
 denom-staking-api = { path = "../../packages/denom-staking-api" }
 nft-staking-api = { path = "../../packages/nft-staking-api" }
