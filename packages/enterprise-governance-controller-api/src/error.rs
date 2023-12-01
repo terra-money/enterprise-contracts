@@ -1,5 +1,5 @@
 use crate::api::ProposalActionType;
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{OverflowError, StdError, Uint128};
 use cw_utils::ParseReplyError;
 use enterprise_outposts_api::error::EnterpriseOutpostsError;
 use enterprise_protocol::error::DaoError;
@@ -122,6 +122,12 @@ impl From<serde_json_wasm::ser::Error> for GovernanceControllerError {
 
 impl From<ParseReplyError> for GovernanceControllerError {
     fn from(value: ParseReplyError) -> Self {
+        GovernanceControllerError::Std(StdError::generic_err(value.to_string()))
+    }
+}
+
+impl From<OverflowError> for GovernanceControllerError {
+    fn from(value: OverflowError) -> Self {
         GovernanceControllerError::Std(StdError::generic_err(value.to_string()))
     }
 }
