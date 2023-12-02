@@ -23,6 +23,7 @@ default = ["contract"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use contract feature to enable all instantiate/execute/query exports
 contract = []
+interface = ["dep:cw-orch"]
 
 [package.metadata.scripts]
 optimize = """docker run --rm -v "${process.cwd()}":/code \
@@ -46,3 +47,5 @@ enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
 serde-json-wasm = "0.5.0"
+cw-orch = {version = "0.18.1", optional = true }
+

@@ -7,6 +7,9 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[features]
+interface = ["dep:cw-orch"]
+
 [dependencies]
 common = { path = "../common" }
 membership-common-api = { path = "../membership-common-api" }
@@ -16,3 +19,4 @@ cosmwasm-schema = "1.1"
 cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
 thiserror = "1"
+cw-orch = {version = "0.18.1", optional = true }

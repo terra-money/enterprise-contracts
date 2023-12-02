@@ -7,7 +7,11 @@ edition = "2021"
 [lib]
 proc-macro = true
 
+[features]
+interface = ["dep:cw-orch"]
+
 [dependencies]
 quote = "1"
 syn = "1"
 thiserror = "1"
+cw-orch = {version = "0.18.1", optional = true }
