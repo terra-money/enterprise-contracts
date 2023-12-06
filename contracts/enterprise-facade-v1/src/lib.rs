@@ -2,7 +2,7 @@ extern crate core;
 
 pub mod contract;
 mod facade_v1;
-mod msg;
+pub mod msg;
 mod state;
 mod v1_structs;
 

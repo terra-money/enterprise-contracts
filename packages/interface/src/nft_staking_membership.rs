@@ -10,7 +10,7 @@ impl<Chain: CwEnv> Uploadable for NftStakingMembershipContract<Chain> {
     // Return the path to the wasm file
     fn wasm(&self) -> WasmPath {
         artifacts_dir_from_workspace!()
-            .find_wasm_path("nft_staking_membership.wasm")
+            .find_wasm_path("nft_staking_membership")
             .unwrap()
     }
     // Return a CosmWasm contract wrapper
@@ -21,7 +21,7 @@ impl<Chain: CwEnv> Uploadable for NftStakingMembershipContract<Chain> {
                 contract::instantiate,
                 contract::query,
             )
-                .with_migrate(contract::migrate),
+            .with_migrate(contract::migrate),
         )
     }
 }
