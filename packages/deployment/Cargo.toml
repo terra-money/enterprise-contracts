@@ -1,0 +1,20 @@
+[package]
+name = "deployment"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.75"
+cosmwasm-std = "1"
+# Deps for deployment
+dotenv = { version = "0.15.0" }
+pretty_env_logger = { version = "0.5.0" }
+cw-orch = {version = "0.18.2",features = ["daemon"] }
+tokio = "1.34.0"
+
+# packages
+interface = { path = "../interface", default-features = false, version = "*", features = ["interface"]}
+enterprise-factory-api = { path = "../enterprise-factory-api" }
+
