@@ -1,12 +1,13 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::CosmosMsg::Stargate;
 use cosmwasm_std::{CosmosMsg, Env, SubMsg};
 use cw_storage_plus::{Item, Map};
-use prost::Message;
 
 use bech32_no_std::ToBase32;
 use enterprise_outposts_api::api::{CrossChainMsgSpec, DeployCrossChainTreasuryMsg};
 use enterprise_outposts_api::error::EnterpriseOutpostsResult;
+use ics20_helpers::ics20_helpers::{
+    generate_ics20_stargate_msg, Coin, DEFAULT_TRANSFER_MSG_TYPE_URL,
+};
 use sha2::{Digest, Sha256};
 
 // 15 minutes in nanos
@@ -20,39 +21,6 @@ pub struct IcsProxyInstantiateMsg {
     pub owner: Option<String>,
     pub whitelist: Option<Vec<String>>,
     pub msgs: Option<Vec<CosmosMsg>>,
-}
-
-#[derive(Clone, PartialEq, prost::Message)]
-pub struct Coin {
-    #[prost(string, tag = "1")]
-    pub denom: String,
-
-    #[prost(string, tag = "2")]
-    pub amount: String,
-}
-
-#[derive(Clone, PartialEq, prost::Message)]
-pub struct MsgTransfer {
-    #[prost(string, tag = "1")]
-    pub source_port: String,
-
-    #[prost(string, tag = "2")]
-    pub source_channel: String,
-
-    #[prost(message, tag = "3")]
-    pub token: Option<Coin>,
-
-    #[prost(string, tag = "4")]
-    pub sender: String,
-
-    #[prost(string, tag = "5")]
-    pub receiver: String,
-
-    #[prost(uint64, tag = "7")]
-    pub timeout_timestamp: u64,
-
-    #[prost(string, tag = "8")]
-    pub memo: String,
 }
 
 #[cw_serde]
@@ -127,23 +95,20 @@ pub fn ibc_hooks_msg_to_ics_proxy_contract(
                 .unwrap_or(DEFAULT_IBC_TIMEOUT_NANOS),
         )
         .nanos();
-    let stargate_msg = Stargate {
-        type_url: "/ibc.applications.transfer.v1.MsgTransfer".to_string(),
-        value: MsgTransfer {
-            source_port: cross_chain_msg_spec.src_ibc_port,
-            source_channel: cross_chain_msg_spec.src_ibc_channel,
-            token: Some(Coin {
-                denom: "uluna".to_string(),
-                amount: "1".to_string(),
-            }),
-            sender: env.contract.address.to_string(),
-            receiver: proxy_contract,
-            timeout_timestamp,
-            memo: serde_json_wasm::to_string(&memo)?,
-        }
-        .encode_to_vec()
-        .into(),
-    };
+
+    let stargate_msg = generate_ics20_stargate_msg(
+        DEFAULT_TRANSFER_MSG_TYPE_URL.to_string(),
+        cross_chain_msg_spec.src_ibc_port,
+        cross_chain_msg_spec.src_ibc_channel,
+        Some(Coin {
+            denom: "uluna".to_string(),
+            amount: "1".to_string(),
+        }),
+        env.contract.address.to_string(),
+        proxy_contract,
+        timeout_timestamp,
+        serde_json_wasm::to_string(&memo)?,
+    );
 
     Ok(SubMsg::new(stargate_msg))
 }
