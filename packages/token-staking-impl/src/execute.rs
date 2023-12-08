@@ -252,7 +252,7 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> TokenStakingResult<Response> {
                 .add_attribute("receiver", address)
                 .add_submessage(send_tokens_submsg))
         }
-        ClaimReceiver::CrossChain(receiver) => {
+        ClaimReceiver::CrossChain(_) => {
             // TODO: where do we get the sequence ID from?
             let sequence_id = 0u64;
 

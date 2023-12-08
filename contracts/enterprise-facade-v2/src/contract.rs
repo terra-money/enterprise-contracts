@@ -1,13 +1,15 @@
-use crate::facade_v2::EnterpriseFacadeV2;
-use crate::msg::InstantiateMsg;
-use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+
+use common::cw::{Context, QueryContext};
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::{ExecuteMsg, QueryMsg};
 use enterprise_facade_common::facade::EnterpriseFacade;
+
+use crate::facade_v2::EnterpriseFacadeV2;
+use crate::msg::InstantiateMsg;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-facade-v2";
@@ -171,9 +173,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(contract)?;
             to_json_binary(&facade.adapt_unstake(qctx, params)?)?
         }
-        QueryMsg::ClaimAdapted { contract } => {
+        QueryMsg::ClaimAdapted { contract, params } => {
             let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_claim(qctx)?)?
+            to_json_binary(&facade.adapt_claim(qctx, params)?)?
         }
     };
     Ok(response)

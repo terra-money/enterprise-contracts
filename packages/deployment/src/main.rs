@@ -1,6 +1,6 @@
 use cw_orch::prelude::*;
-use tokio::runtime::Runtime;
 use interface::enterprise_treasury::{EnterpriseTreasuryContract, InstantiateMsg};
+use tokio::runtime::Runtime;
 
 fn main() {
     dotenv::dotenv().ok();
@@ -23,7 +23,8 @@ fn main() {
             asset_whitelist: None,
             nft_whitelist: None,
         },
-    None,
-    None);
+        None,
+        None,
+    );
     assert!(instantiate_res.is_ok());
 }

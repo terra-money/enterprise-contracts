@@ -1,9 +1,8 @@
-use crate::facade::get_facade;
-use crate::state::{ENTERPRISE_FACADE_V1, ENTERPRISE_FACADE_V2};
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistResponse, ClaimsResponse, ComponentContractsResponse,
     DaoInfoResponse, MemberInfoResponse, MemberVoteResponse, MultisigMembersResponse,
@@ -29,6 +28,9 @@ use QueryMsg::{
     ProposalVotes, Proposals, ReleasableClaims, StakeAdapted, StakedNfts, TotalStakedAmount,
     UnstakeAdapted, UserStake,
 };
+
+use crate::facade::get_facade;
+use crate::state::{ENTERPRISE_FACADE_V1, ENTERPRISE_FACADE_V2};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-facade";
@@ -435,13 +437,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
             )?;
             to_json_binary(&response)?
         }
-        ClaimAdapted { contract } => {
+        ClaimAdapted { contract, params } => {
             let facade = get_facade(deps, contract)?;
 
             let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &ClaimAdapted {
                     contract: facade.dao_address,
+                    params,
                 },
             )?;
             to_json_binary(&response)?

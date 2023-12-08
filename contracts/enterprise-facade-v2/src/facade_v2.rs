@@ -1,24 +1,26 @@
-use common::cw::QueryContext;
 use cosmwasm_std::{coins, to_json_binary, Addr, Decimal, Deps, Uint128, Uint64};
 use cw721::Cw721ExecuteMsg::Approve;
 use cw_utils::Duration;
 use cw_utils::Expiration::Never;
+
+use common::cw::QueryContext;
 use denom_staking_api::api::DenomConfigResponse;
 use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_facade_api::api::{
     adapter_response_single_execute_msg, AdaptedBankMsg, AdaptedExecuteMsg, AdaptedMsg,
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimAsset,
-    ClaimsParams, ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
-    CreateProposalWithTokenDepositMsg, Cw20ClaimAsset, Cw721ClaimAsset, DaoCouncil,
-    DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomClaimAsset, DenomUserStake,
-    ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse,
-    MemberVoteParams, MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake,
-    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse,
-    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
-    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TokenUserStake,
-    TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStake, UserStakeParams,
-    UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
+    ClaimMsg, ClaimReceiver, ClaimsParams, ClaimsResponse, CreateProposalMsg,
+    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, Cw20ClaimAsset,
+    Cw721ClaimAsset, DaoCouncil, DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType,
+    DenomClaimAsset, DenomUserStake, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg,
+    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMember,
+    MultisigMembersResponse, NftUserStake, NftWhitelistParams, NftWhitelistResponse, Proposal,
+    ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
+    StakedNftsResponse, TokenUserStake, TotalStakedAmountResponse, TreasuryAddressResponse,
+    UnstakeMsg, UserStake, UserStakeParams, UserStakeResponse, V2MigrationStage,
+    V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -50,6 +52,7 @@ use nft_staking_api::api::{NftConfigResponse, UserNftStakeParams, UserNftStakeRe
 use nft_staking_api::msg::QueryMsg::{NftConfig, StakedNfts};
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
+use ClaimReceiver::{CrossChain, Local};
 use V2MigrationStage::{MigrationCompleted, MigrationInProgress};
 
 /// Facade implementation for v1.0.0 of Enterprise contracts (post-contract-rewrite), i.e. DAO v2.
@@ -1133,17 +1136,26 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
-    fn adapt_claim(&self, qctx: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
+    fn adapt_claim(
+        &self,
+        qctx: QueryContext,
+        params: ClaimMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
         let dao_type = self.get_dao_type(qctx.deps)?;
 
         match dao_type {
             DaoType::Denom => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
+                let receiver = params.receiver.map(map_claim_receiver);
+
                 Ok(adapter_response_single_execute_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&denom_staking_api::msg::ExecuteMsg::Claim(
-                        denom_staking_api::api::ClaimMsg { user: None },
+                        denom_staking_api::api::ClaimMsg {
+                            user: None,
+                            receiver,
+                        },
                     ))?,
                     vec![],
                 ))
@@ -1151,15 +1163,26 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             DaoType::Token => {
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
+                let receiver = params.receiver.map(map_claim_receiver);
+
                 Ok(adapter_response_single_execute_msg(
                     membership_contract,
                     serde_json_wasm::to_string(&token_staking_api::msg::ExecuteMsg::Claim(
-                        token_staking_api::api::ClaimMsg { user: None },
+                        token_staking_api::api::ClaimMsg {
+                            user: None,
+                            receiver,
+                        },
                     ))?,
                     vec![],
                 ))
             }
             DaoType::Nft => {
+                if params.receiver.is_some() {
+                    return Err(Dao(UnsupportedOperationForDaoType {
+                        dao_type: dao_type.to_string(),
+                    }));
+                }
+
                 let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
 
                 Ok(adapter_response_single_execute_msg(
@@ -1195,6 +1218,19 @@ impl EnterpriseFacadeV2 {
             .query_wasm_smart(self.enterprise_address.to_string(), &DaoInfo {})?;
 
         Ok(map_dao_type(dao_info.dao_type))
+    }
+}
+
+fn map_claim_receiver(receiver: ClaimReceiver) -> membership_common_api::api::ClaimReceiver {
+    match receiver {
+        Local { address } => membership_common_api::api::ClaimReceiver::Local { address },
+        CrossChain(receiver) => membership_common_api::api::ClaimReceiver::CrossChain(
+            membership_common_api::api::CrossChainReceiver {
+                source_port: receiver.source_port,
+                source_channel: receiver.source_channel,
+                receiver_address: receiver.receiver_address,
+            },
+        ),
     }
 }
 

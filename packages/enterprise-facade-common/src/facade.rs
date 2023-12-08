@@ -1,7 +1,7 @@
 use common::cw::QueryContext;
 use enterprise_facade_api::api::{
-    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
+    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimMsg,
+    ClaimsParams, ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
     ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
@@ -195,5 +195,9 @@ pub trait EnterpriseFacade {
         params: UnstakeMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse>;
 
-    fn adapt_claim(&self, qctx: QueryContext) -> EnterpriseFacadeResult<AdapterResponse>;
+    fn adapt_claim(
+        &self,
+        qctx: QueryContext,
+        params: ClaimMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse>;
 }

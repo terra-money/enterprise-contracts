@@ -1,15 +1,17 @@
-use common::cw::ReleaseAt;
+use std::collections::BTreeMap;
+use std::fmt;
+
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use cw_utils::{Duration, Expiration};
+use serde_with::serde_as;
+use strum_macros::Display;
+
+use common::cw::ReleaseAt;
 use enterprise_governance_controller_api::api::{ProposalAction, ProposalActionType};
 use enterprise_versioning_api::api::Version;
 use poll_engine_api::api::{Vote, VoteOutcome};
-use serde_with::serde_as;
-use std::collections::BTreeMap;
-use std::fmt;
-use strum_macros::Display;
 
 pub type ProposalId = u64;
 pub type NftTokenId = String;
@@ -165,6 +167,24 @@ pub struct UnstakeCw721Msg {
 #[cw_serde]
 pub struct UnstakeDenomMsg {
     pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct ClaimMsg {
+    pub receiver: Option<ClaimReceiver>,
+}
+
+#[cw_serde]
+pub enum ClaimReceiver {
+    Local { address: String },
+    CrossChain(CrossChainReceiver),
+}
+
+#[cw_serde]
+pub struct CrossChainReceiver {
+    pub source_port: String,
+    pub source_channel: String,
+    pub receiver_address: String,
 }
 
 #[cw_serde]

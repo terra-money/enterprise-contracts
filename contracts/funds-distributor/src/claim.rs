@@ -1,18 +1,23 @@
+use cosmwasm_std::{Deps, Response, StdError, SubMsg, Uint128};
+use cw_asset::{Asset, AssetInfoBase};
+
+use common::cw::Context;
+use enterprise_protocol::api::{IsRestrictedUserParams, IsRestrictedUserResponse};
+use enterprise_protocol::msg::QueryMsg::IsRestrictedUser;
+use funds_distributor_api::api::{ClaimRewardsMsg, RewardsReceiver};
+use funds_distributor_api::error::DistributorError::Unauthorized;
+use funds_distributor_api::error::{DistributorError, DistributorResult};
+use funds_distributor_api::response::execute_claim_rewards_response;
+use ibc_helpers::ics20_helpers::{
+    generate_ics20_stargate_msg, Coin, DEFAULT_TRANSFER_MSG_TYPE_URL,
+};
+use DistributorError::RestrictedUser;
+
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::calculate_user_reward;
 use crate::state::{CW20_GLOBAL_INDICES, ENTERPRISE_CONTRACT, NATIVE_GLOBAL_INDICES};
 use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
-use common::cw::Context;
-use cosmwasm_std::{Deps, Response, SubMsg, Uint128};
-use cw_asset::Asset;
-use enterprise_protocol::api::{IsRestrictedUserParams, IsRestrictedUserResponse};
-use enterprise_protocol::msg::QueryMsg::IsRestrictedUser;
-use funds_distributor_api::api::ClaimRewardsMsg;
-use funds_distributor_api::error::DistributorError::Unauthorized;
-use funds_distributor_api::error::{DistributorError, DistributorResult};
-use funds_distributor_api::response::execute_claim_rewards_response;
-use DistributorError::RestrictedUser;
 
 /// Attempt to claim rewards for the given parameters.
 ///
@@ -34,7 +39,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
         .may_load(ctx.deps.storage, user.clone())?
         .unwrap_or_default();
 
-    let mut submsgs: Vec<SubMsg> = vec![];
+    let mut assets: Vec<Asset> = vec![];
 
     for denom in msg.native_denoms {
         let distribution =
@@ -55,8 +60,8 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             continue;
         }
 
-        let submsg = Asset::native(denom.clone(), reward).transfer_msg(user.clone())?;
-        submsgs.push(SubMsg::new(submsg));
+        let asset = Asset::native(denom.clone(), reward);
+        assets.push(asset);
 
         NATIVE_DISTRIBUTIONS().save(
             ctx.deps.storage,
@@ -70,13 +75,13 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
         )?;
     }
 
-    for asset in msg.cw20_assets {
-        let asset = ctx.deps.api.addr_validate(&asset)?;
+    for cw20_asset in msg.cw20_assets {
+        let cw20_asset = ctx.deps.api.addr_validate(&cw20_asset)?;
 
         let distribution =
-            CW20_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), asset.clone()))?;
+            CW20_DISTRIBUTIONS().may_load(ctx.deps.storage, (user.clone(), cw20_asset.clone()))?;
         let global_index = CW20_GLOBAL_INDICES
-            .may_load(ctx.deps.storage, asset.clone())?
+            .may_load(ctx.deps.storage, cw20_asset.clone())?
             .unwrap_or_default();
 
         // if no rewards for the given asset, just skip
@@ -91,19 +96,59 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
             continue;
         }
 
-        let submsg = Asset::cw20(asset.clone(), reward).transfer_msg(user.clone())?;
-        submsgs.push(SubMsg::new(submsg));
+        let asset = Asset::cw20(cw20_asset.clone(), reward);
+        assets.push(asset);
 
         CW20_DISTRIBUTIONS().save(
             ctx.deps.storage,
-            (user.clone(), asset.clone()),
+            (user.clone(), cw20_asset.clone()),
             &Cw20Distribution {
                 user: user.clone(),
-                cw20_asset: asset,
+                cw20_asset,
                 user_index: global_index,
                 pending_rewards: Uint128::zero(),
             },
         )?;
+    }
+
+    let mut submsgs: Vec<SubMsg> = vec![];
+
+    match msg.receiver.unwrap_or_else(|| RewardsReceiver::Local {
+        address: user.to_string(),
+    }) {
+        RewardsReceiver::Local { address } => {
+            for asset in assets {
+                submsgs.push(SubMsg::new(asset.transfer_msg(address.clone())?));
+            }
+        }
+        RewardsReceiver::CrossChain(receiver) => {
+            // TODO: store rewards as pending delivery or sth
+
+            for asset in assets {
+                match asset.info {
+                    AssetInfoBase::Native(denom) => {
+                        let send_denom_msg = generate_ics20_stargate_msg(
+                            DEFAULT_TRANSFER_MSG_TYPE_URL.to_string(),
+                            receiver.source_port.clone(),
+                            receiver.source_channel.clone(),
+                            Some(Coin {
+                                denom,
+                                amount: asset.amount.to_string(),
+                            }),
+                            ctx.env.contract.address.to_string(),
+                            receiver.receiver_address.clone(),
+                            0, // TODO: calculate this timestamp properly
+                            String::new(),
+                        );
+                        submsgs.push(SubMsg::new(send_denom_msg))
+                    }
+                    AssetInfoBase::Cw20(_) => {
+                        // TODO: send those somehow
+                    }
+                    _ => return Err(StdError::generic_err("Unsupported reward asset type").into()),
+                }
+            }
+        }
     }
 
     Ok(execute_claim_rewards_response(user.to_string()).add_submessages(submsgs))

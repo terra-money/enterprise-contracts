@@ -1,3 +1,39 @@
+use cosmwasm_schema::serde::de::DeserializeOwned;
+use cosmwasm_schema::serde::Serialize;
+use cosmwasm_std::{to_json_binary, Addr, Deps, Empty, StdError, StdResult};
+use cw_utils::Expiration;
+
+use common::cw::QueryContext;
+use enterprise_facade_api::api::{
+    adapter_response_single_execute_msg, AdaptedExecuteMsg, AdaptedMsg, AdapterResponse,
+    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimMsg, ClaimsParams,
+    ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
+    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType,
+    ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse,
+    MemberVoteParams, MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams,
+    NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg,
+    StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse,
+    UnstakeMsg, UserStakeParams, UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
+};
+use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
+use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
+use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
+use enterprise_facade_common::facade::EnterpriseFacade;
+use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
+use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_treasury_api::api::{
+    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+};
+use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
+use poll_engine::state::PollHelpers;
+use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
+use EnterpriseFacadeError::UnsupportedOperation;
+use ExecuteV1Msg::ExecuteProposal;
+use PollRejectionReason::{QuorumAndThresholdNotReached, QuorumNotReached, ThresholdNotReached};
+use V2MigrationStage::MigrationNotStarted;
+
 use crate::state::ENTERPRISE_VERSIONING;
 use crate::v1_structs;
 use crate::v1_structs::ExecuteV1Msg::{
@@ -17,40 +53,6 @@ use crate::v1_structs::{
     ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, TreasuryV1_0_0MigrationMsg,
     UnstakeCw20V1Msg, UnstakeCw721V1Msg, UnstakeV1Msg, UpgradeDaoV1Msg, UserStakeV1Params,
 };
-use common::cw::QueryContext;
-use cosmwasm_schema::serde::de::DeserializeOwned;
-use cosmwasm_schema::serde::Serialize;
-use cosmwasm_std::{to_json_binary, Addr, Deps, Empty, StdError, StdResult};
-use cw_utils::Expiration;
-use enterprise_facade_api::api::{
-    adapter_response_single_execute_msg, AdaptedExecuteMsg, AdaptedMsg, AdapterResponse,
-    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    ComponentContractsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
-    CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType, ExecuteProposalMsg,
-    GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    Proposal, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
-};
-use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
-use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
-use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
-use enterprise_facade_common::facade::EnterpriseFacade;
-use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
-use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
-use enterprise_treasury_api::api::{
-    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
-};
-use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
-use poll_engine::state::PollHelpers;
-use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
-use EnterpriseFacadeError::UnsupportedOperation;
-use ExecuteV1Msg::ExecuteProposal;
-use PollRejectionReason::{QuorumAndThresholdNotReached, QuorumNotReached, ThresholdNotReached};
-use V2MigrationStage::MigrationNotStarted;
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
 pub struct EnterpriseFacadeV1 {
@@ -484,7 +486,15 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         ))
     }
 
-    fn adapt_claim(&self, _: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
+    fn adapt_claim(
+        &self,
+        _: QueryContext,
+        params: ClaimMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        if params.receiver.is_some() {
+            return Err(UnsupportedOperation);
+        }
+
         Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&Claim {})?,

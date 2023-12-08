@@ -1,6 +1,15 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
+
+use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
+use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
+use enterprise_treasury_api::api::{
+    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
+};
+
 use crate::api::{
-    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
+    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimMsg,
+    ClaimsParams, ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
     ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
@@ -9,13 +18,6 @@ use crate::api::{
     QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
     TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
     V2MigrationStageResponse,
-};
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
-use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
-use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
-use enterprise_treasury_api::api::{
-    HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
 
 #[cw_serde]
@@ -170,7 +172,7 @@ pub enum QueryMsg {
     UnstakeAdapted { contract: Addr, params: UnstakeMsg },
 
     #[returns(AdapterResponse)]
-    ClaimAdapted { contract: Addr },
+    ClaimAdapted { contract: Addr, params: ClaimMsg },
 }
 
 #[cw_serde]

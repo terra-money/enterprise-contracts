@@ -1,9 +1,11 @@
-use crate::api::NftTokenId;
-use crate::error::EnterpriseFacadeError::Std;
 use cosmwasm_std::{CheckedFromRatioError, OverflowError, StdError, Uint128};
+use thiserror::Error;
+
 use enterprise_governance_controller_api::api::ProposalActionType;
 use poll_engine_api::error::PollError;
-use thiserror::Error;
+
+use crate::api::NftTokenId;
+use crate::error::EnterpriseFacadeError::Std;
 
 pub type EnterpriseFacadeResult<T> = Result<T, EnterpriseFacadeError>;
 
@@ -161,7 +163,7 @@ pub enum DaoError {
     #[error("Error parsing message into Cosmos message")]
     InvalidCosmosMessage,
 
-    #[error("This operation is not a supported for {dao_type} DAOs")]
+    #[error("This operation is not supported for {dao_type} DAOs")]
     UnsupportedOperationForDaoType { dao_type: String },
 
     #[error("Custom Error val: {val}")]

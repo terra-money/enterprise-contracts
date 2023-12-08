@@ -45,5 +45,5 @@ itertools = "0.10.5"
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
-cw-orch = {version = "0.18.1", optional = true }
-
+cw-orch = { version = "0.18.1", optional = true }
+ibc-helpers = { path = "../../packages/ibc-helpers" }

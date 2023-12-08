@@ -21,11 +21,28 @@ pub struct UserWeight {
 
 #[cw_serde]
 pub struct ClaimRewardsMsg {
+    /// Kept for backwards-compatibility. Will be used if 'receiver' is None
+    #[deprecated(note = "use 'receiver' field instead")]
     pub user: String,
+    pub receiver: Option<RewardsReceiver>,
     /// Native denominations to be claimed
     pub native_denoms: Vec<String>,
     /// CW20 asset rewards to be claimed, should be addresses of CW20 tokens
     pub cw20_assets: Vec<String>,
+}
+
+#[cw_serde]
+pub enum RewardsReceiver {
+    Local { address: String },
+    CrossChain(CrossChainReceiver),
+}
+
+// TODO: same struct as we use for token and denom memberships, unify perhaps
+#[cw_serde]
+pub struct CrossChainReceiver {
+    pub source_port: String,
+    pub source_channel: String,
+    pub receiver_address: String,
 }
 
 #[cw_serde]
