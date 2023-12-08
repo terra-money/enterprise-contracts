@@ -1,7 +1,8 @@
-use common::cw::ReleaseAt;
 use cosmwasm_std::{Addr, BlockInfo, Order, StdResult, Storage, Uint128, Uint64};
-use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use itertools::Itertools;
+
+use common::cw::ReleaseAt;
 use token_staking_api::api::{ClaimsResponse, TokenClaim};
 use token_staking_api::error::TokenStakingResult;
 
@@ -29,6 +30,10 @@ pub fn TOKEN_CLAIMS<'a>() -> IndexedMap<'a, u64, TokenClaim, ClaimsIndexes<'a>> 
     };
     IndexedMap::new("token_claims", indexes)
 }
+
+/// We temporarily store claims that were sent to a foreign chain.
+/// This allows us to revert deletion of a user's claim in case the IBC transfer fails.
+pub const PENDING_IBC_CLAIMS: Map<u64, Vec<TokenClaim>> = Map::new("pending_ibc_claims");
 
 /// Create and store a new claim.
 pub fn add_claim(

@@ -43,6 +43,19 @@ pub struct WeightsChangedMsg {
     pub weight_changes: Vec<UserWeightChange>,
 }
 
+#[cw_serde]
+pub enum ClaimReceiver {
+    Local { address: String },
+    CrossChain(CrossChainReceiver),
+}
+
+#[cw_serde]
+pub struct CrossChainReceiver {
+    pub source_port: String,
+    pub source_channel: String,
+    pub receiver_address: String,
+}
+
 ////// Responses
 
 #[cw_serde]

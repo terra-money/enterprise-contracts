@@ -1,9 +1,8 @@
-use crate::claims::{add_claim, get_releasable_claims, TOKEN_CLAIMS};
-use crate::config::CONFIG;
-use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_json, wasm_execute, Response, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
+
+use common::cw::{Context, ReleaseAt};
 use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight, set_member_weight,
 };
@@ -12,7 +11,7 @@ use membership_common::validate::{
     enterprise_governance_controller_only, validate_user_not_restricted,
 };
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
-use membership_common_api::api::UserWeightChange;
+use membership_common_api::api::{ClaimReceiver, UserWeightChange};
 use token_staking_api::api::{
     ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg, UserClaim, UserStake,
 };
@@ -21,6 +20,9 @@ use token_staking_api::error::TokenStakingError::{
 };
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::Cw20HookMsg;
+
+use crate::claims::{add_claim, get_releasable_claims, PENDING_IBC_CLAIMS, TOKEN_CLAIMS};
+use crate::config::CONFIG;
 
 /// Function to execute when receiving a Receive callback from a CW20 contract.
 pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResult<Response> {
@@ -223,22 +225,44 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> TokenStakingResult<Response> {
 
     let mut claim_amount = Uint128::zero();
 
-    for claim in releasable_claims {
+    for claim in &releasable_claims {
         claim_amount += claim.amount;
 
         TOKEN_CLAIMS().remove(ctx.deps.storage, claim.id.u64())?;
     }
 
-    let send_tokens_submsg = SubMsg::new(wasm_execute(
-        token_contract.to_string(),
-        &cw20::Cw20ExecuteMsg::Transfer {
-            recipient: user.to_string(),
-            amount: claim_amount,
-        },
-        vec![],
-    )?);
+    let receiver = msg.receiver.unwrap_or_else(|| ClaimReceiver::Local {
+        address: user.to_string(),
+    });
 
-    Ok(Response::new()
-        .add_attribute("action", "claim")
-        .add_submessage(send_tokens_submsg))
+    match receiver {
+        ClaimReceiver::Local { address } => {
+            let send_tokens_submsg = SubMsg::new(wasm_execute(
+                token_contract.to_string(),
+                &cw20::Cw20ExecuteMsg::Transfer {
+                    recipient: address.clone(),
+                    amount: claim_amount,
+                },
+                vec![],
+            )?);
+
+            Ok(Response::new()
+                .add_attribute("action", "claim")
+                .add_attribute("cross_chain", "false")
+                .add_attribute("receiver", address)
+                .add_submessage(send_tokens_submsg))
+        }
+        ClaimReceiver::CrossChain(receiver) => {
+            // TODO: where do we get the sequence ID from?
+            let sequence_id = 0u64;
+
+            // TODO: what if there was already a pending claim with the given sequence ID? shouldn't be possible
+            PENDING_IBC_CLAIMS.save(ctx.deps.storage, sequence_id, &releasable_claims)?;
+
+            // TODO: send to correct receiver (how do we send CW20 across?)
+            Ok(Response::new()
+                .add_attribute("action", "claim")
+                .add_attribute("cross_chain", "true"))
+        }
+    }
 }

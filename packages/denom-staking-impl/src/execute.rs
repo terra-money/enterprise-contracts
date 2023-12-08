@@ -1,13 +1,15 @@
-use crate::claims::{add_claim, get_releasable_claims, DENOM_CLAIMS};
-use crate::config::CONFIG;
-use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{coins, BankMsg, Response, SubMsg, Uint128};
 use cw_utils::Duration::{Height, Time};
+
+use common::cw::{Context, ReleaseAt};
 use denom_staking_api::api::{ClaimMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
 use denom_staking_api::error::DenomStakingError::{
     InsufficientStake, InvalidStakingDenom, MultipleDenomsBeingStaked, Unauthorized,
 };
 use denom_staking_api::error::DenomStakingResult;
+use ibc_helpers::ics20_helpers::{
+    generate_ics20_stargate_msg, Coin, DEFAULT_TRANSFER_MSG_TYPE_URL,
+};
 use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight,
 };
@@ -16,7 +18,11 @@ use membership_common::validate::{
     enterprise_governance_controller_only, validate_user_not_restricted,
 };
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
-use membership_common_api::api::UserWeightChange;
+use membership_common_api::api::{ClaimReceiver, UserWeightChange};
+use ClaimReceiver::{CrossChain, Local};
+
+use crate::claims::{add_claim, get_releasable_claims, DENOM_CLAIMS, PENDING_IBC_CLAIMS};
+use crate::config::CONFIG;
 
 pub fn stake_denom(ctx: &mut Context, user: Option<String>) -> DenomStakingResult<Response> {
     if ctx.info.funds.len() != 1 {
@@ -143,18 +149,52 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> DenomStakingResult<Response> {
 
     let mut claim_amount = Uint128::zero();
 
-    for claim in releasable_claims {
+    for claim in &releasable_claims {
         claim_amount += claim.amount;
 
         DENOM_CLAIMS().remove(ctx.deps.storage, claim.id.u64())?;
     }
 
-    let send_denoms_submsg = SubMsg::new(BankMsg::Send {
-        to_address: user.to_string(),
-        amount: coins(claim_amount.u128(), denom),
+    let receiver = msg.receiver.unwrap_or_else(|| Local {
+        address: user.to_string(),
     });
 
-    Ok(Response::new()
-        .add_attribute("action", "claim")
-        .add_submessage(send_denoms_submsg))
+    match receiver {
+        Local { address } => {
+            let send_denoms_submsg = SubMsg::new(BankMsg::Send {
+                to_address: address.clone(),
+                amount: coins(claim_amount.u128(), denom),
+            });
+
+            Ok(Response::new()
+                .add_attribute("action", "claim")
+                .add_attribute("cross_chain", "false")
+                .add_attribute("receiver", address)
+                .add_submessage(send_denoms_submsg))
+        }
+        CrossChain(receiver) => {
+            let send_denoms_submsg = SubMsg::new(generate_ics20_stargate_msg(
+                DEFAULT_TRANSFER_MSG_TYPE_URL.to_string(),
+                receiver.source_port,
+                receiver.source_channel,
+                Some(Coin {
+                    denom,
+                    amount: claim_amount.to_string(),
+                }),
+                ctx.env.contract.address.to_string(),
+                receiver.receiver_address.clone(),
+                0, // TODO: calculate properly
+                String::new(),
+            ));
+
+            // TODO: where do we get the sequence ID?
+            PENDING_IBC_CLAIMS.save(ctx.deps.storage, 0, &releasable_claims)?;
+
+            Ok(Response::new()
+                .add_attribute("action", "claim")
+                .add_attribute("cross_chain", "true")
+                .add_attribute("receiver", receiver.receiver_address)
+                .add_submessage(send_denoms_submsg))
+        }
+    }
 }

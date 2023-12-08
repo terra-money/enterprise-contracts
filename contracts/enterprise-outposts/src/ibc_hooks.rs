@@ -1,14 +1,14 @@
+use bech32_no_std::ToBase32;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{CosmosMsg, Env, SubMsg};
 use cw_storage_plus::{Item, Map};
+use sha2::{Digest, Sha256};
 
-use bech32_no_std::ToBase32;
 use enterprise_outposts_api::api::{CrossChainMsgSpec, DeployCrossChainTreasuryMsg};
 use enterprise_outposts_api::error::EnterpriseOutpostsResult;
-use ics20_helpers::ics20_helpers::{
+use ibc_helpers::ics20_helpers::{
     generate_ics20_stargate_msg, Coin, DEFAULT_TRANSFER_MSG_TYPE_URL,
 };
-use sha2::{Digest, Sha256};
 
 // 15 minutes in nanos
 const DEFAULT_IBC_TIMEOUT_NANOS: u64 = 15 * 60 * 1_000_000_000;
