@@ -143,7 +143,7 @@ fn deploy_cross_chain_treasury(
 
             // calculate what the address of this contract will look like on the other chain
             // via IBC-hooks
-            let ibc_hooks_governance_controller_addr = derive_intermediate_sender(
+            let ibc_hooks_enterprise_outposts_addr = derive_intermediate_sender(
                 &msg.cross_chain_msg_spec.dest_ibc_channel,
                 ctx.env.contract.address.as_ref(),
                 &msg.cross_chain_msg_spec.chain_bech32_prefix,
@@ -156,7 +156,7 @@ fn deploy_cross_chain_treasury(
                     code_id: msg.ics_proxy_code_id,
                     msg: to_json_binary(&IcsProxyInstantiateMsg {
                         allow_cross_chain_msgs: true,
-                        owner: Some(ibc_hooks_governance_controller_addr),
+                        owner: Some(ibc_hooks_enterprise_outposts_addr),
                         whitelist: None,
                         msgs: None,
                     })?,
