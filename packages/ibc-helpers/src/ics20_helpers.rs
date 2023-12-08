@@ -1,5 +1,5 @@
-use cosmwasm_std::CosmosMsg;
 use cosmwasm_std::CosmosMsg::Stargate;
+use cosmwasm_std::{to_json_binary, wasm_execute, CosmosMsg, StdResult, Uint128};
 use prost::Message;
 
 #[derive(Clone, PartialEq, prost::Message)]
@@ -63,4 +63,31 @@ pub fn generate_ics20_stargate_msg(
         .encode_to_vec()
         .into(),
     }
+}
+
+/// Sends over CW20 assets to another chain
+pub fn generate_cw20_ics20_transfer_msg(
+    cw20_contract: String,
+    amount: Uint128,
+    cw20_ics20_contract: String,
+    source_channel: String,
+    receiver: String,
+    timeout_timestamp: u64,
+) -> StdResult<CosmosMsg> {
+    let transfer_msg = wasm_execute(
+        cw20_contract,
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: cw20_ics20_contract,
+            amount,
+            msg: to_json_binary(&cw20_ics20::msg::TransferMsg {
+                channel: source_channel,
+                remote_address: receiver,
+                timeout: Some(timeout_timestamp),
+                memo: None,
+            })?,
+        },
+        vec![],
+    )?;
+
+    Ok(transfer_msg.into())
 }
