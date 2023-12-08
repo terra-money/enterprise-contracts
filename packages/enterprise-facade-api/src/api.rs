@@ -185,6 +185,9 @@ pub struct CrossChainReceiver {
     pub source_port: String,
     pub source_channel: String,
     pub receiver_address: String,
+    pub cw20_ics20_contract: String,
+    /// How long the packet lives in seconds. If not specified, use default_timeout
+    pub timeout_seconds: u64,
 }
 
 #[cw_serde]

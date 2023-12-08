@@ -183,7 +183,11 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> DenomStakingResult<Response> {
                 }),
                 ctx.env.contract.address.to_string(),
                 receiver.receiver_address.clone(),
-                0, // TODO: calculate properly
+                ctx.env
+                    .block
+                    .time
+                    .plus_seconds(receiver.timeout_seconds)
+                    .nanos(),
                 String::new(),
             ));
 

@@ -46,7 +46,7 @@ pub fn generate_ics20_stargate_msg(
     token: Option<Coin>,
     sender: String,
     receiver: String,
-    timeout_timestamp: u64,
+    timeout_timestamp_nanos: u64,
     memo: String,
 ) -> CosmosMsg {
     Stargate {
@@ -57,7 +57,7 @@ pub fn generate_ics20_stargate_msg(
             token,
             sender,
             receiver,
-            timeout_timestamp,
+            timeout_timestamp: timeout_timestamp_nanos,
             memo,
         }
         .encode_to_vec()
@@ -72,7 +72,7 @@ pub fn generate_cw20_ics20_transfer_msg(
     cw20_ics20_contract: String,
     source_channel: String,
     receiver: String,
-    timeout_timestamp: u64,
+    timeout: u64,
 ) -> StdResult<CosmosMsg> {
     let transfer_msg = wasm_execute(
         cw20_contract,
@@ -82,7 +82,7 @@ pub fn generate_cw20_ics20_transfer_msg(
             msg: to_json_binary(&cw20_ics20::msg::TransferMsg {
                 channel: source_channel,
                 remote_address: receiver,
-                timeout: Some(timeout_timestamp),
+                timeout: Some(timeout),
                 memo: None,
             })?,
         },

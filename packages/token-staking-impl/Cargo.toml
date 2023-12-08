@@ -20,6 +20,7 @@ cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
 cw20 = "1.0.1"
 token-staking-api = { path = "../token-staking-api" }
+ibc-helpers = { path = "../ibc-helpers" }
 itertools = "0.10.5"
 thiserror = "1"
 cw-orch = {version = "0.18.1", optional = true }

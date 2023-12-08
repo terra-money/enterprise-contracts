@@ -1229,6 +1229,8 @@ fn map_claim_receiver(receiver: ClaimReceiver) -> membership_common_api::api::Cl
                 source_port: receiver.source_port,
                 source_channel: receiver.source_channel,
                 receiver_address: receiver.receiver_address,
+                cw20_ics20_contract: receiver.cw20_ics20_contract,
+                timeout_seconds: receiver.timeout_seconds,
             },
         ),
     }

@@ -3,6 +3,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
 
 use common::cw::{Context, ReleaseAt};
+use ibc_helpers::ics20_helpers::generate_cw20_ics20_transfer_msg;
 use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight, set_member_weight,
 };
@@ -252,17 +253,28 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> TokenStakingResult<Response> {
                 .add_attribute("receiver", address)
                 .add_submessage(send_tokens_submsg))
         }
-        ClaimReceiver::CrossChain(_) => {
+        ClaimReceiver::CrossChain(receiver) => {
+            let transfer_msg = generate_cw20_ics20_transfer_msg(
+                token_contract.to_string(),
+                claim_amount,
+                receiver.cw20_ics20_contract,
+                receiver.source_channel,
+                receiver.receiver_address.clone(),
+                receiver.timeout_seconds,
+            )?;
+
+            // TODO: sadness, but it seems there's nothing we can really listen for
             // TODO: where do we get the sequence ID from?
             let sequence_id = 0u64;
 
             // TODO: what if there was already a pending claim with the given sequence ID? shouldn't be possible
             PENDING_IBC_CLAIMS.save(ctx.deps.storage, sequence_id, &releasable_claims)?;
 
-            // TODO: send to correct receiver (how do we send CW20 across?)
             Ok(Response::new()
                 .add_attribute("action", "claim")
-                .add_attribute("cross_chain", "true"))
+                .add_attribute("cross_chain", "true")
+                .add_attribute("receiver", receiver.receiver_address)
+                .add_submessage(SubMsg::new(transfer_msg)))
         }
     }
 }

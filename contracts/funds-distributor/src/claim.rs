@@ -9,7 +9,8 @@ use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_claim_rewards_response;
 use ibc_helpers::ics20_helpers::{
-    generate_ics20_stargate_msg, Coin, DEFAULT_TRANSFER_MSG_TYPE_URL,
+    generate_cw20_ics20_transfer_msg, generate_ics20_stargate_msg, Coin,
+    DEFAULT_TRANSFER_MSG_TYPE_URL,
 };
 use DistributorError::RestrictedUser;
 
@@ -137,13 +138,25 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
                             }),
                             ctx.env.contract.address.to_string(),
                             receiver.receiver_address.clone(),
-                            0, // TODO: calculate this timestamp properly
+                            ctx.env
+                                .block
+                                .time
+                                .plus_seconds(receiver.timeout_seconds)
+                                .nanos(),
                             String::new(),
                         );
                         submsgs.push(SubMsg::new(send_denom_msg))
                     }
-                    AssetInfoBase::Cw20(_) => {
-                        // TODO: send those somehow
+                    AssetInfoBase::Cw20(cw20_contract) => {
+                        let transfer_cw20_msg = generate_cw20_ics20_transfer_msg(
+                            cw20_contract.to_string(),
+                            asset.amount,
+                            receiver.cw20_ics20_contract.clone(),
+                            receiver.source_channel.clone(),
+                            receiver.receiver_address.clone(),
+                            receiver.timeout_seconds,
+                        )?;
+                        submsgs.push(SubMsg::new(transfer_cw20_msg));
                     }
                     _ => return Err(StdError::generic_err("Unsupported reward asset type").into()),
                 }
