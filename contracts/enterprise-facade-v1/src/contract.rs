@@ -183,6 +183,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(contract)?;
             to_json_binary(&facade.adapt_claim(qctx, params)?)?
         }
+        QueryMsg::ClaimRewardsAdapted { contract, params } => {
+            let facade = get_facade(contract)?;
+            to_json_binary(&facade.adapt_claim_rewards(qctx, params)?)?
+        }
     };
     Ok(response)
 }

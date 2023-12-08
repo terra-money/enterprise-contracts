@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, to_json_binary, Addr, Decimal, Deps, Uint128, Uint64};
+use cosmwasm_std::{coins, to_json_binary, to_json_string, Addr, Decimal, Deps, Uint128, Uint64};
 use cw721::Cw721ExecuteMsg::Approve;
 use cw_utils::Duration;
 use cw_utils::Expiration::Never;
@@ -9,7 +9,7 @@ use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_facade_api::api::{
     adapter_response_single_execute_msg, AdaptedBankMsg, AdaptedExecuteMsg, AdaptedMsg,
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, Claim, ClaimAsset,
-    ClaimMsg, ClaimReceiver, ClaimsParams, ClaimsResponse, CreateProposalMsg,
+    ClaimMsg, ClaimReceiver, ClaimRewardsMsg, ClaimsParams, ClaimsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, Cw20ClaimAsset,
     Cw721ClaimAsset, DaoCouncil, DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType,
     DenomClaimAsset, DenomUserStake, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg,
@@ -23,7 +23,7 @@ use enterprise_facade_api::api::{
     V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
-use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
+use enterprise_facade_api::error::EnterpriseFacadeError::{Dao, UnsupportedOperation};
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{
@@ -1198,6 +1198,32 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             })),
         }
     }
+
+    fn adapt_claim_rewards(
+        &self,
+        qctx: QueryContext,
+        params: ClaimRewardsMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        // TODO: fail if params.receiver.is_some() and DAO is of version that did not support this
+        if params.receiver.is_some() {
+            return Err(UnsupportedOperation);
+        }
+
+        let component_contracts = self.component_contracts(qctx.deps)?;
+
+        Ok(adapter_response_single_execute_msg(
+            component_contracts.funds_distributor_contract,
+            to_json_string(&funds_distributor_api::msg::ExecuteMsg::ClaimRewards(
+                funds_distributor_api::api::ClaimRewardsMsg {
+                    user: params.user,
+                    native_denoms: params.native_denoms,
+                    cw20_assets: params.cw20_assets,
+                    receiver: params.receiver.map(map_rewards_receiver),
+                },
+            ))?,
+            vec![],
+        ))
+    }
 }
 
 impl EnterpriseFacadeV2 {
@@ -1226,6 +1252,21 @@ fn map_claim_receiver(receiver: ClaimReceiver) -> membership_common_api::api::Cl
         Local { address } => membership_common_api::api::ClaimReceiver::Local { address },
         CrossChain(receiver) => membership_common_api::api::ClaimReceiver::CrossChain(
             membership_common_api::api::CrossChainReceiver {
+                source_port: receiver.source_port,
+                source_channel: receiver.source_channel,
+                receiver_address: receiver.receiver_address,
+                cw20_ics20_contract: receiver.cw20_ics20_contract,
+                timeout_seconds: receiver.timeout_seconds,
+            },
+        ),
+    }
+}
+
+fn map_rewards_receiver(receiver: ClaimReceiver) -> funds_distributor_api::api::RewardsReceiver {
+    match receiver {
+        Local { address } => funds_distributor_api::api::RewardsReceiver::Local { address },
+        CrossChain(receiver) => funds_distributor_api::api::RewardsReceiver::CrossChain(
+            funds_distributor_api::api::CrossChainReceiver {
                 source_port: receiver.source_port,
                 source_channel: receiver.source_channel,
                 receiver_address: receiver.receiver_address,

@@ -576,3 +576,17 @@ pub struct DaoInfoResponseV1 {
     pub funds_distributor_contract: Addr,
     pub dao_code_version: Uint64,
 }
+
+#[cw_serde]
+pub enum FundsDistributorExecuteV1Msg {
+    ClaimRewards(ClaimRewardsV1Msg),
+}
+
+#[cw_serde]
+pub struct ClaimRewardsV1Msg {
+    pub user: String,
+    /// Native denominations to be claimed
+    pub native_denoms: Vec<String>,
+    /// CW20 asset rewards to be claimed, should be addresses of CW20 tokens
+    pub cw20_assets: Vec<String>,
+}

@@ -9,7 +9,7 @@ use enterprise_treasury_api::api::{
 
 use crate::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimMsg,
-    ClaimsParams, ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
+    ClaimRewardsMsg, ClaimsParams, ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
     ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
@@ -173,6 +173,12 @@ pub enum QueryMsg {
 
     #[returns(AdapterResponse)]
     ClaimAdapted { contract: Addr, params: ClaimMsg },
+
+    #[returns(AdapterResponse)]
+    ClaimRewardsAdapted {
+        contract: Addr,
+        params: ClaimRewardsMsg,
+    },
 }
 
 #[cw_serde]

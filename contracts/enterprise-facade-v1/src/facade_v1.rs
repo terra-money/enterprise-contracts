@@ -1,13 +1,13 @@
 use cosmwasm_schema::serde::de::DeserializeOwned;
 use cosmwasm_schema::serde::Serialize;
-use cosmwasm_std::{to_json_binary, Addr, Deps, Empty, StdError, StdResult};
+use cosmwasm_std::{to_json_binary, to_json_string, Addr, Deps, Empty, StdError, StdResult};
 use cw_utils::Expiration;
 
 use common::cw::QueryContext;
 use enterprise_facade_api::api::{
     adapter_response_single_execute_msg, AdaptedExecuteMsg, AdaptedMsg, AdapterResponse,
-    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimMsg, ClaimsParams,
-    ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
+    AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimMsg, ClaimRewardsMsg,
+    ClaimsParams, ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType,
     ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams,
@@ -49,9 +49,10 @@ use crate::v1_structs::QueryV1Msg::{
     ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
 };
 use crate::v1_structs::{
-    CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
-    ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, TreasuryV1_0_0MigrationMsg,
-    UnstakeCw20V1Msg, UnstakeCw721V1Msg, UnstakeV1Msg, UpgradeDaoV1Msg, UserStakeV1Params,
+    ClaimRewardsV1Msg, CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1,
+    ExecuteV1Msg, FundsDistributorExecuteV1Msg, ProposalActionV1, ProposalResponseV1,
+    ProposalsResponseV1, TreasuryV1_0_0MigrationMsg, UnstakeCw20V1Msg, UnstakeCw721V1Msg,
+    UnstakeV1Msg, UpgradeDaoV1Msg, UserStakeV1Params,
 };
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
@@ -498,6 +499,30 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&Claim {})?,
+            vec![],
+        ))
+    }
+
+    fn adapt_claim_rewards(
+        &self,
+        qctx: QueryContext,
+        params: ClaimRewardsMsg,
+    ) -> EnterpriseFacadeResult<AdapterResponse> {
+        if params.receiver.is_some() {
+            return Err(UnsupportedOperation);
+        }
+
+        let dao_info = self.query_dao_info(qctx)?;
+
+        Ok(adapter_response_single_execute_msg(
+            dao_info.funds_distributor_contract,
+            to_json_string(&FundsDistributorExecuteV1Msg::ClaimRewards(
+                ClaimRewardsV1Msg {
+                    user: params.user,
+                    native_denoms: params.native_denoms,
+                    cw20_assets: params.cw20_assets,
+                },
+            ))?,
             vec![],
         ))
     }

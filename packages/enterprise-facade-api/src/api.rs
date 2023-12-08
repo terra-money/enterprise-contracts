@@ -191,6 +191,18 @@ pub struct CrossChainReceiver {
 }
 
 #[cw_serde]
+pub struct ClaimRewardsMsg {
+    pub user: String,
+    /// Native denominations to be claimed
+    pub native_denoms: Vec<String>,
+    /// CW20 asset rewards to be claimed, should be addresses of CW20 tokens
+    pub cw20_assets: Vec<String>,
+    /// Optional specification for a receiver other than the user themselves (either another address
+    /// on the home chain, or an address on a remote chain).
+    pub receiver: Option<ClaimReceiver>,
+}
+
+#[cw_serde]
 pub struct Claim {
     pub asset: ClaimAsset,
     pub release_at: ReleaseAt,

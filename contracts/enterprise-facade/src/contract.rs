@@ -12,7 +12,8 @@ use enterprise_facade_api::api::{
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::{
-    ExecuteProposalAdapted, HasIncompleteV2Migration, TreasuryAddress, V2MigrationStage,
+    ClaimRewardsAdapted, ExecuteProposalAdapted, HasIncompleteV2Migration, TreasuryAddress,
+    V2MigrationStage,
 };
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
@@ -443,6 +444,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
             let response: AdapterResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &ClaimAdapted {
+                    contract: facade.dao_address,
+                    params,
+                },
+            )?;
+            to_json_binary(&response)?
+        }
+        ClaimRewardsAdapted { contract, params } => {
+            let facade = get_facade(deps, contract)?;
+
+            let response: AdapterResponse = deps.querier.query_wasm_smart(
+                facade.facade_address.to_string(),
+                &ClaimRewardsAdapted {
                     contract: facade.dao_address,
                     params,
                 },

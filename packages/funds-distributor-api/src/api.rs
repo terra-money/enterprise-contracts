@@ -21,8 +21,7 @@ pub struct UserWeight {
 
 #[cw_serde]
 pub struct ClaimRewardsMsg {
-    /// Kept for backwards-compatibility. Will be used if 'receiver' is None
-    #[deprecated(note = "use 'receiver' field instead")]
+    /// Specifies which user is claiming the rewards
     pub user: String,
     pub receiver: Option<RewardsReceiver>,
     /// Native denominations to be claimed
