@@ -9,11 +9,12 @@ use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response,
+    entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Env, IbcBasicResponse,
+    IbcPacketAckMsg, IbcPacketTimeoutMsg, MessageInfo, Reply, Response, StdResult,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
+use cw_storage_plus::Item;
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use funds_distributor_api::response::instantiate_response;
@@ -98,4 +99,27 @@ pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DistributorResu
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+const IBC_ACK_MSG: Item<IbcPacketAckMsg> = Item::new("ibc_ack_msg");
+const IBC_TIMEOUT_MSG: Item<IbcPacketTimeoutMsg> = Item::new("ibc_timeout_msg");
+
+#[entry_point]
+pub fn ibc_packet_ack(
+    deps: DepsMut,
+    env: Env,
+    msg: IbcPacketAckMsg,
+) -> DistributorResult<IbcBasicResponse> {
+    IBC_ACK_MSG.save(deps.storage, &msg)?;
+    Ok(IbcBasicResponse::new()) // TODO: add some attributes and stuff
+}
+
+#[entry_point]
+pub fn ibc_packet_timeout(
+    deps: DepsMut,
+    env: Env,
+    msg: IbcPacketTimeoutMsg,
+) -> DistributorResult<IbcBasicResponse> {
+    IBC_TIMEOUT_MSG.save(deps.storage, &msg)?;
+    Ok(IbcBasicResponse::new()) // TODO: add some attributes and stuff
 }
