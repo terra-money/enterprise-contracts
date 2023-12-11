@@ -7,6 +7,14 @@
       "uluna_denom": "ibc/4627AD2524E3E0523047E35BB76CC90E37D9D57ACF14F0FCBCEB2480705F3CB8",
       "src_ibc_channel": "channel-86",
       "dest_ibc_channel": "channel-0"
+    },
+    "neutron-1": {
+      "chain_global_proxy": "neutron1hhzzm9v5gxdaw2jvvn6l7c25kxx7k3dpmu93xlw4xve7tjx08jnsxktfjy",
+      "enterprise_treasury_code_id": 518,
+      "ics_proxy_code_id": 517,
+      "uluna_denom": "ibc/322C86EB54A505E28AFE380CED1721FA61E9580A7548A16B9DCF6E7C8CEE43D5",
+      "src_ibc_channel": "channel-229",
+      "dest_ibc_channel": "channel-25"
     }
   },
   "testnet": {

@@ -10,7 +10,7 @@ impl<Chain: CwEnv> Uploadable for EnterpriseTreasuryContract<Chain> {
     // Return the path to the wasm file
     fn wasm(&self) -> WasmPath {
         artifacts_dir_from_workspace!()
-            .find_wasm_path("enterprise_treasury")
+            .find_wasm_path("enterprise_treasury-aarch64")
             .unwrap()
     }
     // Return a CosmWasm contract wrapper

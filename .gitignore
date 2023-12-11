@@ -45,6 +45,7 @@ yarn-error.log*
 .env.local
 .env.production.local
 .env.test.local
+.env
 refs.terrain.tmp.json
 
 terrarium.json
