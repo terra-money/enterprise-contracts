@@ -1,0 +1,12 @@
+{
+  "terra2": {
+    "pisco-1": {
+      "code_ids": {
+        "local:treasury": 12256
+      },
+      "default": {
+        "local:treasury": "terra16negnds7eqdc58ytkqve0lnzlvqx8nsl6jwskysh7ngj5zmsvctssw98w0"
+      }
+    }
+  }
+}

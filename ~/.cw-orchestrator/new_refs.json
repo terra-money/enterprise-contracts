@@ -1,0 +1,18 @@
+{
+  "neutron": {
+    "neutron-1": {
+      "code_ids": {
+        "local:treasury": 516
+      },
+      "default": {}
+    }
+  },
+  "terra2": {
+    "pisco-1": {
+      "code_ids": {
+        "local:treasury": 12254
+      },
+      "default": {}
+    }
+  }
+}
