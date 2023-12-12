@@ -231,6 +231,20 @@ pub struct DaoInfoResponse {
 }
 
 #[cw_serde]
+pub struct ComponentContractsResponse {
+    pub enterprise_factory_contract: Addr,
+    pub enterprise_contract: Addr,
+    pub funds_distributor_contract: Addr,
+    pub enterprise_governance_contract: Option<Addr>,
+    pub enterprise_governance_controller_contract: Option<Addr>,
+    pub enterprise_outposts_contract: Option<Addr>,
+    pub enterprise_treasury_contract: Option<Addr>,
+    pub membership_contract: Option<Addr>,
+    pub council_membership_contract: Option<Addr>,
+    pub attestation_contract: Option<Addr>,
+}
+
+#[cw_serde]
 pub struct GovConfigV1 {
     /// Portion of total available votes cast in a proposal to consider it valid
     /// e.g. quorum of 30% means that 30% of all available votes have to be cast in the proposal,
@@ -245,7 +259,8 @@ pub struct GovConfigV1 {
     /// If None, will default to the threshold set for all proposal options.
     pub veto_threshold: Option<Decimal>,
     /// Duration of proposals before they end, expressed in seconds
-    pub vote_duration: u64, // TODO: change from u64 to Duration
+    pub vote_duration: u64,
+    // TODO: change from u64 to Duration
     /// Duration that has to pass for unstaked membership tokens to be claimable
     pub unlocking_period: Duration,
     /// Optional minimum amount of DAO's governance unit to be required to create a deposit.
@@ -270,7 +285,8 @@ pub struct GovConfigFacade {
     /// Will default to the threshold set for all proposal options.
     pub veto_threshold: Decimal,
     /// Duration of proposals before they end, expressed in seconds
-    pub vote_duration: u64, // TODO: change from u64 to Duration
+    pub vote_duration: u64,
+    // TODO: change from u64 to Duration
     /// Duration that has to pass for unstaked membership tokens to be claimable
     pub unlocking_period: Duration,
     /// Optional minimum amount of DAO's governance unit to be required to create a deposit.

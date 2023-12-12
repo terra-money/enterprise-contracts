@@ -25,15 +25,15 @@ use cw_utils::Expiration;
 use enterprise_facade_api::api::{
     adapter_response_single_execute_msg, AdaptedExecuteMsg, AdaptedMsg, AdapterResponse,
     AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse,
-    CreateProposalMsg, CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg,
-    DaoInfoResponse, DaoType, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse,
-    ProposalStatus, ProposalStatusParams, ProposalStatusResponse, ProposalType,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse, V2MigrationStage,
-    V2MigrationStageResponse,
+    ComponentContractsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
+    CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType, ExecuteProposalMsg,
+    GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
+    Proposal, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
+    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
+    UserStakeParams, UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -103,6 +103,26 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
             funds_distributor_contract: dao_info_v5.funds_distributor_contract,
             dao_code_version: dao_info_v5.dao_code_version,
             dao_version: dao_version_from_code_version,
+        })
+    }
+
+    fn query_component_contracts(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<ComponentContractsResponse> {
+        let dao_info = self.query_dao_info(qctx)?;
+
+        Ok(ComponentContractsResponse {
+            enterprise_factory_contract: dao_info.enterprise_factory_contract,
+            enterprise_contract: self.enterprise_address.clone(),
+            funds_distributor_contract: dao_info.funds_distributor_contract,
+            enterprise_governance_contract: None,
+            enterprise_governance_controller_contract: None,
+            enterprise_outposts_contract: None,
+            enterprise_treasury_contract: None,
+            membership_contract: None,
+            council_membership_contract: None,
+            attestation_contract: None,
         })
     }
 
