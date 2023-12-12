@@ -1,14 +1,15 @@
 use common::cw::QueryContext;
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
-    CreateProposalWithTokenDepositMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
-    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse, V2MigrationStageResponse,
+    ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
+    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
+    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
+    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
+    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
@@ -24,6 +25,11 @@ pub trait EnterpriseFacade {
     ) -> EnterpriseFacadeResult<TreasuryAddressResponse>;
 
     fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse>;
+
+    fn query_component_contracts(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<ComponentContractsResponse>;
 
     fn query_member_info(
         &self,

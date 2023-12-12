@@ -1,13 +1,14 @@
 use crate::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg,
-    CreateProposalWithTokenDepositMsg, DaoInfoResponse, ExecuteProposalMsg, ListMultisigMembersMsg,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
-    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse, V2MigrationStageResponse,
+    ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
+    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
+    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
+    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
+    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
+    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    V2MigrationStageResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
@@ -33,6 +34,8 @@ pub enum QueryMsg {
     TreasuryAddress { contract: Addr },
     #[returns(DaoInfoResponse)]
     DaoInfo { contract: Addr },
+    #[returns(ComponentContractsResponse)]
+    ComponentContracts { contract: Addr },
     #[returns(MemberInfoResponse)]
     MemberInfo {
         contract: Addr,

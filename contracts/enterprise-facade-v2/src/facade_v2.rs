@@ -189,6 +189,30 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         })
     }
 
+    fn query_component_contracts(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<enterprise_facade_api::api::ComponentContractsResponse> {
+        let component_contracts = self.component_contracts(qctx.deps)?;
+
+        Ok(enterprise_facade_api::api::ComponentContractsResponse {
+            enterprise_factory_contract: component_contracts.enterprise_factory_contract,
+            enterprise_contract: self.enterprise_address.clone(),
+            funds_distributor_contract: component_contracts.funds_distributor_contract,
+            enterprise_governance_contract: Some(
+                component_contracts.enterprise_governance_contract,
+            ),
+            enterprise_governance_controller_contract: Some(
+                component_contracts.enterprise_governance_controller_contract,
+            ),
+            enterprise_outposts_contract: Some(component_contracts.enterprise_outposts_contract),
+            enterprise_treasury_contract: Some(component_contracts.enterprise_treasury_contract),
+            membership_contract: Some(component_contracts.membership_contract),
+            council_membership_contract: Some(component_contracts.council_membership_contract),
+            attestation_contract: component_contracts.attestation_contract,
+        })
+    }
+
     fn query_member_info(
         &self,
         qctx: QueryContext,

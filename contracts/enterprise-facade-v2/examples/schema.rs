@@ -2,10 +2,10 @@ use std::{env::current_dir, fs::create_dir_all};
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 use enterprise_facade_api::api::{
-    AdapterResponse, AssetWhitelistResponse, ClaimsResponse, DaoInfoResponse, MemberInfoResponse,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalResponse,
-    ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, StakedNftsResponse,
-    TotalStakedAmountResponse, UserStakeResponse,
+    AdapterResponse, AssetWhitelistResponse, ClaimsResponse, ComponentContractsResponse,
+    DaoInfoResponse, MemberInfoResponse, MemberVoteResponse, MultisigMembersResponse,
+    NftWhitelistResponse, ProposalResponse, ProposalStatusResponse, ProposalVotesResponse,
+    ProposalsResponse, StakedNftsResponse, TotalStakedAmountResponse, UserStakeResponse,
 };
 use enterprise_facade_api::msg::{ExecuteMsg, QueryMsg};
 
@@ -21,6 +21,7 @@ fn main() {
     export_schema(&schema_for!(StakedNftsResponse), &out_dir);
     export_schema(&schema_for!(MultisigMembersResponse), &out_dir);
     export_schema(&schema_for!(DaoInfoResponse), &out_dir);
+    export_schema(&schema_for!(ComponentContractsResponse), &out_dir);
     export_schema(&schema_for!(AssetWhitelistResponse), &out_dir);
     export_schema(&schema_for!(NftWhitelistResponse), &out_dir);
     export_schema(&schema_for!(MemberInfoResponse), &out_dir);

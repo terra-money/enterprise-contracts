@@ -55,6 +55,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(contract)?;
             to_json_binary(&facade.query_dao_info(qctx)?)?
         }
+        QueryMsg::ComponentContracts { contract } => {
+            let facade = get_facade(contract)?;
+            to_json_binary(&facade.query_component_contracts(qctx)?)?
+        }
         QueryMsg::MemberInfo { contract, msg } => {
             let facade = get_facade(contract)?;
             to_json_binary(&facade.query_member_info(qctx, msg)?)?

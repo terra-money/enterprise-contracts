@@ -5,11 +5,11 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use enterprise_facade_api::api::{
-    AdapterResponse, AssetWhitelistResponse, ClaimsResponse, DaoInfoResponse, MemberInfoResponse,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistResponse, ProposalResponse,
-    ProposalStatusResponse, ProposalVotesResponse, ProposalsResponse, StakedNftsResponse,
-    TotalStakedAmountResponse, TreasuryAddressResponse, UserStakeResponse,
-    V2MigrationStageResponse,
+    AdapterResponse, AssetWhitelistResponse, ClaimsResponse, ComponentContractsResponse,
+    DaoInfoResponse, MemberInfoResponse, MemberVoteResponse, MultisigMembersResponse,
+    NftWhitelistResponse, ProposalResponse, ProposalStatusResponse, ProposalVotesResponse,
+    ProposalsResponse, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse,
+    UserStakeResponse, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::{
@@ -22,11 +22,12 @@ use enterprise_treasury_api::api::{
 };
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
-    CreateCouncilProposalAdapted, CreateProposalAdapted, CreateProposalWithDenomDepositAdapted,
-    CreateProposalWithNftDepositAdapted, CreateProposalWithTokenDepositAdapted,
-    CrossChainTreasuries, DaoInfo, HasUnmovedStakesOrClaims, ListMultisigMembers, MemberInfo,
-    MemberVote, NftWhitelist, Proposal, ProposalStatus, ProposalVotes, Proposals, ReleasableClaims,
-    StakeAdapted, StakedNfts, TotalStakedAmount, UnstakeAdapted, UserStake,
+    ComponentContracts, CreateCouncilProposalAdapted, CreateProposalAdapted,
+    CreateProposalWithDenomDepositAdapted, CreateProposalWithNftDepositAdapted,
+    CreateProposalWithTokenDepositAdapted, CrossChainTreasuries, DaoInfo, HasUnmovedStakesOrClaims,
+    ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist, Proposal, ProposalStatus,
+    ProposalVotes, Proposals, ReleasableClaims, StakeAdapted, StakedNfts, TotalStakedAmount,
+    UnstakeAdapted, UserStake,
 };
 
 // version info for migration info
@@ -86,6 +87,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
             let response: DaoInfoResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &DaoInfo {
+                    contract: facade.dao_address,
+                },
+            )?;
+            to_json_binary(&response)?
+        }
+        ComponentContracts { contract } => {
+            let facade = get_facade(deps, contract)?;
+
+            let response: ComponentContractsResponse = deps.querier.query_wasm_smart(
+                facade.facade_address.to_string(),
+                &ComponentContracts {
                     contract: facade.dao_address,
                 },
             )?;
