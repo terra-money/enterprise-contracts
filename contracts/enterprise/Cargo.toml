@@ -1,6 +1,6 @@
 [package]
 name = "enterprise"
-version = "0.5.0"
+version = "1.0.2"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -34,27 +34,15 @@ optimize = """docker run --rm -v "${process.cwd()}":/code \
 
 [dependencies]
 common = { path = "../../packages/common" }
-cosmwasm-std = "1"
+attestation-api = { path = "../../packages/attestation-api" }
+cosmwasm-std = { version = "1", features = ["stargate", "staking"] }
 cosmwasm-schema = "1"
-cw-asset = "2.2"
 cw-storage-plus = "1.0.1"
 cw-utils = "1.0.1"
 cw2 = "1.0.1"
-cw3 = "1.0.1"
-cw20 = "1.0.1"
-cw20-base = { version = "1.0.1", features = ["library"] }
-cw721 = "0.16.0"
-cw721-base = { version = "0.16.0", features = ["library"] }
-enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
-enterprise-governance-api = { path = "../../packages/enterprise-governance-api" }
-funds-distributor-api = { path = "../../packages/funds-distributor-api" }
-poll-engine-api = { path = "../../packages/poll-engine-api" }
+enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
 serde-json-wasm = "0.5.0"
-
-[dev-dependencies]
-anyhow = "1"
-cosmwasm-schema = "1"
-cw-multi-test = "0.16.2"
-cw20-base = "1.0.1"
-itertools = "0.10.5"

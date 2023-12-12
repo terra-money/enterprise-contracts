@@ -1,26 +1,16 @@
 import { MsgMigrateContract } from "@terra-money/terra.js";
-import task, { info } from "terrariums";
+import task, { info } from "@terra-money/terrariums";
 
-const ENTERPRISE = "enterprise";
-const ENTERPRISE_GOVERNANCE = "enterprise-governance";
 const ENTERPRISE_FACTORY = "enterprise-factory";
-const FUNDS_DISTRIBUTOR = "funds-distributor";
+const ENTERPRISE_VERSIONING = "enterprise-versioning";
+const CW721_METADATA_ONCHAIN = "cw721_metadata_onchain";
 
 task(async ({ deployer, signer, refs, network }) => {
-  deployer.buildContract(ENTERPRISE);
-  deployer.optimizeContract(ENTERPRISE);
-
-  const enterpriseCodeId = await deployer.storeCode(ENTERPRISE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  const enterpriseGovernanceCodeId = await deployer.storeCode(ENTERPRISE_GOVERNANCE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  const fundsDistributorCodeId = await deployer.storeCode(FUNDS_DISTRIBUTOR);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  await deployer.storeCode(ENTERPRISE_FACTORY);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // deployer.buildContract(ENTERPRISE);
+  // deployer.optimizeContract(ENTERPRISE);
+  //
+  // await deployer.storeCode(ENTERPRISE_FACTORY);
+  // await new Promise((resolve) => setTimeout(resolve, 5000));
 
   const contract = refs.getContract(network, ENTERPRISE_FACTORY);
 
@@ -29,16 +19,11 @@ task(async ({ deployer, signer, refs, network }) => {
     contract.address!,
     parseInt(contract.codeId!),
     {
-      new_enterprise_code_id: parseInt(enterpriseCodeId),
-      new_enterprise_governance_code_id: parseInt(enterpriseGovernanceCodeId),
-      new_funds_distributor_code_id: parseInt(fundsDistributorCodeId),
+      admin: signer.key.accAddress,
+      enterprise_versioning_addr: refs.getAddress(network, ENTERPRISE_VERSIONING),
+      cw721_code_id: parseInt(refs.getCodeId(network, CW721_METADATA_ONCHAIN)),
     }
   );
-
-  console.log("enterpriseFactoryCodeId", contract.codeId);
-  console.log("enterpriseCodeId", enterpriseCodeId);
-  console.log("enterpriseGovernanceCodeId", enterpriseGovernanceCodeId);
-  console.log("fundsDistributorCodeId", fundsDistributorCodeId);
 
   try {
     let tx = await signer.createAndSignTx({

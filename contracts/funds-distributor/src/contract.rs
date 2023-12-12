@@ -3,19 +3,20 @@ use crate::distributing::{distribute_cw20, distribute_native};
 use crate::eligibility::{
     execute_update_minimum_eligible_weight, query_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT,
 };
-use crate::migration::migrate_v1_to_v2;
+use crate::migration::migrate_to_v1_0_0;
 use crate::rewards::query_user_rewards;
-use crate::state::ENTERPRISE_CONTRACT;
+use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError,
+    entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
-use funds_distributor_api::error::{DistributorError, DistributorResult};
+use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use funds_distributor_api::response::instantiate_response;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:funds-distributor";
@@ -30,6 +31,9 @@ pub fn instantiate(
 ) -> DistributorResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let admin = deps.api.addr_validate(&msg.admin)?;
+    ADMIN.save(deps.storage, &admin)?;
+
     let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
@@ -40,7 +44,7 @@ pub fn instantiate(
 
     save_initial_weights(&mut ctx, msg.initial_weights, minimum_eligible_weight)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(instantiate_response(admin.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -63,11 +67,9 @@ pub fn execute(
 }
 
 fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DistributorResult<Response> {
-    match from_binary(&cw20_msg.msg) {
+    match from_json(&cw20_msg.msg) {
         Ok(Cw20HookMsg::Distribute {}) => distribute_cw20(ctx, cw20_msg),
-        _ => Err(DistributorError::Std(StdError::generic_err(
-            "msg payload not recognized",
-        ))),
+        _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
     }
 }
 
@@ -81,19 +83,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::UserRewards(params) => to_binary(&query_user_rewards(qctx, params)?)?,
-        QueryMsg::MinimumEligibleWeight {} => to_binary(&query_minimum_eligible_weight(qctx)?)?,
+        QueryMsg::UserRewards(params) => to_json_binary(&query_user_rewards(qctx, params)?)?,
+        QueryMsg::MinimumEligibleWeight {} => {
+            to_json_binary(&query_minimum_eligible_weight(qctx)?)?
+        }
     };
     Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DistributorResult<Response> {
-    let contract_version = get_contract_version(deps.storage)?;
-
-    if contract_version.version == "0.1.0" {
-        migrate_v1_to_v2(deps.branch(), msg.minimum_eligible_weight)?;
-    }
+    migrate_to_v1_0_0(deps.branch(), msg)?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

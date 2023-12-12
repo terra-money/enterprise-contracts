@@ -1,0 +1,56 @@
+[package]
+name = "enterprise-facade-v1"
+version = "1.0.2"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+exclude = [
+    # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+    "contract.wasm",
+    "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
+[features]
+default = ["contract"]
+
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use contract feature to enable all instantiate/execute/query exports
+contract = []
+
+[package.metadata.scripts]
+optimize = """docker run --rm -v "${process.cwd()}":/code \
+  -v "${path.join(process.cwd(), "../../", "packages")}":/packages \
+  --mount type=volume,source="${contract}_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/rust-optimizer${process.env.TERRARIUM_ARCH_ARM64 ? "-arm64" : ""}:0.12.6
+"""
+
+[dependencies]
+common = { path = "../../packages/common" }
+cosmwasm-schema = "1.1.9"
+cosmwasm-std = "1"
+cw-storage-plus = "1.0.1"
+cw2 = "1.0.1"
+cw20 = "1.0.1"
+cw721 = "0.16.0"
+cw-asset = "2.4.0"
+cw-utils = "1.0.1"
+enterprise-facade-api = { path = "../../packages/enterprise-facade-api" }
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
+enterprise-facade-common = { path = "../../packages/enterprise-facade-common" }
+enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
+multisig-membership-api = { path = "../../packages/multisig-membership-api" }
+poll-engine-api = { path = "../../packages/poll-engine-api" }
+poll-engine = { path = "../../packages/poll-engine" }
+serde_with = { version = "2" }
+serde-json-wasm = "0.5.0"

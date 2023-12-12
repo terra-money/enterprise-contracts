@@ -1,10 +1,10 @@
-use cosmwasm_std::Order;
+use cosmwasm_std::{Order, Uint128};
 use cw_storage_plus::Bound;
 use itertools::Itertools;
 
 use common::cw::{Pagination, QueryContext};
 
-use crate::state::{polls, votes, PollStorage, VoteStorage};
+use crate::state::{polls, votes, PollHelpers, PollStorage, VoteStorage};
 use poll_engine_api::api::{
     PollId, PollParams, PollResponse, PollStatusResponse, PollVoterParams, PollVoterResponse,
     PollVotersParams, PollVotersResponse, PollsParams, PollsResponse, VoterResponse,
@@ -76,6 +76,23 @@ pub fn query_poll_status(
     })
 }
 
+// TODO: tests
+pub fn query_simulate_end_poll_status(
+    qctx: &QueryContext,
+    poll_id: impl Into<PollId>,
+    maximum_available_votes: Uint128,
+) -> PollResult<PollStatusResponse> {
+    let poll = polls().load_poll(qctx.deps.storage, poll_id.into())?;
+
+    let simulated_final_status = poll.final_status(maximum_available_votes)?;
+
+    Ok(PollStatusResponse {
+        status: simulated_final_status,
+        ends_at: poll.ends_at,
+        results: poll.results,
+    })
+}
+
 pub fn query_poll_voter(
     qctx: &QueryContext,
     PollVoterParams {
@@ -132,15 +149,30 @@ pub fn query_poll_voters(
     Ok(PollVotersResponse { votes })
 }
 
-pub fn query_voter(qctx: &QueryContext, voter_addr: impl AsRef<str>) -> PollResult<VoterResponse> {
+pub fn query_voter(
+    qctx: &QueryContext,
+    voter_addr: impl AsRef<str>,
+    start_after: Option<PollId>,
+    limit: Option<u64>,
+) -> PollResult<VoterResponse> {
     let voter = qctx.deps.api.addr_validate(voter_addr.as_ref())?;
 
-    let votes = votes()
+    let votes_iter = votes()
         .prefix(voter)
-        .range(qctx.deps.storage, None, None, Order::Ascending)
+        .range(
+            qctx.deps.storage,
+            start_after.map(Bound::exclusive),
+            None,
+            Order::Ascending,
+        )
         .flatten()
-        .map(|(_, vote)| vote)
-        .collect_vec();
+        .map(|(_, vote)| vote);
+
+    // apply pagination limit if provided
+    let votes = match limit {
+        Some(n) => votes_iter.take(n as usize).collect_vec(),
+        None => votes_iter.collect_vec(),
+    };
 
     Ok(VoterResponse { votes })
 }

@@ -1,0 +1,62 @@
+[package]
+name = "enterprise-treasury"
+version = "1.0.2"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+exclude = [
+    # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+    "contract.wasm",
+    "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
+[features]
+default = ["contract"]
+
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use contract feature to enable all instantiate/execute/query exports
+contract = []
+
+[package.metadata.scripts]
+optimize = """docker run --rm -v "${process.cwd()}":/code \
+  -v "${path.join(process.cwd(), "../../", "packages")}":/packages \
+  --mount type=volume,source="${contract}_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/rust-optimizer${process.env.TERRARIUM_ARCH_ARM64 ? "-arm64" : ""}:0.12.6
+"""
+
+[dependencies]
+common = { path = "../../packages/common" }
+cosmwasm-schema = "1"
+cosmwasm-std = { version = "1", features = ["stargate", "staking"] }
+cw-asset = "2.4.0"
+cw-storage-plus = "1.0.1"
+cw2 = "1.0.1"
+cw20 = "0.16.0"
+cw721 = "0.16.0"
+cw-utils = "1.0.1"
+enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
+enterprise-governance-api = { path = "../../packages/enterprise-governance-api" }
+enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
+funds-distributor-api = { path = "../../packages/funds-distributor-api" }
+denom-staking-api = { path = "../../packages/denom-staking-api" }
+nft-staking-api = { path = "../../packages/nft-staking-api" }
+poll-engine-api = { path = "../../packages/poll-engine-api" }
+token-staking-api = { path = "../../packages/token-staking-api" }
+multisig-membership-api = { path = "../../packages/multisig-membership-api" }
+membership-common-api = { path = "../../packages/membership-common-api" }
+serde-json-wasm = "0.5.0"
+
+[dev-dependencies]
+cosmwasm-schema = "1.1.9"

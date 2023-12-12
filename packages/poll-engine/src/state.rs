@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::ops::Not;
 use Ordering::{Equal, Greater, Less};
 
-use cosmwasm_std::{to_binary, Addr, Decimal, DepsMut, Env, Storage, Timestamp, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Decimal, DepsMut, Env, Storage, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use itertools::Itertools;
 
@@ -61,7 +61,7 @@ pub fn polls<'a>() -> IndexedMap<'a, PollId, Poll, PollIndices<'a>> {
     let indices = PollIndices {
         poll_status: MultiIndex::new(
             |_, d| {
-                to_binary(&d.status.clone().to_filter())
+                to_json_binary(&d.status.clone().to_filter())
                     .expect("error serializing poll status")
                     .0
             },
@@ -354,7 +354,7 @@ impl VoteStorage for Votes<'_> {
         poll_range_args: RangeArgs<PollId>,
         voter_range_args: RangeArgs<PollId>,
     ) -> PollResult<Option<Vote>> {
-        let key = to_binary(&poll_status)?.0;
+        let key = to_json_binary(&poll_status)?.0;
         let poll_ids: Vec<u64> = polls()
             .idx
             .poll_status

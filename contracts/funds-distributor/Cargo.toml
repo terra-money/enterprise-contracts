@@ -1,6 +1,6 @@
 [package]
 name = "funds-distributor"
-version = "0.2.0"
+version = "1.0.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -41,4 +41,6 @@ cw2 = "1.0.1"
 cw20 = "1.0.1"
 cw-asset = "2.4.0"
 itertools = "0.10.5"
+enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }

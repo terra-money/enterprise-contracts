@@ -1,13 +1,15 @@
-use crate::state::ENTERPRISE_CONTRACT;
+use crate::migration::migrate_to_v1_0_0;
+use crate::state::ADMIN;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
 use enterprise_governance_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use poll_engine::execute::initialize_poll_engine;
 use poll_engine::query::{
-    query_poll, query_poll_status, query_poll_voter, query_poll_voters, query_polls, query_voter,
+    query_poll, query_poll_status, query_poll_voter, query_poll_voters, query_polls,
+    query_simulate_end_poll_status, query_voter,
 };
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, PollStatus, UpdateVotesParams, VoteOutcome,
@@ -28,14 +30,16 @@ pub fn instantiate(
 ) -> PollResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let enterprise_contract = deps.api.addr_validate(&msg.enterprise_contract)?;
-    ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
+    let admin = deps.api.addr_validate(&msg.admin)?;
+    ADMIN.save(deps.storage, &admin)?;
 
     let mut ctx = Context { deps, env, info };
 
     initialize_poll_engine(&mut ctx)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(Response::new()
+        .add_attribute("action", "instantiate")
+        .add_attribute("admin", admin.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -45,9 +49,9 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> PollResult<Response> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
+    let admin = ADMIN.load(deps.storage)?;
 
-    if info.sender != enterprise_contract {
+    if info.sender != admin {
         return Err(Unauthorized {});
     }
 
@@ -80,7 +84,7 @@ fn update_votes(ctx: &mut Context, params: UpdateVotesParams) -> PollResult<Resp
         deps: ctx.deps.as_ref(),
         env: ctx.env.clone(),
     };
-    let votes = query_voter(&qctx, &params.voter)?;
+    let votes = query_voter(&qctx, &params.voter, None, None)?;
 
     for vote in votes.votes {
         let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
@@ -119,18 +123,33 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> PollResult<Binary> {
     let qctx = QueryContext { deps, env };
 
     let response = match msg {
-        QueryMsg::Poll(params) => to_binary(&query_poll(&qctx, params)?)?,
-        QueryMsg::Polls(params) => to_binary(&query_polls(&qctx, params)?)?,
-        QueryMsg::PollStatus { poll_id } => to_binary(&query_poll_status(&qctx, poll_id)?)?,
-        QueryMsg::PollVoter(params) => to_binary(&query_poll_voter(&qctx, params)?)?,
-        QueryMsg::PollVoters(params) => to_binary(&query_poll_voters(&qctx, params)?)?,
-        QueryMsg::Voter(params) => to_binary(&query_voter(&qctx, params.voter_addr)?)?,
+        QueryMsg::Poll(params) => to_json_binary(&query_poll(&qctx, params)?)?,
+        QueryMsg::Polls(params) => to_json_binary(&query_polls(&qctx, params)?)?,
+        QueryMsg::PollStatus { poll_id } => to_json_binary(&query_poll_status(&qctx, poll_id)?)?,
+        QueryMsg::SimulateEndPollStatus {
+            poll_id,
+            maximum_available_votes,
+        } => to_json_binary(&query_simulate_end_poll_status(
+            &qctx,
+            poll_id,
+            maximum_available_votes,
+        )?)?,
+        QueryMsg::PollVoter(params) => to_json_binary(&query_poll_voter(&qctx, params)?)?,
+        QueryMsg::PollVoters(params) => to_json_binary(&query_poll_voters(&qctx, params)?)?,
+        QueryMsg::Voter(params) => to_json_binary(&query_voter(
+            &qctx,
+            params.voter_addr,
+            params.start_after,
+            params.limit,
+        )?)?,
     };
     Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> PollResult<Response> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> PollResult<Response> {
+    migrate_to_v1_0_0(deps.branch(), msg)?;
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))

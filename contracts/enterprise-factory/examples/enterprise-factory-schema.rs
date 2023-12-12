@@ -6,7 +6,6 @@ use enterprise_factory_api::api::{
     AllDaosResponse, ConfigResponse, EnterpriseCodeIdsResponse, IsEnterpriseCodeIdResponse,
 };
 use enterprise_factory_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use enterprise_protocol::api::{AssetWhitelistResponse, NftWhitelistResponse};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -22,6 +21,4 @@ fn main() {
     export_schema(&schema_for!(AllDaosResponse), &out_dir);
     export_schema(&schema_for!(EnterpriseCodeIdsResponse), &out_dir);
     export_schema(&schema_for!(IsEnterpriseCodeIdResponse), &out_dir);
-    export_schema(&schema_for!(AssetWhitelistResponse), &out_dir);
-    export_schema(&schema_for!(NftWhitelistResponse), &out_dir);
 }

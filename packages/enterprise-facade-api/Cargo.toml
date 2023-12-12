@@ -1,0 +1,26 @@
+[package]
+name = "enterprise-facade-api"
+version = "1.0.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+common = { path = "../common" }
+cosmwasm-std = "1"
+cosmwasm-schema = "1.1"
+cw20 = "1.0.1"
+cw-asset = "2.4.0"
+cw-utils = "1.0.1"
+poll-engine-api = { path = "../poll-engine-api" }
+enterprise-protocol = { path = "../enterprise-protocol" }
+enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
+enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
+enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+enterprise-versioning-api = { path = "../enterprise-versioning-api" }
+serde_with = { version = "2", features = ["json", "macros"] }
+serde-json-wasm = "0.5.0"
+strum_macros = "0.24"
+thiserror = "1"

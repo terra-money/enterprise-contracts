@@ -1,6 +1,6 @@
 [package]
 name = "enterprise-protocol"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -10,19 +10,12 @@ path = "src/lib.rs"
 [dependencies]
 common = { path = "../common" }
 cosmwasm-std = "1"
-cosmwasm-storage = "1"
 cosmwasm-schema = "1.1"
-cw-asset = "2.2"
-cw-storage-plus = "1.0.1"
-cw-utils = "1.0.1"
-cw2 = "1.0.1"
-cw20 = "1.0.1"
-cw721 = "0.16.0"
-poll-engine-api = { path = "../poll-engine-api" }
-funds-distributor-api = { path = "../funds-distributor-api" }
+enterprise-versioning-api = { path = "../enterprise-versioning-api" }
 schemars = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_with = { version = "2", features = ["json", "macros"] }
+serde-json-wasm = "0.5.0"
 strum = "0.24"
 strum_macros = "0.24"
 thiserror = "1"

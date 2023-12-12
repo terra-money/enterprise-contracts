@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use std::collections::BTreeMap;
 
-use cosmwasm_std::{to_binary, Addr, Decimal, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{to_json_binary, Addr, Decimal, Timestamp, Uint128, Uint64};
 use serde_with::serde_as;
 use strum_macros::Display;
 
@@ -218,7 +218,9 @@ pub enum PollStatusFilter {
 
 impl PollStatusFilter {
     pub fn to_vec(&self) -> PollResult<Vec<u8>> {
-        to_binary(&self).map(|b| b.to_vec()).map_err(PollError::Std)
+        to_json_binary(&self)
+            .map(|b| b.to_vec())
+            .map_err(PollError::Std)
     }
 }
 
@@ -304,6 +306,8 @@ pub struct PollVotersResponse {
 pub struct VoterParams {
     /// The voter's address.
     pub voter_addr: String,
+    pub start_after: Option<PollId>,
+    pub limit: Option<u64>,
 }
 
 #[cw_serde]

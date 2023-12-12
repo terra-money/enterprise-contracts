@@ -304,6 +304,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@terra-money/terrariums@file:../terrariums::locator=apps-monorepo%40workspace%3A.":
+  version: 1.1.9
+  resolution: "@terra-money/terrariums@file:../terrariums#../terrariums::hash=20cc39&locator=apps-monorepo%40workspace%3A."
+  dependencies:
+    "@terra-money/terra.js": ^3.1.3
+    "@types/node": ^18.0.0
+    chalk: ^5.0.1
+    ora: ^6.1.0
+    toml: ^3.0.0
+    ts-node: ^10.8.1
+    tslib: ^2.4.0
+    typescript: ^4.7.4
+    yargs: ^17.5.1
+  bin:
+    terrariums: lib/src/cli.js
+  checksum: 7ab395d358b61e83c70789413d07e67b61900e5f4382d627c194084936535d1d333e609a903827d4d189bc791d57b08a5319e9cc5ec944c6de563b80fe52824d
+  languageName: node
+  linkType: hard
+
 "@tootallnate/once@npm:2":
   version: 2.0.0
   resolution: "@tootallnate/once@npm:2.0.0"
@@ -588,12 +607,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "apps-monorepo@workspace:."
   dependencies:
+    "@terra-money/terrariums": "file:../terrariums"
     "@types/node": ^16.11.56
     husky: ^8.0.1
     jest-watch-typeahead: 2.1.1
     json-schema-to-typescript: ^11.0.2
     lorem-ipsum: ^2.0.8
-    terrariums: ^1.1.9
     ts-node: ^10.9.1
     typescript: ^4.8.2
   languageName: unknown
@@ -2857,25 +2876,6 @@ __metadata:
     mkdirp: ^1.0.3
     yallist: ^4.0.0
   checksum: a04c07bb9e2d8f46776517d4618f2406fb977a74d914ad98b264fc3db0fe8224da5bec11e5f8902c5b9bcb8ace22d95fbe3c7b36b8593b7dfc8391a25898f32f
-  languageName: node
-  linkType: hard
-
-"terrariums@npm:^1.1.9":
-  version: 1.1.9
-  resolution: "terrariums@npm:1.1.9"
-  dependencies:
-    "@terra-money/terra.js": ^3.1.3
-    "@types/node": ^18.0.0
-    chalk: ^5.0.1
-    ora: ^6.1.0
-    toml: ^3.0.0
-    ts-node: ^10.8.1
-    tslib: ^2.4.0
-    typescript: ^4.7.4
-    yargs: ^17.5.1
-  bin:
-    terrariums: lib/src/cli.js
-  checksum: ef89713bb979efa4335adae4c9bf0be5ad395d6611bff8e9949d3c1fb4d175d8895b630abee848f2078ae710b09e886ea58597efc78cbf0436688a1a8c82033f
   languageName: node
   linkType: hard
 

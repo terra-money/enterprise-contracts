@@ -1,6 +1,6 @@
 [package]
 name = "enterprise-governance-api"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -9,4 +9,5 @@ path = "src/lib.rs"
 
 [dependencies]
 cosmwasm-schema = "1.1"
+cosmwasm-std = "1"
 poll-engine-api = { path = "../poll-engine-api" }

@@ -1,6 +1,6 @@
 use crate::cw20_distributions::update_user_cw20_distributions;
 use crate::native_distributions::update_user_native_distributions;
-use crate::state::{ENTERPRISE_CONTRACT, TOTAL_WEIGHT};
+use crate::state::{ADMIN, EFFECTIVE_TOTAL_WEIGHT};
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, DepsMut, Order, Response, StdResult, Uint128};
@@ -8,6 +8,7 @@ use cw_storage_plus::Item;
 use funds_distributor_api::api::{MinimumEligibleWeightResponse, UpdateMinimumEligibleWeightMsg};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
+use funds_distributor_api::response::execute_update_minimum_eligible_weight_response;
 use itertools::Itertools;
 use std::ops::Range;
 
@@ -18,9 +19,9 @@ pub fn execute_update_minimum_eligible_weight(
     ctx: &mut Context,
     msg: UpdateMinimumEligibleWeightMsg,
 ) -> DistributorResult<Response> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
+    let admin = ADMIN.load(ctx.deps.storage)?;
 
-    if ctx.info.sender != enterprise_contract {
+    if ctx.info.sender != admin {
         return Err(Unauthorized);
     }
 
@@ -29,10 +30,10 @@ pub fn execute_update_minimum_eligible_weight(
 
     update_minimum_eligible_weight(ctx.deps.branch(), old_minimum_weight, new_minimum_weight)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "update_minimum_eligible_weight")
-        .add_attribute("old_minimum_weight", old_minimum_weight.to_string())
-        .add_attribute("new_minimum_weight", new_minimum_weight.to_string()))
+    Ok(execute_update_minimum_eligible_weight_response(
+        old_minimum_weight,
+        new_minimum_weight,
+    ))
 }
 
 /// Update minimum eligible weight for rewards by going through all the users
@@ -77,7 +78,7 @@ pub fn update_minimum_eligible_weight(
         })
         .collect_vec();
 
-    let mut total_weight = TOTAL_WEIGHT.load(deps.storage)?;
+    let mut effective_total_weight = EFFECTIVE_TOTAL_WEIGHT.load(deps.storage)?;
 
     // whether effective weights for users should become their actual weights, or zero
     let use_actual_weights = old_minimum_weight > new_minimum_weight;
@@ -103,12 +104,13 @@ pub fn update_minimum_eligible_weight(
         EFFECTIVE_USER_WEIGHTS.save(deps.storage, user, &new_effective_weight)?;
 
         // update total weight
-        total_weight = total_weight - old_effective_weight + new_effective_weight;
+        effective_total_weight =
+            effective_total_weight - old_effective_weight + new_effective_weight;
     }
 
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &new_minimum_weight)?;
 
-    TOTAL_WEIGHT.save(deps.storage, &total_weight)?;
+    EFFECTIVE_TOTAL_WEIGHT.save(deps.storage, &effective_total_weight)?;
 
     Ok(())
 }

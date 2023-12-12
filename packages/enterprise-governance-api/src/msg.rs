@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Uint128;
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollResponse,
     PollStatusResponse, PollVoterParams, PollVoterResponse, PollVotersParams, PollVotersResponse,
@@ -7,7 +8,7 @@ use poll_engine_api::api::{
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub enterprise_contract: String,
+    pub admin: String,
 }
 
 #[cw_serde]
@@ -27,6 +28,11 @@ pub enum QueryMsg {
     Polls(PollsParams),
     #[returns(PollStatusResponse)]
     PollStatus { poll_id: PollId },
+    #[returns(PollStatusResponse)]
+    SimulateEndPollStatus {
+        poll_id: PollId,
+        maximum_available_votes: Uint128,
+    },
     #[returns(PollVoterResponse)]
     PollVoter(PollVoterParams),
     #[returns(PollVotersResponse)]
@@ -36,4 +42,6 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub new_admin: String,
+}
