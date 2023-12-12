@@ -107,6 +107,7 @@ fn deploy_cross_chain_treasury(
                 ctx.deps.branch(),
                 ctx.env.clone(),
                 msg.enterprise_treasury_code_id,
+                msg.chain_global_proxy,
                 proxy_contract,
                 msg.asset_whitelist,
                 msg.nft_whitelist,
@@ -203,6 +204,7 @@ fn instantiate_remote_treasury(
     deps: DepsMut,
     env: Env,
     enterprise_treasury_code_id: u64,
+    global_proxy: String,
     proxy_contract: String,
     asset_whitelist: Option<Vec<AssetInfoUnchecked>>,
     nft_whitelist: Option<Vec<String>>,
@@ -323,6 +325,7 @@ pub fn execute_msg_reply_callback(
                 } => handle_instantiate_proxy_reply_callback(
                     ctx,
                     ics_proxy_callback.cross_chain_msg_spec.chain_id,
+                    derived_proxy_addr,
                     *deploy_treasury_msg,
                     reply,
                 ),
@@ -340,6 +343,7 @@ pub fn execute_msg_reply_callback(
 fn handle_instantiate_proxy_reply_callback(
     ctx: &mut Context,
     chain_id: String,
+    chain_global_proxy: String,
     deploy_treasury_msg: DeployCrossChainTreasuryMsg,
     reply: Reply,
 ) -> EnterpriseOutpostsResult<Response> {
@@ -351,6 +355,7 @@ fn handle_instantiate_proxy_reply_callback(
         ctx.deps.branch(),
         ctx.env.clone(),
         deploy_treasury_msg.enterprise_treasury_code_id,
+        chain_global_proxy,
         proxy_addr.clone(),
         deploy_treasury_msg.asset_whitelist,
         deploy_treasury_msg.nft_whitelist,
