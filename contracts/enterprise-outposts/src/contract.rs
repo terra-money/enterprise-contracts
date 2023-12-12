@@ -223,7 +223,7 @@ fn instantiate_remote_treasury(
         callback_id,
         &IcsProxyCallback {
             cross_chain_msg_spec: cross_chain_msg_spec.clone(),
-            proxy_addr: proxy_contract.clone(),
+            proxy_addr: global_proxy.clone(),
             callback_type: InstantiateTreasury {
                 cross_chain_msg_spec: cross_chain_msg_spec.clone(),
             },
@@ -243,7 +243,7 @@ fn instantiate_remote_treasury(
             funds: vec![],
             label: "Proxy treasury".to_string(),
         }),
-        proxy_contract,
+        global_proxy,
         cross_chain_msg_spec,
         Some(callback_id),
     )?;
