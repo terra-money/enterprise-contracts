@@ -325,7 +325,7 @@ pub fn execute_msg_reply_callback(
                 } => handle_instantiate_proxy_reply_callback(
                     ctx,
                     ics_proxy_callback.cross_chain_msg_spec.chain_id,
-                    derived_proxy_addr,
+                    ics_proxy_callback.proxy_addr,
                     *deploy_treasury_msg,
                     reply,
                 ),
