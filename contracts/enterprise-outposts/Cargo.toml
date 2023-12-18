@@ -1,6 +1,6 @@
 [package]
 name = "enterprise-outposts"
-version = "1.0.0"
+version = "1.0.3"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -48,7 +48,7 @@ enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 prost = "0.11.9"
 serde-json-wasm = "0.5.0"
 sha2 = "0.10.8"
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }
 
 
 [dev-dependencies]

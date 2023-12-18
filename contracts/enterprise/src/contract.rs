@@ -457,7 +457,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
             version: Version {
                 major: 1,
                 minor: 0,
-                patch: 2,
+                patch: 3,
             },
         }),
     )?;
@@ -474,14 +474,14 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
         msg: to_json_binary(&enterprise_governance_controller_api::msg::MigrateMsg {})?,
     }));
 
-    let migrate_treasury_msg = SubMsg::new(Wasm(Migrate {
-        contract_addr: component_contracts.enterprise_treasury_contract.to_string(),
-        new_code_id: version_info.version.enterprise_treasury_code_id,
-        msg: to_json_binary(&enterprise_treasury_api::msg::MigrateMsg {})?,
+    let migrate_outposts_msg = SubMsg::new(Wasm(Migrate {
+        contract_addr: component_contracts.enterprise_outposts_contract.to_string(),
+        new_code_id: version_info.version.enterprise_outposts_code_id,
+        msg: to_json_binary(&enterprise_outposts_api::msg::MigrateMsg {})?,
     }));
 
     Ok(Response::new()
         .add_attribute("action", "migrate")
-        .add_submessage(migrate_treasury_msg)
-        .add_submessage(migrate_governance_controller_msg))
+        .add_submessage(migrate_governance_controller_msg)
+        .add_submessage(migrate_outposts_msg))
 }

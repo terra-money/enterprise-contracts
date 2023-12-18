@@ -767,7 +767,7 @@ fn resolve_ended_proposal(
             return Err(PollInProgress {
                 poll_id: proposal_id.into(),
             }
-            .into())
+            .into());
         }
         PollStatus::Passed { .. } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
@@ -1976,11 +1976,12 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> GovernanceControlle
                         (Some(executed_at), Some(deposit)) => {
                             // proposal deposits are returned after execution of proposal actions.
                             // this means our balance reading is not updated yet here after executing
-                            // a 1.0.2 upgrade proposal, yet the proposal is marked as executed.
+                            // a 1.0.3 upgrade proposal, yet the proposal is marked as executed.
                             //
-                            // TL;DR we have to include the 1.0.2 upgrade proposal in the deposits owed
+                            // TL;DR we have to include the 1.0.3 upgrade proposal in the deposits owed
                             // as it is not sent out yet
-                            if *executed_at == env.block && contains_upgrade_to_v1_0_2_action(&info)
+                            if *executed_at == env.block
+                                && contains_upgrade_to_v1_0_3_or_higher(&info)
                             {
                                 Some(deposit)
                             } else {
@@ -2024,18 +2025,18 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> GovernanceControlle
     }
 }
 
-fn contains_upgrade_to_v1_0_2_action(proposal_info: &ProposalInfo) -> bool {
-    let v1_0_2 = Version {
+fn contains_upgrade_to_v1_0_3_or_higher(proposal_info: &ProposalInfo) -> bool {
+    let v1_0_3 = Version {
         major: 1,
         minor: 0,
-        patch: 2,
+        patch: 3,
     };
 
     proposal_info
         .proposal_actions
         .iter()
         .any(|action| match action {
-            UpgradeDao(msg) => msg.new_version == v1_0_2,
+            UpgradeDao(msg) => msg.new_version >= v1_0_3,
             _ => false,
         })
 }
