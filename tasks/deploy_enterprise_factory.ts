@@ -1,4 +1,4 @@
-import { Coin } from "@terra-money/terra.js";
+import {Coin} from "@terra-money/terra.js";
 import task, {Deployer, Executor, Refs} from "@terra-money/terrariums";
 import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
@@ -42,9 +42,9 @@ type ComponentContracts = {
 }
 
 type TokenConfig = {
-  enterprise_contract: string,
-  token_contract: string,
-  unlocking_period: Object,
+    enterprise_contract: string,
+    token_contract: string,
+    unlocking_period: Object,
 }
 
 task(async ({network, deployer, executor, signer, refs}) => {
@@ -57,7 +57,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-    await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 0, 2);
+    await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 0, 3);
 
     // await instantiateDao(refs, network, executor);
 
@@ -241,7 +241,7 @@ const deployEnterpriseFacade = async (refs: Refs, network: string, deployer: Dep
 
     } catch (err) {
         console.log(err);
-  }
+    }
 
     refs.saveRefs();
 }
@@ -299,70 +299,70 @@ const deployEnterpriseFactory = async (refs: Refs, network: string, deployer: De
 }
 
 const deployNewEnterpriseVersion = async (refs: Refs, network: string, deployer: Deployer, executor: Executor, major: number, minor: number, patch: number): Promise<void> => {
-  await deployer.storeCode(ATTESTATION);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(ATTESTATION);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(ENTERPRISE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(ENTERPRISE);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(ENTERPRISE_GOVERNANCE);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(ENTERPRISE_GOVERNANCE);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(ENTERPRISE_GOVERNANCE_CONTROLLER);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(ENTERPRISE_TREASURY);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(ENTERPRISE_TREASURY);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(ENTERPRISE_OUTPOSTS);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(ENTERPRISE_OUTPOSTS);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(FUNDS_DISTRIBUTOR);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(FUNDS_DISTRIBUTOR);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(TOKEN_STAKING_MEMBERSHIP);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(DENOM_STAKING_MEMBERSHIP);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(NFT_STAKING_MEMBERSHIP);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  await deployer.storeCode(MULTISIG_MEMBERSHIP);
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+    await deployer.storeCode(MULTISIG_MEMBERSHIP);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  const enterpriseVersioningAddr = refs.getAddress(network, ENTERPRISE_VERSIONING);
+    const enterpriseVersioningAddr = refs.getAddress(network, ENTERPRISE_VERSIONING);
 
-  try {
-    await executor.execute(enterpriseVersioningAddr, {
-      add_version: {
-        version: {
-          version: {
-            major: major,
-            minor: minor,
-            patch: patch,
-          },
-          changelog: [],
-          attestation_code_id: parseInt(refs.getCodeId(network, ATTESTATION)),
-          enterprise_code_id: parseInt(refs.getCodeId(network, ENTERPRISE)),
-          enterprise_governance_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE)),
-          enterprise_governance_controller_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE_CONTROLLER)),
-          enterprise_treasury_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_TREASURY)),
-          enterprise_outposts_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_OUTPOSTS)),
-          funds_distributor_code_id: parseInt(refs.getCodeId(network, FUNDS_DISTRIBUTOR)),
-          token_staking_membership_code_id: parseInt(refs.getCodeId(network, TOKEN_STAKING_MEMBERSHIP)),
-          denom_staking_membership_code_id: parseInt(refs.getCodeId(network, DENOM_STAKING_MEMBERSHIP)),
-          nft_staking_membership_code_id: parseInt(refs.getCodeId(network, NFT_STAKING_MEMBERSHIP)),
-          multisig_membership_code_id: parseInt(refs.getCodeId(network, MULTISIG_MEMBERSHIP)),
-        }
-      }
-    })
-  } catch (e) {
-    console.log(e);
-  }
+    try {
+        await executor.execute(enterpriseVersioningAddr, {
+            add_version: {
+                version: {
+                    version: {
+                        major: major,
+                        minor: minor,
+                        patch: patch,
+                    },
+                    changelog: [],
+                    attestation_code_id: parseInt(refs.getCodeId(network, ATTESTATION)),
+                    enterprise_code_id: parseInt(refs.getCodeId(network, ENTERPRISE)),
+                    enterprise_governance_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE)),
+                    enterprise_governance_controller_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_GOVERNANCE_CONTROLLER)),
+                    enterprise_treasury_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_TREASURY)),
+                    enterprise_outposts_code_id: parseInt(refs.getCodeId(network, ENTERPRISE_OUTPOSTS)),
+                    funds_distributor_code_id: parseInt(refs.getCodeId(network, FUNDS_DISTRIBUTOR)),
+                    token_staking_membership_code_id: parseInt(refs.getCodeId(network, TOKEN_STAKING_MEMBERSHIP)),
+                    denom_staking_membership_code_id: parseInt(refs.getCodeId(network, DENOM_STAKING_MEMBERSHIP)),
+                    nft_staking_membership_code_id: parseInt(refs.getCodeId(network, NFT_STAKING_MEMBERSHIP)),
+                    multisig_membership_code_id: parseInt(refs.getCodeId(network, MULTISIG_MEMBERSHIP)),
+                }
+            }
+        })
+    } catch (e) {
+        console.log(e);
+    }
 
-  refs.saveRefs();
+    refs.saveRefs();
 }
 
 const instantiateDao = async (refs: Refs, network: string, executor: Executor): Promise<void> => {

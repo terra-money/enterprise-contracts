@@ -89,7 +89,7 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2281"
+      "codeId": "2387"
     },
     "enterprise-factory": {
       "codeId": "2188",
@@ -125,13 +125,13 @@
       "codeId": "2185"
     },
     "enterprise-governance-controller": {
-      "codeId": "2282"
+      "codeId": "2388"
     },
     "enterprise-treasury": {
       "codeId": "2247"
     },
     "enterprise-outposts": {
-      "codeId": "2182"
+      "codeId": "2389"
     },
     "token-staking-membership": {
       "codeId": "2184"
