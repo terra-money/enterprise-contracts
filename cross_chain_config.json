@@ -23,6 +23,14 @@
       "uluna_denom": "ibc/107D152BB3176FAEBF4C2A84C5FFDEEA7C7CB4FE1BBDAB710F1FD25BCD055CBF",
       "src_ibc_channel": "channel-2",
       "dest_ibc_channel": "channel-86"
+    },
+    "osmosis-1": {
+      "chain_global_proxy": "osmo143z9tx5k6ldtn8uzv8v8r3mzxn3nnv6c36vgww5rjrmuhcre8t0snddgv7",
+      "enterprise_treasury_code_id": 372,
+      "ics_proxy_code_id": 371,
+      "uluna_denom": "ibc/785AFEC6B3741100D15E7AF01374E3C4C36F24888E96479B1C33F5C71F364EF9",
+      "src_ibc_channel": "channel-1",
+      "dest_ibc_channel": "channel-251"
     }
   },
   "testnet": {
