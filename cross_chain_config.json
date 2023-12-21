@@ -33,7 +33,7 @@
       "dest_ibc_channel": "channel-251"
     },
     "stargaze-1": {
-      "chain_global_proxy": "stars1z2wez9ulaksqw9w99f0ttfvq7gupvjvhj639dgne05tkl9jypx4q25pf65",
+      "chain_global_proxy": "stars1jr24fs6fuejn6anuelvfrmm8a2dtgawwnlp7vsvh2r4vc3tezs8qk433qn",
       "enterprise_treasury_code_id": 165,
       "ics_proxy_code_id": 164,
       "uluna_denom": "ibc/33B679C576A22B5D2CA314D8801155881C62037C34DBC3B32537FA5DBAB91080",
