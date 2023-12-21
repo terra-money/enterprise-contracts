@@ -43,7 +43,8 @@ cw20 = "1.0.1"
 cw-asset = "2.4.0"
 itertools = "0.10.5"
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }
 

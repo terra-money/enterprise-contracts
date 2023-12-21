@@ -1,7 +1,7 @@
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
 use crate::state::{EFFECTIVE_TOTAL_WEIGHT, ENTERPRISE_CONTRACT};
 use common::cw::Context;
-use cosmwasm_std::{Addr, Decimal, Response, Uint128};
+use cosmwasm_std::{Decimal, Response, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 use enterprise_protocol::api::ComponentContractsResponse;
@@ -86,19 +86,33 @@ pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> Distribut
 }
 
 fn assert_assets_whitelisted(ctx: &Context, mut assets: Vec<AssetInfo>) -> DistributorResult<()> {
-    let enterprise_treasury = query_enterprise_treasury_address(ctx)?;
+    let enterprise_components = query_enterprise_components(ctx)?;
 
     // query asset whitelist with no bounds
     let mut asset_whitelist_response: AssetWhitelistResponse = ctx.deps.querier.query_wasm_smart(
-        enterprise_treasury.to_string(),
+        enterprise_components
+            .enterprise_treasury_contract
+            .to_string(),
         &AssetWhitelist(AssetWhitelistParams {
             start_after: None,
             limit: None,
         }),
     )?;
 
+    let mut global_asset_whitelist_response: AssetWhitelistResponse =
+        ctx.deps.querier.query_wasm_smart(
+            enterprise_components
+                .enterprise_factory_contract
+                .to_string(),
+            &enterprise_factory_api::msg::QueryMsg::GlobalAssetWhitelist {},
+        )?;
+
+    let mut unified_asset_whitelist = asset_whitelist_response.assets.clone();
+
+    unified_asset_whitelist.append(&mut global_asset_whitelist_response.assets);
+
     // keep assets that are not found in the whitelist - i.e. remove whitelisted assets
-    assets.retain(|asset| asset_whitelist_response.assets.contains(asset).not());
+    assets.retain(|asset| unified_asset_whitelist.contains(asset).not());
 
     // get last asset from the response - will be None iff response is empty
     let mut last_whitelist_asset = asset_whitelist_response.assets.last();
@@ -109,7 +123,9 @@ fn assert_assets_whitelisted(ctx: &Context, mut assets: Vec<AssetInfo>) -> Distr
         // now query the whitelist with bounds
         let start_after = last_whitelist_asset.map(|asset| asset.into());
         asset_whitelist_response = ctx.deps.querier.query_wasm_smart(
-            enterprise_treasury.to_string(),
+            enterprise_components
+                .enterprise_treasury_contract
+                .to_string(),
             &AssetWhitelist(AssetWhitelistParams {
                 start_after,
                 limit: None,
@@ -129,7 +145,7 @@ fn assert_assets_whitelisted(ctx: &Context, mut assets: Vec<AssetInfo>) -> Distr
     }
 }
 
-fn query_enterprise_treasury_address(ctx: &Context) -> DistributorResult<Addr> {
+fn query_enterprise_components(ctx: &Context) -> DistributorResult<ComponentContractsResponse> {
     let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
 
     let component_contracts: ComponentContractsResponse = ctx
@@ -137,5 +153,5 @@ fn query_enterprise_treasury_address(ctx: &Context) -> DistributorResult<Addr> {
         .querier
         .query_wasm_smart(enterprise_contract.to_string(), &ComponentContracts {})?;
 
-    Ok(component_contracts.enterprise_treasury_contract)
+    Ok(component_contracts)
 }
