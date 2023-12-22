@@ -3,7 +3,7 @@ use crate::distributing::{distribute_cw20, distribute_native};
 use crate::eligibility::{
     execute_update_minimum_eligible_weight, query_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT,
 };
-use crate::migration::migrate_to_v1_0_0;
+use crate::migration::migrate_to_v1_0_4;
 use crate::rewards::query_user_rewards;
 use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -92,8 +92,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DistributorResult<Response> {
-    migrate_to_v1_0_0(deps.branch(), msg)?;
+pub fn migrate(mut deps: DepsMut, _env: Env, _: MigrateMsg) -> DistributorResult<Response> {
+    migrate_to_v1_0_4(deps.branch())?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

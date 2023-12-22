@@ -5,7 +5,7 @@ use crate::state::{ADMIN, CW20_GLOBAL_INDICES, EFFECTIVE_TOTAL_WEIGHT, NATIVE_GL
 use crate::{cw20_distributions, native_distributions};
 use common::cw::Context;
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Decimal, Response, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Response, StdResult, Uint128};
 use cw20_distributions::update_user_cw20_distributions;
 use cw_storage_plus::Map;
 use funds_distributor_api::api::{UpdateUserWeightsMsg, UserWeight};
@@ -71,44 +71,51 @@ pub fn update_user_weights(
         return Err(Unauthorized);
     }
 
-    let mut effective_total_weight = EFFECTIVE_TOTAL_WEIGHT.load(ctx.deps.storage)?;
+    update_user_weights_checked(ctx.deps.branch(), msg)
+}
 
-    let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(ctx.deps.storage)?;
+pub fn update_user_weights_checked(
+    mut deps: DepsMut,
+    msg: UpdateUserWeightsMsg,
+) -> DistributorResult<Response> {
+    let mut effective_total_weight = EFFECTIVE_TOTAL_WEIGHT.load(deps.storage)?;
+
+    let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(deps.storage)?;
 
     for user_weight_change in msg.new_user_weights {
-        let user = ctx.deps.api.addr_validate(&user_weight_change.user)?;
+        let user = deps.api.addr_validate(&user_weight_change.user)?;
 
         let old_user_effective_weight =
-            EFFECTIVE_USER_WEIGHTS.may_load(ctx.deps.storage, user.clone())?;
+            EFFECTIVE_USER_WEIGHTS.may_load(deps.storage, user.clone())?;
 
         match old_user_effective_weight {
             None => {
                 // we have not encountered this user, so we need to ensure their distribution
                 // indices are set to current global indices
-                initialize_user_indices(ctx, user.clone())?;
+                initialize_user_indices(deps.branch(), user.clone())?;
             }
             Some(old_user_effective_weight) => {
                 // the user already had their weight previously, so we use that weight
                 // to calculate how many rewards for each asset they've accrued since we last
                 // calculated their pending rewards
                 update_user_native_distributions(
-                    ctx.deps.branch(),
+                    deps.branch(),
                     user.clone(),
                     old_user_effective_weight,
                 )?;
                 update_user_cw20_distributions(
-                    ctx.deps.branch(),
+                    deps.branch(),
                     user.clone(),
                     old_user_effective_weight,
                 )?;
             }
         };
 
-        USER_WEIGHTS.save(ctx.deps.storage, user.clone(), &user_weight_change.weight)?;
+        USER_WEIGHTS.save(deps.storage, user.clone(), &user_weight_change.weight)?;
 
         let effective_user_weight =
             calculate_effective_weight(user_weight_change.weight, minimum_eligible_weight);
-        EFFECTIVE_USER_WEIGHTS.save(ctx.deps.storage, user, &effective_user_weight)?;
+        EFFECTIVE_USER_WEIGHTS.save(deps.storage, user, &effective_user_weight)?;
 
         let old_user_effective_weight = old_user_effective_weight.unwrap_or_default();
 
@@ -116,7 +123,7 @@ pub fn update_user_weights(
             effective_total_weight - old_user_effective_weight + effective_user_weight;
     }
 
-    EFFECTIVE_TOTAL_WEIGHT.save(ctx.deps.storage, &effective_total_weight)?;
+    EFFECTIVE_TOTAL_WEIGHT.save(deps.storage, &effective_total_weight)?;
 
     Ok(execute_update_user_weights_response())
 }
@@ -135,14 +142,14 @@ fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128)
 ///
 /// Will initialize all their rewards for assets with existing distributions to 0, and set
 /// their rewards indices to current global index for each asset.
-fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<()> {
+fn initialize_user_indices(deps: DepsMut, user: Addr) -> DistributorResult<()> {
     let native_global_indices = NATIVE_GLOBAL_INDICES
-        .range(ctx.deps.storage, None, None, Ascending)
+        .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(String, Decimal)>>>()?;
 
     for (denom, global_index) in native_global_indices {
         NATIVE_DISTRIBUTIONS().update(
-            ctx.deps.storage,
+            deps.storage,
             (user.clone(), denom.clone()),
             |distribution| -> StdResult<NativeDistribution> {
                 match distribution {
@@ -159,12 +166,12 @@ fn initialize_user_indices(ctx: &mut Context, user: Addr) -> DistributorResult<(
     }
 
     let cw20_global_indices = CW20_GLOBAL_INDICES
-        .range(ctx.deps.storage, None, None, Ascending)
+        .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<(Addr, Decimal)>>>()?;
 
     for (asset, global_index) in cw20_global_indices {
         CW20_DISTRIBUTIONS().update(
-            ctx.deps.storage,
+            deps.storage,
             (user.clone(), asset.clone()),
             |distribution| -> StdResult<Cw20Distribution> {
                 match distribution {

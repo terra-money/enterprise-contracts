@@ -1,6 +1,6 @@
 [package]
 name = "funds-distributor"
-version = "1.0.0"
+version = "1.0.4"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -46,5 +46,6 @@ enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+membership-common-api = { path = "../../packages/membership-common-api" }
 cw-orch = { version = "0.18.1", optional = true }
 

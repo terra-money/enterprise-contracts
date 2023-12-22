@@ -1,6 +1,6 @@
 [package]
 name = "enterprise"
-version = "1.0.3"
+version = "1.0.4"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -45,6 +45,7 @@ enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 enterprise-governance-controller-api = { path = "../../packages/enterprise-governance-controller-api" }
 enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
 serde-json-wasm = "0.5.0"
