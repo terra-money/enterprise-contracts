@@ -474,33 +474,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
 
             let enterprise_contract = dao_being_created.require_enterprise_address()?;
 
-            let initial_weights = dao_being_created
-                .initial_weights
-                .clone()
-                .unwrap_or_default()
-                .iter()
-                .map(|user_weight| UserWeight {
-                    user: user_weight.user.clone(),
-                    weight: user_weight.weight,
-                })
-                .collect();
-
-            let funds_distributor_submsg = SubMsg::reply_on_success(
-                Wasm(Instantiate {
-                    admin: Some(enterprise_contract.to_string()),
-                    code_id: version_info.funds_distributor_code_id,
-                    msg: to_json_binary(&funds_distributor_api::msg::InstantiateMsg {
-                        admin: enterprise_governance_controller_contract.to_string(),
-                        enterprise_contract: enterprise_contract.to_string(),
-                        initial_weights,
-                        minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
-                    })?,
-                    funds: vec![],
-                    label: "Funds distributor".to_string(),
-                }),
-                FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID,
-            );
-
             let enterprise_governance_submsg = SubMsg::reply_on_success(
                 Wasm(Instantiate {
                     admin: Some(enterprise_contract.to_string()),
@@ -573,7 +546,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             )?;
 
             let response = Response::new()
-                .add_submessage(funds_distributor_submsg)
                 .add_submessage(enterprise_governance_submsg)
                 .add_submessage(council_membership_submsg)
                 .add_submessage(enterprise_outposts_submsg)
@@ -673,9 +645,45 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 }
             };
 
+            // we reload this so that we fetch the latest initial weights
+            // TODO: this is filthy, we really need to move towards a state machine for DAO creation steps
+            let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
+
+            let version_info = dao_being_created.require_version_info()?;
+
+            let enterprise_contract = dao_being_created.require_enterprise_address()?;
+
+            let initial_weights = dao_being_created
+                .initial_weights
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(|user_weight| UserWeight {
+                    user: user_weight.user.clone(),
+                    weight: user_weight.weight,
+                })
+                .collect();
+
+            let funds_distributor_submsg = SubMsg::reply_on_success(
+                Wasm(Instantiate {
+                    admin: Some(enterprise_contract.to_string()),
+                    code_id: version_info.funds_distributor_code_id,
+                    msg: to_json_binary(&funds_distributor_api::msg::InstantiateMsg {
+                        admin: enterprise_governance_controller_contract.to_string(),
+                        enterprise_contract: enterprise_contract.to_string(),
+                        initial_weights,
+                        minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
+                    })?,
+                    funds: vec![],
+                    label: "Funds distributor".to_string(),
+                }),
+                FUNDS_DISTRIBUTOR_INSTANTIATE_REPLY_ID,
+            );
+
             Ok(Response::new()
                 .add_attribute("dao_address", enterprise_treasury_contract.to_string())
-                .add_submessage(membership_submsg))
+                .add_submessage(membership_submsg)
+                .add_submessage(funds_distributor_submsg))
         }
         ATTESTATION_INSTANTIATE_REPLY_ID => {
             let contract_address = parse_reply_instantiate_data(msg)
