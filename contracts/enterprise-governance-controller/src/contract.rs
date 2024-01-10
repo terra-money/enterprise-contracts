@@ -1,7 +1,7 @@
 use crate::proposals::{get_proposal_actions, set_proposal_executed, PROPOSAL_INFOS};
 use crate::state::{
     ProposalBeingVotedOn, ProposalExecutabilityStatus, State, COUNCIL_GOV_CONFIG, CREATION_DATE,
-    ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
+    ENTERPRISE_CONTRACT, GOV_CONFIG, INITIAL_CROSS_CHAIN_TREASURIES, STATE,
 };
 use crate::validate::{
     apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
@@ -148,6 +148,11 @@ pub fn instantiate(
 
     CREATION_DATE.save(deps.storage, &env.block.time)?;
 
+    INITIAL_CROSS_CHAIN_TREASURIES.save(
+        deps.storage,
+        &msg.initial_cross_chain_treasuries.unwrap_or_default(),
+    )?;
+
     Ok(instantiate_response())
 }
 
@@ -169,6 +174,9 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::WeightsChanged(msg) => weights_changed(ctx, msg),
         ExecuteMsg::ExecuteProposalActions(msg) => execute_proposal_actions(ctx, msg),
+        ExecuteMsg::DeployInitialCrossChainTreasuries {} => {
+            execute_deploy_initial_cross_chain_treasuries(ctx)
+        }
     }
 }
 
@@ -1207,6 +1215,49 @@ fn deploy_cross_chain_treasury(
         &enterprise_outposts_api::msg::ExecuteMsg::DeployCrossChainTreasury(msg),
         vec![],
     )?)])
+}
+
+fn execute_deploy_initial_cross_chain_treasuries(
+    ctx: &mut Context,
+) -> GovernanceControllerResult<Response> {
+    let creation_date = CREATION_DATE.load(ctx.deps.storage)?;
+
+    if creation_date != ctx.env.block.time {
+        return Err(Unauthorized);
+    }
+
+    let contract_info = ctx
+        .deps
+        .querier
+        .query_wasm_contract_info(ctx.env.contract.address.to_string())?;
+    let contract_creator = ctx.deps.api.addr_validate(&contract_info.creator)?;
+
+    if contract_creator != ctx.info.sender {
+        return Err(Unauthorized);
+    }
+
+    let base_response =
+        Response::new().add_attribute("action", "deploy_initial_cross_chain_treasuries");
+
+    let initial_cross_chain_treasuries = INITIAL_CROSS_CHAIN_TREASURIES
+        .may_load(ctx.deps.storage)?
+        .unwrap_or_default();
+    INITIAL_CROSS_CHAIN_TREASURIES.remove(ctx.deps.storage);
+
+    if initial_cross_chain_treasuries.is_empty() {
+        Ok(base_response)
+    } else {
+        let enterprise_outposts = query_enterprise_outposts_addr(ctx.deps.as_ref())?;
+
+        let submessages = initial_cross_chain_treasuries
+            .into_iter()
+            .map(enterprise_outposts_api::msg::ExecuteMsg::DeployCrossChainTreasury)
+            .map(|msg| wasm_execute(enterprise_outposts.to_string(), &msg, vec![]))
+            .map(|res| res.map(SubMsg::new))
+            .collect::<StdResult<Vec<SubMsg>>>()?;
+
+        Ok(base_response.add_submessages(submessages))
+    }
 }
 
 pub fn receive_cw20(

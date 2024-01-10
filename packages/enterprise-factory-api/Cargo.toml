@@ -29,9 +29,10 @@ strum_macros = "0.24"
 thiserror = "1"
 enterprise-governance-controller-api = { path = "../enterprise-governance-controller-api" }
 enterprise-protocol = { path = "../enterprise-protocol" }
+enterprise-outposts-api = { path = "../enterprise-outposts-api" }
 enterprise-treasury-api = { path = "../enterprise-treasury-api" }
 multisig-membership-api = { path = "../multisig-membership-api" }
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }
 
 [dev-dependencies]
 cosmwasm-schema = "1"

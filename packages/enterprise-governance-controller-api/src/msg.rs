@@ -7,6 +7,7 @@ use crate::api::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
+use enterprise_outposts_api::api::DeployCrossChainTreasuryMsg;
 use enterprise_protocol::api::DaoType;
 use membership_common_api::api::WeightsChangedMsg;
 
@@ -17,6 +18,7 @@ pub struct InstantiateMsg {
     pub gov_config: GovConfig,
     pub council_gov_config: Option<DaoCouncilSpec>,
     pub proposal_infos: Option<Vec<(ProposalId, ProposalInfo)>>,
+    pub initial_cross_chain_treasuries: Option<Vec<DeployCrossChainTreasuryMsg>>,
 }
 
 #[cw_serde]
@@ -32,6 +34,9 @@ pub enum ExecuteMsg {
 
     /// Only executable by the contract itself. Not part of the public API.
     ExecuteProposalActions(ExecuteProposalMsg),
+
+    /// Only executable by the instantiator of this contract, in the same block as the creation.
+    DeployInitialCrossChainTreasuries {},
 }
 
 #[cw_serde]

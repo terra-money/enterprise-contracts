@@ -4,6 +4,7 @@ use cw20::{Cw20Coin, MinterResponse};
 use cw_asset::AssetInfoUnchecked;
 use cw_utils::Duration;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig};
+use enterprise_outposts_api::api::DeployCrossChainTreasuryMsg;
 use enterprise_protocol::api::DaoMetadata;
 use multisig_membership_api::api::UserWeight;
 
@@ -35,6 +36,8 @@ pub struct CreateDaoMsg {
     /// E.g. a value of 3 here means that a user in token or NFT DAO needs at least 3 staked
     /// DAO assets, or a weight of 3 in multisig DAO, to be eligible for rewards.
     pub minimum_weight_for_rewards: Option<Uint128>,
+    /// Optional cross chain treasuries to deploy during DAO creation.
+    pub cross_chain_treasuries: Option<Vec<DeployCrossChainTreasuryMsg>>,
     /// Optional text that users will have to attest to before being able to participate in DAO's
     /// governance and certain other functions.
     pub attestation_text: Option<String>,
