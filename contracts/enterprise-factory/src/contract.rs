@@ -20,8 +20,9 @@ use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    entry_point, to_json_binary, wasm_execute, wasm_instantiate, Addr, Binary, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64, WasmMsg,
+    coins, entry_point, to_json_binary, wasm_execute, wasm_instantiate, Addr, BankMsg, Binary,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
+    Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -38,6 +39,7 @@ use enterprise_factory_api::response::{
     execute_create_dao_response, execute_finalize_dao_creation_response,
     execute_update_config_response, instantiate_response,
 };
+use enterprise_governance_controller_api::msg::ExecuteMsg::DeployInitialCrossChainTreasuries;
 use enterprise_protocol::api::{DaoType, FinalizeInstantiationMsg};
 use enterprise_protocol::error::DaoError::{MultisigDaoWithNoInitialMembers, Unauthorized};
 use enterprise_protocol::error::{DaoError, DaoResult};
@@ -47,6 +49,7 @@ use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
 use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
+use std::ops::Not;
 use CreateDaoMembershipMsg::{
     ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewDenom, NewMultisig,
 };
@@ -266,13 +269,44 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
         vec![],
     )?);
 
-    Ok(execute_finalize_dao_creation_response(
+    let mut response = execute_finalize_dao_creation_response(
         dao_being_created.require_enterprise_address()?.to_string(),
         dao_being_created
             .require_enterprise_treasury_address()?
             .to_string(),
     )
-    .add_submessage(finalize_creation_submsg))
+    .add_submessage(finalize_creation_submsg);
+
+    if let Some(treasuries) = dao_being_created
+        .require_create_dao_msg()?
+        .cross_chain_treasuries
+    {
+        if treasuries.is_empty().not() {
+            // we have some initial treasuries to deploy, so let's first fund the outposts contract
+            let fund_outposts_submsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: dao_being_created
+                    .require_enterprise_outposts_address()?
+                    .to_string(),
+                // TODO: uluna is hardcoded, can we fetch the current chain's gas denom instead?
+                // TODO: we don't actually require the creator to send us uluna first, we spend our own. should be fine though
+                amount: coins(treasuries.len() as u128, "uluna"),
+            }));
+
+            let deploy_cross_chain_treasuries_submsg = SubMsg::new(wasm_execute(
+                dao_being_created
+                    .require_enterprise_governance_controller_address()?
+                    .to_string(),
+                &DeployInitialCrossChainTreasuries {},
+                vec![],
+            )?);
+
+            response = response
+                .add_submessage(fund_outposts_submsg)
+                .add_submessage(deploy_cross_chain_treasuries_submsg);
+        }
+    }
+
+    Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -315,6 +349,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                             gov_config: create_dao_msg.gov_config,
                             council_gov_config: create_dao_msg.dao_council,
                             proposal_infos: None, // no proposal infos to migrate, it's a fresh DAO
+                            initial_cross_chain_treasuries: create_dao_msg.cross_chain_treasuries,
                         },
                     )?,
                     funds: vec![],

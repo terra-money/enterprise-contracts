@@ -4,6 +4,7 @@ use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw_storage_plus::Item;
 use enterprise_governance_controller_api::api::ProposalInfo;
 use enterprise_governance_controller_api::api::{CouncilGovConfig, GovConfig, ProposalId};
+use enterprise_outposts_api::api::DeployCrossChainTreasuryMsg;
 use poll_engine_api::api::{PollRejectionReason, PollStatus};
 use PollRejectionReason::{
     IsRejectingOutcome, IsVetoOutcome, OutcomeDraw, QuorumAndThresholdNotReached, QuorumNotReached,
@@ -71,3 +72,6 @@ pub const GOV_CONFIG: Item<GovConfig> = Item::new("gov_config");
 pub const COUNCIL_GOV_CONFIG: Item<Option<CouncilGovConfig>> = Item::new("council_gov_config");
 
 pub const CREATION_DATE: Item<Timestamp> = Item::new("creation_date");
+
+pub const INITIAL_CROSS_CHAIN_TREASURIES: Item<Vec<DeployCrossChainTreasuryMsg>> =
+    Item::new("initial_cross_chain_treasuries");

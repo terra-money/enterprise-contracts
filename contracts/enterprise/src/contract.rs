@@ -456,8 +456,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
         &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams {
             version: Version {
                 major: 1,
-                minor: 0,
-                patch: 3,
+                minor: 1,
+                patch: 0,
             },
         }),
     )?;
