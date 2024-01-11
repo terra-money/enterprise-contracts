@@ -46,9 +46,9 @@ use enterprise_governance_controller_api::api::{
     UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    CustomError, DuplicateNftDeposit, HasIncompleteV2Migration, InvalidCosmosMessage,
-    InvalidDepositType, NoDaoCouncil, NoSuchProposal, NoVotesAvailable, NoVotingPower,
-    ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
+    CustomError, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil,
+    NoSuchProposal, NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted,
+    ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
     UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
@@ -70,8 +70,7 @@ use enterprise_protocol::api::{
 };
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
 use enterprise_treasury_api::api::{
-    ExecuteCosmosMsgsMsg, HasIncompleteV2MigrationResponse, SpendMsg, UpdateAssetWhitelistMsg,
-    UpdateNftWhitelistMsg,
+    ExecuteCosmosMsgsMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::msg::ExecuteMsg::{ExecuteCosmosMsgs, Spend};
 use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
@@ -316,8 +315,6 @@ fn create_proposal(
     deposit: Option<ProposalDeposit>,
     proposer: Addr,
 ) -> GovernanceControllerResult<Response> {
-    assert_no_recent_incomplete_v2_migration(ctx.deps.as_ref(), ctx.env.block.time)?;
-
     unrestricted_users_only(ctx.deps.as_ref(), proposer.to_string())?;
 
     let gov_config = GOV_CONFIG.load(ctx.deps.storage)?;
@@ -484,8 +481,6 @@ fn create_poll(
 }
 
 fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
-    assert_no_recent_incomplete_v2_migration(ctx.deps.as_ref(), ctx.env.block.time)?;
-
     unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
 
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
@@ -609,16 +604,6 @@ fn execute_proposal(
     let proposal_info = PROPOSAL_INFOS
         .may_load(ctx.deps.storage, msg.proposal_id)?
         .ok_or(NoSuchProposal)?;
-
-    // check if proposal type execution is allowed, in the context of ongoing migrations
-    match proposal_info.proposal_type {
-        General => {
-            assert_no_recent_incomplete_v2_migration(ctx.deps.as_ref(), ctx.env.block.time)?;
-        }
-        Council => {
-            // no-op, those are allowed even mid-migration
-        }
-    }
 
     if proposal_info.executed_at.is_some() {
         return Err(ProposalAlreadyExecuted);
@@ -1816,37 +1801,6 @@ fn general_total_available_votes(
     deps: Deps,
     expiration: Expiration,
 ) -> GovernanceControllerResult<Uint128> {
-    // check if there is an incomplete migration
-    // if the query fails, default to 'false'
-    let has_incomplete_migration = query_has_incomplete_migration(deps).unwrap_or(false);
-
-    if has_incomplete_migration {
-        // query the treasury for total weight, not propagating errors from it
-        let treasury_addr_response: GovernanceControllerResult<TotalWeightResponse> =
-            query_enterprise_treasury_addr(deps).and_then(|addr| {
-                deps.querier
-                    .query_wasm_smart(
-                        addr.to_string(),
-                        &enterprise_treasury_api::msg::QueryMsg::TotalWeight(TotalWeightParams {
-                            expiration,
-                        }),
-                    )
-                    .map_err(Std)
-            });
-
-        match treasury_addr_response {
-            Ok(response) => Ok(response.total_weight),
-            Err(_) => general_total_available_votes_from_membership_contract(deps, expiration),
-        }
-    } else {
-        general_total_available_votes_from_membership_contract(deps, expiration)
-    }
-}
-
-fn general_total_available_votes_from_membership_contract(
-    deps: Deps,
-    expiration: Expiration,
-) -> GovernanceControllerResult<Uint128> {
     let membership_contract = query_membership_addr(deps)?;
 
     let response: TotalWeightResponse = deps.querier.query_wasm_smart(
@@ -1901,38 +1855,6 @@ pub fn query_proposal_votes(
 }
 
 fn get_user_available_votes(qctx: QueryContext, user: Addr) -> GovernanceControllerResult<Uint128> {
-    // check if there is an incomplete migration
-    // if the query fails, default to 'false'
-    let has_incomplete_migration = query_has_incomplete_migration(qctx.deps).unwrap_or(false);
-
-    if has_incomplete_migration {
-        // query the treasury for user weight, not propagating errors from it
-        let treasury_addr_response: GovernanceControllerResult<UserWeightResponse> =
-            query_enterprise_treasury_addr(qctx.deps).and_then(|addr| {
-                qctx.deps
-                    .querier
-                    .query_wasm_smart(
-                        addr.to_string(),
-                        &enterprise_treasury_api::msg::QueryMsg::UserWeight(UserWeightParams {
-                            user: user.to_string(),
-                        }),
-                    )
-                    .map_err(Std)
-            });
-
-        match treasury_addr_response {
-            Ok(response) => Ok(response.weight),
-            Err(_) => get_user_available_votes_from_membership_contract(qctx, user),
-        }
-    } else {
-        get_user_available_votes_from_membership_contract(qctx, user)
-    }
-}
-
-fn get_user_available_votes_from_membership_contract(
-    qctx: QueryContext,
-    user: Addr,
-) -> GovernanceControllerResult<Uint128> {
     let membership_contract = query_membership_addr(qctx.deps)?;
 
     let response: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
@@ -1992,39 +1914,6 @@ fn query_enterprise_outposts_addr(deps: Deps) -> GovernanceControllerResult<Addr
 
 fn query_membership_addr(deps: Deps) -> GovernanceControllerResult<Addr> {
     Ok(query_enterprise_components(deps)?.membership_contract)
-}
-
-fn query_has_incomplete_migration(deps: Deps) -> GovernanceControllerResult<bool> {
-    let treasury_address = query_enterprise_treasury_addr(deps)?;
-    let has_incomplete_migration: HasIncompleteV2MigrationResponse =
-        deps.querier.query_wasm_smart(
-            treasury_address.to_string(),
-            &enterprise_treasury_api::msg::QueryMsg::HasIncompleteV2Migration {},
-        )?;
-
-    Ok(has_incomplete_migration.has_incomplete_migration)
-}
-
-fn assert_no_recent_incomplete_v2_migration(
-    deps: Deps,
-    now: Timestamp,
-) -> GovernanceControllerResult<()> {
-    let has_incomplete_migration = query_has_incomplete_migration(deps)?;
-
-    if has_incomplete_migration {
-        let creation_date = CREATION_DATE.load(deps.storage)?;
-
-        // we only block the actions if the migration was recently started
-        // starting point of migration is determined by this contract's creation date
-        let earliest_time_to_enable_governance = creation_date.plus_days(7);
-        if now >= earliest_time_to_enable_governance {
-            Ok(())
-        } else {
-            Err(HasIncompleteV2Migration)
-        }
-    } else {
-        Ok(())
-    }
 }
 
 /// Query the membership contract for its TokenConfig.
