@@ -89,10 +89,10 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2387"
+      "codeId": "2449"
     },
     "enterprise-factory": {
-      "codeId": "2350",
+      "codeId": "2457",
       "address": "terra16qcn2xugex278wh53vck99wxlwfjzmkh44lzntgrqvx702fkvckssyanu0"
     },
     "enterprise-facade": {
@@ -113,10 +113,10 @@
       "codeId": "1318"
     },
     "enterprise-governance": {
-      "codeId": "2353"
+      "codeId": "2450"
     },
     "funds-distributor": {
-      "codeId": "2357"
+      "codeId": "2454"
     },
     "attestation": {
       "codeId": "2351"
@@ -125,13 +125,13 @@
       "codeId": "2359"
     },
     "enterprise-governance-controller": {
-      "codeId": "2388"
+      "codeId": "2451"
     },
     "enterprise-treasury": {
-      "codeId": "2355"
+      "codeId": "2452"
     },
     "enterprise-outposts": {
-      "codeId": "2389"
+      "codeId": "2453"
     },
     "token-staking-membership": {
       "codeId": "2358"
