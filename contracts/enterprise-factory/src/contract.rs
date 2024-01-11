@@ -1,5 +1,4 @@
 use crate::denom_membership::instantiate_denom_staking_membership_contract;
-use crate::migration::migrate_config;
 use crate::multisig_membership::{
     import_cw3_membership, instantiate_multisig_membership_contract,
     instantiate_new_multisig_membership,
@@ -856,9 +855,7 @@ fn query_version_1_0_0_info(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
-    migrate_config(deps.branch(), msg)?;
-
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new())
