@@ -4,7 +4,7 @@ use crate::state::{
     ENTERPRISE_CONTRACT, GOV_CONFIG, STATE,
 };
 use crate::validate::{
-    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
+    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config,
     validate_modify_multisig_membership, validate_proposal_actions, validate_unlocking_period,
     validate_upgrade_dao,
 };
@@ -46,9 +46,9 @@ use enterprise_governance_controller_api::api::{
     UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    CustomError, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil,
-    NoSuchProposal, NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted,
-    ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
+    CustomError, DuplicateNftDeposit, InsufficientProposalDeposit, InvalidCosmosMessage,
+    InvalidDepositType, NoDaoCouncil, NoSuchProposal, NoVotesAvailable, NoVotingPower,
+    ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
     UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
@@ -325,11 +325,8 @@ fn create_proposal(
     };
     let user_available_votes = get_user_available_votes(qctx, proposer.clone())?;
 
-    if user_available_votes.is_zero() {
-        return Err(NoVotingPower);
-    }
+    assert_sufficient_deposit_or_member(&gov_config, &deposit, user_available_votes)?;
 
-    validate_deposit(&gov_config, &deposit)?;
     validate_proposal_actions(
         ctx.deps.as_ref(),
         query_dao_type(ctx.deps.as_ref())?,
@@ -344,6 +341,34 @@ fn create_proposal(
         execute_create_proposal_response(dao_address.to_string())
             .add_submessage(create_poll_submsg),
     )
+}
+
+fn assert_sufficient_deposit_or_member(
+    gov_config: &GovConfig,
+    deposit: &Option<ProposalDeposit>,
+    user_voting_weight: Uint128,
+) -> GovernanceControllerResult<()> {
+    match gov_config.minimum_deposit {
+        None => {
+            if user_voting_weight.is_zero() {
+                Err(NoVotingPower)
+            } else {
+                Ok(())
+            }
+        }
+        Some(required_amount) => {
+            let deposited_amount = deposit
+                .as_ref()
+                .map(|deposit| deposit.amount())
+                .unwrap_or_default();
+
+            if deposited_amount >= required_amount {
+                Ok(())
+            } else {
+                Err(InsufficientProposalDeposit { required_amount })
+            }
+        }
+    }
 }
 
 fn create_council_proposal(
