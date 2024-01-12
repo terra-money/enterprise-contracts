@@ -188,8 +188,15 @@ fn determine_deposit_and_create_proposal(
                 .iter()
                 .find(|coin| coin.denom == dao_denom_config.denom);
 
+            let depositor = msg
+                .deposit_owner
+                .as_ref()
+                .map(|it| ctx.deps.api.addr_validate(it))
+                .transpose()?
+                .unwrap_or_else(|| proposer.clone());
+
             dao_denom_from_funds.map(|coin| ProposalDeposit {
-                depositor: proposer.clone(),
+                depositor,
                 asset: ProposalDepositAsset::Denom {
                     denom: coin.denom.clone(),
                     amount: coin.amount,
@@ -245,8 +252,16 @@ fn create_proposal_with_nft_deposit(
         )?));
     }
 
+    let depositor = msg
+        .create_proposal_msg
+        .deposit_owner
+        .as_ref()
+        .map(|it| ctx.deps.api.addr_validate(it))
+        .transpose()?
+        .unwrap_or_else(|| proposer.clone());
+
     let nft_deposit = ProposalDeposit {
-        depositor: proposer.clone(),
+        depositor,
         asset: ProposalDepositAsset::Cw721 {
             nft_addr: dao_nft_config.nft_contract,
             tokens: msg.deposit_tokens,
@@ -1231,15 +1246,24 @@ pub fn receive_cw20(
             if dao_type != Token || ctx.info.sender != token_contract {
                 return Err(InvalidDepositType);
             }
-            let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
+
+            let sender = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
+
+            let depositor = msg
+                .deposit_owner
+                .as_ref()
+                .map(|it| ctx.deps.api.addr_validate(it))
+                .transpose()?
+                .unwrap_or_else(|| sender.clone());
+
             let deposit = ProposalDeposit {
-                depositor: depositor.clone(),
+                depositor,
                 asset: ProposalDepositAsset::Cw20 {
                     token_addr: token_contract,
                     amount: cw20_msg.amount,
                 },
             };
-            create_proposal(ctx, msg, Some(deposit), depositor)
+            create_proposal(ctx, msg, Some(deposit), sender)
         }
         _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
     }

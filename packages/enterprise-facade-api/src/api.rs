@@ -95,6 +95,9 @@ pub struct CreateProposalMsg {
     pub description: Option<String>,
     /// Actions to be executed, in order, if the proposal passes
     pub proposal_actions: Vec<ProposalAction>,
+    /// Optionally define the owner of the proposal deposit.
+    /// If None, will default to the proposer themselves.
+    pub deposit_owner: Option<String>,
 }
 
 #[cw_serde]
