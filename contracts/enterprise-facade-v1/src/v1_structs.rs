@@ -12,10 +12,10 @@ use enterprise_facade_api::api::{
     QueryMemberInfoMsg, StakedNftsParams,
 };
 use enterprise_governance_controller_api::api::{
-    DaoCouncilSpec, DistributeFundsMsg, ExecuteMsgsMsg, ModifyMultisigMembershipMsg,
-    ProposalAction, RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg,
-    UpdateCouncilMsg, UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg,
-    UpdateNftWhitelistProposalActionMsg,
+    DaoCouncilSpec, DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg,
+    ModifyMultisigMembershipMsg, ProposalAction, RequestFundingFromDaoMsg,
+    UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
+    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg, VersionMigrateMsg};
 use enterprise_versioning_api::api::Version;
@@ -241,6 +241,15 @@ pub struct ExecuteMsgsV1Msg {
 
 impl From<ExecuteMsgsMsg> for ExecuteMsgsV1Msg {
     fn from(value: ExecuteMsgsMsg) -> Self {
+        ExecuteMsgsV1Msg {
+            action_type: value.action_type,
+            msgs: value.msgs,
+        }
+    }
+}
+
+impl From<ExecuteEnterpriseMsgsMsg> for ExecuteMsgsV1Msg {
+    fn from(value: ExecuteEnterpriseMsgsMsg) -> Self {
         ExecuteMsgsV1Msg {
             action_type: value.action_type,
             msgs: value.msgs,
