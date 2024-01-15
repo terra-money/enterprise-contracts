@@ -89,14 +89,14 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2387"
+      "codeId": "2497"
     },
     "enterprise-factory": {
-      "codeId": "2188",
+      "codeId": "2500",
       "address": "terra1y2dwydnnnctdwwmvs23ct60fj626t66qk53cae2gc55k3ce92jmqldj0sf"
     },
     "enterprise-facade": {
-      "codeId": "2345",
+      "codeId": "2494",
       "address": "terra136k05x7uzu0awwxgr8wtqunedjpnv4jzmc4ery40czx5338ht8vq0ja9xq"
     },
     "enterprise-versioning": {
@@ -116,7 +116,7 @@
       "codeId": "2179"
     },
     "funds-distributor": {
-      "codeId": "2183"
+      "codeId": "2499"
     },
     "attestation": {
       "codeId": "2177"
@@ -125,7 +125,7 @@
       "codeId": "2185"
     },
     "enterprise-governance-controller": {
-      "codeId": "2388"
+      "codeId": "2498"
     },
     "enterprise-treasury": {
       "codeId": "2247"
@@ -143,12 +143,12 @@
       "codeId": "2187"
     },
     "enterprise-facade-v1": {
-      "codeId": "2343",
-      "address": "terra1ryr2nmj0jq580lq6rawzkmzmplx7hr8atqght6zycsr0afn0fdmqjc3eg2"
+      "codeId": "2492",
+      "address": "terra1p8arxdnke4qhe7qujc9vj20zeeq90k4s8yrmwh7zv7pxnvxkhdtq4qlp4t"
     },
     "enterprise-facade-v2": {
-      "codeId": "2344",
-      "address": "terra1t33hpdcmhmx67jef8zplpc9y9fyhlefssswy5vqcr3kvp7c2y3hs89hy2j"
+      "codeId": "2493",
+      "address": "terra1t3c35hafnnh2l7s0zv3lsa97mdem5mfke62wyvgw4kpjtm2px3hq85gzup"
     },
     "cw721_metadata_onchain": {
       "codeId": "2111"
