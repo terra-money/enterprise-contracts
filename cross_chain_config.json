@@ -45,8 +45,8 @@
       "enterprise_treasury_code_id": 359,
       "ics_proxy_code_id": 358,
       "uluna_denom": "ibc/0DDC992F19041FC1D499CCA1486721479EBAA7270604E15EDDFABA89D1E772E5",
-      "src_ibc_channel": "channel-151",
-      "dest_ibc_channel": "channel-255"
+      "src_ibc_channel": "channel-255",
+      "dest_ibc_channel": "channel-151"
     }
   },
   "testnet": {
