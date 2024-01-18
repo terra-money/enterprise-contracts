@@ -48,7 +48,8 @@ pub struct GovConfig {
     /// If None, will default to the threshold set for all proposal options.
     pub veto_threshold: Option<Decimal>,
     /// Duration of proposals before they end, expressed in seconds
-    pub vote_duration: u64, // TODO: change from u64 to Duration
+    pub vote_duration: u64,
+    // TODO: change from u64 to Duration
     /// Optional minimum amount of DAO's governance unit to be required to create a deposit.
     pub minimum_deposit: Option<Uint128>,
     /// If set to true, this will allow DAOs to execute proposals that have reached quorum and
@@ -95,6 +96,10 @@ pub struct CreateProposalMsg {
     pub description: Option<String>,
     /// Actions to be executed, in order, if the proposal passes
     pub proposal_actions: Vec<ProposalAction>,
+    // TODO: this message is used for non-deposit proposals too, making this field meaningless in those cases
+    /// Optionally define the owner of the proposal deposit.
+    /// If None, will default to the proposer themselves.
+    pub deposit_owner: Option<String>,
 }
 
 #[cw_serde]

@@ -11,12 +11,12 @@ use enterprise_governance_controller_api::api::ProposalAction::{
 use enterprise_governance_controller_api::api::{
     CouncilGovConfig, DaoCouncilSpec, DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg,
     ExecuteTreasuryMsgsMsg, GovConfig, ModifyMultisigMembershipMsg, ProposalAction,
-    ProposalActionType, ProposalDeposit, RequestFundingFromDaoMsg, UpdateGovConfigMsg,
+    ProposalActionType, RequestFundingFromDaoMsg, UpdateGovConfigMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    Dao, DuplicateCouncilMember, InsufficientProposalDeposit, InvalidArgument,
-    InvalidCosmosMessage, MaximumProposalActionsExceeded, Std, UnsupportedCouncilProposalAction,
-    UnsupportedCw1155Asset, ZeroVoteDuration,
+    Dao, DuplicateCouncilMember, InvalidArgument, InvalidCosmosMessage,
+    MaximumProposalActionsExceeded, Std, UnsupportedCouncilProposalAction, UnsupportedCw1155Asset,
+    ZeroVoteDuration,
 };
 use enterprise_governance_controller_api::error::{
     GovernanceControllerError, GovernanceControllerResult,
@@ -91,27 +91,6 @@ fn validate_gt_zero_lte_one(value: Decimal, value_name: String) -> GovernanceCon
     }
 
     Ok(())
-}
-
-pub fn validate_deposit(
-    gov_config: &GovConfig,
-    deposit: &Option<ProposalDeposit>,
-) -> GovernanceControllerResult<()> {
-    match gov_config.minimum_deposit {
-        None => Ok(()),
-        Some(required_amount) => {
-            let deposited_amount = deposit
-                .as_ref()
-                .map(|deposit| deposit.amount())
-                .unwrap_or_default();
-
-            if deposited_amount >= required_amount {
-                Ok(())
-            } else {
-                Err(InsufficientProposalDeposit { required_amount })
-            }
-        }
-    }
 }
 
 pub fn validate_proposal_actions(
@@ -299,7 +278,7 @@ fn split_asset_hashsets(
             _ => {
                 return Err(GovernanceControllerError::CustomError {
                     val: "Unsupported whitelist asset type".to_string(),
-                })
+                });
             }
         }
     }
@@ -455,7 +434,7 @@ pub fn validate_distribute_funds(
             AssetInfoBase::Cw1155(_, _) => {
                 return Err(Std(StdError::generic_err(
                     "cw1155 is not supported at this time",
-                )))
+                )));
             }
             _ => return Err(Std(StdError::generic_err("unknown asset type"))),
         }

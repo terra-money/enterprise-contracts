@@ -4,7 +4,7 @@ use crate::state::{
     ENTERPRISE_CONTRACT, GOV_CONFIG, INITIAL_CROSS_CHAIN_TREASURIES, STATE,
 };
 use crate::validate::{
-    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config, validate_deposit,
+    apply_gov_config_changes, validate_dao_council, validate_dao_gov_config,
     validate_modify_multisig_membership, validate_proposal_actions, validate_unlocking_period,
     validate_upgrade_dao,
 };
@@ -46,9 +46,9 @@ use enterprise_governance_controller_api::api::{
     UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
-    CustomError, DuplicateNftDeposit, InvalidCosmosMessage, InvalidDepositType, NoDaoCouncil,
-    NoSuchProposal, NoVotesAvailable, NoVotingPower, ProposalAlreadyExecuted,
-    ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
+    CustomError, DuplicateNftDeposit, InsufficientProposalDeposit, InvalidCosmosMessage,
+    InvalidDepositType, NoDaoCouncil, NoSuchProposal, NoVotesAvailable, NoVotingPower,
+    ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
     UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
@@ -196,8 +196,15 @@ fn determine_deposit_and_create_proposal(
                 .iter()
                 .find(|coin| coin.denom == dao_denom_config.denom);
 
+            let depositor = msg
+                .deposit_owner
+                .as_ref()
+                .map(|it| ctx.deps.api.addr_validate(it))
+                .transpose()?
+                .unwrap_or_else(|| proposer.clone());
+
             dao_denom_from_funds.map(|coin| ProposalDeposit {
-                depositor: proposer.clone(),
+                depositor,
                 asset: ProposalDepositAsset::Denom {
                     denom: coin.denom.clone(),
                     amount: coin.amount,
@@ -253,8 +260,16 @@ fn create_proposal_with_nft_deposit(
         )?));
     }
 
+    let depositor = msg
+        .create_proposal_msg
+        .deposit_owner
+        .as_ref()
+        .map(|it| ctx.deps.api.addr_validate(it))
+        .transpose()?
+        .unwrap_or_else(|| proposer.clone());
+
     let nft_deposit = ProposalDeposit {
-        depositor: proposer.clone(),
+        depositor,
         asset: ProposalDepositAsset::Cw721 {
             nft_addr: dao_nft_config.nft_contract,
             tokens: msg.deposit_tokens,
@@ -333,11 +348,8 @@ fn create_proposal(
     };
     let user_available_votes = get_user_available_votes(qctx, proposer.clone())?;
 
-    if user_available_votes.is_zero() {
-        return Err(NoVotingPower);
-    }
+    assert_sufficient_deposit_or_member(&gov_config, &deposit, user_available_votes)?;
 
-    validate_deposit(&gov_config, &deposit)?;
     validate_proposal_actions(
         ctx.deps.as_ref(),
         query_dao_type(ctx.deps.as_ref())?,
@@ -352,6 +364,34 @@ fn create_proposal(
         execute_create_proposal_response(dao_address.to_string())
             .add_submessage(create_poll_submsg),
     )
+}
+
+fn assert_sufficient_deposit_or_member(
+    gov_config: &GovConfig,
+    deposit: &Option<ProposalDeposit>,
+    user_voting_weight: Uint128,
+) -> GovernanceControllerResult<()> {
+    match gov_config.minimum_deposit {
+        None => {
+            if user_voting_weight.is_zero() {
+                Err(NoVotingPower)
+            } else {
+                Ok(())
+            }
+        }
+        Some(required_amount) => {
+            let deposited_amount = deposit
+                .as_ref()
+                .map(|deposit| deposit.amount())
+                .unwrap_or_default();
+
+            if deposited_amount >= required_amount {
+                Ok(())
+            } else {
+                Err(InsufficientProposalDeposit { required_amount })
+            }
+        }
+    }
 }
 
 fn create_council_proposal(
@@ -1257,15 +1297,24 @@ pub fn receive_cw20(
             if dao_type != Token || ctx.info.sender != token_contract {
                 return Err(InvalidDepositType);
             }
-            let depositor = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
+
+            let sender = ctx.deps.api.addr_validate(&cw20_msg.sender)?;
+
+            let depositor = msg
+                .deposit_owner
+                .as_ref()
+                .map(|it| ctx.deps.api.addr_validate(it))
+                .transpose()?
+                .unwrap_or_else(|| sender.clone());
+
             let deposit = ProposalDeposit {
-                depositor: depositor.clone(),
+                depositor,
                 asset: ProposalDepositAsset::Cw20 {
                     token_addr: token_contract,
                     amount: cw20_msg.amount,
                 },
             };
-            create_proposal(ctx, msg, Some(deposit), depositor)
+            create_proposal(ctx, msg, Some(deposit), sender)
         }
         _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
     }
