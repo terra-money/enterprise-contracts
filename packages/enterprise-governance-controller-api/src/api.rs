@@ -99,6 +99,7 @@ pub struct CreateProposalMsg {
     // TODO: this message is used for non-deposit proposals too, making this field meaningless in those cases
     /// Optionally define the owner of the proposal deposit.
     /// If None, will default to the proposer themselves.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub deposit_owner: Option<String>,
 }
 
