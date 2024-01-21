@@ -96,7 +96,7 @@
       "address": "terra1y2dwydnnnctdwwmvs23ct60fj626t66qk53cae2gc55k3ce92jmqldj0sf"
     },
     "enterprise-facade": {
-      "codeId": "2494",
+      "codeId": "2514",
       "address": "terra136k05x7uzu0awwxgr8wtqunedjpnv4jzmc4ery40czx5338ht8vq0ja9xq"
     },
     "enterprise-versioning": {
@@ -143,12 +143,12 @@
       "codeId": "2187"
     },
     "enterprise-facade-v1": {
-      "codeId": "2492",
-      "address": "terra1p8arxdnke4qhe7qujc9vj20zeeq90k4s8yrmwh7zv7pxnvxkhdtq4qlp4t"
+      "codeId": "2512",
+      "address": "terra1scm08396nmqe4ld289x62qvxtjrm3g6h4qrmxy9m7wnvpcw9vkasrzdzz3"
     },
     "enterprise-facade-v2": {
-      "codeId": "2493",
-      "address": "terra1t3c35hafnnh2l7s0zv3lsa97mdem5mfke62wyvgw4kpjtm2px3hq85gzup"
+      "codeId": "2513",
+      "address": "terra1ynjgm5arrajh3qk0af6mlgma70zn7k5xagtftasfsc2m7dex0fcs06y2lp"
     },
     "cw721_metadata_onchain": {
       "codeId": "2111"
