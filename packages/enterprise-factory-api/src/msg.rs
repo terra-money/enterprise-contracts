@@ -1,7 +1,7 @@
 use crate::api::{
-    AllDaosResponse, Config, ConfigResponse, CreateDaoMsg, EnterpriseCodeIdsMsg,
-    EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg, IsEnterpriseCodeIdResponse, QueryAllDaosMsg,
-    UpdateConfigMsg,
+    AllDaosResponse, Config, ConfigResponse, CreateDaoMsg, CreateDaoWithVersionMsg,
+    EnterpriseCodeIdsMsg, EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg,
+    IsEnterpriseCodeIdResponse, QueryAllDaosMsg, UpdateConfigMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_asset::AssetInfoUnchecked;
@@ -17,6 +17,8 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     CreateDao(Box<CreateDaoMsg>),
+
+    CreateDaoWithVersion(Box<CreateDaoWithVersionMsg>),
 
     /// Admin only can execute
     UpdateConfig(UpdateConfigMsg),

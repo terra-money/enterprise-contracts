@@ -28,8 +28,8 @@ use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_factory_api::api::{
-    AllDaosResponse, ConfigResponse, CreateDaoMembershipMsg, CreateDaoMsg, DaoRecord,
-    EnterpriseCodeIdsMsg, EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg,
+    AllDaosResponse, ConfigResponse, CreateDaoMembershipMsg, CreateDaoMsg, CreateDaoWithVersionMsg,
+    DaoRecord, EnterpriseCodeIdsMsg, EnterpriseCodeIdsResponse, IsEnterpriseCodeIdMsg,
     IsEnterpriseCodeIdResponse, QueryAllDaosMsg, UpdateConfigMsg,
 };
 use enterprise_factory_api::msg::ExecuteMsg::FinalizeDaoCreation;
@@ -44,7 +44,7 @@ use enterprise_protocol::error::DaoError::{MultisigDaoWithNoInitialMembers, Unau
 use enterprise_protocol::error::{DaoError, DaoResult};
 use enterprise_protocol::msg::ExecuteMsg::FinalizeInstantiation;
 use enterprise_treasury_api::api::{AssetWhitelistResponse, NftWhitelistResponse};
-use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
+use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, VersionResponse};
 use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
@@ -52,7 +52,7 @@ use std::ops::Not;
 use CreateDaoMembershipMsg::{
     ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewDenom, NewMultisig,
 };
-use ExecuteMsg::{CreateDao, UpdateConfig};
+use ExecuteMsg::{CreateDao, CreateDaoWithVersion, UpdateConfig};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-factory";
@@ -109,6 +109,7 @@ pub fn instantiate(
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DaoResult<Response> {
     match msg {
         CreateDao(msg) => create_dao(deps, env, *msg),
+        CreateDaoWithVersion(msg) => create_dao_with_version(deps, env, *msg),
         UpdateConfig(msg) => update_config(deps, env, info, msg),
         FinalizeDaoCreation {} => finalize_dao_creation(deps, env, info),
     }
@@ -123,7 +124,35 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
 
     let latest_version = latest_version_response.version;
 
-    let enterprise_code_id = latest_version.enterprise_code_id;
+    create_dao_with_version_info(deps, env, msg, latest_version)
+}
+
+fn create_dao_with_version(
+    deps: DepsMut,
+    env: Env,
+    msg: CreateDaoWithVersionMsg,
+) -> DaoResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+
+    let version_response: VersionResponse = deps.querier.query_wasm_smart(
+        config.enterprise_versioning.to_string(),
+        &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams {
+            version: msg.version,
+        }),
+    )?;
+
+    let version_info = version_response.version;
+
+    create_dao_with_version_info(deps, env, msg.create_dao_msg, version_info)
+}
+
+fn create_dao_with_version_info(
+    deps: DepsMut,
+    env: Env,
+    msg: CreateDaoMsg,
+    version_info: VersionInfo,
+) -> DaoResult<Response> {
+    let enterprise_code_id = version_info.enterprise_code_id;
 
     let dao_type = match msg.dao_membership {
         NewDenom(_) => DaoType::Denom,
@@ -136,7 +165,7 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         deps.storage,
         &DaoBeingCreated {
             create_dao_msg: Some(msg.clone()),
-            version_info: Some(latest_version.clone()),
+            version_info: Some(version_info.clone()),
             dao_type: Some(dao_type.clone()),
             dao_asset: None,
             dao_nft: None,
@@ -154,12 +183,14 @@ fn create_dao(deps: DepsMut, env: Env, msg: CreateDaoMsg) -> DaoResult<Response>
         },
     )?;
 
+    let config = CONFIG.load(deps.storage)?;
+
     let instantiate_enterprise_msg = enterprise_protocol::msg::InstantiateMsg {
         dao_metadata: msg.dao_metadata.clone(),
         enterprise_factory_contract: env.contract.address.to_string(),
         enterprise_versioning_contract: config.enterprise_versioning.to_string(),
         dao_type,
-        dao_version: latest_version.version,
+        dao_version: version_info.version,
         dao_creation_date: None,
     };
     let create_dao_submsg = SubMsg::reply_on_success(

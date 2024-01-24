@@ -1646,6 +1646,7 @@ dependencies = [
  "enterprise-outposts-api",
  "enterprise-protocol",
  "enterprise-treasury-api",
+ "enterprise-versioning-api",
  "itertools 0.10.5",
  "multisig-membership-api",
  "schemars",
