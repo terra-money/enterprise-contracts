@@ -2035,6 +2035,7 @@ dependencies = [
  "enterprise-treasury-api",
  "funds-distributor-api",
  "itertools 0.10.5",
+ "membership-common-api",
 ]
 
 [[package]]
