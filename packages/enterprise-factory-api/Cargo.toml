@@ -31,6 +31,7 @@ enterprise-governance-controller-api = { path = "../enterprise-governance-contro
 enterprise-protocol = { path = "../enterprise-protocol" }
 enterprise-outposts-api = { path = "../enterprise-outposts-api" }
 enterprise-treasury-api = { path = "../enterprise-treasury-api" }
+enterprise-versioning-api = { path = "../enterprise-versioning-api" }
 multisig-membership-api = { path = "../multisig-membership-api" }
 cw-orch = { version = "0.18.1", optional = true }
 

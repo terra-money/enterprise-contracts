@@ -200,6 +200,8 @@ fn add_cross_chain_treasury(
     }
 }
 
+// TODO: reduce the arguments here
+#[allow(clippy::too_many_arguments)]
 fn instantiate_remote_treasury(
     deps: DepsMut,
     env: Env,

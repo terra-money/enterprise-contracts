@@ -6,6 +6,7 @@ use cw_utils::Duration;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig};
 use enterprise_outposts_api::api::DeployCrossChainTreasuryMsg;
 use enterprise_protocol::api::DaoMetadata;
+use enterprise_versioning_api::api::Version;
 use multisig_membership_api::api::UserWeight;
 
 #[cw_serde]
@@ -41,6 +42,12 @@ pub struct CreateDaoMsg {
     /// Optional text that users will have to attest to before being able to participate in DAO's
     /// governance and certain other functions.
     pub attestation_text: Option<String>,
+}
+
+#[cw_serde]
+pub struct CreateDaoWithVersionMsg {
+    pub version: Version,
+    pub create_dao_msg: CreateDaoMsg,
 }
 
 #[cw_serde]
