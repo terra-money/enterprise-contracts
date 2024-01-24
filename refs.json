@@ -156,19 +156,19 @@
   },
   "staging": {
     "enterprise": {
-      "codeId": "2449"
+      "codeId": "2542"
     },
     "enterprise-factory": {
-      "codeId": "2457",
-      "address": "terra16qcn2xugex278wh53vck99wxlwfjzmkh44lzntgrqvx702fkvckssyanu0"
+      "codeId": "2540",
+      "address": "terra1ppvph8t5fnaugy5q094lvzys0hd66t5q6azzv9kx5lpnm8eydpsq6g9zd5"
     },
     "enterprise-facade": {
-      "codeId": "2494",
-      "address": "terra1ylh7lv87dcpempuvggq6kxxh2x2sycmxkcqcams7xxn3d0q9deksgp7ufh"
+      "codeId": "2539",
+      "address": "terra150an40h3z0v46tgujaq7e3dsqmjcclvqrahpvrc7trtum6e35s7s9lx7wh"
     },
     "enterprise-versioning": {
-      "codeId": "2346",
-      "address": "terra1zt6uhjsx7tkcldefws7mlpfm75tymzs8ku8fdsggptcv7rq3ua9qt4v2q7"
+      "codeId": "2536",
+      "address": "terra1cfhg3nhljdffd7wm0ykexf3nyy4asv2wvu7u4f4y6zg39lxx376sttlagf"
     },
     "cw3_fixed_multisig": {
       "codeId": "1316"
@@ -180,42 +180,42 @@
       "codeId": "1318"
     },
     "enterprise-governance": {
-      "codeId": "2450"
+      "codeId": "2543"
     },
     "funds-distributor": {
-      "codeId": "2454"
+      "codeId": "2547"
     },
     "attestation": {
-      "codeId": "2177"
+      "codeId": "2541"
     },
     "denom-staking-membership": {
-      "codeId": "2185"
+      "codeId": "2549"
     },
     "enterprise-governance-controller": {
-      "codeId": "2451"
+      "codeId": "2544"
     },
     "enterprise-treasury": {
-      "codeId": "2452"
+      "codeId": "2545"
     },
     "enterprise-outposts": {
-      "codeId": "2453"
+      "codeId": "2546"
     },
     "token-staking-membership": {
-      "codeId": "2184"
+      "codeId": "2548"
     },
     "nft-staking-membership": {
-      "codeId": "2186"
+      "codeId": "2550"
     },
     "multisig-membership": {
-      "codeId": "2187"
+      "codeId": "2551"
     },
     "enterprise-facade-v1": {
-      "codeId": "2492",
-      "address": "terra1p8arxdnke4qhe7qujc9vj20zeeq90k4s8yrmwh7zv7pxnvxkhdtq4qlp4t"
+      "codeId": "2537",
+      "address": "terra1kphhkkgz0v369n6xcv8rhkm47wry2wcaz7wrk3hx3t733cvxjk6qn0wrpa"
     },
     "enterprise-facade-v2": {
-      "codeId": "2493",
-      "address": "terra1t3c35hafnnh2l7s0zv3lsa97mdem5mfke62wyvgw4kpjtm2px3hq85gzup"
+      "codeId": "2538",
+      "address": "terra13mmxganpvglya66j0fjp90frzhvazlwph5ulah969gu3m6yvp8jqdxv3t5"
     },
     "cw721_metadata_onchain": {
       "codeId": "2111"
