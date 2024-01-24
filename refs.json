@@ -97,11 +97,11 @@
     },
     "enterprise-facade": {
       "codeId": "2494",
-      "address": "terra136k05x7uzu0awwxgr8wtqunedjpnv4jzmc4ery40czx5338ht8vq0ja9xq"
+      "address": "terra1ylh7lv87dcpempuvggq6kxxh2x2sycmxkcqcams7xxn3d0q9deksgp7ufh"
     },
     "enterprise-versioning": {
-      "codeId": "2220",
-      "address": "terra1vff3unw6t795t6zm62j94grscl8qfeurzpvdtpeclmwc0n5hm5csxuhjmw"
+      "codeId": "2346",
+      "address": "terra1zt6uhjsx7tkcldefws7mlpfm75tymzs8ku8fdsggptcv7rq3ua9qt4v2q7"
     },
     "cw3_fixed_multisig": {
       "codeId": "1316"
