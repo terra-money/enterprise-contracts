@@ -20,6 +20,7 @@ use attestation_api::api::AttestationTextResponse;
 use attestation_api::msg::QueryMsg::AttestationText;
 use cosmwasm_std::Decimal;
 use cw_asset::AssetInfo;
+use enterprise_facade_api::api::DaoType;
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_factory_api::api::{CreateDaoMsg, DaoRecord};
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
@@ -208,6 +209,7 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
     // verify council data
     let council = dao_info.dao_council.unwrap();
     assert_eq!(from_facade_dao_council(council), dao_council);
+    // TODO: also verify this in council membership contract's weights?
 
     let attestation_addr = components.attestation_contract.unwrap();
     let attestation_text_resp: AttestationTextResponse = app
@@ -273,6 +275,8 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
     membership_contract.assert_user_weight(USER3, 5);
 
     membership_contract.assert_total_weight(8);
+
+    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Multisig);
 
     Ok(())
 }
