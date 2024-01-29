@@ -1,6 +1,8 @@
 use crate::asset_helpers::cw20_unchecked;
 use crate::facade_helpers::TestFacade;
-use crate::factory_helpers::{default_new_token_membership, new_token_membership};
+use crate::factory_helpers::{
+    default_new_token_membership, get_first_dao, new_token_membership, query_all_daos,
+};
 use crate::helpers::{
     startup_with_versioning, ADDR_FACTORY, CW20_TOKEN1, CW20_TOKEN2, NFT_TOKEN1, NFT_TOKEN2, USER1,
     USER2, USER_DAO_CREATOR,
@@ -70,15 +72,7 @@ fn test() -> anyhow::Result<()> {
     )
     .unwrap();
 
-    // TODO: extract query for a DAO (or all DAOs) to a helper
-    let all_daos: AllDaosResponse = app.wrap().query_wasm_smart(
-        ADDR_FACTORY,
-        &AllDaos(QueryAllDaosMsg {
-            start_after: None,
-            limit: None,
-        }),
-    )?;
-    let dao_addr = all_daos.daos.first().cloned().unwrap().dao_address;
+    let dao_addr = get_first_dao(&app)?;
 
     let facade = TestFacade { app, dao_addr };
     let _components = facade.query_component_contracts()?;
