@@ -1,9 +1,6 @@
-// TODO: rename file to create_dao?
-
 use crate::asset_helpers::cw20_unchecked;
-use crate::factory_helpers::{
-    default_new_token_membership, new_multisig_membership, new_token_membership,
-};
+use crate::facade_helpers::TestFacade;
+use crate::factory_helpers::{default_new_token_membership, new_token_membership};
 use crate::helpers::{
     startup_with_versioning, ADDR_FACTORY, CW20_TOKEN1, CW20_TOKEN2, NFT_TOKEN1, NFT_TOKEN2, USER1,
     USER2, USER_DAO_CREATOR,
@@ -11,7 +8,8 @@ use crate::helpers::{
 use crate::traits::{IntoAddr, IntoStringVec};
 use cosmwasm_std::Decimal;
 use cw_multi_test::Executor;
-use enterprise_factory_api::api::{CreateDaoMsg, NewCw20MembershipMsg};
+use enterprise_factory_api::api::{AllDaosResponse, CreateDaoMsg, QueryAllDaosMsg};
+use enterprise_factory_api::msg::QueryMsg::AllDaos;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
 use enterprise_protocol::api::{DaoMetadata, DaoSocialData, Logo};
 
@@ -71,5 +69,15 @@ fn test() {
     )
     .unwrap();
 
-    app.wrap().
+    // TODO: extract query for a DAO (or all DAOs) to a helper
+    let all_daos: AllDaosResponse = app.wrap().query_wasm_smart(
+        ADDR_FACTORY,
+        &AllDaos(QueryAllDaosMsg {
+            start_after: None,
+            limit: None,
+        }),
+    )?;
+    let dao_addr = all_daos.daos.first().cloned().unwrap().dao_address;
+
+    let facade = TestFacade { app, dao_addr };
 }

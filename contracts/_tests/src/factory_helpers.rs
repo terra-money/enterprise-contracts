@@ -1,6 +1,6 @@
 use crate::helpers::USER_DAO_CREATOR;
 use cosmwasm_std::Uint128;
-use cw20::{Cw20Coin, MinterResponse};
+use cw20::Cw20Coin;
 use cw_utils::Duration;
 use enterprise_factory_api::api::{
     CreateDaoMembershipMsg, NewCw20MembershipMsg, NewMultisigMembershipMsg,

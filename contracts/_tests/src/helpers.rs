@@ -51,20 +51,26 @@ pub const CODE_ID_ATTESTATION: u64 = 1;
 pub const CODE_ID_CONTROLLER: u64 = 2;
 pub const CODE_ID_FUNDS_DISTRIBUTOR: u64 = 3;
 pub const CODE_ID_ENTERPRISE: u64 = 4;
-pub const CODE_ID_FACTORY: u64 = 5;
-pub const CODE_ID_GOVERNANCE: u64 = 6;
-pub const CODE_ID_OUTPOSTS: u64 = 7;
-pub const CODE_ID_MEMBERSHIP_DENOM: u64 = 8;
-pub const CODE_ID_MEMBERSHIP_NFT: u64 = 9;
-pub const CODE_ID_MEMBERSHIP_MULTISIG: u64 = 10;
-pub const CODE_ID_MEMBERSHIP_TOKEN: u64 = 11;
-pub const CODE_ID_TREASURY: u64 = 12;
-pub const CODE_ID_VERSIONING: u64 = 13;
-pub const CODE_ID_CW20: u64 = 14;
-pub const CODE_ID_CW721: u64 = 15;
+pub const CODE_ID_FACADE: u64 = 5;
+pub const CODE_ID_FACADE_V1: u64 = 6;
+pub const CODE_ID_FACADE_V2: u64 = 7;
+pub const CODE_ID_FACTORY: u64 = 8;
+pub const CODE_ID_GOVERNANCE: u64 = 9;
+pub const CODE_ID_OUTPOSTS: u64 = 10;
+pub const CODE_ID_MEMBERSHIP_DENOM: u64 = 11;
+pub const CODE_ID_MEMBERSHIP_NFT: u64 = 12;
+pub const CODE_ID_MEMBERSHIP_MULTISIG: u64 = 13;
+pub const CODE_ID_MEMBERSHIP_TOKEN: u64 = 14;
+pub const CODE_ID_TREASURY: u64 = 15;
+pub const CODE_ID_VERSIONING: u64 = 16;
+pub const CODE_ID_CW20: u64 = 17;
+pub const CODE_ID_CW721: u64 = 18;
 
 pub const ADDR_VERSIONING: &str = "contract0";
 pub const ADDR_FACTORY: &str = "contract1";
+pub const ADDR_FACADE_V1: &str = "contract2";
+pub const ADDR_FACADE_V2: &str = "contract3";
+pub const ADDR_FACADE: &str = "contract4";
 
 pub const DAO_NAME: &str = "my_dao";
 pub const DAO_TOKEN: &str = "dao_token";
@@ -137,6 +143,39 @@ pub fn startup() -> App {
     ));
 
     assert_eq!(CODE_ID_ENTERPRISE, code_id_enterprise);
+
+    let code_id_facade = app.store_code(Box::new(
+        ContractWrapper::new(
+            enterprise_facade::contract::execute,
+            enterprise_facade::contract::instantiate,
+            enterprise_facade::contract::query,
+        )
+        .with_reply(enterprise_facade::contract::reply),
+    ));
+
+    assert_eq!(CODE_ID_FACADE, code_id_facade);
+
+    let code_id_facade_v1 = app.store_code(Box::new(
+        ContractWrapper::new(
+            enterprise_facade_v1::contract::execute,
+            enterprise_facade_v1::contract::instantiate,
+            enterprise_facade_v1::contract::query,
+        )
+        .with_reply(enterprise_facade_v1::contract::reply),
+    ));
+
+    assert_eq!(CODE_ID_FACADE_V1, code_id_facade_v1);
+
+    let code_id_facade_v2 = app.store_code(Box::new(
+        ContractWrapper::new(
+            enterprise_facade_v2::contract::execute,
+            enterprise_facade_v2::contract::instantiate,
+            enterprise_facade_v2::contract::query,
+        )
+        .with_reply(enterprise_facade_v2::contract::reply),
+    ));
+
+    assert_eq!(CODE_ID_FACADE_V2, code_id_facade_v2);
 
     let code_id_factory = app.store_code(Box::new(
         ContractWrapper::new(
