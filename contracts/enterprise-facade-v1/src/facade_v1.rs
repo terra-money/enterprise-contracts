@@ -55,23 +55,21 @@ use PollRejectionReason::{QuorumAndThresholdNotReached, QuorumNotReached, Thresh
 use V2MigrationStage::MigrationNotStarted;
 
 /// Facade implementation for v0.5.0 of Enterprise (pre-contract-rewrite).
-pub struct EnterpriseFacadeV1 {
+pub struct EnterpriseFacadeV1<'a> {
     pub enterprise_address: Addr,
+    pub qctx: QueryContext<'a>,
 }
 
-impl EnterpriseFacade for EnterpriseFacadeV1 {
-    fn query_treasury_address(
-        &self,
-        _: QueryContext,
-    ) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
+impl EnterpriseFacade for EnterpriseFacadeV1<'_> {
+    fn query_treasury_address(&self) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
         Ok(TreasuryAddressResponse {
             treasury_address: self.enterprise_address.clone(),
         })
     }
 
-    fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse> {
+    fn query_dao_info(&self) -> EnterpriseFacadeResult<DaoInfoResponse> {
         let dao_info_v5: DaoInfoResponseV1 =
-            self.query_enterprise_contract(qctx.deps, &DaoInfo {})?;
+            self.query_enterprise_contract(self.qctx.deps, &DaoInfo {})?;
 
         let dao_version_from_code_version = Version {
             major: 0,
@@ -108,11 +106,8 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         })
     }
 
-    fn query_component_contracts(
-        &self,
-        qctx: QueryContext,
-    ) -> EnterpriseFacadeResult<ComponentContractsResponse> {
-        let dao_info = self.query_dao_info(qctx)?;
+    fn query_component_contracts(&self) -> EnterpriseFacadeResult<ComponentContractsResponse> {
+        let dao_info = self.query_dao_info()?;
 
         Ok(ComponentContractsResponse {
             enterprise_factory_contract: dao_info.enterprise_factory_contract,
@@ -130,48 +125,39 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn query_member_info(
         &self,
-        qctx: QueryContext,
         msg: QueryMemberInfoMsg,
     ) -> EnterpriseFacadeResult<MemberInfoResponse> {
-        self.query_enterprise_contract(qctx.deps, &MemberInfo(msg))
+        self.query_enterprise_contract(self.qctx.deps, &MemberInfo(msg))
     }
 
-    fn query_members(
-        &self,
-        _: QueryContext,
-        _: MembersParams,
-    ) -> EnterpriseFacadeResult<MembersResponse> {
+    fn query_members(&self, _: MembersParams) -> EnterpriseFacadeResult<MembersResponse> {
         // TODO: can we actually not support this for real?
         Err(UnsupportedOperation)
     }
 
     fn query_list_multisig_members(
         &self,
-        qctx: QueryContext,
         msg: ListMultisigMembersMsg,
     ) -> EnterpriseFacadeResult<MultisigMembersResponse> {
-        self.query_enterprise_contract(qctx.deps, &ListMultisigMembers(msg))
+        self.query_enterprise_contract(self.qctx.deps, &ListMultisigMembers(msg))
     }
 
     fn query_asset_whitelist(
         &self,
-        qctx: QueryContext,
         params: AssetWhitelistParams,
     ) -> EnterpriseFacadeResult<AssetWhitelistResponse> {
-        self.query_enterprise_contract(qctx.deps, &AssetWhitelist(params))
+        self.query_enterprise_contract(self.qctx.deps, &AssetWhitelist(params))
     }
 
     fn query_nft_whitelist(
         &self,
-        qctx: QueryContext,
         params: NftWhitelistParams,
     ) -> EnterpriseFacadeResult<NftWhitelistResponse> {
-        self.query_enterprise_contract(qctx.deps, &NftWhitelist(params))
+        self.query_enterprise_contract(self.qctx.deps, &NftWhitelist(params))
     }
 
     fn query_number_proposals_tracked(
         &self,
-        _: QueryContext,
     ) -> EnterpriseFacadeResult<NumberProposalsTrackedResponse> {
         // TODO: consider throwing an error here
         Ok(NumberProposalsTrackedResponse {
@@ -179,36 +165,32 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         })
     }
 
-    fn query_proposal(
-        &self,
-        qctx: QueryContext,
-        params: ProposalParams,
-    ) -> EnterpriseFacadeResult<ProposalResponse> {
-        let response: ProposalResponseV1 =
-            self.query_enterprise_contract(qctx.deps, &v1_structs::QueryV1Msg::Proposal(params))?;
+    fn query_proposal(&self, params: ProposalParams) -> EnterpriseFacadeResult<ProposalResponse> {
+        let response: ProposalResponseV1 = self
+            .query_enterprise_contract(self.qctx.deps, &v1_structs::QueryV1Msg::Proposal(params))?;
 
-        let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
+        let gov_config = self.query_dao_info()?.gov_config;
 
-        let fixed_response = self.fix_proposal_response(&qctx, response.into(), &gov_config)?;
+        let fixed_response =
+            self.fix_proposal_response(&self.qctx, response.into(), &gov_config)?;
 
         Ok(fixed_response)
     }
 
     fn query_proposals(
         &self,
-        qctx: QueryContext,
         params: ProposalsParams,
     ) -> EnterpriseFacadeResult<ProposalsResponse> {
         let response: ProposalsResponseV1 =
-            self.query_enterprise_contract(qctx.deps, &Proposals(params))?;
+            self.query_enterprise_contract(self.qctx.deps, &Proposals(params))?;
 
-        let gov_config = self.query_dao_info(qctx.clone())?.gov_config;
+        let gov_config = self.query_dao_info()?.gov_config;
 
         let fixed_responses = response
             .proposals
             .into_iter()
             .map(|proposal_response| {
-                self.fix_proposal_response(&qctx, proposal_response.into(), &gov_config)
+                self.fix_proposal_response(&self.qctx, proposal_response.into(), &gov_config)
             })
             .collect::<EnterpriseFacadeResult<Vec<ProposalResponse>>>()?;
 
@@ -219,15 +201,11 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn query_proposal_status(
         &self,
-        qctx: QueryContext,
         params: ProposalStatusParams,
     ) -> EnterpriseFacadeResult<ProposalStatusResponse> {
-        let response = self.query_proposal(
-            qctx,
-            ProposalParams {
-                proposal_id: params.proposal_id,
-            },
-        )?;
+        let response = self.query_proposal(ProposalParams {
+            proposal_id: params.proposal_id,
+        })?;
 
         Ok(ProposalStatusResponse {
             status: response.proposal_status,
@@ -238,65 +216,52 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn query_member_vote(
         &self,
-        qctx: QueryContext,
         params: MemberVoteParams,
     ) -> EnterpriseFacadeResult<MemberVoteResponse> {
-        self.query_enterprise_contract(qctx.deps, &MemberVote(params))
+        self.query_enterprise_contract(self.qctx.deps, &MemberVote(params))
     }
 
     fn query_proposal_votes(
         &self,
-        qctx: QueryContext,
         params: ProposalVotesParams,
     ) -> EnterpriseFacadeResult<ProposalVotesResponse> {
-        self.query_enterprise_contract(qctx.deps, &ProposalVotes(params))
+        self.query_enterprise_contract(self.qctx.deps, &ProposalVotes(params))
     }
 
     fn query_user_stake(
         &self,
-        qctx: QueryContext,
         params: UserStakeParams,
     ) -> EnterpriseFacadeResult<UserStakeResponse> {
         self.query_enterprise_contract(
-            qctx.deps,
+            self.qctx.deps,
             &UserStake(UserStakeV1Params { user: params.user }),
         )
     }
 
-    fn query_total_staked_amount(
-        &self,
-        qctx: QueryContext,
-    ) -> EnterpriseFacadeResult<TotalStakedAmountResponse> {
-        self.query_enterprise_contract(qctx.deps, &TotalStakedAmount {})
+    fn query_total_staked_amount(&self) -> EnterpriseFacadeResult<TotalStakedAmountResponse> {
+        self.query_enterprise_contract(self.qctx.deps, &TotalStakedAmount {})
     }
 
     fn query_staked_nfts(
         &self,
-        qctx: QueryContext,
         params: StakedNftsParams,
     ) -> EnterpriseFacadeResult<StakedNftsResponse> {
-        self.query_enterprise_contract(qctx.deps, &StakedNfts(params))
+        self.query_enterprise_contract(self.qctx.deps, &StakedNfts(params))
     }
 
-    fn query_claims(
-        &self,
-        qctx: QueryContext,
-        params: ClaimsParams,
-    ) -> EnterpriseFacadeResult<ClaimsResponse> {
-        self.query_enterprise_contract(qctx.deps, &Claims(params))
+    fn query_claims(&self, params: ClaimsParams) -> EnterpriseFacadeResult<ClaimsResponse> {
+        self.query_enterprise_contract(self.qctx.deps, &Claims(params))
     }
 
     fn query_releasable_claims(
         &self,
-        qctx: QueryContext,
         params: ClaimsParams,
     ) -> EnterpriseFacadeResult<ClaimsResponse> {
-        self.query_enterprise_contract(qctx.deps, &ReleasableClaims(params))
+        self.query_enterprise_contract(self.qctx.deps, &ReleasableClaims(params))
     }
 
     fn query_cross_chain_treasuries(
         &self,
-        _: QueryContext,
         _: CrossChainTreasuriesParams,
     ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse> {
         Ok(CrossChainTreasuriesResponse { treasuries: vec![] })
@@ -304,7 +269,6 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn query_has_incomplete_v2_migration(
         &self,
-        _: QueryContext,
     ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse> {
         Ok(HasIncompleteV2MigrationResponse {
             has_incomplete_migration: false,
@@ -313,17 +277,13 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn query_has_unmoved_stakes_or_claims(
         &self,
-        _: QueryContext,
     ) -> EnterpriseFacadeResult<HasUnmovedStakesOrClaimsResponse> {
         Ok(HasUnmovedStakesOrClaimsResponse {
             has_unmoved_stakes_or_claims: false,
         })
     }
 
-    fn query_v2_migration_stage(
-        &self,
-        _: QueryContext,
-    ) -> EnterpriseFacadeResult<V2MigrationStageResponse> {
+    fn query_v2_migration_stage(&self) -> EnterpriseFacadeResult<V2MigrationStageResponse> {
         // for old DAOs, migration is not started yet
         Ok(V2MigrationStageResponse {
             stage: MigrationNotStarted,
@@ -332,13 +292,12 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn adapt_create_proposal(
         &self,
-        qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&CreateProposal(
-                self.map_create_proposal_msg(qctx.deps, params)?,
+                self.map_create_proposal_msg(self.qctx.deps, params)?,
             ))?,
             vec![],
         ))
@@ -346,7 +305,6 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn adapt_create_proposal_with_denom_deposit(
         &self,
-        _: QueryContext,
         _: CreateProposalWithDenomDepositMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Err(UnsupportedOperation)
@@ -354,22 +312,22 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn adapt_create_proposal_with_token_deposit(
         &self,
-        qctx: QueryContext,
         params: CreateProposalWithTokenDepositMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        let dao_info = self.query_dao_info(qctx.clone())?;
+        let dao_info = self.query_dao_info()?;
         let dao_type = dao_info.dao_type;
 
         match dao_type {
             DaoType::Token => Ok(adapter_response_single_execute_msg(
-                qctx.deps
+                self.qctx
+                    .deps
                     .api
                     .addr_validate(&dao_info.dao_membership_contract)?,
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: params.deposit_amount,
                     msg: to_json_binary(&Cw20HookV1Msg::CreateProposal(
-                        self.map_create_proposal_msg(qctx.deps, params.create_proposal_msg)?,
+                        self.map_create_proposal_msg(self.qctx.deps, params.create_proposal_msg)?,
                     ))?,
                 })?,
                 vec![],
@@ -382,7 +340,6 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn adapt_create_proposal_with_nft_deposit(
         &self,
-        _: QueryContext,
         _: CreateProposalWithNftDepositMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Err(UnsupportedOperation)
@@ -390,23 +347,18 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn adapt_create_council_proposal(
         &self,
-        qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&CreateCouncilProposal(
-                self.map_create_proposal_msg(qctx.deps, params)?,
+                self.map_create_proposal_msg(self.qctx.deps, params)?,
             ))?,
             vec![],
         ))
     }
 
-    fn adapt_cast_vote(
-        &self,
-        _: QueryContext,
-        params: CastVoteMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse> {
+    fn adapt_cast_vote(&self, params: CastVoteMsg) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&CastVote(params))?,
@@ -416,7 +368,6 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn adapt_cast_council_vote(
         &self,
-        _: QueryContext,
         params: CastVoteMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_execute_msg(
@@ -428,7 +379,6 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
     fn adapt_execute_proposal(
         &self,
-        _: QueryContext,
         params: ExecuteProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_execute_msg(
@@ -438,28 +388,24 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         ))
     }
 
-    fn adapt_stake(
-        &self,
-        qctx: QueryContext,
-        params: StakeMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse> {
+    fn adapt_stake(&self, params: StakeMsg) -> EnterpriseFacadeResult<AdapterResponse> {
         match params {
             StakeMsg::Cw20(msg) => {
-                let token_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
+                let token_addr = self.query_dao_info()?.dao_membership_contract;
                 let msg = cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: msg.amount,
                     msg: to_json_binary(&Cw20HookV1Msg::Stake {})?,
                 };
                 Ok(adapter_response_single_execute_msg(
-                    qctx.deps.api.addr_validate(&token_addr)?,
+                    self.qctx.deps.api.addr_validate(&token_addr)?,
                     serde_json_wasm::to_string(&msg)?,
                     vec![],
                 ))
             }
             StakeMsg::Cw721(msg) => {
-                let nft_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
-                let nft_addr = qctx.deps.api.addr_validate(&nft_addr)?;
+                let nft_addr = self.query_dao_info()?.dao_membership_contract;
+                let nft_addr = self.qctx.deps.api.addr_validate(&nft_addr)?;
 
                 let stake_msg_binary = to_json_binary(&Cw721HookV1Msg::Stake {})?;
 
@@ -488,11 +434,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         }
     }
 
-    fn adapt_unstake(
-        &self,
-        _: QueryContext,
-        params: UnstakeMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse> {
+    fn adapt_unstake(&self, params: UnstakeMsg) -> EnterpriseFacadeResult<AdapterResponse> {
         let params = match params {
             UnstakeMsg::Cw20(msg) => UnstakeV1Msg::Cw20(UnstakeCw20V1Msg { amount: msg.amount }),
             UnstakeMsg::Cw721(msg) => UnstakeV1Msg::Cw721(UnstakeCw721V1Msg { tokens: msg.tokens }),
@@ -505,7 +447,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         ))
     }
 
-    fn adapt_claim(&self, _: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
+    fn adapt_claim(&self) -> EnterpriseFacadeResult<AdapterResponse> {
         Ok(adapter_response_single_execute_msg(
             self.enterprise_address.clone(),
             serde_json_wasm::to_string(&Claim {})?,
@@ -514,7 +456,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     }
 }
 
-impl EnterpriseFacadeV1 {
+impl EnterpriseFacadeV1<'_> {
     fn query_enterprise_contract<T: DeserializeOwned>(
         &self,
         deps: Deps,

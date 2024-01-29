@@ -1,5 +1,5 @@
 use common::cw::QueryContext;
-use cosmwasm_std::{coins, to_json_binary, Addr, Decimal, Deps, Uint128, Uint64};
+use cosmwasm_std::{coins, to_json_binary, Addr, Decimal, Uint128, Uint64};
 use cw721::Cw721ExecuteMsg::Approve;
 use cw_utils::Duration;
 use cw_utils::Expiration::Never;
@@ -57,33 +57,30 @@ use token_staking_api::msg::QueryMsg::TokenConfig;
 use V2MigrationStage::{MigrationCompleted, MigrationInProgress};
 
 /// Facade implementation for v1.0.0 of Enterprise contracts (post-contract-rewrite), i.e. DAO v2.
-pub struct EnterpriseFacadeV2 {
+pub struct EnterpriseFacadeV2<'a> {
     pub enterprise_address: Addr,
+    pub qctx: QueryContext<'a>,
 }
 
-impl EnterpriseFacade for EnterpriseFacadeV2 {
-    fn query_treasury_address(
-        &self,
-        qctx: QueryContext,
-    ) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
-        let treasury_address = self
-            .component_contracts(qctx.deps)?
-            .enterprise_treasury_contract;
+impl EnterpriseFacade for EnterpriseFacadeV2<'_> {
+    fn query_treasury_address(&self) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
+        let treasury_address = self.component_contracts()?.enterprise_treasury_contract;
 
         Ok(TreasuryAddressResponse { treasury_address })
     }
 
-    fn query_dao_info(&self, qctx: QueryContext) -> EnterpriseFacadeResult<DaoInfoResponse> {
-        let dao_info: enterprise_protocol::api::DaoInfoResponse = qctx
+    fn query_dao_info(&self) -> EnterpriseFacadeResult<DaoInfoResponse> {
+        let dao_info: enterprise_protocol::api::DaoInfoResponse = self
+            .qctx
             .deps
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &DaoInfo {})?;
 
         let dao_type = map_dao_type(dao_info.dao_type);
 
-        let component_contracts = self.component_contracts(qctx.deps)?;
+        let component_contracts = self.component_contracts()?;
 
-        let gov_config: GovConfigResponse = qctx.deps.querier.query_wasm_smart(
+        let gov_config: GovConfigResponse = self.qctx.deps.querier.query_wasm_smart(
             component_contracts
                 .enterprise_governance_controller_contract
                 .to_string(),
@@ -93,14 +90,14 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         // get the membership contract, which actually used to mean the CW20 / CW721 contract, not the new membership contracts
         let (dao_membership_contract, unlocking_period) = match dao_type {
             DaoType::Denom => {
-                let denom_config: DenomConfigResponse = qctx.deps.querier.query_wasm_smart(
+                let denom_config: DenomConfigResponse = self.qctx.deps.querier.query_wasm_smart(
                     gov_config.dao_membership_contract.to_string(),
                     &DenomConfig {},
                 )?;
                 (denom_config.denom, denom_config.unlocking_period)
             }
             DaoType::Token => {
-                let token_config: TokenConfigResponse = qctx.deps.querier.query_wasm_smart(
+                let token_config: TokenConfigResponse = self.qctx.deps.querier.query_wasm_smart(
                     gov_config.dao_membership_contract.to_string(),
                     &TokenConfig {},
                 )?;
@@ -113,7 +110,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 let v1_2_0 = Version::new(1, 2, 0);
                 if dao_info.dao_version >= v1_2_0 {
                     let nft_config: NftContractConfigResponse =
-                        qctx.deps.querier.query_wasm_smart(
+                        self.qctx.deps.querier.query_wasm_smart(
                             gov_config.dao_membership_contract.to_string(),
                             &NftContractConfig {},
                         )?;
@@ -123,7 +120,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     };
                     (nft_contract, nft_config.unlocking_period)
                 } else {
-                    let nft_config: NftConfigResponse = qctx.deps.querier.query_wasm_smart(
+                    let nft_config: NftConfigResponse = self.qctx.deps.querier.query_wasm_smart(
                         gov_config.dao_membership_contract.to_string(),
                         &NftConfig {},
                     )?;
@@ -139,7 +136,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             }
         };
 
-        let council_members_response: MembersResponse = qctx.deps.querier.query_wasm_smart(
+        let council_members_response: MembersResponse = self.qctx.deps.querier.query_wasm_smart(
             gov_config.dao_council_membership_contract.to_string(),
             &Members(MembersParams {
                 start_after: None,
@@ -209,9 +206,8 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_component_contracts(
         &self,
-        qctx: QueryContext,
     ) -> EnterpriseFacadeResult<enterprise_facade_api::api::ComponentContractsResponse> {
-        let component_contracts = self.component_contracts(qctx.deps)?;
+        let component_contracts = self.component_contracts()?;
 
         Ok(enterprise_facade_api::api::ComponentContractsResponse {
             enterprise_factory_contract: component_contracts.enterprise_factory_contract,
@@ -233,17 +229,16 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_member_info(
         &self,
-        qctx: QueryContext,
         msg: QueryMemberInfoMsg,
     ) -> EnterpriseFacadeResult<MemberInfoResponse> {
-        let component_contracts = self.component_contracts(qctx.deps)?;
-        let user_weight: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
+        let component_contracts = self.component_contracts()?;
+        let user_weight: UserWeightResponse = self.qctx.deps.querier.query_wasm_smart(
             component_contracts.membership_contract.to_string(),
             &UserWeight(UserWeightParams {
                 user: msg.member_address,
             }),
         )?;
-        let total_weight: TotalWeightResponse = qctx.deps.querier.query_wasm_smart(
+        let total_weight: TotalWeightResponse = self.qctx.deps.querier.query_wasm_smart(
             component_contracts.membership_contract.to_string(),
             &TotalWeight(TotalWeightParams {
                 expiration: Never {},
@@ -262,14 +257,11 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
-    fn query_members(
-        &self,
-        qctx: QueryContext,
-        msg: MembersParams,
-    ) -> EnterpriseFacadeResult<MembersResponse> {
-        let membership = self.component_contracts(qctx.deps)?.membership_contract;
+    fn query_members(&self, msg: MembersParams) -> EnterpriseFacadeResult<MembersResponse> {
+        let membership = self.component_contracts()?.membership_contract;
 
-        let members: MembersResponse = qctx
+        let members: MembersResponse = self
+            .qctx
             .deps
             .querier
             .query_wasm_smart(membership.to_string(), &Members(msg))?;
@@ -279,19 +271,19 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_list_multisig_members(
         &self,
-        qctx: QueryContext,
         msg: ListMultisigMembersMsg,
     ) -> EnterpriseFacadeResult<MultisigMembersResponse> {
-        let dao_info: enterprise_protocol::api::DaoInfoResponse = qctx
+        let dao_info: enterprise_protocol::api::DaoInfoResponse = self
+            .qctx
             .deps
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &DaoInfo {})?;
 
         match dao_info.dao_type {
             enterprise_protocol::api::DaoType::Multisig => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
-                let members_response: MembersResponse = qctx.deps.querier.query_wasm_smart(
+                let members_response: MembersResponse = self.qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
                     &Members(MembersParams {
                         start_after: msg.start_after,
@@ -318,15 +310,12 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_asset_whitelist(
         &self,
-        qctx: QueryContext,
         params: AssetWhitelistParams,
     ) -> EnterpriseFacadeResult<AssetWhitelistResponse> {
-        let treasury_address = self
-            .component_contracts(qctx.deps)?
-            .enterprise_treasury_contract;
+        let treasury_address = self.component_contracts()?.enterprise_treasury_contract;
 
         let asset_whitelist: enterprise_treasury_api::api::AssetWhitelistResponse =
-            qctx.deps.querier.query_wasm_smart(
+            self.qctx.deps.querier.query_wasm_smart(
                 treasury_address.to_string(),
                 &AssetWhitelist(enterprise_treasury_api::api::AssetWhitelistParams {
                     start_after: params.start_after,
@@ -341,15 +330,12 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_nft_whitelist(
         &self,
-        qctx: QueryContext,
         params: NftWhitelistParams,
     ) -> EnterpriseFacadeResult<NftWhitelistResponse> {
-        let treasury_address = self
-            .component_contracts(qctx.deps)?
-            .enterprise_treasury_contract;
+        let treasury_address = self.component_contracts()?.enterprise_treasury_contract;
 
         let nft_whitelist: enterprise_treasury_api::api::NftWhitelistResponse =
-            qctx.deps.querier.query_wasm_smart(
+            self.qctx.deps.querier.query_wasm_smart(
                 treasury_address.to_string(),
                 &NftWhitelist(enterprise_treasury_api::api::NftWhitelistParams {
                     start_after: params.start_after,
@@ -364,9 +350,8 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_number_proposals_tracked(
         &self,
-        qctx: QueryContext,
     ) -> EnterpriseFacadeResult<NumberProposalsTrackedResponse> {
-        let version = self.query_dao_info(qctx.clone())?.dao_version;
+        let version = self.query_dao_info()?.dao_version;
 
         let v1_3_0 = Version::new(1, 3, 0);
 
@@ -375,11 +360,11 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 number_proposals_tracked: None,
             })
         } else {
-            let components = self.component_contracts(qctx.deps)?;
+            let components = self.component_contracts()?;
 
             let number_proposals_tracked: funds_distributor_api::api::NumberProposalsTrackedResponse =
-                qctx.deps.querier.query_wasm_smart(components.funds_distributor_contract.to_string(),
-                                                   &funds_distributor_api::msg::QueryMsg::NumberProposalsTracked {})?;
+                self.qctx.deps.querier.query_wasm_smart(components.funds_distributor_contract.to_string(),
+                                                        &funds_distributor_api::msg::QueryMsg::NumberProposalsTracked {})?;
 
             Ok(NumberProposalsTrackedResponse {
                 number_proposals_tracked: Some(number_proposals_tracked.number_proposals_tracked),
@@ -387,17 +372,13 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
-    fn query_proposal(
-        &self,
-        qctx: QueryContext,
-        params: ProposalParams,
-    ) -> EnterpriseFacadeResult<ProposalResponse> {
+    fn query_proposal(&self, params: ProposalParams) -> EnterpriseFacadeResult<ProposalResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         let response: enterprise_governance_controller_api::api::ProposalResponse =
-            qctx.deps.querier.query_wasm_smart(
+            self.qctx.deps.querier.query_wasm_smart(
                 governance_controller.to_string(),
                 &enterprise_governance_controller_api::msg::QueryMsg::Proposal(
                     enterprise_governance_controller_api::api::ProposalParams {
@@ -411,15 +392,14 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_proposals(
         &self,
-        qctx: QueryContext,
         params: ProposalsParams,
     ) -> EnterpriseFacadeResult<ProposalsResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         let proposals: enterprise_governance_controller_api::api::ProposalsResponse =
-            qctx.deps.querier.query_wasm_smart(
+            self.qctx.deps.querier.query_wasm_smart(
                 governance_controller.to_string(),
                 &enterprise_governance_controller_api::msg::QueryMsg::Proposals(
                     enterprise_governance_controller_api::api::ProposalsParams {
@@ -442,15 +422,14 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_proposal_status(
         &self,
-        qctx: QueryContext,
         params: ProposalStatusParams,
     ) -> EnterpriseFacadeResult<ProposalStatusResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         let proposal_status: enterprise_governance_controller_api::api::ProposalStatusResponse =
-            qctx.deps.querier.query_wasm_smart(
+            self.qctx.deps.querier.query_wasm_smart(
                 governance_controller.to_string(),
                 &enterprise_governance_controller_api::msg::QueryMsg::ProposalStatus(
                     enterprise_governance_controller_api::api::ProposalStatusParams {
@@ -468,15 +447,14 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_member_vote(
         &self,
-        qctx: QueryContext,
         params: MemberVoteParams,
     ) -> EnterpriseFacadeResult<MemberVoteResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         let member_vote: enterprise_governance_controller_api::api::MemberVoteResponse =
-            qctx.deps.querier.query_wasm_smart(
+            self.qctx.deps.querier.query_wasm_smart(
                 governance_controller.to_string(),
                 &enterprise_governance_controller_api::msg::QueryMsg::MemberVote(
                     enterprise_governance_controller_api::api::MemberVoteParams {
@@ -493,15 +471,14 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_proposal_votes(
         &self,
-        qctx: QueryContext,
         params: ProposalVotesParams,
     ) -> EnterpriseFacadeResult<ProposalVotesResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         let proposal_votes: enterprise_governance_controller_api::api::ProposalVotesResponse =
-            qctx.deps.querier.query_wasm_smart(
+            self.qctx.deps.querier.query_wasm_smart(
                 governance_controller.to_string(),
                 &enterprise_governance_controller_api::msg::QueryMsg::ProposalVotes(
                     enterprise_governance_controller_api::api::ProposalVotesParams {
@@ -519,14 +496,13 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_user_stake(
         &self,
-        qctx: QueryContext,
         params: UserStakeParams,
     ) -> EnterpriseFacadeResult<UserStakeResponse> {
-        let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+        let membership_contract = self.component_contracts()?.membership_contract;
 
-        match self.get_dao_type(qctx.deps)? {
+        match self.get_dao_type()? {
             DaoType::Denom => {
-                let denom_stake: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
+                let denom_stake: UserWeightResponse = self.qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
                     &UserWeight(UserWeightParams { user: params.user }),
                 )?;
@@ -538,7 +514,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 })
             }
             DaoType::Token => {
-                let token_stake: UserWeightResponse = qctx.deps.querier.query_wasm_smart(
+                let token_stake: UserWeightResponse = self.qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
                     &UserWeight(UserWeightParams { user: params.user }),
                 )?;
@@ -550,7 +526,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 })
             }
             DaoType::Nft => {
-                let nft_stake: UserNftStakeResponse = qctx.deps.querier.query_wasm_smart(
+                let nft_stake: UserNftStakeResponse = self.qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
                     &nft_staking_api::msg::QueryMsg::UserStake(UserNftStakeParams {
                         user: params.user,
@@ -572,15 +548,12 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
-    fn query_total_staked_amount(
-        &self,
-        qctx: QueryContext,
-    ) -> EnterpriseFacadeResult<TotalStakedAmountResponse> {
-        match self.get_dao_type(qctx.deps)? {
+    fn query_total_staked_amount(&self) -> EnterpriseFacadeResult<TotalStakedAmountResponse> {
+        match self.get_dao_type()? {
             DaoType::Denom | DaoType::Token | DaoType::Nft => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
-                let total_weight: TotalWeightResponse = qctx.deps.querier.query_wasm_smart(
+                let total_weight: TotalWeightResponse = self.qctx.deps.querier.query_wasm_smart(
                     membership_contract.to_string(),
                     &TotalWeight(TotalWeightParams {
                         expiration: Never {},
@@ -599,18 +572,16 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_staked_nfts(
         &self,
-        qctx: QueryContext,
         params: StakedNftsParams,
     ) -> EnterpriseFacadeResult<StakedNftsResponse> {
-        let dao_type = self.get_dao_type(qctx.deps)?;
+        let dao_type = self.get_dao_type()?;
 
         match dao_type {
             DaoType::Nft => {
-                let nft_membership_contract =
-                    self.component_contracts(qctx.deps)?.membership_contract;
+                let nft_membership_contract = self.component_contracts()?.membership_contract;
 
                 let staked_nfts_response: nft_staking_api::api::StakedNftsResponse =
-                    qctx.deps.querier.query_wasm_smart(
+                    self.qctx.deps.querier.query_wasm_smart(
                         nft_membership_contract.to_string(),
                         &StakedNfts(nft_staking_api::api::StakedNftsParams {
                             start_after: params.start_after,
@@ -628,19 +599,15 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
-    fn query_claims(
-        &self,
-        qctx: QueryContext,
-        params: ClaimsParams,
-    ) -> EnterpriseFacadeResult<ClaimsResponse> {
-        let dao_type = self.get_dao_type(qctx.deps)?;
+    fn query_claims(&self, params: ClaimsParams) -> EnterpriseFacadeResult<ClaimsResponse> {
+        let dao_type = self.get_dao_type()?;
 
         match dao_type {
             DaoType::Denom => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 let response: denom_staking_api::api::ClaimsResponse =
-                    qctx.deps.querier.query_wasm_smart(
+                    self.qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &denom_staking_api::msg::QueryMsg::Claims(
                             denom_staking_api::api::ClaimsParams { user: params.owner },
@@ -650,10 +617,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 Ok(map_denom_claims_response(response))
             }
             DaoType::Token => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 let response: token_staking_api::api::ClaimsResponse =
-                    qctx.deps.querier.query_wasm_smart(
+                    self.qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &token_staking_api::msg::QueryMsg::Claims(
                             token_staking_api::api::ClaimsParams { user: params.owner },
@@ -663,10 +630,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 Ok(map_token_claims_response(response))
             }
             DaoType::Nft => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 let response: nft_staking_api::api::ClaimsResponse =
-                    qctx.deps.querier.query_wasm_smart(
+                    self.qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &nft_staking_api::msg::QueryMsg::Claims(
                             nft_staking_api::api::ClaimsParams { user: params.owner },
@@ -681,17 +648,16 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_releasable_claims(
         &self,
-        qctx: QueryContext,
         params: ClaimsParams,
     ) -> EnterpriseFacadeResult<ClaimsResponse> {
-        let dao_type = self.get_dao_type(qctx.deps)?;
+        let dao_type = self.get_dao_type()?;
 
         match dao_type {
             DaoType::Denom => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 let response: denom_staking_api::api::ClaimsResponse =
-                    qctx.deps.querier.query_wasm_smart(
+                    self.qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &denom_staking_api::msg::QueryMsg::ReleasableClaims(
                             denom_staking_api::api::ClaimsParams { user: params.owner },
@@ -701,10 +667,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 Ok(map_denom_claims_response(response))
             }
             DaoType::Token => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 let response: token_staking_api::api::ClaimsResponse =
-                    qctx.deps.querier.query_wasm_smart(
+                    self.qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &token_staking_api::msg::QueryMsg::ReleasableClaims(
                             token_staking_api::api::ClaimsParams { user: params.owner },
@@ -714,10 +680,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 Ok(map_token_claims_response(response))
             }
             DaoType::Nft => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 let response: nft_staking_api::api::ClaimsResponse =
-                    qctx.deps.querier.query_wasm_smart(
+                    self.qctx.deps.querier.query_wasm_smart(
                         membership_contract.to_string(),
                         &nft_staking_api::msg::QueryMsg::ReleasableClaims(
                             nft_staking_api::api::ClaimsParams { user: params.owner },
@@ -732,11 +698,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_cross_chain_treasuries(
         &self,
-        qctx: QueryContext,
         params: CrossChainTreasuriesParams,
     ) -> EnterpriseFacadeResult<CrossChainTreasuriesResponse> {
-        Ok(qctx.deps.querier.query_wasm_smart(
-            self.component_contracts(qctx.deps)?
+        Ok(self.qctx.deps.querier.query_wasm_smart(
+            self.component_contracts()?
                 .enterprise_outposts_contract
                 .to_string(),
             &CrossChainTreasuries(params),
@@ -745,11 +710,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_has_incomplete_v2_migration(
         &self,
-        qctx: QueryContext,
     ) -> EnterpriseFacadeResult<HasIncompleteV2MigrationResponse> {
-        let component_contracts = self.component_contracts(qctx.deps)?;
+        let component_contracts = self.component_contracts()?;
 
-        let response: HasIncompleteV2MigrationResponse = qctx.deps.querier.query_wasm_smart(
+        let response: HasIncompleteV2MigrationResponse = self.qctx.deps.querier.query_wasm_smart(
             component_contracts.enterprise_treasury_contract,
             &HasIncompleteV2Migration {},
         )?;
@@ -759,9 +723,8 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn query_has_unmoved_stakes_or_claims(
         &self,
-        qctx: QueryContext,
     ) -> EnterpriseFacadeResult<HasUnmovedStakesOrClaimsResponse> {
-        let dao_version = self.query_dao_info(qctx.clone())?.dao_version;
+        let dao_version = self.query_dao_info()?.dao_version;
 
         let v1_0_2 = Version {
             major: 1,
@@ -775,22 +738,20 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 has_unmoved_stakes_or_claims: false,
             })
         } else {
-            let component_contracts = self.component_contracts(qctx.deps)?;
+            let component_contracts = self.component_contracts()?;
 
-            let response: HasUnmovedStakesOrClaimsResponse = qctx.deps.querier.query_wasm_smart(
-                component_contracts.enterprise_treasury_contract,
-                &HasUnmovedStakesOrClaims {},
-            )?;
+            let response: HasUnmovedStakesOrClaimsResponse =
+                self.qctx.deps.querier.query_wasm_smart(
+                    component_contracts.enterprise_treasury_contract,
+                    &HasUnmovedStakesOrClaims {},
+                )?;
 
             Ok(response)
         }
     }
 
-    fn query_v2_migration_stage(
-        &self,
-        qctx: QueryContext,
-    ) -> EnterpriseFacadeResult<V2MigrationStageResponse> {
-        let response = self.query_has_incomplete_v2_migration(qctx)?;
+    fn query_v2_migration_stage(&self) -> EnterpriseFacadeResult<V2MigrationStageResponse> {
+        let response = self.query_has_incomplete_v2_migration()?;
 
         let stage = if response.has_incomplete_migration {
             MigrationInProgress
@@ -803,11 +764,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn adapt_create_proposal(
         &self,
-        qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         Ok(adapter_response_single_execute_msg(
@@ -826,10 +786,9 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn adapt_create_proposal_with_denom_deposit(
         &self,
-        qctx: QueryContext,
         params: CreateProposalWithDenomDepositMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        let dao_type = self.get_dao_type(qctx.deps)?;
+        let dao_type = self.get_dao_type()?;
 
         if dao_type != DaoType::Denom {
             return Err(Dao(UnsupportedOperationForDaoType {
@@ -838,11 +797,12 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
 
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
-        let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+        let membership_contract = self.component_contracts()?.membership_contract;
 
-        let denom_config: DenomConfigResponse = qctx
+        let denom_config: DenomConfigResponse = self
+            .qctx
             .deps
             .querier
             .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
@@ -867,19 +827,19 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn adapt_create_proposal_with_token_deposit(
         &self,
-        qctx: QueryContext,
         params: CreateProposalWithTokenDepositMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        let dao_type = self.get_dao_type(qctx.deps)?;
+        let dao_type = self.get_dao_type()?;
 
         match dao_type {
             DaoType::Token => {
                 let governance_controller = self
-                    .component_contracts(qctx.deps)?
+                    .component_contracts()?
                     .enterprise_governance_controller_contract;
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
-                let token_config: TokenConfigResponse = qctx
+                let token_config: TokenConfigResponse = self
+                    .qctx
                     .deps
                     .querier
                     .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
@@ -911,10 +871,9 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn adapt_create_proposal_with_nft_deposit(
         &self,
-        qctx: QueryContext,
         params: CreateProposalWithNftDepositMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        let dao_type = self.get_dao_type(qctx.deps)?;
+        let dao_type = self.get_dao_type()?;
 
         if dao_type != DaoType::Nft {
             return Err(Dao(UnsupportedOperationForDaoType {
@@ -923,11 +882,12 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
 
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
-        let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+        let membership_contract = self.component_contracts()?.membership_contract;
 
-        let nft_config: NftConfigResponse = qctx
+        let nft_config: NftConfigResponse = self
+            .qctx
             .deps
             .querier
             .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
@@ -969,11 +929,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn adapt_create_council_proposal(
         &self,
-        qctx: QueryContext,
         params: CreateProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         Ok(adapter_response_single_execute_msg(
@@ -992,13 +951,9 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         ))
     }
 
-    fn adapt_cast_vote(
-        &self,
-        qctx: QueryContext,
-        params: CastVoteMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse> {
+    fn adapt_cast_vote(&self, params: CastVoteMsg) -> EnterpriseFacadeResult<AdapterResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         Ok(adapter_response_single_execute_msg(
@@ -1017,11 +972,10 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn adapt_cast_council_vote(
         &self,
-        qctx: QueryContext,
         params: CastVoteMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         let governance_controller = self
-            .component_contracts(qctx.deps)?
+            .component_contracts()?
             .enterprise_governance_controller_contract;
 
         Ok(adapter_response_single_execute_msg(
@@ -1040,15 +994,11 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
     fn adapt_execute_proposal(
         &self,
-        qctx: QueryContext,
         params: ExecuteProposalMsg,
     ) -> EnterpriseFacadeResult<AdapterResponse> {
-        let proposal_response = self.query_proposal(
-            qctx.clone(),
-            ProposalParams {
-                proposal_id: params.proposal_id,
-            },
-        )?;
+        let proposal_response = self.query_proposal(ProposalParams {
+            proposal_id: params.proposal_id,
+        })?;
 
         let treasury_cross_chain_msgs_count = proposal_response
             .proposal
@@ -1064,7 +1014,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
             })
             .count() as u128;
 
-        let component_contracts = self.component_contracts(qctx.deps)?;
+        let component_contracts = self.component_contracts()?;
 
         let execute_proposal_submsg = AdaptedMsg::Execute(AdaptedExecuteMsg {
             target_contract: component_contracts.enterprise_governance_controller_contract,
@@ -1089,16 +1039,13 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         Ok(AdapterResponse { msgs })
     }
 
-    fn adapt_stake(
-        &self,
-        qctx: QueryContext,
-        params: StakeMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse> {
-        let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+    fn adapt_stake(&self, params: StakeMsg) -> EnterpriseFacadeResult<AdapterResponse> {
+        let membership_contract = self.component_contracts()?.membership_contract;
 
         match params {
             StakeMsg::Cw20(msg) => {
-                let token_config: TokenConfigResponse = qctx
+                let token_config: TokenConfigResponse = self
+                    .qctx
                     .deps
                     .querier
                     .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
@@ -1116,7 +1063,8 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 ))
             }
             StakeMsg::Cw721(msg) => {
-                let nft_config: NftConfigResponse = qctx
+                let nft_config: NftConfigResponse = self
+                    .qctx
                     .deps
                     .querier
                     .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
@@ -1147,7 +1095,8 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 Ok(AdapterResponse { msgs })
             }
             StakeMsg::Denom(msg) => {
-                let denom_config: DenomConfigResponse = qctx
+                let denom_config: DenomConfigResponse = self
+                    .qctx
                     .deps
                     .querier
                     .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
@@ -1162,12 +1111,8 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
-    fn adapt_unstake(
-        &self,
-        qctx: QueryContext,
-        params: UnstakeMsg,
-    ) -> EnterpriseFacadeResult<AdapterResponse> {
-        let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+    fn adapt_unstake(&self, params: UnstakeMsg) -> EnterpriseFacadeResult<AdapterResponse> {
+        let membership_contract = self.component_contracts()?.membership_contract;
 
         match params {
             UnstakeMsg::Cw20(msg) => Ok(adapter_response_single_execute_msg(
@@ -1196,12 +1141,12 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
-    fn adapt_claim(&self, qctx: QueryContext) -> EnterpriseFacadeResult<AdapterResponse> {
-        let dao_type = self.get_dao_type(qctx.deps)?;
+    fn adapt_claim(&self) -> EnterpriseFacadeResult<AdapterResponse> {
+        let dao_type = self.get_dao_type()?;
 
         match dao_type {
             DaoType::Denom => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 Ok(adapter_response_single_execute_msg(
                     membership_contract,
@@ -1212,7 +1157,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 ))
             }
             DaoType::Token => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 Ok(adapter_response_single_execute_msg(
                     membership_contract,
@@ -1223,7 +1168,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 ))
             }
             DaoType::Nft => {
-                let membership_contract = self.component_contracts(qctx.deps)?.membership_contract;
+                let membership_contract = self.component_contracts()?.membership_contract;
 
                 Ok(adapter_response_single_execute_msg(
                     membership_contract,
@@ -1240,20 +1185,21 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
     }
 }
 
-impl EnterpriseFacadeV2 {
-    fn component_contracts(
-        &self,
-        deps: Deps,
-    ) -> EnterpriseFacadeResult<ComponentContractsResponse> {
-        let component_contracts = deps
+impl EnterpriseFacadeV2<'_> {
+    fn component_contracts(&self) -> EnterpriseFacadeResult<ComponentContractsResponse> {
+        let component_contracts = self
+            .qctx
+            .deps
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &ComponentContracts {})?;
 
         Ok(component_contracts)
     }
 
-    fn get_dao_type(&self, deps: Deps) -> EnterpriseFacadeResult<DaoType> {
-        let dao_info: enterprise_protocol::api::DaoInfoResponse = deps
+    fn get_dao_type(&self) -> EnterpriseFacadeResult<DaoType> {
+        let dao_info: enterprise_protocol::api::DaoInfoResponse = self
+            .qctx
+            .deps
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &DaoInfo {})?;
 

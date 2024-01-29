@@ -54,147 +54,148 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
 
     let response = match msg {
         QueryMsg::TreasuryAddress { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_treasury_address(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_treasury_address()?)?
         }
         QueryMsg::DaoInfo { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_dao_info(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_dao_info()?)?
         }
         QueryMsg::ComponentContracts { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_component_contracts(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_component_contracts()?)?
         }
         QueryMsg::MemberInfo { contract, msg } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_member_info(qctx, msg)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_member_info(msg)?)?
         }
         QueryMsg::Members { contract, msg } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_members(qctx, msg)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_members(msg)?)?
         }
         QueryMsg::ListMultisigMembers { contract, msg } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_list_multisig_members(qctx, msg)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_list_multisig_members(msg)?)?
         }
         QueryMsg::AssetWhitelist { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_asset_whitelist(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_asset_whitelist(params)?)?
         }
         QueryMsg::NftWhitelist { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_nft_whitelist(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_nft_whitelist(params)?)?
         }
         QueryMsg::NumberProposalsTracked { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_number_proposals_tracked(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_number_proposals_tracked()?)?
         }
         QueryMsg::Proposal { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_proposal(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_proposal(params)?)?
         }
         QueryMsg::Proposals { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_proposals(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_proposals(params)?)?
         }
         QueryMsg::ProposalStatus { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_proposal_status(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_proposal_status(params)?)?
         }
         QueryMsg::MemberVote { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_member_vote(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_member_vote(params)?)?
         }
         QueryMsg::ProposalVotes { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_proposal_votes(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_proposal_votes(params)?)?
         }
         QueryMsg::UserStake { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_user_stake(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_user_stake(params)?)?
         }
         QueryMsg::TotalStakedAmount { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_total_staked_amount(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_total_staked_amount()?)?
         }
         QueryMsg::StakedNfts { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_staked_nfts(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_staked_nfts(params)?)?
         }
         QueryMsg::Claims { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_claims(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_claims(params)?)?
         }
         QueryMsg::ReleasableClaims { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_releasable_claims(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_releasable_claims(params)?)?
         }
         QueryMsg::CrossChainTreasuries { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_cross_chain_treasuries(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_cross_chain_treasuries(params)?)?
         }
         QueryMsg::HasIncompleteV2Migration { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_has_incomplete_v2_migration(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_has_incomplete_v2_migration()?)?
         }
         QueryMsg::HasUnmovedStakesOrClaims { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_has_unmoved_stakes_or_claims(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_has_unmoved_stakes_or_claims()?)?
         }
         QueryMsg::V2MigrationStage { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.query_v2_migration_stage(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.query_v2_migration_stage()?)?
         }
         QueryMsg::CreateProposalAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_create_proposal(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_create_proposal(params)?)?
         }
         QueryMsg::CreateProposalWithDenomDepositAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_create_proposal_with_denom_deposit(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_create_proposal_with_denom_deposit(params)?)?
         }
         QueryMsg::CreateProposalWithTokenDepositAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_create_proposal_with_token_deposit(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_create_proposal_with_token_deposit(params)?)?
         }
         QueryMsg::CreateProposalWithNftDepositAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_create_proposal_with_nft_deposit(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_create_proposal_with_nft_deposit(params)?)?
         }
         QueryMsg::CreateCouncilProposalAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_create_council_proposal(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_create_council_proposal(params)?)?
         }
         QueryMsg::CastVoteAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_cast_vote(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_cast_vote(params)?)?
         }
         QueryMsg::CastCouncilVoteAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_cast_council_vote(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_cast_council_vote(params)?)?
         }
         QueryMsg::ExecuteProposalAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_execute_proposal(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_execute_proposal(params)?)?
         }
         QueryMsg::StakeAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_stake(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_stake(params)?)?
         }
         QueryMsg::UnstakeAdapted { contract, params } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_unstake(qctx, params)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_unstake(params)?)?
         }
         QueryMsg::ClaimAdapted { contract } => {
-            let facade = get_facade(contract)?;
-            to_json_binary(&facade.adapt_claim(qctx)?)?
+            let facade = get_facade(contract, qctx)?;
+            to_json_binary(&facade.adapt_claim()?)?
         }
     };
     Ok(response)
 }
 
-fn get_facade(address: Addr) -> EnterpriseFacadeResult<EnterpriseFacadeV1> {
+fn get_facade(address: Addr, qctx: QueryContext) -> EnterpriseFacadeResult<EnterpriseFacadeV1> {
     Ok(EnterpriseFacadeV1 {
         enterprise_address: address,
+        qctx,
     })
 }
