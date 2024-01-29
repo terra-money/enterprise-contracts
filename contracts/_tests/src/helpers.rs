@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, Coin, Uint128, Uint64};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Uint128, Uint64};
 use cw20::Cw20Coin;
 use cw_asset::{AssetBase, AssetInfoBase};
 use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
@@ -37,18 +37,15 @@ pub const USER_DAO_CREATOR: &str = "dao_creator";
 
 pub const USER1: &str = "user1";
 pub const USER2: &str = "user2";
-pub const USER3: &str = "user3";
 
 pub const CW20_TOKEN1: &str = "token_addr1";
 pub const CW20_TOKEN2: &str = "token_addr2";
-pub const CW20_TOKEN3: &str = "token_addr3";
 
 pub const NFT_TOKEN1: &str = "nft_token_addr1";
 pub const NFT_TOKEN2: &str = "nft_token_addr2";
-pub const NFT_TOKEN3: &str = "nft_token_addr3";
 
 pub const CODE_ID_ATTESTATION: u64 = 1;
-pub const CODE_ID_CONTROLLER: u64 = 2;
+pub const CODE_ID_GOV_CONTROLLER: u64 = 2;
 pub const CODE_ID_FUNDS_DISTRIBUTOR: u64 = 3;
 pub const CODE_ID_ENTERPRISE: u64 = 4;
 pub const CODE_ID_FACADE: u64 = 5;
@@ -120,7 +117,7 @@ pub fn startup() -> App {
         .with_reply(enterprise_governance_controller::contract::reply),
     ));
 
-    assert_eq!(CODE_ID_CONTROLLER, code_id_controller);
+    assert_eq!(CODE_ID_GOV_CONTROLLER, code_id_controller);
 
     let code_id_funds_distributor = app.store_code(Box::new(
         ContractWrapper::new(
@@ -327,7 +324,7 @@ pub fn startup_with_versioning() -> App {
             attestation_code_id: CODE_ID_ATTESTATION,
             enterprise_code_id: CODE_ID_ENTERPRISE,
             enterprise_governance_code_id: CODE_ID_GOVERNANCE,
-            enterprise_governance_controller_code_id: CODE_ID_CONTROLLER,
+            enterprise_governance_controller_code_id: CODE_ID_GOV_CONTROLLER,
             enterprise_outposts_code_id: CODE_ID_OUTPOSTS,
             enterprise_treasury_code_id: CODE_ID_TREASURY,
             funds_distributor_code_id: CODE_ID_FUNDS_DISTRIBUTOR,
@@ -516,7 +513,7 @@ pub fn qy_get_all_dao(app: &App) -> HashMap<u64, Addr> {
     while finished {
         let msg = enterprise_factory_api::msg::QueryMsg::AllDaos(
             enterprise_factory_api::api::QueryAllDaosMsg {
-                start_after: start_after,
+                start_after,
                 limit: None,
             },
         );
@@ -608,7 +605,7 @@ pub fn qy_get_dao_type(app: &App, enterprise: impl Into<String>) -> DaoType {
         .dao_type
 }
 
-pub fn qy_get_membership_unerline_from_dao_type(
+pub fn qy_get_membership_underline_from_dao_type(
     app: &App,
     dao_type: &DaoType,
     all_contracts: &Addresses,
@@ -780,7 +777,7 @@ pub fn run_membership_deposit(
 ) -> AppResult {
     let dao_type = qy_get_dao_type(app, contracts.enterprise.clone());
 
-    let underline = qy_get_membership_unerline_from_dao_type(&app, &dao_type, contracts);
+    let underline = qy_get_membership_underline_from_dao_type(&app, &dao_type, contracts);
 
     let sender_addr: String = sender.clone().into();
 
@@ -800,7 +797,7 @@ pub fn run_membership_deposit(
             let msg = cw20::Cw20ExecuteMsg::Send {
                 contract: contracts.others.membership_contract.to_string(),
                 amount: amount.into_uint128(),
-                msg: to_binary(&token_staking_api::msg::Cw20HookMsg::Stake {
+                msg: to_json_binary(&token_staking_api::msg::Cw20HookMsg::Stake {
                     user: sender.clone().into(),
                 })
                 .unwrap(),
@@ -963,7 +960,7 @@ pub fn run_create_gov_proposal(
                     .clone()
                     .to_string(),
                 amount: funds.amount,
-                msg: to_binary(&msg)?,
+                msg: to_json_binary(&msg)?,
             };
 
             app.execute_contract(sender.into().into_addr(), contract.into_addr(), &msg, &[])

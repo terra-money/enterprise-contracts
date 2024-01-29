@@ -5,13 +5,13 @@ use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
     ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
-    ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
-    MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
-    V2MigrationStageResponse,
+    DaoMetadata, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, Logo,
+    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
+    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
+    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
+    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
+    UserStakeParams, UserStakeResponse, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
 use enterprise_facade_api::msg::QueryMsg::{
@@ -25,7 +25,7 @@ use enterprise_facade_api::msg::QueryMsg::{
     V2MigrationStage,
 };
 use enterprise_facade_common::facade::EnterpriseFacade;
-use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
+use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, GovConfig};
 use enterprise_outposts_api::api::CrossChainTreasuriesParams;
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
@@ -33,12 +33,13 @@ use enterprise_treasury_api::api::{
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub struct TestFacade {
-    pub app: App,
+// Helper implementation of the Enterprise facade to use in the tests
+pub struct TestFacade<'a> {
+    pub app: &'a App,
     pub dao_addr: Addr,
 }
 
-impl EnterpriseFacade for TestFacade {
+impl EnterpriseFacade for TestFacade<'_> {
     fn query_treasury_address(&self) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
         self.query_facade(&TreasuryAddress {
             contract: self.dao_addr.clone(),
@@ -317,11 +318,40 @@ impl EnterpriseFacade for TestFacade {
     }
 }
 
-impl TestFacade {
+impl TestFacade<'_> {
     fn query_facade<T: DeserializeOwned>(&self, msg: &impl Serialize) -> EnterpriseFacadeResult<T> {
         self.app
             .wrap()
             .query_wasm_smart(ADDR_FACADE, msg)
             .map_err(|e| EnterpriseFacadeError::Std(e))
+    }
+}
+
+pub fn from_facade_metadata(metadata: DaoMetadata) -> enterprise_protocol::api::DaoMetadata {
+    let logo = match metadata.logo {
+        Logo::Url(url) => enterprise_protocol::api::Logo::Url(url),
+        Logo::None => enterprise_protocol::api::Logo::None,
+    };
+    enterprise_protocol::api::DaoMetadata {
+        name: metadata.name,
+        description: metadata.description,
+        logo,
+        socials: enterprise_protocol::api::DaoSocialData {
+            github_username: metadata.socials.github_username,
+            discord_username: metadata.socials.discord_username,
+            twitter_username: metadata.socials.twitter_username,
+            telegram_username: metadata.socials.telegram_username,
+        },
+    }
+}
+
+pub fn from_facade_gov_config(gov_config: GovConfigFacade) -> GovConfig {
+    GovConfig {
+        quorum: gov_config.quorum,
+        threshold: gov_config.threshold,
+        veto_threshold: Some(gov_config.veto_threshold),
+        vote_duration: gov_config.vote_duration,
+        minimum_deposit: gov_config.minimum_deposit,
+        allow_early_proposal_execution: gov_config.allow_early_proposal_execution,
     }
 }

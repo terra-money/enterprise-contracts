@@ -13,3 +13,5 @@ mod facade_helpers;
 mod factory_helpers;
 #[cfg(test)]
 mod traits;
+#[cfg(test)]
+mod wasm_helpers;

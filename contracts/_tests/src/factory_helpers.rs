@@ -8,7 +8,7 @@ use enterprise_factory_api::api::{
     QueryAllDaosMsg,
 };
 use enterprise_factory_api::msg::QueryMsg::AllDaos;
-use enterprise_protocol::error::{DaoError, DaoResult};
+use enterprise_protocol::error::DaoResult;
 use multisig_membership_api::api::UserWeight;
 
 pub fn new_multisig_membership(members: Vec<(impl Into<String>, u8)>) -> CreateDaoMembershipMsg {

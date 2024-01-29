@@ -14,7 +14,7 @@ use poll_engine_api::api::VoteOutcome;
 use crate::{
     helpers::{
         create_standard_msg_new_dao, increase_time_block, qy_all_proposals, qy_cw20_balance,
-        qy_get_all_contracts_of_a_dao, qy_get_dao_type, qy_get_membership_unerline_from_dao_type,
+        qy_get_all_contracts_of_a_dao, qy_get_dao_type, qy_get_membership_underline_from_dao_type,
         qy_membership_total_weight, qy_membership_user_weight, qy_multisig_total_weight,
         qy_multisig_user_weight, qy_proposal, run_create_council_proposal, run_create_gov_proposal,
         run_execute_proposal, run_membership_claim_cw20, run_membership_deposit,
@@ -33,7 +33,7 @@ fn test() {
 
     let dao_type = qy_get_dao_type(&app, contracts.clone().enterprise);
 
-    let cw20_address = qy_get_membership_unerline_from_dao_type(&app, &dao_type, &contracts);
+    let cw20_address = qy_get_membership_underline_from_dao_type(&app, &dao_type, &contracts);
 
     let council_1 = COUNCIL[0];
 
@@ -106,7 +106,7 @@ fn test_token() {
 
     let dao_type = qy_get_dao_type(&app, contracts.clone().enterprise);
 
-    let cw20_address = qy_get_membership_unerline_from_dao_type(&app, &dao_type, &contracts);
+    let cw20_address = qy_get_membership_underline_from_dao_type(&app, &dao_type, &contracts);
 
     assert_eq!(
         qy_cw20_balance(&app, &cw20_address, USERS[0]),
@@ -336,7 +336,7 @@ fn test_minimum_deposit_on_denom_membership() {
         (deposit_amount * 2).into_uint128()
     );
 
-    let native_denom = qy_get_membership_unerline_from_dao_type(&app, &DaoType::Denom, &contracts);
+    let native_denom = qy_get_membership_underline_from_dao_type(&app, &DaoType::Denom, &contracts);
 
     let new_denom = "uatom";
 
