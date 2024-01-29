@@ -37,6 +37,7 @@ pub const USER_DAO_CREATOR: &str = "dao_creator";
 
 pub const USER1: &str = "user1";
 pub const USER2: &str = "user2";
+pub const USER3: &str = "user3";
 
 pub const CW20_TOKEN1: &str = "token_addr1";
 pub const CW20_TOKEN2: &str = "token_addr2";

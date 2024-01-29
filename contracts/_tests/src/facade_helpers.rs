@@ -1,17 +1,17 @@
 use crate::helpers::ADDR_FACADE;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use cw_multi_test::App;
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
     ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
     DaoMetadata, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, Logo,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse,
-    ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse, V2MigrationStageResponse,
+    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMember,
+    MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse, ProposalParams,
+    ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg,
+    StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse,
+    UnstakeMsg, UserStakeParams, UserStakeResponse, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
 use enterprise_facade_api::msg::QueryMsg::{
@@ -324,6 +324,53 @@ impl TestFacade<'_> {
             .wrap()
             .query_wasm_smart(ADDR_FACADE, msg)
             .map_err(|e| EnterpriseFacadeError::Std(e))
+    }
+}
+
+// convenience functions
+impl TestFacade<'_> {
+    pub fn member_info(
+        &self,
+        member: impl Into<String>,
+    ) -> EnterpriseFacadeResult<MemberInfoResponse> {
+        self.query_member_info(QueryMemberInfoMsg {
+            member_address: member.into(),
+        })
+    }
+}
+
+// assertion helpers
+impl TestFacade<'_> {
+    pub fn assert_multisig_members(
+        &self,
+        start_after: Option<&str>,
+        limit: Option<u32>,
+        members: Vec<(impl Into<String>, u8)>,
+    ) {
+        let members_list = self
+            .query_list_multisig_members(ListMultisigMembersMsg {
+                start_after: start_after.map(|it| it.to_string()),
+                limit,
+            })
+            .unwrap();
+        assert_eq!(
+            members_list.members,
+            members
+                .into_iter()
+                .map(|(user, weight)| MultisigMember {
+                    address: user.into(),
+                    weight: weight.into()
+                })
+                .collect::<Vec<MultisigMember>>(),
+        );
+    }
+
+    pub fn assert_total_staked(&self, total_staked: u8) {
+        let total_staked_amount = self
+            .query_total_staked_amount()
+            .unwrap()
+            .total_staked_amount;
+        assert_eq!(total_staked_amount, Uint128::from(total_staked));
     }
 }
 
