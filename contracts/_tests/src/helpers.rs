@@ -35,6 +35,18 @@ pub const ADMIN: &str = "admin";
 
 pub const USER_DAO_CREATOR: &str = "dao_creator";
 
+pub const USER1: &str = "user1";
+pub const USER2: &str = "user2";
+pub const USER3: &str = "user3";
+
+pub const CW20_TOKEN1: &str = "token_addr1";
+pub const CW20_TOKEN2: &str = "token_addr2";
+pub const CW20_TOKEN3: &str = "token_addr3";
+
+pub const NFT_TOKEN1: &str = "nft_token_addr1";
+pub const NFT_TOKEN2: &str = "nft_token_addr2";
+pub const NFT_TOKEN3: &str = "nft_token_addr3";
+
 pub const CODE_ID_ATTESTATION: u64 = 1;
 pub const CODE_ID_CONTROLLER: u64 = 2;
 pub const CODE_ID_FUNDS_DISTRIBUTOR: u64 = 3;

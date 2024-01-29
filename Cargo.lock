@@ -434,7 +434,7 @@ dependencies = [
  "cw20-base",
  "schemars",
  "serde",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "serde_with",
  "thiserror",
 ]
@@ -577,7 +577,7 @@ dependencies = [
  "hex",
  "schemars",
  "serde",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "sha2 0.10.8",
  "static_assertions",
  "thiserror",
@@ -712,6 +712,15 @@ dependencies = [
  "rand_core 0.6.4",
  "subtle-ng",
  "zeroize",
+]
+
+[[package]]
+name = "cw-address-like"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "451a4691083a88a3c0630a8a88799e9d4cd6679b7ce8ff22b8da2873ff31d380"
+dependencies = [
+ "cosmwasm-std",
 ]
 
 [[package]]
@@ -906,6 +915,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-ownable"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "093dfb4520c48b5848274dd88ea99e280a04bc08729603341c7fb0d758c74321"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-address-like",
+ "cw-ownable-derive",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.2",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-ownable-derive"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d3bf2e0f341bb6cc100d7d441d31cf713fbd3ce0c511f91e79f14b40a889af"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "cw-storage-plus"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6cf70ef7686e2da9ad7b067c5942cd3e88dd9453f7af42f54557f8af300fb0"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw-storage-plus"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -925,6 +971,21 @@ dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw-utils"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ae0b69fa7679de78825b4edeeec045066aa2b2c4b6e063d80042e565bb4da5c"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw2 0.15.1",
+ "schemars",
+ "semver",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -966,6 +1027,19 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 0.16.0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw2"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5abb8ecea72e09afff830252963cb60faf945ce6cef2c20a43814516082653da"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.15.1",
  "schemars",
  "serde",
 ]
@@ -1078,6 +1152,19 @@ dependencies = [
 
 [[package]]
 name = "cw721"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20dfe04f86e5327956b559ffcc86d9a43167391f37402afd8bf40b0be16bee4d"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 0.15.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw721"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94a1ea6e6277bdd6dfc043a9b1380697fe29d6e24b072597439523658d21d791"
@@ -1087,6 +1174,36 @@ dependencies = [
  "cw-utils 0.16.0",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw721"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3c4d286625ccadc957fe480dd3bdc54ada19e0e6b5b9325379db3130569e914"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.2",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw721-base"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62c3ee3b669fc2a8094301a73fd7be97a7454d4df2650c33599f737e8f254d24"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.15.1",
+ "cw-utils 0.15.1",
+ "cw2 0.15.1",
+ "cw721 0.15.0",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -1100,10 +1217,44 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "cw721-base"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da518d9f68bfda7d972cbaca2e8fcf04651d0edc3de72b04ae2bcd9289c81614"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-ownable",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.2",
+ "cw2 1.1.2",
+ "cw721 0.18.0",
+ "cw721-base 0.16.0",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw721-metadata-onchain"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6ac509607834958c513ccc679f8c8ba0d6f0a84b495af0568577e883ffee3df"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw2 0.15.1",
+ "cw721 0.15.0",
+ "cw721-base 0.15.0",
+ "schemars",
+ "serde",
 ]
 
 [[package]]
@@ -1458,7 +1609,7 @@ dependencies = [
  "enterprise-versioning-api",
  "funds-distributor-api",
  "nft-staking-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "token-staking-api",
 ]
 
@@ -1475,7 +1626,7 @@ dependencies = [
  "cw-utils 1.0.2",
  "cw2 1.1.2",
  "cw20 1.1.2",
- "cw721",
+ "cw721 0.16.0",
  "denom-staking-api",
  "enterprise-facade-api",
  "enterprise-governance-controller-api",
@@ -1486,7 +1637,7 @@ dependencies = [
  "membership-common-api",
  "multisig-membership-api",
  "nft-staking-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "token-staking-api",
 ]
 
@@ -1508,7 +1659,7 @@ dependencies = [
  "enterprise-versioning-api",
  "membership-common-api",
  "poll-engine-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "serde_with",
  "strum_macros",
  "thiserror",
@@ -1550,7 +1701,7 @@ dependencies = [
  "cw-utils 1.0.2",
  "cw2 1.1.2",
  "cw20 1.1.2",
- "cw721",
+ "cw721 0.16.0",
  "enterprise-facade-api",
  "enterprise-facade-common",
  "enterprise-governance-controller-api",
@@ -1562,7 +1713,7 @@ dependencies = [
  "multisig-membership-api",
  "poll-engine",
  "poll-engine-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "serde_with",
 ]
 
@@ -1579,7 +1730,7 @@ dependencies = [
  "cw-utils 1.0.2",
  "cw2 1.1.2",
  "cw20 1.1.2",
- "cw721",
+ "cw721 0.16.0",
  "denom-staking-api",
  "enterprise-facade-api",
  "enterprise-facade-common",
@@ -1592,7 +1743,7 @@ dependencies = [
  "membership-common-api",
  "multisig-membership-api",
  "nft-staking-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "token-staking-api",
 ]
 
@@ -1613,8 +1764,8 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base",
  "cw3",
- "cw721",
- "cw721-base",
+ "cw721 0.16.0",
+ "cw721-base 0.16.0",
  "denom-staking-api",
  "enterprise-factory-api",
  "enterprise-governance-api",
@@ -1702,7 +1853,7 @@ dependencies = [
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base",
- "cw721",
+ "cw721 0.16.0",
  "denom-staking-api",
  "enterprise-governance-api",
  "enterprise-governance-controller-api",
@@ -1715,7 +1866,7 @@ dependencies = [
  "multisig-membership-api",
  "nft-staking-api",
  "poll-engine-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "token-staking-api",
 ]
 
@@ -1739,7 +1890,7 @@ dependencies = [
  "multisig-membership-api",
  "nft-staking-api",
  "poll-engine-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "serde_with",
  "strum_macros",
  "thiserror",
@@ -1766,7 +1917,7 @@ dependencies = [
  "enterprise-treasury-api",
  "itertools 0.10.5",
  "prost 0.11.9",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "sha2 0.10.8",
 ]
 
@@ -1784,7 +1935,7 @@ dependencies = [
  "enterprise-treasury-api",
  "schemars",
  "serde",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "serde_with",
  "strum",
  "strum_macros",
@@ -1803,7 +1954,7 @@ dependencies = [
  "enterprise-versioning-api",
  "schemars",
  "serde",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "serde_with",
  "strum",
  "strum_macros",
@@ -1823,7 +1974,7 @@ dependencies = [
  "cw-utils 1.0.2",
  "cw2 1.1.2",
  "cw20 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "denom-staking-api",
  "enterprise-factory-api",
  "enterprise-governance-api",
@@ -1837,7 +1988,7 @@ dependencies = [
  "multisig-membership-api",
  "nft-staking-api",
  "poll-engine-api",
- "serde-json-wasm",
+ "serde-json-wasm 0.5.1",
  "token-staking-api",
 ]
 
@@ -2587,7 +2738,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.2",
- "cw721",
+ "cw721 0.16.0",
  "ics721-callback-proxy-api",
  "ics721-types",
  "nft-staking-api",
@@ -2600,7 +2751,7 @@ version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw721",
+ "cw721 0.16.0",
  "serde",
  "thiserror",
 ]
@@ -2996,7 +3147,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.2",
- "cw721",
+ "cw721 0.16.0",
  "itertools 0.10.5",
  "membership-common",
  "membership-common-api",
@@ -3912,6 +4063,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-json-wasm"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f05da0d153dd4595bdffd5099dc0e9ce425b205ee648eb93437ff7302af8c9a5"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_bytes"
 version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4391,6 +4551,58 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff1bc3d3f05aff0403e8ac0d92ced918ec05b666a43f83297ccef5bea8a3d449"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "tests"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "attestation",
+ "attestation-api",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.2",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-base",
+ "cw3",
+ "cw721 0.16.0",
+ "cw721-base 0.18.0",
+ "cw721-metadata-onchain",
+ "denom-staking-api",
+ "denom-staking-membership",
+ "enterprise",
+ "enterprise-factory",
+ "enterprise-factory-api",
+ "enterprise-governance",
+ "enterprise-governance-api",
+ "enterprise-governance-controller",
+ "enterprise-governance-controller-api",
+ "enterprise-outposts",
+ "enterprise-protocol",
+ "enterprise-treasury",
+ "enterprise-treasury-api",
+ "enterprise-versioning",
+ "enterprise-versioning-api",
+ "funds-distributor",
+ "funds-distributor-api",
+ "itertools 0.10.5",
+ "membership-common-api",
+ "multisig-membership",
+ "multisig-membership-api",
+ "nft-staking-api",
+ "nft-staking-membership",
+ "poll-engine-api",
+ "serde",
+ "serde-json-wasm 1.0.1",
+ "serde_json",
+ "token-staking-api",
+ "token-staking-membership",
 ]
 
 [[package]]

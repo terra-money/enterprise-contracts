@@ -22,6 +22,16 @@ impl IntoAddr for String {
     }
 }
 
+pub trait IntoStringVec {
+    fn into_string(self) -> Vec<String>;
+}
+
+impl IntoStringVec for Vec<&str> {
+    fn into_string(self) -> Vec<String> {
+        self.into_iter().map(|it| it.to_string()).collect()
+    }
+}
+
 pub trait IntoDecimal {
     fn into_decimal(self) -> Decimal;
 }
