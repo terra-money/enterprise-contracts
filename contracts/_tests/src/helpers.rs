@@ -365,6 +365,50 @@ pub fn startup_with_versioning() -> App {
 
     assert_eq!(contract_factory, ADDR_FACTORY);
 
+    let facade_v1 = app
+        .instantiate_contract(
+            CODE_ID_FACADE_V1,
+            ADMIN.into_addr(),
+            &enterprise_facade_v1::msg::InstantiateMsg {
+                enterprise_versioning: ADDR_VERSIONING.to_string(),
+            },
+            &[],
+            "facade v1",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    assert_eq!(facade_v1, ADDR_FACADE_V1);
+
+    let facade_v2 = app
+        .instantiate_contract(
+            CODE_ID_FACADE_V2,
+            ADMIN.into_addr(),
+            &enterprise_facade_v2::msg::InstantiateMsg {},
+            &[],
+            "facade v2",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    assert_eq!(facade_v2, ADDR_FACADE_V2);
+
+    let facade = app
+        .instantiate_contract(
+            CODE_ID_FACADE,
+            ADMIN.into_addr(),
+            &enterprise_facade_api::msg::InstantiateMsg {
+                enterprise_facade_v1: ADDR_FACADE_V1.to_string(),
+                enterprise_facade_v2: ADDR_FACADE_V2.to_string(),
+            },
+            &[],
+            "facade",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    assert_eq!(facade, ADDR_FACADE);
+
     app
 }
 

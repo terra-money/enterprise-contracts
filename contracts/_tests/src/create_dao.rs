@@ -8,13 +8,14 @@ use crate::helpers::{
 use crate::traits::{IntoAddr, IntoStringVec};
 use cosmwasm_std::Decimal;
 use cw_multi_test::Executor;
+use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_factory_api::api::{AllDaosResponse, CreateDaoMsg, QueryAllDaosMsg};
 use enterprise_factory_api::msg::QueryMsg::AllDaos;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
 use enterprise_protocol::api::{DaoMetadata, DaoSocialData, Logo};
 
 #[test]
-fn test() {
+fn test() -> anyhow::Result<()> {
     // TODO: rename this test
     let mut app = startup_with_versioning();
 
@@ -80,4 +81,7 @@ fn test() {
     let dao_addr = all_daos.daos.first().cloned().unwrap().dao_address;
 
     let facade = TestFacade { app, dao_addr };
+    let _components = facade.query_component_contracts()?;
+
+    Ok(())
 }
