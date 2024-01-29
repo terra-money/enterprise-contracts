@@ -1,6 +1,9 @@
 use crate::asset_helpers::cw20_unchecked;
-use crate::facade_helpers::{from_facade_gov_config, from_facade_metadata, TestFacade};
+use crate::facade_helpers::{
+    from_facade_dao_council, from_facade_gov_config, from_facade_metadata, TestFacade,
+};
 use crate::factory_helpers::{
+    create_dao, default_dao_council, default_dao_metadata, default_gov_config,
     default_new_token_membership, get_first_dao, new_multisig_membership, new_token_membership,
     query_all_daos,
 };
@@ -8,17 +11,15 @@ use crate::helpers::{
     startup_with_versioning, ADDR_FACTORY, CODE_ID_ATTESTATION, CODE_ID_ENTERPRISE,
     CODE_ID_FUNDS_DISTRIBUTOR, CODE_ID_GOVERNANCE, CODE_ID_GOV_CONTROLLER,
     CODE_ID_MEMBERSHIP_MULTISIG, CODE_ID_OUTPOSTS, CODE_ID_TREASURY, CW20_TOKEN1, CW20_TOKEN2,
-    NFT_TOKEN1, NFT_TOKEN2, USER1, USER2, USER3, USER_DAO_CREATOR,
+    NFT_TOKEN1, NFT_TOKEN2, USER1, USER2, USER3,
 };
 use crate::membership_helpers::TestMembershipContract;
 use crate::traits::{IntoAddr, IntoStringVec};
 use crate::wasm_helpers::{assert_addr_code_id, assert_contract_admin};
 use attestation_api::api::AttestationTextResponse;
 use attestation_api::msg::QueryMsg::AttestationText;
-use cosmwasm_std::{Addr, Decimal};
+use cosmwasm_std::Decimal;
 use cw_asset::AssetInfo;
-use cw_multi_test::Executor;
-use enterprise_facade_api::api::{AssetWhitelistParams, NftWhitelistParams};
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_factory_api::api::{CreateDaoMsg, DaoRecord};
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
@@ -73,13 +74,7 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
         attestation_text: Some(attestation_text.into()),
     };
 
-    app.execute_contract(
-        USER_DAO_CREATOR.into_addr(),
-        ADDR_FACTORY.into_addr(),
-        &enterprise_factory_api::msg::ExecuteMsg::CreateDao(Box::new(msg)),
-        &[],
-    )
-    .unwrap();
+    create_dao(&mut app, msg);
 
     let dao_addr = get_first_dao(&app)?;
 
@@ -202,50 +197,17 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
     assert_eq!(from_facade_metadata(dao_info.metadata), dao_metadata);
     assert_eq!(from_facade_gov_config(dao_info.gov_config), gov_config); // TODO: verify veto_threshold is properly converted to default value
 
-    // verify asset whitelist
-    // TODO: probably extract to a helper
-    let asset_whitelist = facade
-        .query_asset_whitelist(AssetWhitelistParams {
-            start_after: None,
-            limit: None,
-        })?
-        .assets;
-    assert_eq!(
-        asset_whitelist,
-        vec![
-            AssetInfo::cw20(CW20_TOKEN1.into_addr()),
-            AssetInfo::cw20(CW20_TOKEN2.into_addr()),
-        ]
-    );
+    // verify whitelists
+    facade.assert_asset_whitelist(vec![
+        AssetInfo::cw20(CW20_TOKEN1.into_addr()),
+        AssetInfo::cw20(CW20_TOKEN2.into_addr()),
+    ]);
 
-    // verify NFT whitelist
-    let nft_whitelist = facade
-        .query_nft_whitelist(NftWhitelistParams {
-            start_after: None,
-            limit: None,
-        })?
-        .nfts;
-    assert_eq!(nft_whitelist, vec![NFT_TOKEN1, NFT_TOKEN2]);
+    facade.assert_nft_whitelist(vec![NFT_TOKEN1, NFT_TOKEN2]);
 
     // verify council data
-    // TODO: extract a helper or sth, prettify this :(
     let council = dao_info.dao_council.unwrap();
-    assert_eq!(dao_council.quorum, council.quorum);
-    assert_eq!(dao_council.threshold, council.threshold);
-    assert_eq!(
-        dao_council
-            .members
-            .into_iter()
-            .map(|it| it.into_addr())
-            .collect::<Vec<Addr>>(),
-        council.members
-    );
-    assert_eq!(
-        dao_council
-            .allowed_proposal_action_types
-            .unwrap_or_default(),
-        council.allowed_proposal_action_types
-    );
+    assert_eq!(from_facade_dao_council(council), dao_council);
 
     let attestation_addr = components.attestation_contract.unwrap();
     let attestation_text_resp: AttestationTextResponse = app
@@ -260,39 +222,10 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
 fn create_new_multisig_dao() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
-    // TODO: extract this metadata to some helpers or functions for default/anonymous values
-    let dao_metadata = DaoMetadata {
-        name: "DAO name".to_string(),
-        description: None,
-        logo: Logo::None,
-        socials: DaoSocialData {
-            github_username: None,
-            discord_username: None,
-            twitter_username: None,
-            telegram_username: None,
-        },
-    };
-    let gov_config = GovConfig {
-        quorum: Decimal::percent(31),
-        threshold: Decimal::percent(52),
-        veto_threshold: Some(Decimal::percent(17)),
-        vote_duration: 250,
-        minimum_deposit: None,
-        allow_early_proposal_execution: false,
-    };
-    let dao_council = DaoCouncilSpec {
-        members: vec![USER1, USER2].into_string(),
-        quorum: Decimal::percent(34),
-        threshold: Decimal::percent(54),
-        allowed_proposal_action_types: Some(vec![
-            ProposalActionType::DeployCrossChainTreasury,
-            ProposalActionType::RemoveAttestation,
-        ]),
-    };
     let msg = CreateDaoMsg {
-        dao_metadata: dao_metadata.clone(),
-        gov_config: gov_config.clone(),
-        dao_council: Some(dao_council.clone()),
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
         dao_membership: new_multisig_membership(vec![(USER1, 1), (USER2, 2), (USER3, 5)]),
         asset_whitelist: None,
         nft_whitelist: None,
@@ -301,13 +234,7 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
         attestation_text: None,
     };
 
-    app.execute_contract(
-        USER_DAO_CREATOR.into_addr(),
-        ADDR_FACTORY.into_addr(),
-        &enterprise_factory_api::msg::ExecuteMsg::CreateDao(Box::new(msg)),
-        &[],
-    )
-    .unwrap();
+    create_dao(&mut app, msg);
 
     let dao_addr = get_first_dao(&app)?;
     let facade = TestFacade {

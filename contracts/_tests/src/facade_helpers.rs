@@ -1,12 +1,14 @@
 use crate::helpers::ADDR_FACADE;
+use crate::traits::IntoAddr;
 use cosmwasm_std::{Addr, Uint128};
+use cw_asset::AssetInfo;
 use cw_multi_test::App;
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
     ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
-    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
-    DaoMetadata, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, Logo,
-    MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMember,
+    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoCouncil,
+    DaoInfoResponse, DaoMetadata, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg,
+    Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMember,
     MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse, ProposalParams,
     ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
     ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg,
@@ -25,7 +27,9 @@ use enterprise_facade_api::msg::QueryMsg::{
     V2MigrationStage,
 };
 use enterprise_facade_common::facade::EnterpriseFacade;
-use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, GovConfig};
+use enterprise_governance_controller_api::api::{
+    CreateProposalWithNftDepositMsg, DaoCouncilSpec, GovConfig,
+};
 use enterprise_outposts_api::api::CrossChainTreasuriesParams;
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
@@ -372,6 +376,33 @@ impl TestFacade<'_> {
             .total_staked_amount;
         assert_eq!(total_staked_amount, Uint128::from(total_staked));
     }
+
+    pub fn assert_asset_whitelist(&self, assets: Vec<AssetInfo>) {
+        let asset_whitelist = self
+            .query_asset_whitelist(AssetWhitelistParams {
+                start_after: None,
+                limit: None,
+            })
+            .unwrap()
+            .assets;
+        assert_eq!(asset_whitelist, assets);
+    }
+
+    pub fn assert_nft_whitelist(&self, nfts: Vec<&str>) {
+        let nft_whitelist = self
+            .query_nft_whitelist(NftWhitelistParams {
+                start_after: None,
+                limit: None,
+            })
+            .unwrap()
+            .nfts;
+        assert_eq!(
+            nft_whitelist,
+            nfts.into_iter()
+                .map(|it| it.into_addr())
+                .collect::<Vec<Addr>>()
+        );
+    }
 }
 
 pub fn from_facade_metadata(metadata: DaoMetadata) -> enterprise_protocol::api::DaoMetadata {
@@ -400,5 +431,18 @@ pub fn from_facade_gov_config(gov_config: GovConfigFacade) -> GovConfig {
         vote_duration: gov_config.vote_duration,
         minimum_deposit: gov_config.minimum_deposit,
         allow_early_proposal_execution: gov_config.allow_early_proposal_execution,
+    }
+}
+
+pub fn from_facade_dao_council(council: DaoCouncil) -> DaoCouncilSpec {
+    DaoCouncilSpec {
+        members: council.members.into_iter().map(Addr::into_string).collect(),
+        quorum: council.quorum,
+        threshold: council.threshold,
+        allowed_proposal_action_types: council
+            .allowed_proposal_action_types
+            .into_iter()
+            .map(|it| it.into())
+            .collect(),
     }
 }
