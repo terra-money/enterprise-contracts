@@ -473,6 +473,12 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
         .wrap()
         .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
 
+    assert_eq!(
+        facade.query_dao_info()?.gov_config.unlocking_period,
+        Duration::Time(300)
+    );
+    assert_eq!(nft_config.unlocking_period, Duration::Time(300));
+
     let dao_nft = nft_config.nft_contract;
 
     let enterprise_contract = facade.query_component_contracts()?.enterprise_contract;
@@ -527,6 +533,57 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
 }
 
 #[test]
+fn create_new_nft_dao_without_minter() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: new_nft_membership(NewCw721MembershipMsg {
+            nft_name: "DAO NFT".to_string(),
+            nft_symbol: "DNFT".to_string(),
+            minter: None,
+            unlocking_period: Duration::Time(300),
+        }),
+        asset_whitelist: None,
+        nft_whitelist: None,
+        minimum_weight_for_rewards: None,
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    create_dao(&mut app, msg)?;
+
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade {
+        app: &app,
+        dao_addr,
+    };
+
+    // TODO: extract this tedious process to a helper (get to the NFT contract directly)
+    let membership_contract = facade
+        .query_component_contracts()?
+        .membership_contract
+        .unwrap();
+    let nft_config: NftConfigResponse = app
+        .wrap()
+        .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+
+    let dao_nft = nft_config.nft_contract;
+
+    // verify that the minter is set to Enterprise contract
+    let enterprise_contract = facade.query_component_contracts()?.enterprise_contract;
+    let minter: MinterResponse = app.wrap().query_wasm_smart(
+        dao_nft.to_string(),
+        &cw721_base::msg::QueryMsg::<Extension>::Minter {},
+    )?;
+    assert_eq!(minter.minter.unwrap(), enterprise_contract.to_string());
+
+    Ok(())
+}
+
+#[test]
 fn import_cw721_dao() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
@@ -573,6 +630,12 @@ fn import_cw721_dao() -> anyhow::Result<()> {
     let nft_config: NftConfigResponse = app
         .wrap()
         .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+
+    assert_eq!(
+        facade.query_dao_info()?.gov_config.unlocking_period,
+        Duration::Time(300)
+    );
+    assert_eq!(nft_config.unlocking_period, Duration::Time(300));
 
     assert_eq!(nft_config.nft_contract, cw721_contract);
 
