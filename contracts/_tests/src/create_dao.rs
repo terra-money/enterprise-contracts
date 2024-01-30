@@ -4,12 +4,12 @@ use crate::facade_helpers::{
 };
 use crate::factory_helpers::{
     create_dao, default_dao_council, default_dao_metadata, default_gov_config,
-    default_new_token_membership, get_first_dao, new_multisig_membership, new_token_membership,
-    query_all_daos,
+    default_new_token_membership, get_first_dao, import_cw3_membership, new_multisig_membership,
+    new_token_membership, query_all_daos,
 };
 use crate::helpers::{
-    startup_with_versioning, ADDR_FACTORY, CODE_ID_ATTESTATION, CODE_ID_ENTERPRISE,
-    CODE_ID_FUNDS_DISTRIBUTOR, CODE_ID_GOVERNANCE, CODE_ID_GOV_CONTROLLER,
+    startup_with_versioning, ADDR_FACTORY, ADMIN, CODE_ID_ATTESTATION, CODE_ID_CW3,
+    CODE_ID_ENTERPRISE, CODE_ID_FUNDS_DISTRIBUTOR, CODE_ID_GOVERNANCE, CODE_ID_GOV_CONTROLLER,
     CODE_ID_MEMBERSHIP_MULTISIG, CODE_ID_OUTPOSTS, CODE_ID_TREASURY, CW20_TOKEN1, CW20_TOKEN2,
     NFT_TOKEN1, NFT_TOKEN2, USER1, USER2, USER3,
 };
@@ -19,7 +19,10 @@ use crate::wasm_helpers::{assert_addr_code_id, assert_contract_admin};
 use attestation_api::api::AttestationTextResponse;
 use attestation_api::msg::QueryMsg::AttestationText;
 use cosmwasm_std::Decimal;
+use cw3_fixed_multisig::msg::Voter;
 use cw_asset::AssetInfo;
+use cw_multi_test::Executor;
+use cw_utils::{Duration, Threshold};
 use enterprise_facade_api::api::DaoType;
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_factory_api::api::{CreateDaoMsg, DaoRecord};
@@ -259,8 +262,8 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
         Decimal::from_ratio(5u8, 8u8)
     );
 
-    facade.assert_multisig_members(None, Some(1), vec![(USER1, 1)]);
-    facade.assert_multisig_members(Some(USER1), None, vec![(USER2, 2), (USER3, 5)]);
+    facade.assert_multisig_members_list(None, Some(1), vec![(USER1, 1)]);
+    facade.assert_multisig_members_list(Some(USER1), None, vec![(USER2, 2), (USER3, 5)]);
 
     facade.assert_total_staked(0);
 
@@ -275,6 +278,109 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
     membership_contract.assert_user_weight(USER3, 5);
 
     membership_contract.assert_total_weight(8);
+
+    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Multisig);
+
+    Ok(())
+}
+
+#[test]
+fn create_import_cw3_dao() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw3_threshold = Decimal::percent(79);
+    let cw3_voting_time = 10_000u64;
+    let cw3_contract = app
+        .instantiate_contract(
+            CODE_ID_CW3,
+            ADMIN.into_addr(),
+            &cw3_fixed_multisig::msg::InstantiateMsg {
+                voters: vec![
+                    Voter {
+                        addr: USER1.to_string(),
+                        weight: 10,
+                    },
+                    Voter {
+                        addr: USER3.to_string(),
+                        weight: 90,
+                    },
+                ],
+                threshold: Threshold::AbsolutePercentage {
+                    percentage: cw3_threshold,
+                },
+                max_voting_period: Duration::Time(cw3_voting_time),
+            },
+            &[],
+            "CW3 multisig",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let gov_config = GovConfig {
+        quorum: Decimal::percent(10),
+        threshold: Decimal::percent(66),
+        veto_threshold: Some(Decimal::percent(50)),
+        vote_duration: 100,
+        minimum_deposit: None,
+        allow_early_proposal_execution: false,
+    };
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: gov_config.clone(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: import_cw3_membership(cw3_contract),
+        asset_whitelist: None,
+        nft_whitelist: None,
+        minimum_weight_for_rewards: None,
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    create_dao(&mut app, msg);
+
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade {
+        app: &app,
+        dao_addr,
+    };
+
+    assert_eq!(
+        facade.member_info(USER1)?.voting_power,
+        Decimal::from_ratio(1u8, 10u8)
+    );
+
+    assert_eq!(facade.member_info(USER2)?.voting_power, Decimal::zero());
+
+    assert_eq!(
+        facade.member_info(USER3)?.voting_power,
+        Decimal::from_ratio(9u8, 10u8)
+    );
+
+    // TODO: this bunch of steps for verifying member weights in all places is copied over, extract it to a helper
+    facade.assert_multisig_members_list(None, Some(1), vec![(USER1, 10)]);
+    facade.assert_multisig_members_list(Some(USER1), None, vec![(USER3, 90)]);
+
+    facade.assert_total_staked(0);
+
+    let components = facade.query_component_contracts()?;
+    let membership_contract = TestMembershipContract {
+        app: &app,
+        contract: components.membership_contract.unwrap(),
+    };
+
+    membership_contract.assert_user_weight(USER1, 10);
+    membership_contract.assert_user_weight(USER2, 0);
+    membership_contract.assert_user_weight(USER3, 90);
+
+    membership_contract.assert_total_weight(100);
+
+    // assert that we set different governance params from the ones in CW3, and ours are the ones used in the DAO
+    assert_ne!(cw3_voting_time, gov_config.vote_duration);
+    assert_ne!(cw3_threshold, gov_config.threshold);
+    assert_eq!(
+        from_facade_gov_config(facade.query_dao_info().unwrap().gov_config),
+        gov_config
+    );
 
     assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Multisig);
 

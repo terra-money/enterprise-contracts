@@ -1151,6 +1151,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw3-fixed-multisig"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b45b1bcab076b68a4739694dd196152fb70d6a8e6d0033bb20702cfb9b0a63f"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.2",
+ "cw2 1.1.2",
+ "cw3",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw721"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4571,6 +4588,7 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base",
  "cw3",
+ "cw3-fixed-multisig",
  "cw721 0.16.0",
  "cw721-base 0.18.0",
  "cw721-metadata-onchain",

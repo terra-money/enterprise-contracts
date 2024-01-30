@@ -61,8 +61,9 @@ pub const CODE_ID_MEMBERSHIP_MULTISIG: u64 = 13;
 pub const CODE_ID_MEMBERSHIP_TOKEN: u64 = 14;
 pub const CODE_ID_TREASURY: u64 = 15;
 pub const CODE_ID_VERSIONING: u64 = 16;
-pub const CODE_ID_CW20: u64 = 17;
-pub const CODE_ID_CW721: u64 = 18;
+pub const CODE_ID_CW3: u64 = 17;
+pub const CODE_ID_CW20: u64 = 18;
+pub const CODE_ID_CW721: u64 = 19;
 
 pub const ADDR_VERSIONING: &str = "contract0";
 pub const ADDR_FACTORY: &str = "contract1";
@@ -273,6 +274,14 @@ pub fn startup() -> App {
     ));
 
     assert_eq!(CODE_ID_VERSIONING, code_id_versioning);
+
+    let code_id_cw3 = app.store_code(Box::new(ContractWrapper::new(
+        cw3_fixed_multisig::contract::execute,
+        cw3_fixed_multisig::contract::instantiate,
+        cw3_fixed_multisig::contract::query,
+    )));
+
+    assert_eq!(code_id_cw3, CODE_ID_CW3);
 
     let code_id_cw20 = app.store_code(Box::new(ContractWrapper::new(
         cw20_base::contract::execute,

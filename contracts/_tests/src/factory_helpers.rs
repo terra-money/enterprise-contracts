@@ -5,8 +5,8 @@ use cw20::Cw20Coin;
 use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{
-    AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, NewCw20MembershipMsg,
-    NewMultisigMembershipMsg, QueryAllDaosMsg,
+    AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, ImportCw3MembershipMsg,
+    NewCw20MembershipMsg, NewMultisigMembershipMsg, QueryAllDaosMsg,
 };
 use enterprise_factory_api::msg::QueryMsg::AllDaos;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
@@ -23,6 +23,12 @@ pub fn new_multisig_membership(members: Vec<(impl Into<String>, u8)>) -> CreateD
                 weight: weight.into(),
             })
             .collect(),
+    })
+}
+
+pub fn import_cw3_membership(cw3_contract: Addr) -> CreateDaoMembershipMsg {
+    CreateDaoMembershipMsg::ImportCw3(ImportCw3MembershipMsg {
+        cw3_contract: cw3_contract.to_string(),
     })
 }
 

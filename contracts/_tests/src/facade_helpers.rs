@@ -345,7 +345,7 @@ impl TestFacade<'_> {
 
 // assertion helpers
 impl TestFacade<'_> {
-    pub fn assert_multisig_members(
+    pub fn assert_multisig_members_list(
         &self,
         start_after: Option<&str>,
         limit: Option<u32>,
