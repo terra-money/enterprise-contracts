@@ -4,8 +4,8 @@ use crate::facade_helpers::{
 };
 use crate::factory_helpers::{
     create_dao, default_dao_council, default_dao_metadata, default_gov_config,
-    default_new_token_membership, get_first_dao, import_cw3_membership, new_multisig_membership,
-    new_nft_membership, new_token_membership, query_all_daos,
+    default_new_token_membership, get_first_dao, import_cw3_membership, import_cw721_membership,
+    new_multisig_membership, new_nft_membership, new_token_membership, query_all_daos,
 };
 use crate::helpers::{
     startup_with_versioning, ADDR_FACTORY, ADMIN, CODE_ID_ATTESTATION, CODE_ID_CW20, CODE_ID_CW3,
@@ -291,7 +291,7 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
 }
 
 #[test]
-fn create_import_cw3_dao() -> anyhow::Result<()> {
+fn import_cw3_dao() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let cw3_threshold = Decimal::percent(79);
@@ -394,7 +394,7 @@ fn create_import_cw3_dao() -> anyhow::Result<()> {
 }
 
 #[test]
-fn create_import_non_cw3_dao_fails() -> anyhow::Result<()> {
+fn import_non_cw3_dao_fails() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let cw20_contract = app
@@ -441,7 +441,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
     let nft_membership = NewCw721MembershipMsg {
         nft_name: "DAO NFT".to_string(),
         nft_symbol: "DNFT".to_string(),
-        minter: Some(ADMIN.to_string()),
+        minter: Some(USER1.to_string()),
         unlocking_period: Duration::Time(300),
     };
     let msg = CreateDaoMsg {
@@ -494,7 +494,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
         dao_nft.to_string(),
         &cw721_base::msg::QueryMsg::<Extension>::Minter {},
     )?;
-    assert_eq!(minter.minter.unwrap(), ADMIN.to_string());
+    assert_eq!(minter.minter.unwrap(), USER1.to_string());
 
     facade.assert_total_staked(0);
 
@@ -522,6 +522,135 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
     // facade.assert_nft_whitelist(vec![NFT_TOKEN1, dao_nft.as_ref()]);
 
     assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Nft);
+
+    Ok(())
+}
+
+#[test]
+fn import_cw721_dao() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw721_contract = app
+        .instantiate_contract(
+            CODE_ID_CW721,
+            ADMIN.into_addr(),
+            &cw721_base::msg::InstantiateMsg {
+                name: "Existing NFT".to_string(),
+                symbol: "ENFT".to_string(),
+                minter: USER1.to_string(),
+            },
+            &[],
+            "CW721 contract",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: import_cw721_membership(cw721_contract.to_string(), 300),
+        asset_whitelist: None,
+        nft_whitelist: Some(vec![NFT_TOKEN1.to_string()]),
+        minimum_weight_for_rewards: Some(2u8.into()),
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    create_dao(&mut app, msg)?;
+
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade {
+        app: &app,
+        dao_addr,
+    };
+
+    // TODO: extract this tedious process to a helper (get to the NFT contract directly)
+    let membership_contract = facade
+        .query_component_contracts()?
+        .membership_contract
+        .unwrap();
+    let nft_config: NftConfigResponse = app
+        .wrap()
+        .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+
+    assert_eq!(nft_config.nft_contract, cw721_contract);
+
+    let nft_info: ContractInfoResponse = app.wrap().query_wasm_smart(
+        cw721_contract.to_string(),
+        &cw721::Cw721QueryMsg::ContractInfo {},
+    )?;
+
+    assert_eq!("Existing NFT", &nft_info.name);
+    assert_eq!("ENFT", &nft_info.symbol);
+
+    facade.assert_total_staked(0);
+
+    let components = facade.query_component_contracts()?;
+    let membership_contract = TestMembershipContract {
+        app: &app,
+        contract: components.membership_contract.unwrap(),
+    };
+
+    membership_contract.assert_total_weight(0);
+
+    let funds_distributor = facade
+        .query_component_contracts()
+        .unwrap()
+        .funds_distributor_contract;
+    let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app
+        .wrap()
+        .query_wasm_smart(funds_distributor.to_string(), &MinimumEligibleWeight {})?;
+    assert_eq!(
+        minimum_weight_for_rewards.minimum_eligible_weight,
+        Uint128::from(2u8)
+    );
+
+    // TODO: fix this
+    // facade.assert_nft_whitelist(vec![NFT_TOKEN1, dao_nft.as_ref()]);
+
+    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Nft);
+
+    Ok(())
+}
+
+#[test]
+fn import_non_cw721_dao_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw20_contract = app
+        .instantiate_contract(
+            CODE_ID_CW20,
+            ADMIN.into_addr(),
+            &cw20_base::msg::InstantiateMsg {
+                name: "CW20 token".to_string(),
+                symbol: "TKN".to_string(),
+                decimals: 6,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "CW20",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: import_cw721_membership(cw20_contract.to_string(), 300),
+        asset_whitelist: None,
+        nft_whitelist: None,
+        minimum_weight_for_rewards: None,
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
 
     Ok(())
 }

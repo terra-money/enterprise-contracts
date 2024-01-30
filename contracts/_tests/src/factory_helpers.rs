@@ -6,7 +6,8 @@ use cw_multi_test::{App, AppResponse, Executor};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{
     AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, ImportCw3MembershipMsg,
-    NewCw20MembershipMsg, NewCw721MembershipMsg, NewMultisigMembershipMsg, QueryAllDaosMsg,
+    ImportCw721MembershipMsg, NewCw20MembershipMsg, NewCw721MembershipMsg,
+    NewMultisigMembershipMsg, QueryAllDaosMsg,
 };
 use enterprise_factory_api::msg::QueryMsg::AllDaos;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
@@ -54,6 +55,16 @@ pub fn default_new_token_membership() -> NewCw20MembershipMsg {
 
 pub fn new_nft_membership(nft_membership: NewCw721MembershipMsg) -> CreateDaoMembershipMsg {
     CreateDaoMembershipMsg::NewCw721(nft_membership)
+}
+
+pub fn import_cw721_membership(
+    cw721_contract: String,
+    unlocking_period: u64,
+) -> CreateDaoMembershipMsg {
+    CreateDaoMembershipMsg::ImportCw721(ImportCw721MembershipMsg {
+        cw721_contract,
+        unlocking_period: Duration::Time(unlocking_period),
+    })
 }
 
 pub fn default_dao_metadata() -> DaoMetadata {
