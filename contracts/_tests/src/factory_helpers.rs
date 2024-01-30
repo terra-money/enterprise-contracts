@@ -2,7 +2,7 @@ use crate::helpers::{ADDR_FACTORY, USER1, USER2, USER_DAO_CREATOR};
 use crate::traits::{IntoAddr, IntoStringVec};
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw20::Cw20Coin;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::{App, AppResponse, Executor};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{
     AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, ImportCw3MembershipMsg,
@@ -90,14 +90,14 @@ pub fn default_dao_council() -> DaoCouncilSpec {
 }
 
 // TODO: create an interface to the factory
-pub fn create_dao(app: &mut App, msg: CreateDaoMsg) {
-    app.execute_contract(
+pub fn create_dao(app: &mut App, msg: CreateDaoMsg) -> anyhow::Result<AppResponse> {
+    let response = app.execute_contract(
         USER_DAO_CREATOR.into_addr(),
         ADDR_FACTORY.into_addr(),
         &enterprise_factory_api::msg::ExecuteMsg::CreateDao(Box::new(msg)),
         &[],
-    )
-    .unwrap();
+    )?;
+    Ok(response)
 }
 
 pub fn query_all_daos(app: &App) -> DaoResult<AllDaosResponse> {

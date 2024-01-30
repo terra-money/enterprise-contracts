@@ -8,7 +8,7 @@ use crate::factory_helpers::{
     new_token_membership, query_all_daos,
 };
 use crate::helpers::{
-    startup_with_versioning, ADDR_FACTORY, ADMIN, CODE_ID_ATTESTATION, CODE_ID_CW3,
+    startup_with_versioning, ADDR_FACTORY, ADMIN, CODE_ID_ATTESTATION, CODE_ID_CW20, CODE_ID_CW3,
     CODE_ID_ENTERPRISE, CODE_ID_FUNDS_DISTRIBUTOR, CODE_ID_GOVERNANCE, CODE_ID_GOV_CONTROLLER,
     CODE_ID_MEMBERSHIP_MULTISIG, CODE_ID_OUTPOSTS, CODE_ID_TREASURY, CW20_TOKEN1, CW20_TOKEN2,
     NFT_TOKEN1, NFT_TOKEN2, USER1, USER2, USER3,
@@ -78,7 +78,7 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
         attestation_text: Some(attestation_text.into()),
     };
 
-    create_dao(&mut app, msg);
+    create_dao(&mut app, msg)?;
 
     let dao_addr = get_first_dao(&app)?;
 
@@ -239,7 +239,7 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
         attestation_text: None,
     };
 
-    create_dao(&mut app, msg);
+    create_dao(&mut app, msg)?;
 
     let dao_addr = get_first_dao(&app)?;
     let facade = TestFacade {
@@ -336,7 +336,7 @@ fn create_import_cw3_dao() -> anyhow::Result<()> {
         attestation_text: None,
     };
 
-    create_dao(&mut app, msg);
+    create_dao(&mut app, msg)?;
 
     let dao_addr = get_first_dao(&app)?;
     let facade = TestFacade {
@@ -383,6 +383,47 @@ fn create_import_cw3_dao() -> anyhow::Result<()> {
     );
 
     assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Multisig);
+
+    Ok(())
+}
+
+#[test]
+fn create_import_non_cw3_dao_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw20_contract = app
+        .instantiate_contract(
+            CODE_ID_CW20,
+            ADMIN.into_addr(),
+            &cw20_base::msg::InstantiateMsg {
+                name: "CW20 token".to_string(),
+                symbol: "TKN".to_string(),
+                decimals: 6,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "CW20",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: import_cw3_membership(cw20_contract),
+        asset_whitelist: None,
+        nft_whitelist: None,
+        minimum_weight_for_rewards: None,
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
 
     Ok(())
 }
