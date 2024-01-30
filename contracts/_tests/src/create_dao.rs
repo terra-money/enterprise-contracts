@@ -717,3 +717,34 @@ fn import_non_cw721_dao_fails() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn create_new_nft_unstaking_shorter_than_voting_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: GovConfig {
+            vote_duration: 100,
+            ..default_gov_config()
+        },
+        dao_council: Some(default_dao_council()),
+        dao_membership: new_nft_membership(NewCw721MembershipMsg {
+            nft_name: "NFT name".to_string(),
+            nft_symbol: "NFT".to_string(),
+            minter: None,
+            unlocking_period: Duration::Time(99),
+        }),
+        asset_whitelist: None,
+        nft_whitelist: None,
+        minimum_weight_for_rewards: None,
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
+
+    Ok(())
+}
