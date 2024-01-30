@@ -19,15 +19,19 @@ use crate::wasm_helpers::{assert_addr_code_id, assert_contract_admin};
 use attestation_api::api::AttestationTextResponse;
 use attestation_api::msg::QueryMsg::AttestationText;
 use cosmwasm_std::{Decimal, Uint128};
+use cw20::Cw20QueryMsg::Balance;
+use cw20::{BalanceResponse, Cw20Coin, TokenInfoResponse};
 use cw3_fixed_multisig::msg::Voter;
 use cw721::ContractInfoResponse;
 use cw721_base::{Extension, MinterResponse};
-use cw_asset::AssetInfo;
+use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use cw_multi_test::Executor;
 use cw_utils::{Duration, Threshold};
 use enterprise_facade_api::api::DaoType;
 use enterprise_facade_common::facade::EnterpriseFacade;
-use enterprise_factory_api::api::{CreateDaoMsg, DaoRecord, NewCw721MembershipMsg};
+use enterprise_factory_api::api::{
+    CreateDaoMsg, DaoRecord, NewCw20MembershipMsg, NewCw721MembershipMsg, TokenMarketingInfo,
+};
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
 use enterprise_protocol::api::{DaoMetadata, DaoSocialData, Logo};
 use enterprise_versioning_api::api::Version;
@@ -35,6 +39,8 @@ use funds_distributor_api::api::MinimumEligibleWeightResponse;
 use funds_distributor_api::msg::QueryMsg::MinimumEligibleWeight;
 use nft_staking_api::api::NftConfigResponse;
 use nft_staking_api::msg::QueryMsg::NftConfig;
+use token_staking_api::api::TokenConfigResponse;
+use token_staking_api::msg::QueryMsg::TokenConfig;
 
 #[test]
 fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
@@ -745,6 +751,172 @@ fn create_new_nft_unstaking_shorter_than_voting_fails() -> anyhow::Result<()> {
     let result = create_dao(&mut app, msg);
 
     assert!(result.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn create_new_token_dao() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let user1_balance = 10u8;
+    let user2_balance = 20u8;
+    let dao_balance = 50u8;
+    let token_cap = 1000u32;
+
+    let marketing_info = TokenMarketingInfo {
+        project: Some("Some project name".to_string()),
+        description: Some("Project description".to_string()),
+        marketing_owner: Some("marketing_owner".to_string()),
+        logo_url: Some("logo_url".to_string()),
+    };
+    let token_membership = NewCw20MembershipMsg {
+        token_name: "New DAO token".to_string(),
+        token_symbol: "NDTKN".to_string(),
+        token_decimals: 6,
+        initial_token_balances: vec![
+            Cw20Coin {
+                address: USER1.to_string(),
+                amount: user1_balance.into(),
+            },
+            Cw20Coin {
+                address: USER2.to_string(),
+                amount: user2_balance.into(),
+            },
+        ],
+        initial_dao_balance: Some(dao_balance.into()),
+        token_mint: Some(cw20::MinterResponse {
+            minter: USER3.to_string(),
+            cap: Some(token_cap.into()),
+        }),
+        token_marketing: Some(marketing_info),
+        unlocking_period: Duration::Time(300),
+    };
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: new_token_membership(token_membership.clone()),
+        asset_whitelist: Some(vec![AssetInfoUnchecked::cw20(CW20_TOKEN1)]),
+        nft_whitelist: None,
+        minimum_weight_for_rewards: Some(2u8.into()),
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    create_dao(&mut app, msg)?;
+
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade {
+        app: &app,
+        dao_addr,
+    };
+
+    // TODO: extract this tedious process to a helper (get to the token contract directly)
+    let membership_contract = facade
+        .query_component_contracts()?
+        .membership_contract
+        .unwrap();
+    let token_config: TokenConfigResponse = app
+        .wrap()
+        .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
+
+    assert_eq!(
+        facade.query_dao_info()?.gov_config.unlocking_period,
+        Duration::Time(300)
+    );
+    assert_eq!(token_config.unlocking_period, Duration::Time(300));
+
+    let dao_token = token_config.token_contract;
+
+    let enterprise_contract = facade.query_component_contracts()?.enterprise_contract;
+    assert_contract_admin(&app, &dao_token, enterprise_contract.as_ref());
+    assert_addr_code_id(&app, &dao_token, CODE_ID_CW20);
+
+    let token_info: TokenInfoResponse = app
+        .wrap()
+        .query_wasm_smart(dao_token.to_string(), &cw20::Cw20QueryMsg::TokenInfo {})?;
+
+    assert_eq!(token_membership.token_name, token_info.name);
+    assert_eq!(token_membership.token_symbol, token_info.symbol);
+    assert_eq!(token_membership.token_decimals, token_info.decimals);
+    assert_eq!(
+        Uint128::from(user1_balance + user2_balance + dao_balance),
+        token_info.total_supply
+    );
+
+    // TODO: extract to a helper
+    let user1_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
+        dao_token.to_string(),
+        &Balance {
+            address: USER1.to_string(),
+        },
+    )?;
+    assert_eq!(user1_balance_resp.balance, Uint128::from(user1_balance));
+
+    let user2_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
+        dao_token.to_string(),
+        &Balance {
+            address: USER2.to_string(),
+        },
+    )?;
+    assert_eq!(user2_balance_resp.balance, Uint128::from(user2_balance));
+
+    let user3_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
+        dao_token.to_string(),
+        &Balance {
+            address: USER3.to_string(),
+        },
+    )?;
+    assert_eq!(user3_balance_resp.balance, Uint128::zero());
+
+    let treasury_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
+        dao_token.to_string(),
+        &Balance {
+            address: facade
+                .query_component_contracts()?
+                .enterprise_treasury_contract
+                .unwrap()
+                .to_string(),
+        },
+    )?;
+    assert_eq!(treasury_balance_resp.balance, Uint128::from(dao_balance));
+
+    let minter: cw20::MinterResponse = app
+        .wrap()
+        .query_wasm_smart(dao_token.to_string(), &cw20::Cw20QueryMsg::Minter {})?;
+    assert_eq!(minter.minter, USER3.to_string());
+    assert_eq!(minter.cap, Some(Uint128::from(token_cap)));
+
+    facade.assert_total_staked(0);
+
+    let components = facade.query_component_contracts()?;
+    let membership_contract = TestMembershipContract {
+        app: &app,
+        contract: components.membership_contract.unwrap(),
+    };
+
+    membership_contract.assert_total_weight(0);
+
+    let funds_distributor = facade
+        .query_component_contracts()
+        .unwrap()
+        .funds_distributor_contract;
+    let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app
+        .wrap()
+        .query_wasm_smart(funds_distributor.to_string(), &MinimumEligibleWeight {})?;
+    assert_eq!(
+        minimum_weight_for_rewards.minimum_eligible_weight,
+        Uint128::from(2u8)
+    );
+
+    // TODO: fix this
+    // facade.assert_asset_whitelist(vec![
+    //     AssetInfo::cw20(CW20_TOKEN1.into_addr()),
+    //     AssetInfo::cw20(dao_token),
+    // ]);
+
+    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Token);
 
     Ok(())
 }
