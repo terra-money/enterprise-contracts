@@ -1,4 +1,6 @@
-use crate::helpers::{ADDR_FACTORY, CW20_TOKEN1, NFT_TOKEN1, USER1, USER2, USER_DAO_CREATOR};
+use crate::helpers::cw_multitest_helpers::{
+    ADDR_FACTORY, CW20_TOKEN1, NFT_TOKEN1, USER1, USER2, USER_DAO_CREATOR,
+};
 use crate::traits::{IntoAddr, IntoStringVec};
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw20::Cw20Coin;

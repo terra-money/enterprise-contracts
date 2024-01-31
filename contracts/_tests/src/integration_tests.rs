@@ -12,7 +12,7 @@ use enterprise_protocol::api::{DaoType, UpdateMetadataMsg};
 use poll_engine_api::api::VoteOutcome;
 
 use crate::{
-    helpers::{
+    helpers::cw_multitest_helpers::{
         create_standard_msg_new_dao, increase_time_block, qy_all_proposals, qy_cw20_balance,
         qy_get_all_contracts_of_a_dao, qy_get_dao_type, qy_get_membership_underline_from_dao_type,
         qy_membership_total_weight, qy_membership_user_weight, qy_multisig_total_weight,

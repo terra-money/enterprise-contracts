@@ -1,7 +1,7 @@
-use crate::factory_helpers::{
+use crate::helpers::cw_multitest_helpers::startup_with_versioning;
+use crate::helpers::factory_helpers::{
     create_dao, default_create_dao_msg, default_dao_council, default_gov_config,
 };
-use crate::helpers::startup_with_versioning;
 use cosmwasm_std::Decimal;
 use enterprise_factory_api::api::CreateDaoMsg;
 use enterprise_governance_controller_api::api::ProposalActionType::{

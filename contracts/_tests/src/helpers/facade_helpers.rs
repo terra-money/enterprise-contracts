@@ -1,6 +1,6 @@
-use crate::funds_distributor_helpers::TestFundsDistributorContract;
-use crate::helpers::ADDR_FACADE;
-use crate::membership_helpers::TestMembershipContract;
+use crate::helpers::cw_multitest_helpers::ADDR_FACADE;
+use crate::helpers::funds_distributor_helpers::TestFundsDistributorContract;
+use crate::helpers::membership_helpers::TestMembershipContract;
 use crate::traits::IntoAddr;
 use cosmwasm_std::{Addr, Uint128};
 use cw_asset::AssetInfo;
