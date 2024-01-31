@@ -102,96 +102,41 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
         app: &app,
         dao_addr,
     };
-    let components = facade.query_component_contracts()?;
 
     // verify that code IDs match the expected ones
-    assert_addr_code_id(&app, &components.enterprise_contract, CODE_ID_ENTERPRISE);
+    assert_addr_code_id(&app, &facade.enterprise_addr(), CODE_ID_ENTERPRISE);
     assert_addr_code_id(
         &app,
-        &components.funds_distributor_contract,
+        &facade.funds_distributor_addr(),
         CODE_ID_FUNDS_DISTRIBUTOR,
     );
+    assert_addr_code_id(&app, &facade.governance_addr(), CODE_ID_GOVERNANCE);
+    assert_addr_code_id(&app, &facade.gov_controller_addr(), CODE_ID_GOV_CONTROLLER);
+    assert_addr_code_id(&app, &facade.outposts_addr(), CODE_ID_OUTPOSTS);
+    assert_addr_code_id(&app, &facade.treasury_addr(), CODE_ID_TREASURY);
     assert_addr_code_id(
         &app,
-        components.enterprise_governance_contract.as_ref().unwrap(),
-        CODE_ID_GOVERNANCE,
-    );
-    assert_addr_code_id(
-        &app,
-        &components
-            .enterprise_governance_controller_contract
-            .as_ref()
-            .unwrap(),
-        CODE_ID_GOV_CONTROLLER,
-    );
-    assert_addr_code_id(
-        &app,
-        &components.enterprise_outposts_contract.as_ref().unwrap(),
-        CODE_ID_OUTPOSTS,
-    );
-    assert_addr_code_id(
-        &app,
-        &components.enterprise_treasury_contract.as_ref().unwrap(),
-        CODE_ID_TREASURY,
-    );
-    assert_addr_code_id(
-        &app,
-        &components.council_membership_contract.as_ref().unwrap(),
+        &facade.council_membership_addr(),
         CODE_ID_MEMBERSHIP_MULTISIG,
     );
-    assert_addr_code_id(
-        &app,
-        &components.attestation_contract.as_ref().unwrap(),
-        CODE_ID_ATTESTATION,
-    );
+    assert_addr_code_id(&app, &facade.attestation_addr(), CODE_ID_ATTESTATION);
 
-    assert_eq!(components.enterprise_factory_contract, ADDR_FACTORY);
+    assert_eq!(facade.factory_addr(), ADDR_FACTORY);
 
     // assert admins are correctly set for each of the contracts
-    let enterprise_addr = components.enterprise_contract.to_string();
-    assert_contract_admin(&app, &components.enterprise_contract, &enterprise_addr);
-    assert_contract_admin(
-        &app,
-        &components.funds_distributor_contract,
-        &enterprise_addr,
-    );
-    assert_contract_admin(
-        &app,
-        components.enterprise_governance_contract.as_ref().unwrap(),
-        &enterprise_addr,
-    );
-    assert_contract_admin(
-        &app,
-        &components
-            .enterprise_governance_controller_contract
-            .as_ref()
-            .unwrap(),
-        &enterprise_addr,
-    );
-    assert_contract_admin(
-        &app,
-        &components.enterprise_outposts_contract.as_ref().unwrap(),
-        &enterprise_addr,
-    );
-    assert_contract_admin(
-        &app,
-        &components.enterprise_treasury_contract.as_ref().unwrap(),
-        &enterprise_addr,
-    );
-    assert_contract_admin(
-        &app,
-        &components.membership_contract.as_ref().unwrap(),
-        &enterprise_addr,
-    );
-    assert_contract_admin(
-        &app,
-        &components.council_membership_contract.as_ref().unwrap(),
-        &enterprise_addr,
-    );
+    let enterprise_addr = facade.enterprise_addr().to_string();
+    assert_contract_admin(&app, &facade.enterprise_addr(), &enterprise_addr);
+    assert_contract_admin(&app, &facade.funds_distributor_addr(), &enterprise_addr);
+    assert_contract_admin(&app, &facade.governance_addr(), &enterprise_addr);
+    assert_contract_admin(&app, &facade.gov_controller_addr(), &enterprise_addr);
+    assert_contract_admin(&app, &facade.outposts_addr(), &enterprise_addr);
+    assert_contract_admin(&app, &facade.treasury_addr(), &enterprise_addr);
+    assert_contract_admin(&app, &facade.membership_addr(), &enterprise_addr);
+    assert_contract_admin(&app, &facade.council_membership_addr(), &enterprise_addr);
     // TODO: fix this
     // assert_contract_admin(
     //     &app,
-    //     &components.attestation_contract.as_ref().unwrap(),
+    //     &facade.attestation_addr(),
     //     &enterprise_addr,
     // );
 
@@ -221,10 +166,9 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
     assert_eq!(from_facade_dao_council(council), dao_council);
     // TODO: also verify this in council membership contract's weights?
 
-    let attestation_addr = components.attestation_contract.unwrap();
     let attestation_text_resp: AttestationTextResponse = app
         .wrap()
-        .query_wasm_smart(attestation_addr.to_string(), &AttestationText {})?;
+        .query_wasm_smart(facade.attestation_addr().to_string(), &AttestationText {})?;
     assert_eq!(attestation_text_resp.text, attestation_text.to_string());
 
     Ok(())
@@ -467,7 +411,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
 
     let dao_nft = nft_config.nft_contract;
 
-    let enterprise_contract = facade.query_component_contracts()?.enterprise_contract;
+    let enterprise_contract = facade.enterprise_addr();
     let dao_nft_contract_info = app.wrap().query_wasm_contract_info(dao_nft.to_string())?;
     assert_eq!(
         dao_nft_contract_info.admin.unwrap(),
@@ -494,10 +438,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
 
     membership_contract.assert_total_weight(0);
 
-    let funds_distributor = facade
-        .query_component_contracts()
-        .unwrap()
-        .funds_distributor_contract;
+    let funds_distributor = facade.funds_distributor_addr();
     let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app
         .wrap()
         .query_wasm_smart(funds_distributor.to_string(), &MinimumEligibleWeight {})?;
@@ -548,7 +489,7 @@ fn create_new_nft_dao_without_minter() -> anyhow::Result<()> {
     let dao_nft = nft_config.nft_contract;
 
     // verify that the minter is set to Enterprise contract
-    let enterprise_contract = facade.query_component_contracts()?.enterprise_contract;
+    let enterprise_contract = facade.enterprise_addr();
     let minter: MinterResponse = app.wrap().query_wasm_smart(
         dao_nft.to_string(),
         &cw721_base::msg::QueryMsg::<Extension>::Minter {},
@@ -621,10 +562,7 @@ fn import_cw721_dao() -> anyhow::Result<()> {
 
     membership_contract.assert_total_weight(0);
 
-    let funds_distributor = facade
-        .query_component_contracts()
-        .unwrap()
-        .funds_distributor_contract;
+    let funds_distributor = facade.funds_distributor_addr();
     let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app
         .wrap()
         .query_wasm_smart(funds_distributor.to_string(), &MinimumEligibleWeight {})?;
@@ -780,7 +718,7 @@ fn create_new_token_dao() -> anyhow::Result<()> {
 
     let dao_token = token_config.token_contract;
 
-    let enterprise_contract = facade.query_component_contracts()?.enterprise_contract;
+    let enterprise_contract = facade.enterprise_addr();
     assert_contract_admin(&app, &dao_token, enterprise_contract.as_ref());
     assert_addr_code_id(&app, &dao_token, CODE_ID_CW20);
 
@@ -801,15 +739,10 @@ fn create_new_token_dao() -> anyhow::Result<()> {
         cw20_contract: &Cw20Contract(dao_token.clone()),
     };
 
-    let treasury_contract = facade
-        .query_component_contracts()?
-        .enterprise_treasury_contract
-        .unwrap();
-
     dao_cw20_assert.balance(USER1, user1_balance);
     dao_cw20_assert.balance(USER2, user2_balance);
     dao_cw20_assert.balance(USER3, 0u8);
-    dao_cw20_assert.balance(treasury_contract, dao_balance);
+    dao_cw20_assert.balance(facade.treasury_addr(), dao_balance);
 
     dao_cw20_assert.minter(USER3, Some(token_cap));
 
@@ -819,16 +752,13 @@ fn create_new_token_dao() -> anyhow::Result<()> {
 
     membership_contract.assert_total_weight(0);
 
-    let funds_distributor = facade
-        .query_component_contracts()
-        .unwrap()
-        .funds_distributor_contract;
-    let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app
-        .wrap()
-        .query_wasm_smart(funds_distributor.to_string(), &MinimumEligibleWeight {})?;
+    let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app.wrap().query_wasm_smart(
+        facade.funds_distributor_addr().to_string(),
+        &MinimumEligibleWeight {},
+    )?;
     assert_eq!(
         minimum_weight_for_rewards.minimum_eligible_weight,
-        Uint128::from(2u8)
+        Uint128::from(2u8),
     );
 
     // TODO: fix this

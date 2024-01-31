@@ -412,11 +412,56 @@ impl TestFacade<'_> {
 
 impl<'a> TestFacade<'a> {
     pub fn membership_contract(&self) -> TestMembershipContract<'a> {
-        let components = self.query_component_contracts().unwrap();
         TestMembershipContract {
             app: self.app,
-            contract: components.membership_contract.unwrap(),
+            contract: self.components().membership_contract.unwrap(),
         }
+    }
+
+    pub fn factory_addr(&self) -> Addr {
+        self.components().enterprise_factory_contract
+    }
+
+    pub fn enterprise_addr(&self) -> Addr {
+        self.components().enterprise_contract
+    }
+
+    pub fn funds_distributor_addr(&self) -> Addr {
+        self.components().funds_distributor_contract
+    }
+
+    pub fn governance_addr(&self) -> Addr {
+        self.components().enterprise_governance_contract.unwrap()
+    }
+
+    pub fn gov_controller_addr(&self) -> Addr {
+        self.components()
+            .enterprise_governance_controller_contract
+            .unwrap()
+    }
+
+    pub fn outposts_addr(&self) -> Addr {
+        self.components().enterprise_outposts_contract.unwrap()
+    }
+
+    pub fn treasury_addr(&self) -> Addr {
+        self.components().enterprise_treasury_contract.unwrap()
+    }
+
+    pub fn membership_addr(&self) -> Addr {
+        self.components().membership_contract.unwrap()
+    }
+
+    pub fn council_membership_addr(&self) -> Addr {
+        self.components().council_membership_contract.unwrap()
+    }
+
+    pub fn attestation_addr(&self) -> Addr {
+        self.components().council_membership_contract.unwrap()
+    }
+
+    fn components(&self) -> ComponentContractsResponse {
+        self.query_component_contracts().unwrap()
     }
 }
 
