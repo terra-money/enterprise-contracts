@@ -4,9 +4,10 @@ use crate::facade_helpers::{
     from_facade_dao_council, from_facade_gov_config, from_facade_metadata, TestFacade,
 };
 use crate::factory_helpers::{
-    create_dao, default_dao_council, default_dao_metadata, default_gov_config,
-    default_new_token_membership, get_first_dao, import_cw3_membership, import_cw721_membership,
-    new_multisig_membership, new_nft_membership, new_token_membership, query_all_daos,
+    create_dao, default_create_dao_msg, default_dao_council, default_dao_metadata,
+    default_gov_config, default_new_token_membership, default_token_marketing_info, get_first_dao,
+    import_cw3_membership, import_cw721_membership, new_multisig_membership, new_nft_membership,
+    new_token_membership, query_all_daos,
 };
 use crate::helpers::{
     startup_with_versioning, ADDR_FACTORY, ADMIN, CODE_ID_ATTESTATION, CODE_ID_CW20, CODE_ID_CW3,
@@ -19,7 +20,7 @@ use crate::wasm_helpers::{assert_addr_code_id, assert_contract_admin};
 use attestation_api::api::AttestationTextResponse;
 use attestation_api::msg::QueryMsg::AttestationText;
 use cosmwasm_std::Decimal;
-use cw20::{Cw20Coin, Cw20Contract};
+use cw20::{Cw20Coin, Cw20Contract, LogoInfo, MarketingInfoResponse};
 use cw3_fixed_multisig::msg::Voter;
 use cw721::ContractInfoResponse;
 use cw721_base::{Extension, MinterResponse};
@@ -421,7 +422,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
         dao_nft.to_string(),
         &cw721_base::msg::QueryMsg::<Extension>::Minter {},
     )?;
-    assert_eq!(minter.minter.unwrap(), USER1.to_string());
+    assert_eq!(minter.minter, USER1.to_string());
 
     facade.assert_total_staked(0);
 
@@ -480,7 +481,7 @@ fn create_new_nft_dao_without_minter() -> anyhow::Result<()> {
         dao_nft.to_string(),
         &cw721_base::msg::QueryMsg::<Extension>::Minter {},
     )?;
-    assert_eq!(minter.minter.unwrap(), enterprise_contract.to_string());
+    assert_eq!(minter.minter, enterprise_contract.to_string());
 
     Ok(())
 }
@@ -641,12 +642,7 @@ fn create_new_token_dao() -> anyhow::Result<()> {
     let dao_balance = 50u8;
     let token_cap = 1000u32;
 
-    let marketing_info = TokenMarketingInfo {
-        project: Some("Some project name".to_string()),
-        description: Some("Project description".to_string()),
-        marketing_owner: Some("marketing_owner".to_string()),
-        logo_url: Some("logo_url".to_string()),
-    };
+    let marketing_info = default_token_marketing_info();
     let token_membership = NewCw20MembershipMsg {
         token_name: "New DAO token".to_string(),
         token_symbol: "NDTKN".to_string(),
@@ -741,6 +737,132 @@ fn create_new_token_dao() -> anyhow::Result<()> {
     // ]);
 
     facade.assert_dao_type(Token);
+
+    Ok(())
+}
+
+#[test]
+fn create_new_token_dao_without_marketing_owner_sets_gov_controller_marketing_owner(
+) -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let marketing_info = TokenMarketingInfo {
+        marketing_owner: None,
+        ..default_token_marketing_info()
+    };
+    let token_membership = NewCw20MembershipMsg {
+        token_marketing: Some(marketing_info.clone()),
+        ..default_new_token_membership()
+    };
+    let msg = CreateDaoMsg {
+        dao_membership: new_token_membership(token_membership.clone()),
+        ..default_create_dao_msg()
+    };
+
+    create_dao(&mut app, msg)?;
+
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade {
+        app: &app,
+        dao_addr,
+    };
+
+    let dao_cw20_assert = Cw20Assert {
+        app: &app,
+        cw20_contract: &Cw20Contract(facade.token_config()?.token_contract),
+    };
+
+    // TODO: fix this, it's currently using enterprise address instead of governance controller
+    dao_cw20_assert.marketing_info(MarketingInfoResponse {
+        marketing: Some(facade.enterprise_addr()),
+        project: marketing_info.project,
+        description: marketing_info.description,
+        logo: marketing_info.logo_url.map(LogoInfo::Url),
+    });
+
+    Ok(())
+}
+
+#[test]
+fn create_new_token_dao_without_marketing_info_sets_gov_controller_marketing_owner(
+) -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let token_membership = NewCw20MembershipMsg {
+        token_marketing: None,
+        ..default_new_token_membership()
+    };
+    let msg = CreateDaoMsg {
+        dao_membership: new_token_membership(token_membership.clone()),
+        ..default_create_dao_msg()
+    };
+
+    create_dao(&mut app, msg)?;
+
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade {
+        app: &app,
+        dao_addr,
+    };
+
+    let dao_cw20_assert = Cw20Assert {
+        app: &app,
+        cw20_contract: &Cw20Contract(facade.token_config()?.token_contract),
+    };
+
+    // TODO: fix this, it's currently using enterprise address instead of governance controller
+    dao_cw20_assert.marketing_info(MarketingInfoResponse {
+        marketing: Some(facade.enterprise_addr()),
+        project: None,
+        description: None,
+        logo: None,
+    });
+
+    Ok(())
+}
+
+#[test]
+fn create_new_token_dao_without_minter_or_balances_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let token_membership = NewCw20MembershipMsg {
+        initial_dao_balance: None,
+        initial_token_balances: vec![],
+        token_mint: None,
+        ..default_new_token_membership()
+    };
+    let msg = CreateDaoMsg {
+        dao_membership: new_token_membership(token_membership.clone()),
+        ..default_create_dao_msg()
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn create_new_token_dao_unlocking_shorter_than_voting_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let token_membership = NewCw20MembershipMsg {
+        unlocking_period: Duration::Time(100),
+        ..default_new_token_membership()
+    };
+    let msg = CreateDaoMsg {
+        dao_membership: new_token_membership(token_membership.clone()),
+        gov_config: GovConfig {
+            vote_duration: 101,
+            ..default_gov_config()
+        },
+        ..default_create_dao_msg()
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
 
     Ok(())
 }

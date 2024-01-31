@@ -1,5 +1,6 @@
 use cosmwasm_std::Uint128;
-use cw20::{Cw20Contract, MinterResponse, TokenInfoResponse};
+use cw20::Cw20QueryMsg::MarketingInfo;
+use cw20::{Cw20Contract, MarketingInfoResponse, MinterResponse, TokenInfoResponse};
 use cw_multi_test::App;
 
 pub struct Cw20Assert<'a> {
@@ -50,5 +51,14 @@ impl Cw20Assert<'_> {
                 total_supply: total_supply.into(),
             },
         );
+    }
+
+    pub fn marketing_info(&self, info: MarketingInfoResponse) {
+        let marketing_info: MarketingInfoResponse = self
+            .app
+            .wrap()
+            .query_wasm_smart(self.cw20_contract.addr().to_string(), &MarketingInfo {})
+            .unwrap();
+        assert_eq!(marketing_info, info)
     }
 }

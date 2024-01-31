@@ -1,19 +1,34 @@
-use crate::helpers::{ADDR_FACTORY, USER1, USER2, USER_DAO_CREATOR};
+use crate::helpers::{ADDR_FACTORY, CW20_TOKEN1, NFT_TOKEN1, USER1, USER2, USER_DAO_CREATOR};
 use crate::traits::{IntoAddr, IntoStringVec};
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw20::Cw20Coin;
+use cw_asset::AssetInfoUnchecked;
 use cw_multi_test::{App, AppResponse, Executor};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{
     AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, ImportCw3MembershipMsg,
     ImportCw721MembershipMsg, NewCw20MembershipMsg, NewCw721MembershipMsg,
-    NewMultisigMembershipMsg, QueryAllDaosMsg,
+    NewMultisigMembershipMsg, QueryAllDaosMsg, TokenMarketingInfo,
 };
 use enterprise_factory_api::msg::QueryMsg::AllDaos;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
 use enterprise_protocol::api::{DaoMetadata, DaoSocialData, Logo};
 use enterprise_protocol::error::DaoResult;
 use multisig_membership_api::api::UserWeight;
+
+pub fn default_create_dao_msg() -> CreateDaoMsg {
+    CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: new_token_membership(default_new_token_membership()),
+        asset_whitelist: Some(vec![AssetInfoUnchecked::cw20(CW20_TOKEN1)]),
+        nft_whitelist: Some(vec![NFT_TOKEN1.to_string()]),
+        minimum_weight_for_rewards: Some(2u8.into()),
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    }
+}
 
 pub fn new_multisig_membership(members: Vec<(impl Into<String>, u8)>) -> CreateDaoMembershipMsg {
     CreateDaoMembershipMsg::NewMultisig(NewMultisigMembershipMsg {
@@ -101,6 +116,15 @@ pub fn default_dao_council() -> DaoCouncilSpec {
             ProposalActionType::DeployCrossChainTreasury,
             ProposalActionType::RemoveAttestation,
         ]),
+    }
+}
+
+pub fn default_token_marketing_info() -> TokenMarketingInfo {
+    TokenMarketingInfo {
+        project: Some("Some project name".to_string()),
+        description: Some("Project description".to_string()),
+        marketing_owner: Some("marketing_owner".to_string()),
+        logo_url: Some("logo_url".to_string()),
     }
 }
 
