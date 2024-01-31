@@ -233,6 +233,26 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
 }
 
 #[test]
+fn create_new_multisig_dao_with_minimum_deposit_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let msg = CreateDaoMsg {
+        gov_config: GovConfig {
+            minimum_deposit: Some(2u8.into()),
+            ..default_gov_config()
+        },
+        dao_membership: new_multisig_membership(vec![(USER1, 1), (USER2, 2), (USER3, 5)]),
+        ..default_create_dao_msg()
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
+
+    Ok(())
+}
+
+#[test]
 fn import_cw3_dao() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
@@ -324,6 +344,46 @@ fn import_cw3_dao() -> anyhow::Result<()> {
     );
 
     facade.assert_dao_type(Multisig);
+
+    Ok(())
+}
+
+#[test]
+fn import_cw3_dao_with_minimum_deposit_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw3_contract = app
+        .instantiate_contract(
+            CODE_ID_CW3,
+            ADMIN.into_addr(),
+            &cw3_fixed_multisig::msg::InstantiateMsg {
+                voters: vec![Voter {
+                    addr: USER1.to_string(),
+                    weight: 10,
+                }],
+                threshold: Threshold::AbsolutePercentage {
+                    percentage: Decimal::percent(79),
+                },
+                max_voting_period: Duration::Time(10_000u64),
+            },
+            &[],
+            "CW3 multisig",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        gov_config: GovConfig {
+            minimum_deposit: Some(2u8.into()),
+            ..default_gov_config()
+        },
+        dao_membership: import_cw3_membership(cw3_contract),
+        ..default_create_dao_msg()
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
 
     Ok(())
 }
