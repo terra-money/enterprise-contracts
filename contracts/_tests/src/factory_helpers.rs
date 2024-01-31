@@ -130,8 +130,8 @@ pub fn default_gov_config() -> GovConfig {
 pub fn default_dao_council() -> DaoCouncilSpec {
     DaoCouncilSpec {
         members: vec![USER1, USER2].into_string(),
-        quorum: Decimal::percent(34),
-        threshold: Decimal::percent(54),
+        quorum: Decimal::percent(35),
+        threshold: Decimal::percent(55),
         allowed_proposal_action_types: Some(vec![
             ProposalActionType::DeployCrossChainTreasury,
             ProposalActionType::RemoveAttestation,
