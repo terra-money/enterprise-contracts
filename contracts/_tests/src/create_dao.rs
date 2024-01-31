@@ -884,7 +884,10 @@ fn import_cw20_token_dao() -> anyhow::Result<()> {
                     address: USER1.to_string(),
                     amount: user1_balance.into(),
                 }],
-                mint: None,
+                mint: Some(cw20::MinterResponse {
+                    minter: USER3.to_string(),
+                    cap: None,
+                }),
                 marketing: None,
             },
             &[],
@@ -935,6 +938,8 @@ fn import_cw20_token_dao() -> anyhow::Result<()> {
 
     dao_cw20_assert.balances(vec![(USER1, user1_balance)]);
 
+    dao_cw20_assert.minter(USER3, None);
+
     facade.assert_total_staked(0);
 
     let membership_contract = facade.membership();
@@ -953,6 +958,109 @@ fn import_cw20_token_dao() -> anyhow::Result<()> {
     // ]);
 
     facade.assert_dao_type(Token);
+
+    Ok(())
+}
+
+#[test]
+fn import_cw20_token_dao_with_no_minter_or_supply_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw20_contract = app
+        .instantiate_contract(
+            CODE_ID_CW20,
+            ADMIN.into_addr(),
+            &cw20_base::msg::InstantiateMsg {
+                name: "Existing token".to_string(),
+                symbol: "ETKN".to_string(),
+                decimals: 8,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "CW20 contract",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        dao_membership: import_cw20_membership(cw20_contract.to_string(), 300),
+        ..default_create_dao_msg()
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn import_non_cw20_token_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw721_contract = app
+        .instantiate_contract(
+            CODE_ID_CW721,
+            ADMIN.into_addr(),
+            &cw721_base::msg::InstantiateMsg {
+                name: "Existing NFT".to_string(),
+                symbol: "ENFT".to_string(),
+                minter: USER1.to_string(),
+            },
+            &[],
+            "CW721 contract",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        dao_membership: import_cw20_membership(cw721_contract.to_string(), 300),
+        ..default_create_dao_msg()
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn import_cw20_token_dao_unlocking_period_less_than_voting_fails() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let cw20_contract = app
+        .instantiate_contract(
+            CODE_ID_CW20,
+            ADMIN.into_addr(),
+            &cw20_base::msg::InstantiateMsg {
+                name: "Existing token".to_string(),
+                symbol: "ETKN".to_string(),
+                decimals: 8,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "CW20 contract",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        dao_membership: import_cw20_membership(cw20_contract.to_string(), 100),
+        gov_config: GovConfig {
+            vote_duration: 101,
+            ..default_gov_config()
+        },
+        ..default_create_dao_msg()
+    };
+
+    let result = create_dao(&mut app, msg);
+
+    assert!(result.is_err());
 
     Ok(())
 }
