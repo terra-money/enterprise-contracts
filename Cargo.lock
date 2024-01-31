@@ -715,15 +715,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-address-like"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "451a4691083a88a3c0630a8a88799e9d4cd6679b7ce8ff22b8da2873ff31d380"
-dependencies = [
- "cosmwasm-std",
-]
-
-[[package]]
 name = "cw-asset"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -912,32 +903,6 @@ dependencies = [
  "cw-orch-core",
  "prost 0.11.9",
  "prost-types",
-]
-
-[[package]]
-name = "cw-ownable"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "093dfb4520c48b5848274dd88ea99e280a04bc08729603341c7fb0d758c74321"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-address-like",
- "cw-ownable-derive",
- "cw-storage-plus 1.1.0",
- "cw-utils 1.0.2",
- "thiserror",
-]
-
-[[package]]
-name = "cw-ownable-derive"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1d3bf2e0f341bb6cc100d7d441d31cf713fbd3ce0c511f91e79f14b40a889af"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -1194,19 +1159,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw721"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3c4d286625ccadc957fe480dd3bdc54ada19e0e6b5b9325379db3130569e914"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils 1.0.2",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "cw721-base"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1235,25 +1187,6 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw721 0.16.0",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw721-base"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da518d9f68bfda7d972cbaca2e8fcf04651d0edc3de72b04ae2bcd9289c81614"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-ownable",
- "cw-storage-plus 1.1.0",
- "cw-utils 1.0.2",
- "cw2 1.1.2",
- "cw721 0.18.0",
- "cw721-base 0.16.0",
  "schemars",
  "serde",
  "thiserror",
@@ -4590,7 +4523,7 @@ dependencies = [
  "cw3",
  "cw3-fixed-multisig",
  "cw721 0.16.0",
- "cw721-base 0.18.0",
+ "cw721-base 0.16.0",
  "cw721-metadata-onchain",
  "denom-staking-api",
  "denom-staking-membership",

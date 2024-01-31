@@ -19,9 +19,9 @@ cw2 = "1.0.1"
 cw3 = "1.0.1"
 cw3-fixed-multisig = "1.0.1"
 cw20 = "1.0.1"
-cw20-base = { version = "1.1.0" }
+cw20-base = { version = "1.0.1" }
 cw721 = "0.16.0"
-cw721-base = { version = "0.18.0" }
+cw721-base = { version = "0.16.0" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-facade-api = { path = "../../packages/enterprise-facade-api" }
 enterprise-facade-common = { path = "../../packages/enterprise-facade-common" }
