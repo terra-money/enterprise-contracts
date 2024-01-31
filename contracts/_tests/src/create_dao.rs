@@ -13,7 +13,6 @@ use crate::helpers::{
     CODE_ID_GOV_CONTROLLER, CODE_ID_MEMBERSHIP_MULTISIG, CODE_ID_OUTPOSTS, CODE_ID_TREASURY,
     CW20_TOKEN1, CW20_TOKEN2, NFT_TOKEN1, NFT_TOKEN2, USER1, USER2, USER3,
 };
-use crate::membership_helpers::TestMembershipContract;
 use crate::traits::{IntoAddr, IntoStringVec};
 use crate::wasm_helpers::{assert_addr_code_id, assert_contract_admin};
 use attestation_api::api::AttestationTextResponse;
@@ -37,10 +36,6 @@ use enterprise_protocol::api::{DaoMetadata, DaoSocialData, Logo};
 use enterprise_versioning_api::api::Version;
 use funds_distributor_api::api::MinimumEligibleWeightResponse;
 use funds_distributor_api::msg::QueryMsg::MinimumEligibleWeight;
-use nft_staking_api::api::NftConfigResponse;
-use nft_staking_api::msg::QueryMsg::NftConfig;
-use token_staking_api::api::TokenConfigResponse;
-use token_staking_api::msg::QueryMsg::TokenConfig;
 
 #[test]
 fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
@@ -279,11 +274,7 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let components = facade.query_component_contracts()?;
-    let membership_contract = TestMembershipContract {
-        app: &app,
-        contract: components.membership_contract.unwrap(),
-    };
+    let membership_contract = facade.membership_contract();
 
     membership_contract.assert_user_weight(USER1, 1);
     membership_contract.assert_user_weight(USER2, 2);
@@ -374,11 +365,7 @@ fn import_cw3_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let components = facade.query_component_contracts()?;
-    let membership_contract = TestMembershipContract {
-        app: &app,
-        contract: components.membership_contract.unwrap(),
-    };
+    let membership_contract = facade.membership_contract();
 
     membership_contract.assert_user_weight(USER1, 10);
     membership_contract.assert_user_weight(USER2, 0);
@@ -470,14 +457,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
         dao_addr,
     };
 
-    // TODO: extract this tedious process to a helper (get to the NFT contract directly)
-    let membership_contract = facade
-        .query_component_contracts()?
-        .membership_contract
-        .unwrap();
-    let nft_config: NftConfigResponse = app
-        .wrap()
-        .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+    let nft_config = facade.nft_config()?;
 
     assert_eq!(
         facade.query_dao_info()?.gov_config.unlocking_period,
@@ -510,11 +490,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let components = facade.query_component_contracts()?;
-    let membership_contract = TestMembershipContract {
-        app: &app,
-        contract: components.membership_contract.unwrap(),
-    };
+    let membership_contract = facade.membership_contract();
 
     membership_contract.assert_total_weight(0);
 
@@ -567,14 +543,7 @@ fn create_new_nft_dao_without_minter() -> anyhow::Result<()> {
         dao_addr,
     };
 
-    // TODO: extract this tedious process to a helper (get to the NFT contract directly)
-    let membership_contract = facade
-        .query_component_contracts()?
-        .membership_contract
-        .unwrap();
-    let nft_config: NftConfigResponse = app
-        .wrap()
-        .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+    let nft_config = facade.nft_config()?;
 
     let dao_nft = nft_config.nft_contract;
 
@@ -628,14 +597,7 @@ fn import_cw721_dao() -> anyhow::Result<()> {
         dao_addr,
     };
 
-    // TODO: extract this tedious process to a helper (get to the NFT contract directly)
-    let membership_contract = facade
-        .query_component_contracts()?
-        .membership_contract
-        .unwrap();
-    let nft_config: NftConfigResponse = app
-        .wrap()
-        .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+    let nft_config = facade.nft_config()?;
 
     assert_eq!(
         facade.query_dao_info()?.gov_config.unlocking_period,
@@ -655,11 +617,7 @@ fn import_cw721_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let components = facade.query_component_contracts()?;
-    let membership_contract = TestMembershipContract {
-        app: &app,
-        contract: components.membership_contract.unwrap(),
-    };
+    let membership_contract = facade.membership_contract();
 
     membership_contract.assert_total_weight(0);
 
@@ -812,14 +770,7 @@ fn create_new_token_dao() -> anyhow::Result<()> {
         dao_addr,
     };
 
-    // TODO: extract this tedious process to a helper (get to the token contract directly)
-    let membership_contract = facade
-        .query_component_contracts()?
-        .membership_contract
-        .unwrap();
-    let token_config: TokenConfigResponse = app
-        .wrap()
-        .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
+    let token_config = facade.token_config()?;
 
     assert_eq!(
         facade.query_dao_info()?.gov_config.unlocking_period,
@@ -890,11 +841,7 @@ fn create_new_token_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let components = facade.query_component_contracts()?;
-    let membership_contract = TestMembershipContract {
-        app: &app,
-        contract: components.membership_contract.unwrap(),
-    };
+    let membership_contract = facade.membership_contract();
 
     membership_contract.assert_total_weight(0);
 

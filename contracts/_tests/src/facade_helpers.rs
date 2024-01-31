@@ -1,4 +1,5 @@
 use crate::helpers::ADDR_FACADE;
+use crate::membership_helpers::TestMembershipContract;
 use crate::traits::IntoAddr;
 use cosmwasm_std::{Addr, Uint128};
 use cw_asset::AssetInfo;
@@ -34,8 +35,12 @@ use enterprise_outposts_api::api::CrossChainTreasuriesParams;
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
+use nft_staking_api::api::NftConfigResponse;
+use nft_staking_api::msg::QueryMsg::NftConfig;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use token_staking_api::api::TokenConfigResponse;
+use token_staking_api::msg::QueryMsg::TokenConfig;
 
 // Helper implementation of the Enterprise facade to use in the tests
 pub struct TestFacade<'a> {
@@ -402,6 +407,42 @@ impl TestFacade<'_> {
                 .map(|it| it.into_addr())
                 .collect::<Vec<Addr>>()
         );
+    }
+}
+
+impl<'a> TestFacade<'a> {
+    pub fn membership_contract(&self) -> TestMembershipContract<'a> {
+        let components = self.query_component_contracts().unwrap();
+        TestMembershipContract {
+            app: self.app,
+            contract: components.membership_contract.unwrap(),
+        }
+    }
+}
+
+impl TestFacade<'_> {
+    pub fn token_config(&self) -> EnterpriseFacadeResult<TokenConfigResponse> {
+        let membership_contract = self
+            .query_component_contracts()?
+            .membership_contract
+            .unwrap();
+        let token_config = self
+            .app
+            .wrap()
+            .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
+        Ok(token_config)
+    }
+
+    pub fn nft_config(&self) -> EnterpriseFacadeResult<NftConfigResponse> {
+        let membership_contract = self
+            .query_component_contracts()?
+            .membership_contract
+            .unwrap();
+        let nft_config = self
+            .app
+            .wrap()
+            .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
+        Ok(nft_config)
     }
 }
 
