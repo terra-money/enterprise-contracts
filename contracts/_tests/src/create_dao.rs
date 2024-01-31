@@ -34,8 +34,6 @@ use enterprise_factory_api::api::{
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
 use enterprise_protocol::api::{DaoMetadata, DaoSocialData, Logo};
 use enterprise_versioning_api::api::Version;
-use funds_distributor_api::api::MinimumEligibleWeightResponse;
-use funds_distributor_api::msg::QueryMsg::MinimumEligibleWeight;
 
 #[test]
 fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
@@ -218,7 +216,7 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let membership_contract = facade.membership_contract();
+    let membership_contract = facade.membership();
 
     membership_contract.assert_user_weight(USER1, 1);
     membership_contract.assert_user_weight(USER2, 2);
@@ -309,7 +307,7 @@ fn import_cw3_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let membership_contract = facade.membership_contract();
+    let membership_contract = facade.membership();
 
     membership_contract.assert_user_weight(USER1, 10);
     membership_contract.assert_user_weight(USER2, 0);
@@ -434,18 +432,13 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let membership_contract = facade.membership_contract();
+    let membership_contract = facade.membership();
 
     membership_contract.assert_total_weight(0);
 
-    let funds_distributor = facade.funds_distributor_addr();
-    let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app
-        .wrap()
-        .query_wasm_smart(funds_distributor.to_string(), &MinimumEligibleWeight {})?;
-    assert_eq!(
-        minimum_weight_for_rewards.minimum_eligible_weight,
-        Uint128::from(2u8)
-    );
+    facade
+        .funds_distributor()
+        .assert_minimum_eligible_weight(2u8);
 
     // TODO: fix this
     // facade.assert_nft_whitelist(vec![NFT_TOKEN1, dao_nft.as_ref()]);
@@ -558,18 +551,13 @@ fn import_cw721_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let membership_contract = facade.membership_contract();
+    let membership_contract = facade.membership();
 
     membership_contract.assert_total_weight(0);
 
-    let funds_distributor = facade.funds_distributor_addr();
-    let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app
-        .wrap()
-        .query_wasm_smart(funds_distributor.to_string(), &MinimumEligibleWeight {})?;
-    assert_eq!(
-        minimum_weight_for_rewards.minimum_eligible_weight,
-        Uint128::from(2u8)
-    );
+    facade
+        .funds_distributor()
+        .assert_minimum_eligible_weight(2u8);
 
     // TODO: fix this
     // facade.assert_nft_whitelist(vec![NFT_TOKEN1, dao_nft.as_ref()]);
@@ -748,18 +736,13 @@ fn create_new_token_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let membership_contract = facade.membership_contract();
+    let membership_contract = facade.membership();
 
     membership_contract.assert_total_weight(0);
 
-    let minimum_weight_for_rewards: MinimumEligibleWeightResponse = app.wrap().query_wasm_smart(
-        facade.funds_distributor_addr().to_string(),
-        &MinimumEligibleWeight {},
-    )?;
-    assert_eq!(
-        minimum_weight_for_rewards.minimum_eligible_weight,
-        Uint128::from(2u8),
-    );
+    facade
+        .funds_distributor()
+        .assert_minimum_eligible_weight(2u8);
 
     // TODO: fix this
     // facade.assert_asset_whitelist(vec![

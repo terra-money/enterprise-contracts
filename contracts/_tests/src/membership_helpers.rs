@@ -14,13 +14,13 @@ pub trait MembershipContract {
 
 pub struct TestMembershipContract<'a> {
     pub app: &'a App,
-    pub contract: Addr,
+    pub addr: Addr,
 }
 
 impl MembershipContract for TestMembershipContract<'_> {
     fn user_weight(&self, user: impl Into<String>) -> MembershipResult<Uint128> {
         let user_weight: UserWeightResponse = self.app.wrap().query_wasm_smart(
-            self.contract.to_string(),
+            self.addr.to_string(),
             &UserWeight(UserWeightParams { user: user.into() }),
         )?;
         Ok(user_weight.weight)
@@ -28,7 +28,7 @@ impl MembershipContract for TestMembershipContract<'_> {
 
     fn total_weight(&self) -> MembershipResult<Uint128> {
         let total_weight: TotalWeightResponse = self.app.wrap().query_wasm_smart(
-            self.contract.to_string(),
+            self.addr.to_string(),
             &TotalWeight(TotalWeightParams {
                 expiration: Never {},
             }),

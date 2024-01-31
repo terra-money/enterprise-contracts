@@ -1,3 +1,4 @@
+use crate::funds_distributor_helpers::TestFundsDistributorContract;
 use crate::helpers::ADDR_FACADE;
 use crate::membership_helpers::TestMembershipContract;
 use crate::traits::IntoAddr;
@@ -411,10 +412,17 @@ impl TestFacade<'_> {
 }
 
 impl<'a> TestFacade<'a> {
-    pub fn membership_contract(&self) -> TestMembershipContract<'a> {
+    pub fn membership(&self) -> TestMembershipContract<'a> {
         TestMembershipContract {
             app: self.app,
-            contract: self.components().membership_contract.unwrap(),
+            addr: self.components().membership_contract.unwrap(),
+        }
+    }
+
+    pub fn funds_distributor(&self) -> TestFundsDistributorContract<'a> {
+        TestFundsDistributorContract {
+            app: self.app,
+            addr: self.components().funds_distributor_contract,
         }
     }
 
@@ -457,7 +465,7 @@ impl<'a> TestFacade<'a> {
     }
 
     pub fn attestation_addr(&self) -> Addr {
-        self.components().council_membership_contract.unwrap()
+        self.components().attestation_contract.unwrap()
     }
 
     fn components(&self) -> ComponentContractsResponse {

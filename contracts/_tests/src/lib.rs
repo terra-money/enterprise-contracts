@@ -14,6 +14,8 @@ mod facade_helpers;
 #[cfg(test)]
 mod factory_helpers;
 #[cfg(test)]
+mod funds_distributor_helpers;
+#[cfg(test)]
 mod membership_helpers;
 #[cfg(test)]
 mod traits;
