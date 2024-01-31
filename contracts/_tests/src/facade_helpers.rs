@@ -5,6 +5,8 @@ use crate::traits::IntoAddr;
 use cosmwasm_std::{Addr, Uint128};
 use cw_asset::AssetInfo;
 use cw_multi_test::App;
+use denom_staking_api::api::DenomConfigResponse;
+use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
     ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
@@ -508,6 +510,18 @@ impl TestFacade<'_> {
             .wrap()
             .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
         Ok(nft_config)
+    }
+
+    pub fn denom_config(&self) -> EnterpriseFacadeResult<DenomConfigResponse> {
+        let membership_contract = self
+            .query_component_contracts()?
+            .membership_contract
+            .unwrap();
+        let denom_config = self
+            .app
+            .wrap()
+            .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
+        Ok(denom_config)
     }
 }
 

@@ -8,7 +8,7 @@ use cw_utils::Duration;
 use enterprise_factory_api::api::{
     AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, ImportCw20MembershipMsg,
     ImportCw3MembershipMsg, ImportCw721MembershipMsg, NewCw20MembershipMsg, NewCw721MembershipMsg,
-    NewMultisigMembershipMsg, QueryAllDaosMsg, TokenMarketingInfo,
+    NewDenomMembershipMsg, NewMultisigMembershipMsg, QueryAllDaosMsg, TokenMarketingInfo,
 };
 use enterprise_factory_api::msg::QueryMsg::AllDaos;
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
@@ -88,6 +88,16 @@ pub fn import_cw721_membership(
 ) -> CreateDaoMembershipMsg {
     CreateDaoMembershipMsg::ImportCw721(ImportCw721MembershipMsg {
         cw721_contract,
+        unlocking_period: Duration::Time(unlocking_period),
+    })
+}
+
+pub fn new_denom_membership(
+    denom: impl Into<String>,
+    unlocking_period: u64,
+) -> CreateDaoMembershipMsg {
+    CreateDaoMembershipMsg::NewDenom(NewDenomMembershipMsg {
+        denom: denom.into(),
         unlocking_period: Duration::Time(unlocking_period),
     })
 }
