@@ -6,8 +6,8 @@ use cw_asset::AssetInfoUnchecked;
 use cw_multi_test::{App, AppResponse, Executor};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{
-    AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, ImportCw3MembershipMsg,
-    ImportCw721MembershipMsg, NewCw20MembershipMsg, NewCw721MembershipMsg,
+    AllDaosResponse, CreateDaoMembershipMsg, CreateDaoMsg, ImportCw20MembershipMsg,
+    ImportCw3MembershipMsg, ImportCw721MembershipMsg, NewCw20MembershipMsg, NewCw721MembershipMsg,
     NewMultisigMembershipMsg, QueryAllDaosMsg, TokenMarketingInfo,
 };
 use enterprise_factory_api::msg::QueryMsg::AllDaos;
@@ -66,6 +66,16 @@ pub fn default_new_token_membership() -> NewCw20MembershipMsg {
         token_marketing: None,
         unlocking_period: Duration::Time(300),
     }
+}
+
+pub fn import_cw20_membership(
+    cw20_contract: impl Into<String>,
+    unlocking_period: u64,
+) -> CreateDaoMembershipMsg {
+    CreateDaoMembershipMsg::ImportCw20(ImportCw20MembershipMsg {
+        cw20_contract: cw20_contract.into(),
+        unlocking_period: Duration::Time(unlocking_period),
+    })
 }
 
 pub fn new_nft_membership(nft_membership: NewCw721MembershipMsg) -> CreateDaoMembershipMsg {

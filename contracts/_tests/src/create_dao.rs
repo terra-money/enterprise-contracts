@@ -6,8 +6,8 @@ use crate::facade_helpers::{
 use crate::factory_helpers::{
     create_dao, default_create_dao_msg, default_dao_council, default_dao_metadata,
     default_gov_config, default_new_token_membership, default_token_marketing_info, get_first_dao,
-    import_cw3_membership, import_cw721_membership, new_multisig_membership, new_nft_membership,
-    new_token_membership, query_all_daos,
+    import_cw20_membership, import_cw3_membership, import_cw721_membership,
+    new_multisig_membership, new_nft_membership, new_token_membership, query_all_daos,
 };
 use crate::helpers::{
     startup_with_versioning, ADDR_FACTORY, ADMIN, CODE_ID_ATTESTATION, CODE_ID_CW20, CODE_ID_CW3,
@@ -863,6 +863,96 @@ fn create_new_token_dao_unlocking_shorter_than_voting_fails() -> anyhow::Result<
     let result = create_dao(&mut app, msg);
 
     assert!(result.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn import_cw20_token_dao() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let user1_balance = 10u8;
+    let cw20_contract = app
+        .instantiate_contract(
+            CODE_ID_CW20,
+            ADMIN.into_addr(),
+            &cw20_base::msg::InstantiateMsg {
+                name: "Existing token".to_string(),
+                symbol: "ETKN".to_string(),
+                decimals: 8,
+                initial_balances: vec![Cw20Coin {
+                    address: USER1.to_string(),
+                    amount: user1_balance.into(),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "CW20 contract",
+            Some(ADMIN.to_string()),
+        )
+        .unwrap();
+
+    let msg = CreateDaoMsg {
+        dao_metadata: default_dao_metadata(),
+        gov_config: default_gov_config(),
+        dao_council: Some(default_dao_council()),
+        dao_membership: import_cw20_membership(cw20_contract.to_string(), 300),
+        asset_whitelist: Some(vec![
+            AssetInfoUnchecked::cw20(CW20_TOKEN1),
+            AssetInfoUnchecked::cw20(CW20_TOKEN2),
+        ]),
+        nft_whitelist: None,
+        minimum_weight_for_rewards: Some(3u8.into()),
+        cross_chain_treasuries: None,
+        attestation_text: None,
+    };
+
+    create_dao(&mut app, msg)?;
+
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade {
+        app: &app,
+        dao_addr,
+    };
+
+    let token_config = facade.token_config()?;
+
+    assert_eq!(token_config.token_contract, cw20_contract);
+
+    assert_eq!(
+        facade.query_dao_info()?.gov_config.unlocking_period,
+        Duration::Time(300),
+    );
+    assert_eq!(token_config.unlocking_period, Duration::Time(300));
+
+    let dao_cw20_assert = Cw20Assert {
+        app: &app,
+        cw20_contract: &Cw20Contract(cw20_contract.clone()),
+    };
+
+    dao_cw20_assert.token_info("Existing token", "ETKN", 8, user1_balance);
+
+    dao_cw20_assert.balances(vec![(USER1, user1_balance)]);
+
+    facade.assert_total_staked(0);
+
+    let membership_contract = facade.membership();
+
+    membership_contract.assert_total_weight(0);
+
+    facade
+        .funds_distributor()
+        .assert_minimum_eligible_weight(3u8);
+
+    // TODO: fix this
+    // facade.assert_asset_whitelist(vec![
+    //     AssetInfo::cw20(CW20_TOKEN1.into_addr()),
+    //     AssetInfo::cw20(CW20_TOKEN2.into_addr()),
+    //     AssetInfo::cw20(cw20_contract),
+    // ]);
+
+    facade.assert_dao_type(Token);
 
     Ok(())
 }
