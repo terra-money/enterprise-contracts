@@ -419,6 +419,13 @@ impl<'a> TestFacade<'a> {
         }
     }
 
+    pub fn council_membership(&self) -> TestMembershipContract<'a> {
+        TestMembershipContract {
+            app: self.app,
+            addr: self.components().council_membership_contract.unwrap(),
+        }
+    }
+
     pub fn funds_distributor(&self) -> TestFundsDistributorContract<'a> {
         TestFundsDistributorContract {
             app: self.app,

@@ -162,7 +162,10 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
     // verify council data
     let council = dao_info.dao_council.unwrap();
     assert_eq!(from_facade_dao_council(council), dao_council);
-    // TODO: also verify this in council membership contract's weights?
+
+    facade
+        .council_membership()
+        .assert_user_weights(vec![(USER1, 1), (USER2, 1), (USER3, 0)]);
 
     let attestation_text_resp: AttestationTextResponse = app
         .wrap()
@@ -216,13 +219,10 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let membership_contract = facade.membership();
-
-    membership_contract.assert_user_weight(USER1, 1);
-    membership_contract.assert_user_weight(USER2, 2);
-    membership_contract.assert_user_weight(USER3, 5);
-
-    membership_contract.assert_total_weight(8);
+    facade
+        .membership()
+        .assert_user_weights(vec![(USER1, 1), (USER2, 2), (USER3, 5)]);
+    facade.membership().assert_total_weight(8);
 
     assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Multisig);
 
@@ -307,13 +307,10 @@ fn import_cw3_dao() -> anyhow::Result<()> {
 
     facade.assert_total_staked(0);
 
-    let membership_contract = facade.membership();
-
-    membership_contract.assert_user_weight(USER1, 10);
-    membership_contract.assert_user_weight(USER2, 0);
-    membership_contract.assert_user_weight(USER3, 90);
-
-    membership_contract.assert_total_weight(100);
+    facade
+        .membership()
+        .assert_user_weights(vec![(USER1, 10), (USER2, 0), (USER3, 90)]);
+    facade.membership().assert_total_weight(100);
 
     // assert that we set different governance params from the ones in CW3, and ours are the ones used in the DAO
     assert_ne!(cw3_voting_time, gov_config.vote_duration);

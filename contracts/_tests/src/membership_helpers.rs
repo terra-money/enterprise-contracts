@@ -43,6 +43,12 @@ impl TestMembershipContract<'_> {
         assert_eq!(user_weight, Uint128::from(weight))
     }
 
+    pub fn assert_user_weights(&self, user_weights: Vec<(impl Into<String>, u8)>) {
+        for (user, weight) in user_weights {
+            self.assert_user_weight(user, weight)
+        }
+    }
+
     pub fn assert_total_weight(&self, weight: u8) {
         let total_weight = self.total_weight().unwrap();
         assert_eq!(total_weight, Uint128::from(weight))
