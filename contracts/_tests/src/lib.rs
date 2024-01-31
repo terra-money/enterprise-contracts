@@ -8,6 +8,8 @@ mod asset_helpers;
 #[cfg(test)]
 mod create_dao;
 #[cfg(test)]
+mod cw20_helpers;
+#[cfg(test)]
 mod facade_helpers;
 #[cfg(test)]
 mod factory_helpers;

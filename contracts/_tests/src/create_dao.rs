@@ -1,4 +1,5 @@
 use crate::asset_helpers::cw20_unchecked;
+use crate::cw20_helpers::Cw20Assert;
 use crate::facade_helpers::{
     from_facade_dao_council, from_facade_gov_config, from_facade_metadata, TestFacade,
 };
@@ -18,8 +19,7 @@ use crate::wasm_helpers::{assert_addr_code_id, assert_contract_admin};
 use attestation_api::api::AttestationTextResponse;
 use attestation_api::msg::QueryMsg::AttestationText;
 use cosmwasm_std::{Decimal, Uint128};
-use cw20::Cw20QueryMsg::Balance;
-use cw20::{BalanceResponse, Cw20Coin, TokenInfoResponse};
+use cw20::{Cw20Coin, Cw20Contract, TokenInfoResponse};
 use cw3_fixed_multisig::msg::Voter;
 use cw721::ContractInfoResponse;
 use cw721_base::{Extension, MinterResponse};
@@ -796,48 +796,22 @@ fn create_new_token_dao() -> anyhow::Result<()> {
         token_info.total_supply
     );
 
-    // TODO: extract to a helper
-    let user1_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
-        dao_token.to_string(),
-        &Balance {
-            address: USER1.to_string(),
-        },
-    )?;
-    assert_eq!(user1_balance_resp.balance, Uint128::from(user1_balance));
+    let dao_cw20_assert = Cw20Assert {
+        app: &app,
+        cw20_contract: &Cw20Contract(dao_token.clone()),
+    };
 
-    let user2_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
-        dao_token.to_string(),
-        &Balance {
-            address: USER2.to_string(),
-        },
-    )?;
-    assert_eq!(user2_balance_resp.balance, Uint128::from(user2_balance));
+    let treasury_contract = facade
+        .query_component_contracts()?
+        .enterprise_treasury_contract
+        .unwrap();
 
-    let user3_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
-        dao_token.to_string(),
-        &Balance {
-            address: USER3.to_string(),
-        },
-    )?;
-    assert_eq!(user3_balance_resp.balance, Uint128::zero());
+    dao_cw20_assert.balance(USER1, user1_balance);
+    dao_cw20_assert.balance(USER2, user2_balance);
+    dao_cw20_assert.balance(USER3, 0u8);
+    dao_cw20_assert.balance(treasury_contract, dao_balance);
 
-    let treasury_balance_resp: BalanceResponse = app.wrap().query_wasm_smart(
-        dao_token.to_string(),
-        &Balance {
-            address: facade
-                .query_component_contracts()?
-                .enterprise_treasury_contract
-                .unwrap()
-                .to_string(),
-        },
-    )?;
-    assert_eq!(treasury_balance_resp.balance, Uint128::from(dao_balance));
-
-    let minter: cw20::MinterResponse = app
-        .wrap()
-        .query_wasm_smart(dao_token.to_string(), &cw20::Cw20QueryMsg::Minter {})?;
-    assert_eq!(minter.minter, USER3.to_string());
-    assert_eq!(minter.cap, Some(Uint128::from(token_cap)));
+    dao_cw20_assert.minter(USER3, Some(token_cap));
 
     facade.assert_total_staked(0);
 
