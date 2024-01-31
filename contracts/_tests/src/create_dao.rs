@@ -18,8 +18,8 @@ use crate::traits::{IntoAddr, IntoStringVec};
 use crate::wasm_helpers::{assert_addr_code_id, assert_contract_admin};
 use attestation_api::api::AttestationTextResponse;
 use attestation_api::msg::QueryMsg::AttestationText;
-use cosmwasm_std::{Decimal, Uint128};
-use cw20::{Cw20Coin, Cw20Contract, TokenInfoResponse};
+use cosmwasm_std::Decimal;
+use cw20::{Cw20Coin, Cw20Contract};
 use cw3_fixed_multisig::msg::Voter;
 use cw721::ContractInfoResponse;
 use cw721_base::{Extension, MinterResponse};
@@ -34,6 +34,7 @@ use enterprise_factory_api::api::{
 use enterprise_governance_controller_api::api::{DaoCouncilSpec, GovConfig, ProposalActionType};
 use enterprise_protocol::api::{DaoMetadata, DaoSocialData, Logo};
 use enterprise_versioning_api::api::Version;
+use DaoType::{Multisig, Nft, Token};
 
 #[test]
 fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
@@ -224,7 +225,7 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
         .assert_user_weights(vec![(USER1, 1), (USER2, 2), (USER3, 5)]);
     facade.membership().assert_total_weight(8);
 
-    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Multisig);
+    facade.assert_dao_type(Multisig);
 
     Ok(())
 }
@@ -291,14 +292,14 @@ fn import_cw3_dao() -> anyhow::Result<()> {
 
     assert_eq!(
         facade.member_info(USER1)?.voting_power,
-        Decimal::from_ratio(1u8, 10u8)
+        Decimal::percent(10)
     );
 
     assert_eq!(facade.member_info(USER2)?.voting_power, Decimal::zero());
 
     assert_eq!(
         facade.member_info(USER3)?.voting_power,
-        Decimal::from_ratio(9u8, 10u8)
+        Decimal::percent(90)
     );
 
     // TODO: this bunch of steps for verifying member weights in all places is copied over, extract it to a helper
@@ -316,11 +317,11 @@ fn import_cw3_dao() -> anyhow::Result<()> {
     assert_ne!(cw3_voting_time, gov_config.vote_duration);
     assert_ne!(cw3_threshold, gov_config.threshold);
     assert_eq!(
-        from_facade_gov_config(facade.query_dao_info().unwrap().gov_config),
+        from_facade_gov_config(facade.query_dao_info()?.gov_config),
         gov_config
     );
 
-    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Multisig);
+    facade.assert_dao_type(Multisig);
 
     Ok(())
 }
@@ -406,13 +407,8 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
 
     let dao_nft = nft_config.nft_contract;
 
-    let enterprise_contract = facade.enterprise_addr();
-    let dao_nft_contract_info = app.wrap().query_wasm_contract_info(dao_nft.to_string())?;
-    assert_eq!(
-        dao_nft_contract_info.admin.unwrap(),
-        enterprise_contract.to_string()
-    );
-    assert_eq!(dao_nft_contract_info.code_id, CODE_ID_CW721);
+    assert_contract_admin(&app, &dao_nft, facade.enterprise_addr().as_ref());
+    assert_addr_code_id(&app, &dao_nft, CODE_ID_CW721);
 
     let nft_info: ContractInfoResponse = app
         .wrap()
@@ -440,7 +436,7 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
     // TODO: fix this
     // facade.assert_nft_whitelist(vec![NFT_TOKEN1, dao_nft.as_ref()]);
 
-    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Nft);
+    facade.assert_dao_type(Nft);
 
     Ok(())
 }
@@ -559,7 +555,7 @@ fn import_cw721_dao() -> anyhow::Result<()> {
     // TODO: fix this
     // facade.assert_nft_whitelist(vec![NFT_TOKEN1, dao_nft.as_ref()]);
 
-    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Nft);
+    facade.assert_dao_type(Nft);
 
     Ok(())
 }
@@ -707,27 +703,24 @@ fn create_new_token_dao() -> anyhow::Result<()> {
     assert_contract_admin(&app, &dao_token, enterprise_contract.as_ref());
     assert_addr_code_id(&app, &dao_token, CODE_ID_CW20);
 
-    let token_info: TokenInfoResponse = app
-        .wrap()
-        .query_wasm_smart(dao_token.to_string(), &cw20::Cw20QueryMsg::TokenInfo {})?;
-
-    assert_eq!(token_membership.token_name, token_info.name);
-    assert_eq!(token_membership.token_symbol, token_info.symbol);
-    assert_eq!(token_membership.token_decimals, token_info.decimals);
-    assert_eq!(
-        Uint128::from(user1_balance + user2_balance + dao_balance),
-        token_info.total_supply
-    );
-
     let dao_cw20_assert = Cw20Assert {
         app: &app,
         cw20_contract: &Cw20Contract(dao_token.clone()),
     };
 
-    dao_cw20_assert.balance(USER1, user1_balance);
-    dao_cw20_assert.balance(USER2, user2_balance);
-    dao_cw20_assert.balance(USER3, 0u8);
-    dao_cw20_assert.balance(facade.treasury_addr(), dao_balance);
+    dao_cw20_assert.token_info(
+        token_membership.token_name,
+        token_membership.token_symbol,
+        token_membership.token_decimals,
+        user1_balance + user2_balance + dao_balance,
+    );
+
+    dao_cw20_assert.balances(vec![
+        (USER1, user1_balance),
+        (USER2, user2_balance),
+        (USER3, 0),
+        (facade.treasury_addr().as_ref(), dao_balance),
+    ]);
 
     dao_cw20_assert.minter(USER3, Some(token_cap));
 
@@ -747,7 +740,7 @@ fn create_new_token_dao() -> anyhow::Result<()> {
     //     AssetInfo::cw20(dao_token),
     // ]);
 
-    assert_eq!(facade.query_dao_info()?.dao_type, DaoType::Token);
+    facade.assert_dao_type(Token);
 
     Ok(())
 }

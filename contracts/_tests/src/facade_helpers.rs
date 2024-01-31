@@ -9,13 +9,14 @@ use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
     ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoCouncil,
-    DaoInfoResponse, DaoMetadata, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg,
-    Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMember,
-    MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse, ProposalParams,
-    ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams,
-    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg,
-    StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse,
-    UnstakeMsg, UserStakeParams, UserStakeResponse, V2MigrationStageResponse,
+    DaoInfoResponse, DaoMetadata, DaoType, ExecuteProposalMsg, GovConfigFacade,
+    ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
+    MultisigMember, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
+    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
+    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
+    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
+    V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
 use enterprise_facade_api::msg::QueryMsg::{
@@ -408,6 +409,10 @@ impl TestFacade<'_> {
                 .map(|it| it.into_addr())
                 .collect::<Vec<Addr>>()
         );
+    }
+
+    pub fn assert_dao_type(&self, dao_type: DaoType) {
+        assert_eq!(self.query_dao_info().unwrap().dao_type, dao_type)
     }
 }
 
