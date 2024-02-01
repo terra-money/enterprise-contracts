@@ -27,9 +27,9 @@ use enterprise_facade_api::msg::QueryMsg::{
     CreateProposalWithDenomDepositAdapted, CreateProposalWithNftDepositAdapted,
     CreateProposalWithTokenDepositAdapted, CrossChainTreasuries, DaoInfo, ExecuteProposalAdapted,
     HasIncompleteV2Migration, HasUnmovedStakesOrClaims, ListMultisigMembers, MemberInfo,
-    MemberVote, NftWhitelist, Proposal, ProposalStatus, ProposalVotes, Proposals, ReleasableClaims,
-    StakeAdapted, StakedNfts, TotalStakedAmount, TreasuryAddress, UnstakeAdapted, UserStake,
-    V2MigrationStage,
+    MemberVote, Members, NftWhitelist, Proposal, ProposalStatus, ProposalVotes, Proposals,
+    ReleasableClaims, StakeAdapted, StakedNfts, TotalStakedAmount, TreasuryAddress, UnstakeAdapted,
+    UserStake, V2MigrationStage,
 };
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{
@@ -39,6 +39,7 @@ use enterprise_outposts_api::api::CrossChainTreasuriesParams;
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
+use membership_common_api::api::{MembersParams, MembersResponse};
 use nft_staking_api::api::NftConfigResponse;
 use nft_staking_api::msg::QueryMsg::NftConfig;
 use serde::de::DeserializeOwned;
@@ -76,6 +77,13 @@ impl EnterpriseFacade for TestFacade<'_> {
         msg: QueryMemberInfoMsg,
     ) -> EnterpriseFacadeResult<MemberInfoResponse> {
         self.query_facade(&MemberInfo {
+            contract: self.dao_addr.clone(),
+            msg,
+        })
+    }
+
+    fn query_members(&self, msg: MembersParams) -> EnterpriseFacadeResult<MembersResponse> {
+        self.query_facade(&Members {
             contract: self.dao_addr.clone(),
             msg,
         })

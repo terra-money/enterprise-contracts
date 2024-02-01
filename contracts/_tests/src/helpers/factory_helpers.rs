@@ -1,6 +1,7 @@
 use crate::helpers::cw_multitest_helpers::{
     ADDR_FACTORY, CW20_TOKEN1, NFT_TOKEN1, USER1, USER2, USER_DAO_CREATOR,
 };
+use crate::helpers::facade_helpers::TestFacade;
 use crate::traits::{IntoAddr, IntoStringVec};
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw20::Cw20Coin;
@@ -159,6 +160,17 @@ pub fn create_dao(app: &mut App, msg: CreateDaoMsg) -> anyhow::Result<AppRespons
         &[],
     )?;
     Ok(response)
+}
+
+// TODO: there are many uses of create_dao where facade is then created, replace them with this
+pub fn create_dao_and_get_facade(app: &mut App, msg: CreateDaoMsg) -> anyhow::Result<TestFacade> {
+    create_dao(app, msg)?;
+
+    // TODO: use DAO ID from response above, instead of fetching just the first one
+    let dao_addr = get_first_dao(&app)?;
+    let facade = TestFacade { app, dao_addr };
+
+    Ok(facade)
 }
 
 pub fn query_all_daos(app: &App) -> DaoResult<AllDaosResponse> {
