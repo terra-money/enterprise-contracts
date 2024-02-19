@@ -1,0 +1,15 @@
+[package]
+name = "ics721-types"
+version = "1.0.0"
+authors = ["Terra Money <core@terra.money>"]
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+cosmwasm-std = "1"
+cosmwasm-schema = "1.1"
+cw721 = "0.16.0"
+serde = { version = "1", default-features = false, features = ["derive"] }
+thiserror = "1"

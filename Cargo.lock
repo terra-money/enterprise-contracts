@@ -2545,6 +2545,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ics721-types"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw721",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
