@@ -1,5 +1,5 @@
 [package]
-name = "nft-staking-api"
+name = "ics721-callback-proxy-api"
 version = "1.0.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
@@ -7,14 +7,10 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
-[features]
-interface = ["dep:cw-orch"]
-
 [dependencies]
 common = { path = "../common" }
-membership-common-api = { path = "../membership-common-api" }
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
 cw-utils = "1.0.1"
+ics721-types = { path = "../ics721-types" }
 thiserror = "1"
-cw-orch = { version = "0.18.1", optional = true }

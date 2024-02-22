@@ -6,13 +6,13 @@ use cosmwasm_schema::cw_serde;
 /// used here to provide some distinction between token and class IDs
 /// in the type system.
 #[cw_serde]
-pub struct TokenId(String);
+pub struct TokenId(pub String);
 
 /// A class ID according to the ICS-721 spec. The newtype pattern is
 /// used here to provide some distinction between token and class IDs
 /// in the type system.
 #[cw_serde]
-pub struct ClassId(String);
+pub struct ClassId(pub String);
 
 impl TokenId {
     pub fn new<T>(token_id: T) -> Self
