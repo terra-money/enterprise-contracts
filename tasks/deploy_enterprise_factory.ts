@@ -15,6 +15,7 @@ const ENTERPRISE_TREASURY = "enterprise-treasury";
 const ENTERPRISE_OUTPOSTS = "enterprise-outposts";
 const ENTERPRISE_VERSIONING = "enterprise-versioning";
 const FUNDS_DISTRIBUTOR = "funds-distributor";
+const ICS721_CALLBACK_PROXY = "ics721-callback-proxy";
 const MULTISIG_MEMBERSHIP = "multisig-membership";
 const TOKEN_STAKING_MEMBERSHIP = "token-staking-membership";
 const NFT_STAKING_MEMBERSHIP = "nft-staking-membership";
@@ -28,6 +29,8 @@ const DENOM_AXL_USDC = "ibc/B3504E092456BA618CC28AC671A71FB08C6CA0FD0BE7C8A5B5A3
 const DENOM_AXL_USDT = "ibc/CBF67A2BCF6CAE343FDF251E510C8E18C361FC02B23430C121116E0811835DEF";
 const DENOM_AXL_WBTC = "ibc/05D299885B07905B6886F554B39346EA6761246076A1120B1950049B92B922DD";
 const DENOM_AXL_WETH = "ibc/BC8A77AFBD872FDC32A348D3FB10CC09277C266CFE52081DE341C7EC6752E674";
+
+const ICS721_PROXY_ADDR = "terra1ed3qw4y4ca3lpj82ugg2jqsjr9czd0yyldcpp5n5yd7hu6udqafslz0nmg";
 
 type ComponentContracts = {
     enterprise_factory_contract: string,
@@ -48,8 +51,10 @@ type TokenConfig = {
 }
 
 task(async ({network, deployer, executor, signer, refs}) => {
-    // deployer.buildContract(ENTERPRISE);
-    // deployer.optimizeContract(ENTERPRISE);
+    deployer.buildContract(ENTERPRISE);
+    deployer.optimizeContract(ENTERPRISE);
+
+    await deployIcs721CallbackProxy(refs, network, deployer, signer);
 
     // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
@@ -57,7 +62,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-    await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 1, 0);
+    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 1, 0);
 
     // await instantiateDao(refs, network, executor);
 
@@ -239,6 +244,27 @@ const deployEnterpriseFacade = async (refs: Refs, network: string, deployer: Dep
             });
         await waitForNewBlock();
 
+    } catch (err) {
+        console.log(err);
+    }
+
+    refs.saveRefs();
+}
+
+const deployIcs721CallbackProxy = async (refs: Refs, network: string, deployer: Deployer, signer: Signer): Promise<void> => {
+    await deployer.storeCode(ICS721_CALLBACK_PROXY);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    const instantiateMsg = {
+        ics721_proxy: ICS721_PROXY_ADDR
+    };
+
+    try {
+        await deployer.instantiate(ICS721_CALLBACK_PROXY, instantiateMsg, {
+            admin: signer.key.accAddress,
+            label: "ICS721 callback proxy",
+        });
+        await waitForNewBlock();
     } catch (err) {
         console.log(err);
     }
