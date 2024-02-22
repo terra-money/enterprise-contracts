@@ -51,8 +51,8 @@ type TokenConfig = {
 }
 
 task(async ({network, deployer, executor, signer, refs}) => {
-    deployer.buildContract(ENTERPRISE);
-    deployer.optimizeContract(ENTERPRISE);
+    // deployer.buildContract(ENTERPRISE);
+    // deployer.optimizeContract(ENTERPRISE);
 
     await deployIcs721CallbackProxy(refs, network, deployer, signer);
 
