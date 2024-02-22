@@ -2545,6 +2545,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ics721-callback-proxy"
+version = "1.0.0"
+dependencies = [
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw2 1.1.2",
+ "ics721-callback-proxy-api",
+ "ics721-callback-proxy-impl",
+]
+
+[[package]]
 name = "ics721-callback-proxy-api"
 version = "1.0.0"
 dependencies = [
