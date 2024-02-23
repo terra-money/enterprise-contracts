@@ -158,7 +158,7 @@ fn create_dao_with_version_info(
     let dao_type = match msg.dao_membership {
         NewDenom(_) => DaoType::Denom,
         ImportCw20(_) | NewCw20(_) => DaoType::Token,
-        ImportCw721(_) | NewCw721(_) => DaoType::Nft,
+        ImportCw721(_) | NewCw721(_) | NewIcs721(_) => DaoType::Nft,
         ImportCw3(_) | NewMultisig(_) => DaoType::Multisig,
     };
 

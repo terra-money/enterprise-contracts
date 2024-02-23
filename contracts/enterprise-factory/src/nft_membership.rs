@@ -5,7 +5,7 @@ use crate::state::{DaoBeingCreated, CONFIG, DAO_BEING_CREATED};
 use crate::validate::{validate_existing_cw721_contract, validate_unlocking_period};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Instantiate;
-use cosmwasm_std::{to_json_binary, Addr, DepsMut, StdResult, SubMsg};
+use cosmwasm_std::{to_json_binary, DepsMut, StdResult, SubMsg};
 use cw_utils::Duration;
 use enterprise_factory_api::api::{
     ImportCw721MembershipMsg, ImportIcs721MembershipMsg, NewCw721MembershipMsg,
@@ -19,9 +19,7 @@ pub fn import_cw721_membership(
     msg: ImportCw721MembershipMsg,
     weight_change_hooks: Option<Vec<String>>,
 ) -> DaoResult<SubMsg> {
-    let cw721_address = deps.api.addr_validate(&msg.cw721_contract)?;
-
-    validate_existing_cw721_contract(deps.as_ref(), cw721_address.as_ref())?;
+    validate_existing_cw721_contract(deps.as_ref(), &msg.cw721_contract)?;
 
     DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
         Ok(DaoBeingCreated {
@@ -32,7 +30,9 @@ pub fn import_cw721_membership(
 
     instantiate_nft_staking_membership_contract(
         deps,
-        cw721_address,
+        NftContract::Cw721 {
+            contract: msg.cw721_contract,
+        },
         msg.unlocking_period,
         weight_change_hooks,
     )
