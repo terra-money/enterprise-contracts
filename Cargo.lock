@@ -2966,7 +2966,7 @@ dependencies = [
 
 [[package]]
 name = "nft-staking-api"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -2979,7 +2979,7 @@ dependencies = [
 
 [[package]]
 name = "nft-staking-impl"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -2997,7 +2997,7 @@ dependencies = [
 
 [[package]]
 name = "nft-staking-membership"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
