@@ -15,6 +15,12 @@ pub enum NftStakingError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error("ICS721 NFT has been transferred - NFT contract already exists on local chain, you can query it")]
+    Ics721Transferred,
+
+    #[error("ICS721 NFT still not transferred - NFT contract does not yet exist on local chain")]
+    Ics721StillNotTransferred,
+
     #[error("NFT token with ID {token_id} has already been staked")]
     NftTokenAlreadyStaked { token_id: String },
 

@@ -5,8 +5,14 @@ use cw_utils::Duration;
 
 #[cw_serde]
 pub struct Config {
-    pub nft_contract: Addr,
+    pub nft_contract_addr: NftContractAddr,
     pub unlocking_period: Duration,
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+#[cw_serde]
+pub enum NftContractAddr {
+    Cw721 { contract: Addr },
+    Ics721 { contract: Addr, class_id: String },
+}
+
+pub const CONFIG: Item<Config> = Item::new("config_v1_2_0");

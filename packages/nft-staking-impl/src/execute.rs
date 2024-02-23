@@ -26,7 +26,7 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
     let config = CONFIG.load(ctx.deps.storage)?;
 
     // only designated NFT contract can invoke this
-    if ctx.info.sender != config.nft_contract {
+    if ctx.info.sender != config.nft_contract_addr {
         return Err(Unauthorized);
     }
 
@@ -193,7 +193,7 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> NftStakingResult<Response> {
     let releasable_claims =
         get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;
 
-    let nft_contract = CONFIG.load(ctx.deps.storage)?.nft_contract;
+    let nft_contract = CONFIG.load(ctx.deps.storage)?.nft_contract_addr;
 
     let send_nfts_submsgs = releasable_claims
         .iter()

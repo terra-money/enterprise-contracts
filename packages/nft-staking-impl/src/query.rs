@@ -1,5 +1,5 @@
 use crate::claims::{get_claims, get_releasable_claims};
-use crate::config::CONFIG;
+use crate::config::{NftContractAddr, CONFIG};
 use crate::nft_staking::{NftStake, NFT_STAKES};
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
@@ -17,9 +17,10 @@ use membership_common_api::api::{
     UserWeightResponse,
 };
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, NftConfigResponse, NftTokenId, StakedNftsParams,
-    StakedNftsResponse, UserNftStakeParams, UserNftStakeResponse,
+    ClaimsParams, ClaimsResponse, Ics721ConfigResponse, NftConfigResponse, NftTokenId,
+    StakedNftsParams, StakedNftsResponse, UserNftStakeParams, UserNftStakeResponse,
 };
+use nft_staking_api::error::NftStakingError::{Ics721StillNotTransferred, Ics721Transferred};
 use nft_staking_api::error::NftStakingResult;
 
 const MAX_QUERY_LIMIT: u8 = 100;
@@ -30,9 +31,33 @@ pub fn query_nft_config(qctx: &QueryContext) -> NftStakingResult<NftConfigRespon
 
     let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
 
+    let nft_contract = match config.nft_contract_addr {
+        NftContractAddr::Cw721 { contract } => contract,
+        NftContractAddr::Ics721 { .. } => return Err(Ics721StillNotTransferred),
+    };
+
     Ok(NftConfigResponse {
         enterprise_contract,
-        nft_contract: config.nft_contract,
+        nft_contract,
+        unlocking_period: config.unlocking_period,
+    })
+}
+
+// TODO: redesign this query to actually return the enum NFT contract config (regardless of whether it's ICS721 or CW721)
+pub fn query_ics721_config(qctx: &QueryContext) -> NftStakingResult<Ics721ConfigResponse> {
+    let config = CONFIG.load(qctx.deps.storage)?;
+
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
+
+    let (ics721_contract, class_id) = match config.nft_contract_addr {
+        NftContractAddr::Cw721 { .. } => return Err(Ics721Transferred),
+        NftContractAddr::Ics721 { contract, class_id } => (contract, class_id),
+    };
+
+    Ok(Ics721ConfigResponse {
+        enterprise_contract,
+        ics721_contract,
+        class_id,
         unlocking_period: config.unlocking_period,
     })
 }

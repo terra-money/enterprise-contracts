@@ -8,8 +8,8 @@ use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use nft_staking_impl::execute::{claim, receive_nft, unstake, update_unlocking_period};
 use nft_staking_impl::query::{
-    query_claims, query_members, query_nft_config, query_releasable_claims, query_staked_nfts,
-    query_total_weight, query_user_nft_stake, query_user_weight,
+    query_claims, query_ics721_config, query_members, query_nft_config, query_releasable_claims,
+    query_staked_nfts, query_total_weight, query_user_nft_stake, query_user_weight,
 };
 
 // version info for migration info
@@ -64,6 +64,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
 
     let response = match msg {
         QueryMsg::NftConfig {} => to_json_binary(&query_nft_config(&qctx)?)?,
+        QueryMsg::Ics721Config {} => to_json_binary(&query_ics721_config(&qctx)?)?,
         QueryMsg::UserStake(params) => to_json_binary(&query_user_nft_stake(&qctx, params)?)?,
         QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(&qctx, params)?)?,
@@ -81,6 +82,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> NftStakingResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let ctx = &mut Context { deps, env, info };
+
+    nft_staking_impl::migrate::migrate(ctx)?;
 
     Ok(Response::new().add_attribute("action", "migrate"))
 }

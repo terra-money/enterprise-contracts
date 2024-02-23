@@ -5,6 +5,12 @@ use cw_utils::Duration;
 
 pub type NftTokenId = String;
 
+#[cw_serde]
+pub enum NftContract {
+    Cw721 { contract: String },
+    Ics721 { contract: String, class_id: String },
+}
+
 // TODO: also move to common
 #[cw_serde]
 pub struct ReceiveNftMsg {
@@ -62,6 +68,14 @@ pub struct StakedNftsParams {
 pub struct NftConfigResponse {
     pub enterprise_contract: Addr,
     pub nft_contract: Addr,
+    pub unlocking_period: Duration,
+}
+
+#[cw_serde]
+pub struct Ics721ConfigResponse {
+    pub enterprise_contract: Addr,
+    pub ics721_contract: Addr,
+    pub class_id: String,
     pub unlocking_period: Duration,
 }
 
