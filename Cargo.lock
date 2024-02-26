@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "attestation-api",
  "common",
@@ -1458,6 +1458,7 @@ dependencies = [
  "enterprise-treasury-api",
  "enterprise-versioning-api",
  "funds-distributor-api",
+ "nft-staking-api",
  "serde-json-wasm",
 ]
 
@@ -1684,7 +1685,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise-governance-controller"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "common",

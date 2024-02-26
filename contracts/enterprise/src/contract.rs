@@ -16,6 +16,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
+use enterprise_protocol::api::DaoType::Nft;
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, ExecuteMsgsMsg, FinalizeInstantiationMsg,
     IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
@@ -456,7 +457,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
         &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams {
             version: Version {
                 major: 1,
-                minor: 1,
+                minor: 2,
                 patch: 0,
             },
         }),
@@ -474,14 +475,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
         msg: to_json_binary(&enterprise_governance_controller_api::msg::MigrateMsg {})?,
     }));
 
-    let migrate_funds_distributor_msg = SubMsg::new(Wasm(Migrate {
-        contract_addr: component_contracts.funds_distributor_contract.to_string(),
-        new_code_id: version_info.version.funds_distributor_code_id,
-        msg: to_json_binary(&funds_distributor_api::msg::MigrateMsg {})?,
-    }));
-
-    Ok(Response::new()
+    let mut response = Response::new()
         .add_attribute("action", "migrate")
-        .add_submessage(migrate_governance_controller_msg)
-        .add_submessage(migrate_funds_distributor_msg))
+        .add_submessage(migrate_governance_controller_msg);
+
+    let dao_type = DAO_TYPE.load(deps.storage)?;
+
+    if dao_type == Nft {
+        let migrate_nft_membership_msg = SubMsg::new(Wasm(Migrate {
+            contract_addr: component_contracts.membership_contract.to_string(),
+            new_code_id: version_info.version.nft_staking_membership_code_id,
+            msg: to_json_binary(&nft_staking_api::msg::MigrateMsg {})?,
+        }));
+        response = response.add_submessage(migrate_nft_membership_msg);
+    }
+
+    Ok(response)
 }
