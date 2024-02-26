@@ -72,10 +72,10 @@ pub struct NftConfigResponse {
 }
 
 #[cw_serde]
-pub struct Ics721ConfigResponse {
+pub struct NftContractConfigResponse {
     pub enterprise_contract: Addr,
-    pub ics721_contract: Addr,
-    pub class_id: String,
+    pub nft_contract: NftContract,
+    // TODO: convert this to a type with Addr instead of String?
     pub unlocking_period: Duration,
 }
 

@@ -1,7 +1,7 @@
 use crate::api::{
-    ClaimMsg, ClaimsParams, ClaimsResponse, NftConfigResponse, NftContract, ReceiveNftMsg,
-    StakedNftsParams, StakedNftsResponse, UnstakeMsg, UpdateUnlockingPeriodMsg, UserNftStakeParams,
-    UserNftStakeResponse,
+    ClaimMsg, ClaimsParams, ClaimsResponse, NftConfigResponse, NftContract,
+    NftContractConfigResponse, ReceiveNftMsg, StakedNftsParams, StakedNftsResponse, UnstakeMsg,
+    UpdateUnlockingPeriodMsg, UserNftStakeParams, UserNftStakeResponse,
 };
 use common::cw::ReleaseAt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -42,8 +42,8 @@ pub enum Cw721HookMsg {
 pub enum QueryMsg {
     #[returns(NftConfigResponse)]
     NftConfig {},
-    #[returns(NftConfigResponse)]
-    Ics721Config {},
+    #[returns(NftContractConfigResponse)]
+    NftContractConfig {},
     #[returns(UserNftStakeResponse)]
     UserStake(UserNftStakeParams),
     #[returns(UserWeightResponse)]

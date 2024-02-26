@@ -17,10 +17,10 @@ use membership_common_api::api::{
     UserWeightResponse,
 };
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, Ics721ConfigResponse, NftConfigResponse, NftTokenId,
-    StakedNftsParams, StakedNftsResponse, UserNftStakeParams, UserNftStakeResponse,
+    ClaimsParams, ClaimsResponse, NftConfigResponse, NftContract, NftContractConfigResponse,
+    NftTokenId, StakedNftsParams, StakedNftsResponse, UserNftStakeParams, UserNftStakeResponse,
 };
-use nft_staking_api::error::NftStakingError::{Ics721StillNotTransferred, Ics721Transferred};
+use nft_staking_api::error::NftStakingError::Ics721StillNotTransferred;
 use nft_staking_api::error::NftStakingResult;
 
 const MAX_QUERY_LIMIT: u8 = 100;
@@ -43,21 +43,26 @@ pub fn query_nft_config(qctx: &QueryContext) -> NftStakingResult<NftConfigRespon
     })
 }
 
-// TODO: redesign this query to actually return the enum NFT contract config (regardless of whether it's ICS721 or CW721)
-pub fn query_ics721_config(qctx: &QueryContext) -> NftStakingResult<Ics721ConfigResponse> {
+pub fn query_nft_contract_config(
+    qctx: &QueryContext,
+) -> NftStakingResult<NftContractConfigResponse> {
     let config = CONFIG.load(qctx.deps.storage)?;
 
     let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
 
-    let (ics721_contract, class_id) = match config.nft_contract_addr {
-        NftContractAddr::Cw721 { .. } => return Err(Ics721Transferred),
-        NftContractAddr::Ics721 { contract, class_id } => (contract, class_id),
+    let nft_contract = match config.nft_contract_addr {
+        NftContractAddr::Cw721 { contract } => NftContract::Cw721 {
+            contract: contract.to_string(),
+        },
+        NftContractAddr::Ics721 { contract, class_id } => NftContract::Ics721 {
+            contract: contract.to_string(),
+            class_id,
+        },
     };
 
-    Ok(Ics721ConfigResponse {
+    Ok(NftContractConfigResponse {
         enterprise_contract,
-        ics721_contract,
-        class_id,
+        nft_contract,
         unlocking_period: config.unlocking_period,
     })
 }
