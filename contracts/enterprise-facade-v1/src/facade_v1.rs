@@ -37,7 +37,7 @@ use enterprise_facade_api::api::{
     UserStakeParams, UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
-use enterprise_facade_api::error::EnterpriseFacadeError::{Dao, UnexpectedEmptyMembership};
+use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{CreateProposalWithNftDepositMsg, ProposalAction};
@@ -99,7 +99,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
             gov_config,
             dao_council: dao_info_v5.dao_council,
             dao_type: dao_info_v5.dao_type,
-            dao_membership_contract: Some(dao_info_v5.dao_membership_contract.to_string()),
+            dao_membership_contract: dao_info_v5.dao_membership_contract.to_string(),
             enterprise_factory_contract: dao_info_v5.enterprise_factory_contract,
             funds_distributor_contract: dao_info_v5.funds_distributor_contract,
             dao_code_version: dao_info_v5.dao_code_version,
@@ -342,11 +342,9 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
         match dao_type {
             DaoType::Token => Ok(adapter_response_single_execute_msg(
-                qctx.deps.api.addr_validate(
-                    &dao_info
-                        .dao_membership_contract
-                        .ok_or(UnexpectedEmptyMembership)?,
-                )?,
+                qctx.deps
+                    .api
+                    .addr_validate(&dao_info.dao_membership_contract)?,
                 serde_json_wasm::to_string(&cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: params.deposit_amount,
@@ -427,10 +425,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
     ) -> EnterpriseFacadeResult<AdapterResponse> {
         match params {
             StakeMsg::Cw20(msg) => {
-                let token_addr = self
-                    .query_dao_info(qctx.clone())?
-                    .dao_membership_contract
-                    .ok_or(UnexpectedEmptyMembership)?;
+                let token_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
                 let msg = cw20::Cw20ExecuteMsg::Send {
                     contract: self.enterprise_address.to_string(),
                     amount: msg.amount,
@@ -443,10 +438,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
                 ))
             }
             StakeMsg::Cw721(msg) => {
-                let nft_addr = self
-                    .query_dao_info(qctx.clone())?
-                    .dao_membership_contract
-                    .ok_or(UnexpectedEmptyMembership)?;
+                let nft_addr = self.query_dao_info(qctx.clone())?.dao_membership_contract;
                 let nft_addr = qctx.deps.api.addr_validate(&nft_addr)?;
 
                 let stake_msg_binary = to_json_binary(&Cw721HookV1Msg::Stake {})?;
