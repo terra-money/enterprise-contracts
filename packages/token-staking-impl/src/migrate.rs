@@ -10,9 +10,16 @@ use membership_common::total_weight::load_total_weight;
 use std::ops::{Add, Sub};
 use token_staking_api::api::TokenClaim;
 use token_staking_api::error::TokenStakingResult;
+use token_staking_api::msg::MigrateMsg;
 
-pub fn migrate_to_v1_1_1(deps: DepsMut, env: Env) -> TokenStakingResult<Vec<SubMsg>> {
-    // TODO: accept a flag that can short-circuit this and do nothing
+pub fn migrate_to_v1_1_1(
+    deps: DepsMut,
+    env: Env,
+    msg: MigrateMsg,
+) -> TokenStakingResult<Vec<SubMsg>> {
+    if msg.move_excess_membership_assets.unwrap_or(false) {
+        return Ok(vec![]);
+    }
 
     let total_weight = load_total_weight(deps.storage)?;
 

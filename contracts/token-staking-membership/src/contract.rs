@@ -7,6 +7,7 @@ use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weig
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use token_staking_impl::execute::{claim, receive_cw20, unstake, update_unlocking_period};
+use token_staking_impl::migrate::migrate_to_v1_1_1;
 use token_staking_impl::query::{
     query_claims, query_members, query_releasable_claims, query_token_config, query_total_weight,
     query_user_weight,
@@ -77,8 +78,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> TokenStakingResult<Binary> 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> TokenStakingResult<Response> {
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> TokenStakingResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    Ok(Response::new().add_attribute("action", "migrate"))
+    let submsgs = migrate_to_v1_1_1(deps, env, msg)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_submessages(submsgs))
 }
