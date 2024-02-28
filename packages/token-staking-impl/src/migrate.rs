@@ -11,7 +11,7 @@ use std::ops::{Add, Sub};
 use token_staking_api::api::TokenClaim;
 use token_staking_api::error::TokenStakingResult;
 
-pub fn migrate_to_v1_1_3(deps: DepsMut, env: Env) -> TokenStakingResult<Vec<SubMsg>> {
+pub fn migrate_to_v1_1_1(deps: DepsMut, env: Env) -> TokenStakingResult<Vec<SubMsg>> {
     // TODO: accept a flag that can short-circuit this and do nothing
 
     let total_weight = load_total_weight(deps.storage)?;

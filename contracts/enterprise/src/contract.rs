@@ -16,6 +16,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
+use enterprise_protocol::api::DaoType::Token;
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, ExecuteMsgsMsg, FinalizeInstantiationMsg,
     IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
@@ -445,7 +446,7 @@ pub fn query_is_restricted_user(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let versioning_contract = ENTERPRISE_VERSIONING_CONTRACT.load(deps.storage)?;
@@ -457,31 +458,29 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
             version: Version {
                 major: 1,
                 minor: 1,
-                patch: 0,
+                patch: 1,
             },
         }),
     )?;
 
-    let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
+    let response = Response::new().add_attribute("action", "migrate");
 
-    let migrate_governance_controller_msg = SubMsg::new(Wasm(Migrate {
-        contract_addr: component_contracts
-            .enterprise_governance_controller_contract
-            .to_string(),
-        new_code_id: version_info
-            .version
-            .enterprise_governance_controller_code_id,
-        msg: to_json_binary(&enterprise_governance_controller_api::msg::MigrateMsg {})?,
-    }));
+    let dao_type = DAO_TYPE.load(deps.storage)?;
 
-    let migrate_funds_distributor_msg = SubMsg::new(Wasm(Migrate {
-        contract_addr: component_contracts.funds_distributor_contract.to_string(),
-        new_code_id: version_info.version.funds_distributor_code_id,
-        msg: to_json_binary(&funds_distributor_api::msg::MigrateMsg {})?,
-    }));
+    if dao_type == Token {
+        let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "migrate")
-        .add_submessage(migrate_governance_controller_msg)
-        .add_submessage(migrate_funds_distributor_msg))
+        let migrate_token_membership_msg = SubMsg::new(Wasm(Migrate {
+            contract_addr: component_contracts.membership_contract.to_string(),
+            new_code_id: version_info.version.token_staking_membership_code_id,
+            msg: to_json_binary(&token_staking_api::msg::MigrateMsg {
+                move_excess_membership_assets: msg.move_excess_membership_assets,
+            })?,
+        }));
+
+        Ok(response.add_submessage(migrate_token_membership_msg))
+    } else {
+        // do nothing
+        Ok(response)
+    }
 }
