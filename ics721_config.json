@@ -3,12 +3,14 @@
     "stargaze-1": {
       "ics721_outgoing_proxy": "stars12r3q66jllecd6gegemtlv0dvueqcnnkvkgpqhyp3avpscasgz4fqnn2u2l",
       "src_channel": "channel-370",
-      "dest_channel": "channel-282"
+      "dest_channel": "channel-282",
+      "ics721_local_proxy": "terra1ed3qw4y4ca3lpj82ugg2jqsjr9czd0yyldcpp5n5yd7hu6udqafslz0nmg"
     },
     "juno-1": {
       "ics721_outgoing_proxy": "juno17kzzuf6hjd8khpyjjd4h4n62j0x7663u0k2gprfte6ptq9mkv7uswk0nt3",
       "src_channel": "channel-326",
-      "dest_channel": "channel-463"
+      "dest_channel": "channel-463",
+      "ics721_local_proxy": "terra1ed3qw4y4ca3lpj82ugg2jqsjr9czd0yyldcpp5n5yd7hu6udqafslz0nmg"
     }
   }
 }
