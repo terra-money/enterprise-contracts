@@ -9,8 +9,8 @@ pub struct UpdateUserWeightsMsg {
 
 #[cw_serde]
 pub struct PreUserVotesChangeMsg {
-    /// User for which the votes are about to be updated
-    pub user: String,
+    /// Users for which the votes are about to be updated
+    pub users: Vec<String>,
 }
 
 #[cw_serde]

@@ -114,20 +114,29 @@ pub fn pre_user_votes_change(
     ctx: &mut Context,
     msg: PreUserVotesChangeMsg,
 ) -> DistributorResult<Response> {
-    let user = ctx.deps.api.addr_validate(&msg.user)?;
+    // TODO: when there's multiple users, this will perform a query to gov contract for each user. we can optimize by introducing bulk query
+    for user in msg.users {
+        let user = ctx.deps.api.addr_validate(&user)?;
 
-    let user_total_votes =
-        weights_repository(ctx.deps.as_ref(), Participation).get_user_weight(user.clone())?;
+        // TODO: we can optimize this for simple vote casts by just storing their last known participation weight,
+        // TODO: querying their current vote amount on this proposal
+        // TODO: and then just using their new weight to deduce the new weight
 
-    match user_total_votes {
-        // TODO: not sure if this initialize_user_indices works
-        // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
-        // we'll assume their indices have been initialized
-        None => initialize_user_indices(ctx.deps.branch(), user.clone(), Participation)?,
-        Some(total) => update_user_indices(ctx.deps.branch(), user.clone(), total, Participation)?,
+        let user_total_votes =
+            weights_repository(ctx.deps.as_ref(), Participation).get_user_weight(user.clone())?;
+
+        match user_total_votes {
+            // TODO: not sure if this initialize_user_indices works
+            // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
+            // we'll assume their indices have been initialized
+            None => initialize_user_indices(ctx.deps.branch(), user.clone(), Participation)?,
+            Some(total) => {
+                update_user_indices(ctx.deps.branch(), user.clone(), total, Participation)?
+            }
+        }
     }
 
-    Ok(execute_pre_user_votes_change_response(user.to_string()))
+    Ok(execute_pre_user_votes_change_response())
 }
 
 pub fn query_number_proposals_tracked(

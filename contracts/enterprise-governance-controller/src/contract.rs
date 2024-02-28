@@ -582,7 +582,7 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
             .funds_distributor_contract
             .to_string(),
         &PreUserVotesChange(PreUserVotesChangeMsg {
-            user: ctx.info.sender.to_string(),
+            users: vec![ctx.info.sender.to_string()],
         }),
         vec![],
     )?);
@@ -1358,8 +1358,8 @@ pub fn weights_changed(
     )?);
 
     Ok(execute_weights_changed_response()
-        .add_submessages(update_votes_submsgs)
-        .add_submessage(update_funds_distributor_submsg))
+        .add_submessage(update_funds_distributor_submsg)
+        .add_submessages(update_votes_submsgs))
 }
 
 pub fn update_user_votes(

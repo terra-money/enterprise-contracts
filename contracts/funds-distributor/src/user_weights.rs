@@ -1,3 +1,4 @@
+use crate::participation::pre_user_votes_change;
 use crate::repository::asset_repository::{
     asset_distribution_repository, AssetDistributionRepository,
 };
@@ -10,7 +11,9 @@ use common::cw::Context;
 use cosmwasm_std::{Addr, DepsMut, Response, Uint128};
 use cw_storage_plus::Map;
 use funds_distributor_api::api::DistributionType::{Membership, Participation};
-use funds_distributor_api::api::{DistributionType, UpdateUserWeightsMsg, UserWeight};
+use funds_distributor_api::api::{
+    DistributionType, PreUserVotesChangeMsg, UpdateUserWeightsMsg, UserWeight,
+};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_update_user_weights_response;
@@ -68,38 +71,42 @@ pub fn update_user_weights(
         return Err(Unauthorized);
     }
 
-    update_user_weights_checked(ctx.deps.branch(), msg)?;
+    update_user_weights_checked(ctx, msg)?;
 
     Ok(execute_update_user_weights_response())
 }
 
 fn update_user_weights_checked(
-    mut deps: DepsMut,
+    ctx: &mut Context,
     msg: UpdateUserWeightsMsg,
 ) -> DistributorResult<()> {
     // TODO: check if we need variable distribution type here, we probably do
     let distribution_type = Membership;
     let mut total_weight =
-        weights_repository(deps.as_ref(), distribution_type.clone()).get_total_weight()?;
+        weights_repository(ctx.deps.as_ref(), distribution_type.clone()).get_total_weight()?;
 
-    for user_weight_change in msg.new_user_weights {
-        let user = deps.api.addr_validate(&user_weight_change.user)?;
+    for user_weight_change in &msg.new_user_weights {
+        let user = ctx.deps.api.addr_validate(&user_weight_change.user)?;
 
-        let old_user_weight = weights_repository(deps.as_ref(), distribution_type.clone())
+        let old_user_weight = weights_repository(ctx.deps.as_ref(), distribution_type.clone())
             .get_user_weight(user.clone())?;
 
         match old_user_weight {
             None => {
                 // we have not encountered this user, so we need to ensure their distribution
                 // indices are set to current global indices
-                initialize_user_indices(deps.branch(), user.clone(), distribution_type.clone())?;
+                initialize_user_indices(
+                    ctx.deps.branch(),
+                    user.clone(),
+                    distribution_type.clone(),
+                )?;
             }
             Some(old_user_weight) => {
                 // the user already had their weight previously, so we use that weight
                 // to calculate how many rewards for each asset they've accrued since we last
                 // calculated their pending rewards
                 update_user_indices(
-                    deps.branch(),
+                    ctx.deps.branch(),
                     user.clone(),
                     old_user_weight,
                     distribution_type.clone(),
@@ -107,7 +114,7 @@ fn update_user_weights_checked(
             }
         };
 
-        let new_user_weight = weights_repository_mut(deps.branch(), distribution_type.clone())
+        let new_user_weight = weights_repository_mut(ctx.deps.branch(), distribution_type.clone())
             .set_user_weight(user.clone(), user_weight_change.weight)?;
 
         let old_user_weight = old_user_weight.unwrap_or_default();
@@ -115,7 +122,15 @@ fn update_user_weights_checked(
         total_weight = total_weight - old_user_weight + new_user_weight;
     }
 
-    weights_repository_mut(deps.branch(), distribution_type).set_total_weight(total_weight)?;
+    weights_repository_mut(ctx.deps.branch(), distribution_type).set_total_weight(total_weight)?;
+
+    // TODO: a bit dirty, but will do the trick
+    pre_user_votes_change(
+        ctx,
+        PreUserVotesChangeMsg {
+            users: msg.new_user_weights.into_iter().map(|it| it.user).collect(),
+        },
+    )?;
 
     Ok(())
 }

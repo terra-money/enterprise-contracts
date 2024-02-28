@@ -10,10 +10,8 @@ pub fn execute_update_user_weights_response() -> Response {
     Response::new().add_attribute("action", "update_user_weights")
 }
 
-pub fn execute_pre_user_votes_change_response(user: String) -> Response {
-    Response::new()
-        .add_attribute("action", "pre_user_votes_change")
-        .add_attribute("user", user)
+pub fn execute_pre_user_votes_change_response() -> Response {
+    Response::new().add_attribute("action", "pre_user_votes_change")
 }
 
 pub fn execute_new_proposal_created_response(proposal_id: u64) -> Response {
