@@ -1,6 +1,6 @@
 [package]
 name = "token-staking-impl"
-version = "1.0.0"
+version = "1.1.1"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 

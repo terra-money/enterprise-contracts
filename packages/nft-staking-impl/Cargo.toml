@@ -1,6 +1,6 @@
 [package]
 name = "nft-staking-impl"
-version = "1.0.0"
+version = "1.1.1"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -22,4 +22,4 @@ cw721 = "0.16.0"
 nft-staking-api = { path = "../nft-staking-api" }
 itertools = "0.10.5"
 thiserror = "1"
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }
