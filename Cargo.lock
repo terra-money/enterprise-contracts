@@ -1458,6 +1458,7 @@ dependencies = [
  "enterprise-treasury-api",
  "enterprise-versioning-api",
  "funds-distributor-api",
+ "nft-staking-api",
  "serde-json-wasm",
  "token-staking-api",
 ]
