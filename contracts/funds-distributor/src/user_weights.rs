@@ -124,7 +124,7 @@ fn update_user_weights_checked(
 ///
 /// Will initialize all their rewards for assets with existing distributions to 0, and set
 /// their rewards indices to current global index for each asset.
-fn initialize_user_indices(
+pub fn initialize_user_indices(
     deps: DepsMut,
     user: Addr,
     distribution_type: DistributionType,
@@ -143,7 +143,7 @@ fn initialize_user_indices(
 ///
 /// Will calculate newly pending rewards since the last update to the user's reward index until now,
 /// using their last weight to calculate the newly accrued rewards.
-fn update_user_indices(
+pub fn update_user_indices(
     deps: DepsMut,
     user: Addr,
     old_user_weight: Uint128,

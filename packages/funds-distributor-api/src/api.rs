@@ -8,6 +8,12 @@ pub struct UpdateUserWeightsMsg {
 }
 
 #[cw_serde]
+pub struct PreUserVotesChangeMsg {
+    /// User for which the votes are about to be updated
+    pub user: String,
+}
+
+#[cw_serde]
 pub struct NewProposalCreatedMsg {
     /// New weights that the users have, after the change
     pub proposal_id: u64, // TODO: use ProposalId type

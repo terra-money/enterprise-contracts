@@ -31,7 +31,6 @@ use enterprise_versioning_api::api::{
 };
 use enterprise_versioning_api::msg::QueryMsg::Versions;
 use std::collections::HashMap;
-use std::ops::Not;
 use DaoType::Nft;
 
 // version info for migration info

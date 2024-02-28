@@ -4,8 +4,8 @@ use crate::eligibility::{
     execute_update_minimum_eligible_weight, query_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT,
 };
 use crate::participation::{
-    execute_update_number_proposals_tracked, new_proposal_created, query_number_proposals_tracked,
-    query_proposal_ids_tracked, PROPOSALS_TRACKED,
+    execute_update_number_proposals_tracked, new_proposal_created, pre_user_votes_change,
+    query_number_proposals_tracked, query_proposal_ids_tracked, PROPOSALS_TRACKED,
 };
 use crate::rewards::query_user_rewards;
 use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
@@ -65,6 +65,7 @@ pub fn execute(
     let ctx = &mut Context { deps, env, info };
     match msg {
         ExecuteMsg::UpdateUserWeights(msg) => update_user_weights(ctx, msg),
+        ExecuteMsg::PreUserVotesChange(msg) => pre_user_votes_change(ctx, msg),
         ExecuteMsg::NewProposalCreated(msg) => new_proposal_created(ctx, msg),
         ExecuteMsg::UpdateMinimumEligibleWeight(msg) => {
             execute_update_minimum_eligible_weight(ctx, msg)

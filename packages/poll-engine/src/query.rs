@@ -9,7 +9,7 @@ use crate::state::{polls, votes, PollHelpers, PollStorage, VoteStorage};
 use poll_engine_api::api::{
     PollId, PollParams, PollResponse, PollStatusResponse, PollVoterParams, PollVoterResponse,
     PollVotersParams, PollVotersResponse, PollsParams, PollsResponse, TotalVotesParams,
-    TotalVotesResponse, VoterResponse, VoterTotalVotesParams,
+    TotalVotesResponse, VoterResponse, VoterTotalVotesParams, VoterTotalVotesResponse,
 };
 use poll_engine_api::error::*;
 
@@ -201,22 +201,26 @@ pub fn query_total_votes(
 pub fn query_voter_total_votes(
     qctx: &QueryContext,
     params: VoterTotalVotesParams,
-) -> PollResult<TotalVotesResponse> {
+) -> PollResult<VoterTotalVotesResponse> {
     let voter = qctx.deps.api.addr_validate(&params.voter_addr)?;
 
-    let mut total_votes = Uint128::zero();
+    let mut total_votes: Option<Uint128> = None;
 
     for poll_id in params.poll_ids {
         // TODO: is it faster to query a bunch of them and then filter the ones we need? we can set lowest and highest as Bound, and then filter
-        let votes = votes()
+        let vote = votes()
             .may_load(qctx.deps.storage, (voter.clone(), poll_id))?
-            .map(|it| it.amount)
-            .unwrap_or_default();
+            .map(|it| it.amount);
 
-        total_votes = total_votes.add(Uint128::from(votes)); // TODO: checked add?
+        if let Some(amount) = vote {
+            total_votes = match total_votes {
+                None => Some(amount.into()),
+                Some(total) => Some(total.add(Uint128::from(amount))), // TODO: checked add?
+            }
+        }
     }
 
-    Ok(TotalVotesResponse { total_votes })
+    Ok(VoterTotalVotesResponse { total_votes })
 }
 
 #[cfg(test)]

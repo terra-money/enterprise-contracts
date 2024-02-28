@@ -7,12 +7,12 @@ use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
 use enterprise_governance_api::msg::QueryMsg::VoterTotalVotes;
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
-use poll_engine_api::api::{TotalVotesResponse, VoterTotalVotesParams};
+use poll_engine_api::api::{VoterTotalVotesParams, VoterTotalVotesResponse};
 
 pub trait WeightsRepository {
     fn get_total_weight(&self) -> DistributorResult<Uint128>;
 
-    // TODO: it gets confusing whether this queries live data or uses some local copy
+    // TODO: it gets confusing whether this queries live data or uses some local copy, split into interactor and repository
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>>;
 }
 
@@ -34,7 +34,9 @@ pub struct MembershipWeightsRepository<'a> {
 
 impl WeightsRepository for MembershipWeightsRepository<'_> {
     fn get_total_weight(&self) -> DistributorResult<Uint128> {
-        let total_weight = EFFECTIVE_TOTAL_WEIGHT.may_load(self.deps.storage)?.unwrap_or_default();
+        let total_weight = EFFECTIVE_TOTAL_WEIGHT
+            .may_load(self.deps.storage)?
+            .unwrap_or_default();
         Ok(total_weight)
     }
 
@@ -109,12 +111,13 @@ impl WeightsRepository for ParticipationWeightsRepository<'_> {
         Ok(total_weight)
     }
 
+    // TODO: this should go to interactor, not here
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
         let components = query_enterprise_components(self.deps)?;
 
         let tracked_proposal_ids = get_proposal_ids_tracked(self.deps)?;
 
-        let user_weight: TotalVotesResponse = self.deps.querier.query_wasm_smart(
+        let user_weight: VoterTotalVotesResponse = self.deps.querier.query_wasm_smart(
             components.enterprise_governance_contract.to_string(),
             &VoterTotalVotes(VoterTotalVotesParams {
                 voter_addr: user.to_string(),
@@ -122,7 +125,7 @@ impl WeightsRepository for ParticipationWeightsRepository<'_> {
             }),
         )?;
 
-        Ok(Some(user_weight.total_votes))
+        Ok(user_weight.total_votes)
     }
 }
 

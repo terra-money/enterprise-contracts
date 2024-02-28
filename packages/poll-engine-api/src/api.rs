@@ -336,3 +336,10 @@ pub struct VoterTotalVotesParams {
     pub voter_addr: String,
     pub poll_ids: Vec<PollId>,
 }
+
+#[cw_serde]
+/// Response model for querying total amount of votes for the given voter on a set of polls.
+pub struct VoterTotalVotesResponse {
+    /// Will be None if user had never voted on any of the given polls.
+    pub total_votes: Option<Uint128>,
+}

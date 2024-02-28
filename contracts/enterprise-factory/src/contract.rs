@@ -19,9 +19,9 @@ use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::WasmMsg::Instantiate;
 use cosmwasm_std::{
-    coins, entry_point, to_json_binary, wasm_execute, wasm_instantiate, Addr, BankMsg, Binary,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
-    Uint128, Uint64, WasmMsg,
+    coins, entry_point, to_json_binary, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint64,
+    WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;

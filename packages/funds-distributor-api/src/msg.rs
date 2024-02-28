@@ -1,8 +1,8 @@
 use crate::api::{
     ClaimRewardsMsg, DistributionType, MinimumEligibleWeightResponse, NewProposalCreatedMsg,
-    NumberProposalsTrackedResponse, ProposalIdsTrackedResponse, UpdateMinimumEligibleWeightMsg,
-    UpdateNumberProposalsTrackedMsg, UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse,
-    UserWeight,
+    NumberProposalsTrackedResponse, PreUserVotesChangeMsg, ProposalIdsTrackedResponse,
+    UpdateMinimumEligibleWeightMsg, UpdateNumberProposalsTrackedMsg, UpdateUserWeightsMsg,
+    UserRewardsParams, UserRewardsResponse, UserWeight,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -22,6 +22,9 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     UpdateUserWeights(UpdateUserWeightsMsg),
+    /// To be called before a user's votes change, so that their pending participation rewards
+    /// can be properly calculated
+    PreUserVotesChange(PreUserVotesChangeMsg),
     NewProposalCreated(NewProposalCreatedMsg),
     UpdateMinimumEligibleWeight(UpdateMinimumEligibleWeightMsg),
     UpdateNumberProposalsTracked(UpdateNumberProposalsTrackedMsg),

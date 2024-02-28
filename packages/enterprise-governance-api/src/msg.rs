@@ -4,7 +4,7 @@ use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollResponse,
     PollStatusResponse, PollVoterParams, PollVoterResponse, PollVotersParams, PollVotersResponse,
     PollsParams, PollsResponse, TotalVotesParams, TotalVotesResponse, UpdateVotesParams,
-    VoterParams, VoterResponse, VoterTotalVotesParams,
+    VoterParams, VoterResponse, VoterTotalVotesParams, VoterTotalVotesResponse,
 };
 
 #[cw_serde]
@@ -42,7 +42,7 @@ pub enum QueryMsg {
     Voter(VoterParams),
     #[returns(TotalVotesResponse)]
     TotalVotes(TotalVotesParams),
-    #[returns(TotalVotesResponse)]
+    #[returns(VoterTotalVotesResponse)]
     VoterTotalVotes(VoterTotalVotesParams),
 }
 

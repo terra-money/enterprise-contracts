@@ -1,6 +1,7 @@
 use crate::distributing::query_enterprise_components;
-use crate::repository::weights_repository::weights_repository_mut;
+use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
 use crate::state::ADMIN;
+use crate::user_weights::{initialize_user_indices, update_user_indices};
 use common::cw::Order::Descending;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::Order::Ascending;
@@ -11,13 +12,14 @@ use enterprise_governance_controller_api::api::ProposalType::General;
 use enterprise_governance_controller_api::api::{ProposalId, ProposalsParams, ProposalsResponse};
 use funds_distributor_api::api::DistributionType::Participation;
 use funds_distributor_api::api::{
-    NewProposalCreatedMsg, NumberProposalsTrackedResponse, ProposalIdsTrackedResponse,
-    UpdateNumberProposalsTrackedMsg,
+    NewProposalCreatedMsg, NumberProposalsTrackedResponse, PreUserVotesChangeMsg,
+    ProposalIdsTrackedResponse, UpdateNumberProposalsTrackedMsg,
 };
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::{
-    execute_new_proposal_created_response, execute_update_number_proposals_tracked_response,
+    execute_new_proposal_created_response, execute_pre_user_votes_change_response,
+    execute_update_number_proposals_tracked_response,
 };
 use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse};
 
@@ -88,7 +90,7 @@ pub fn execute_update_number_proposals_tracked(
     let old_number_tracked = PROPOSALS_TRACKED.load(ctx.deps.storage)?;
 
     // TODO: we know part of them if we had N > 0 before, we can reuse them
-    let mut new_tracked_proposal_ids: Vec<ProposalId> =
+    let new_tracked_proposal_ids: Vec<ProposalId> =
         get_last_n_general_proposal_ids(ctx.deps.as_ref(), msg.number_proposals_tracked)?;
 
     PARTICIPATION_PROPOSAL_IDS.clear(ctx.deps.storage);
@@ -106,6 +108,26 @@ pub fn execute_update_number_proposals_tracked(
         old_number_tracked,
         msg.number_proposals_tracked,
     ))
+}
+
+pub fn pre_user_votes_change(
+    ctx: &mut Context,
+    msg: PreUserVotesChangeMsg,
+) -> DistributorResult<Response> {
+    let user = ctx.deps.api.addr_validate(&msg.user)?;
+
+    let user_total_votes =
+        weights_repository(ctx.deps.as_ref(), Participation).get_user_weight(user.clone())?;
+
+    match user_total_votes {
+        // TODO: not sure if this initialize_user_indices works
+        // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
+        // we'll assume their indices have been initialized
+        None => initialize_user_indices(ctx.deps.branch(), user.clone(), Participation)?,
+        Some(total) => update_user_indices(ctx.deps.branch(), user.clone(), total, Participation)?,
+    }
+
+    Ok(execute_pre_user_votes_change_response(user.to_string()))
 }
 
 pub fn query_number_proposals_tracked(

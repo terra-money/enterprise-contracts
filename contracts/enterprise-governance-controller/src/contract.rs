@@ -73,9 +73,10 @@ use enterprise_treasury_api::api::{
 };
 use enterprise_treasury_api::msg::ExecuteMsg::{ExecuteCosmosMsgs, Spend};
 use funds_distributor_api::api::{
-    NewProposalCreatedMsg, UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg,
+    NewProposalCreatedMsg, PreUserVotesChangeMsg, UpdateMinimumEligibleWeightMsg,
+    UpdateUserWeightsMsg,
 };
-use funds_distributor_api::msg::ExecuteMsg::NewProposalCreated;
+use funds_distributor_api::msg::ExecuteMsg::{NewProposalCreated, PreUserVotesChange};
 use membership_common_api::api::{
     TotalWeightParams, TotalWeightResponse, UserWeightChange, UserWeightParams, UserWeightResponse,
     WeightsChangedMsg,
@@ -574,6 +575,18 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
         })
     })?;
 
+    // TODO: make sure this can't mess up governance, add some form of a failsafe if the submsg fails
+    // we notify funds distributor that a user's votes are about to change, before they actually do
+    let pre_user_votes_change_submsg = SubMsg::new(wasm_execute(
+        query_enterprise_components(ctx.deps.as_ref())?
+            .funds_distributor_contract
+            .to_string(),
+        &PreUserVotesChange(PreUserVotesChangeMsg {
+            user: ctx.info.sender.to_string(),
+        }),
+        vec![],
+    )?);
+
     let dao_address = query_main_dao_addr(ctx.deps.as_ref())?;
 
     Ok(execute_cast_vote_response(
@@ -583,6 +596,7 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
         msg.outcome,
         user_available_votes,
     )
+    .add_submessage(pre_user_votes_change_submsg)
     .add_submessage(cast_vote_submessage))
 }
 

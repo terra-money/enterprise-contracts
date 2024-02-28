@@ -388,6 +388,7 @@ impl VoteStorage for Votes<'_> {
         Ok(max_vote)
     }
 }
+
 #[allow(clippy::too_many_arguments)]
 pub fn new_poll(
     deps: &mut DepsMut,
