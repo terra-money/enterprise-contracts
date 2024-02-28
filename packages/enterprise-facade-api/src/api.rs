@@ -226,7 +226,7 @@ pub struct DaoInfoResponse {
     pub gov_config: GovConfigFacade,
     pub dao_council: Option<DaoCouncil>,
     pub dao_type: DaoType,
-    pub dao_membership_contract: String,
+    pub dao_membership_contract: Option<String>,
     pub enterprise_factory_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub dao_code_version: Uint64,

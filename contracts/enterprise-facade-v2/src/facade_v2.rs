@@ -46,8 +46,11 @@ use membership_common_api::api::{
     UserWeightResponse,
 };
 use membership_common_api::msg::QueryMsg::{Members, TotalWeight, UserWeight};
-use nft_staking_api::api::{NftConfigResponse, UserNftStakeParams, UserNftStakeResponse};
-use nft_staking_api::msg::QueryMsg::{NftConfig, StakedNfts};
+use nft_staking_api::api::{
+    NftConfigResponse, NftContract, NftContractConfigResponse, UserNftStakeParams,
+    UserNftStakeResponse,
+};
+use nft_staking_api::msg::QueryMsg::{NftConfig, NftContractConfig, StakedNfts};
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
 use V2MigrationStage::{MigrationCompleted, MigrationInProgress};
@@ -93,7 +96,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     gov_config.dao_membership_contract.to_string(),
                     &DenomConfig {},
                 )?;
-                (denom_config.denom, denom_config.unlocking_period)
+                (Some(denom_config.denom), denom_config.unlocking_period)
             }
             DaoType::Token => {
                 let token_config: TokenConfigResponse = qctx.deps.querier.query_wasm_smart(
@@ -101,23 +104,24 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                     &TokenConfig {},
                 )?;
                 (
-                    token_config.token_contract.to_string(),
+                    Some(token_config.token_contract.to_string()),
                     token_config.unlocking_period,
                 )
             }
             DaoType::Nft => {
-                let nft_config: NftConfigResponse = qctx.deps.querier.query_wasm_smart(
+                let nft_config: NftContractConfigResponse = qctx.deps.querier.query_wasm_smart(
                     gov_config.dao_membership_contract.to_string(),
-                    &NftConfig {},
+                    &NftContractConfig {},
                 )?;
-                (
-                    nft_config.nft_contract.to_string(),
-                    nft_config.unlocking_period,
-                )
+                let nft_contract = match nft_config.nft_contract {
+                    NftContract::Cw721 { contract } => Some(contract),
+                    NftContract::Ics721 { .. } => None,
+                };
+                (nft_contract, nft_config.unlocking_period)
             }
             DaoType::Multisig => {
                 // doesn't make too much sense, but kept for backwards-compatibility since this was the previous behavior
-                (self.enterprise_address.to_string(), Duration::Time(0))
+                (Some(self.enterprise_address.to_string()), Duration::Time(0))
             }
         };
 

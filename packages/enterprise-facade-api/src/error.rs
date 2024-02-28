@@ -23,6 +23,9 @@ pub enum EnterpriseFacadeError {
 
     #[error("The operation is unsupported by this DAO version")]
     UnsupportedOperation,
+
+    #[error("Membership was empty, when it was required")]
+    UnexpectedEmptyMembership,
 }
 
 impl EnterpriseFacadeError {
