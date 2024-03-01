@@ -1,5 +1,6 @@
 use crate::claims::{get_claims, get_releasable_claims};
 use crate::config::{NftContractAddr, CONFIG};
+use crate::ics721_query::query_ics721_proxy_nft_addr;
 use crate::nft_staking::{NftStake, NFT_STAKES};
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
@@ -33,7 +34,15 @@ pub fn query_nft_config(qctx: &QueryContext) -> NftStakingResult<NftConfigRespon
 
     let nft_contract = match config.nft_contract_addr {
         NftContractAddr::Cw721 { contract } => contract,
-        NftContractAddr::Ics721 { .. } => return Err(Ics721StillNotTransferred),
+        NftContractAddr::Ics721 { contract, class_id } => {
+            // check if there is an NFT contract for the given class ID in the ICS721 proxy
+            let nft_contract =
+                query_ics721_proxy_nft_addr(qctx.deps, contract.to_string(), class_id)?;
+            match nft_contract {
+                Some(nft_contract_addr) => nft_contract_addr,
+                None => return Err(Ics721StillNotTransferred),
+            }
+        }
     };
 
     Ok(NftConfigResponse {
