@@ -6,13 +6,13 @@ use crate::repository::asset_repository::{
     asset_distribution_repository, AssetDistributionRepository,
 };
 use crate::repository::user_distribution_repository::{
-    user_distribution_repository_mut, UserDistributionInfo, UserDistributionRepository,
-    UserDistributionRepositoryMut,
+    user_distribution_repository, user_distribution_repository_mut, UserDistributionInfo,
+    UserDistributionRepository, UserDistributionRepositoryMut,
 };
 use crate::repository::weights_repository::{weights_repository, WeightsRepository};
 use crate::rewards::calculate_user_reward;
 use common::cw::Context;
-use cosmwasm_std::{Addr, DepsMut, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
 use cw_asset::{Asset, AssetInfo};
 use funds_distributor_api::error::DistributorError::{RestrictedUser, Unauthorized};
 use funds_distributor_api::error::DistributorResult;
@@ -23,12 +23,12 @@ pub fn claim(
     user: Addr,
     assets: Vec<RewardAsset>,
 ) -> DistributorResult<Vec<Asset>> {
-    if is_restricted_user(ctx.deps.as_ref(), user.to_string())? {
-        return Err(RestrictedUser);
-    }
-
     if ctx.info.sender != user {
         return Err(Unauthorized);
+    }
+
+    if is_restricted_user(ctx.deps.as_ref(), user.to_string())? {
+        return Err(RestrictedUser);
     }
 
     let rewards = calculate_and_remove_claimable_rewards(ctx.deps.branch(), user, assets)?;
@@ -41,16 +41,42 @@ fn calculate_and_remove_claimable_rewards(
     user: Addr,
     assets: Vec<RewardAsset>,
 ) -> DistributorResult<Vec<Asset>> {
-    let user_weight = weights_repository(deps.as_ref())
+    let claimable_rewards = calculate_claimable_rewards(deps.as_ref(), user.clone(), assets)?;
+
+    let mut rewards = vec![];
+
+    for (asset, reward, global_index) in claimable_rewards {
+        let reward = Asset::new(AssetInfo::from(&asset), reward);
+        rewards.push(reward);
+
+        user_distribution_repository_mut(deps.branch()).set_distribution_info(
+            asset,
+            user.clone(),
+            UserDistributionInfo {
+                user_index: global_index,
+                pending_rewards: Uint128::zero(),
+            },
+        )?;
+    }
+
+    Ok(rewards)
+}
+
+fn calculate_claimable_rewards(
+    deps: Deps,
+    user: Addr,
+    assets: Vec<RewardAsset>,
+) -> DistributorResult<Vec<(RewardAsset, Uint128, Decimal)>> {
+    let user_weight = weights_repository(deps)
         .get_user_weight(user.clone())?
         .unwrap_or_default();
 
-    let mut rewards: Vec<Asset> = vec![];
+    let mut rewards: Vec<(RewardAsset, Uint128, Decimal)> = vec![];
 
     for asset in assets {
-        let distribution = user_distribution_repository_mut(deps.branch())
+        let distribution = user_distribution_repository(deps)
             .get_distribution_info(asset.clone(), user.clone())?;
-        let global_index = asset_distribution_repository(deps.as_ref())
+        let global_index = asset_distribution_repository(deps)
             .get_global_index(asset.clone())?
             .unwrap_or_default();
 
@@ -66,17 +92,7 @@ fn calculate_and_remove_claimable_rewards(
             continue;
         }
 
-        let reward = Asset::new(AssetInfo::from(&asset), reward);
-        rewards.push(reward);
-
-        user_distribution_repository_mut(deps.branch()).set_distribution_info(
-            asset,
-            user.clone(),
-            UserDistributionInfo {
-                user_index: global_index,
-                pending_rewards: Uint128::zero(),
-            },
-        )?;
+        rewards.push((asset, reward, global_index));
     }
 
     Ok(rewards)
