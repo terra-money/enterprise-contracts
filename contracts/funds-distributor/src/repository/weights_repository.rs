@@ -1,7 +1,7 @@
-use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
-use funds_distributor_api::error::DistributorResult;
 use crate::state::EFFECTIVE_TOTAL_WEIGHT;
 use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
+use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
+use funds_distributor_api::error::DistributorResult;
 
 pub trait WeightsRepository {
     fn get_total_weight(&self) -> DistributorResult<Uint128>;
@@ -13,11 +13,9 @@ pub trait WeightsRepositoryMut: WeightsRepository {
     fn set_total_weight(&mut self, total_weight: Uint128) -> DistributorResult<()>;
 }
 
-
 ////////////////////////////
 ////////// NATIVE //////////
 ////////////////////////////
-
 
 pub struct MembershipWeightsRepository<'a> {
     deps: Deps<'a>,
@@ -41,7 +39,9 @@ pub struct MembershipWeightsRepositoryMut<'a> {
 
 impl MembershipWeightsRepositoryMut<'_> {
     pub fn as_ref(&self) -> MembershipWeightsRepository {
-        MembershipWeightsRepository { deps: self.deps.as_ref() }
+        MembershipWeightsRepository {
+            deps: self.deps.as_ref(),
+        }
     }
 }
 

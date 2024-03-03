@@ -12,7 +12,7 @@ mod rewards;
 mod state;
 mod user_weights;
 
+mod asset_types;
+mod generic_distribution;
 #[cfg(test)]
 mod tests;
-mod generic_distribution;
-mod asset_types;
