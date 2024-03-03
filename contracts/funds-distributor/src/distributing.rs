@@ -85,7 +85,7 @@ pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> Distribut
     ))
 }
 
-fn assert_assets_whitelisted(ctx: &Context, mut assets: Vec<AssetInfo>) -> DistributorResult<()> {
+pub fn assert_assets_whitelisted(ctx: &Context, mut assets: Vec<AssetInfo>) -> DistributorResult<()> {
     let enterprise_components = query_enterprise_components(ctx)?;
 
     // query asset whitelist with no bounds
