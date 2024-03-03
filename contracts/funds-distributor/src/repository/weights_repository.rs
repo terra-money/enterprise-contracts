@@ -1,5 +1,6 @@
+use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::state::EFFECTIVE_TOTAL_WEIGHT;
-use crate::user_weights::EFFECTIVE_USER_WEIGHTS;
+use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
 use funds_distributor_api::error::DistributorResult;
 
@@ -11,6 +12,10 @@ pub trait WeightsRepository {
 
 pub trait WeightsRepositoryMut: WeightsRepository {
     fn set_total_weight(&mut self, total_weight: Uint128) -> DistributorResult<()>;
+
+    /// Sets a user's weight to a new value.
+    /// Returns the user's new effective weight that will be applied to them.
+    fn set_user_weight(&mut self, user: Addr, weight: Uint128) -> DistributorResult<Uint128>;
 }
 
 ////////////////////////////
@@ -59,6 +64,28 @@ impl WeightsRepositoryMut for MembershipWeightsRepositoryMut<'_> {
     fn set_total_weight(&mut self, total_weight: Uint128) -> DistributorResult<()> {
         EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, &total_weight)?;
         Ok(())
+    }
+
+    fn set_user_weight(&mut self, user: Addr, weight: Uint128) -> DistributorResult<Uint128> {
+        let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(self.deps.storage)?;
+
+        USER_WEIGHTS.save(self.deps.storage, user.clone(), &weight)?;
+
+        let effective_user_weight =
+            Self::calculate_effective_weight(weight, minimum_eligible_weight);
+        EFFECTIVE_USER_WEIGHTS.save(self.deps.storage, user, &effective_user_weight)?;
+
+        Ok(effective_user_weight)
+    }
+}
+
+impl MembershipWeightsRepositoryMut<'_> {
+    fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
+        if weight >= minimum_eligible_weight {
+            weight
+        } else {
+            Uint128::zero()
+        }
     }
 }
 

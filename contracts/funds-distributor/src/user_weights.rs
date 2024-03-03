@@ -130,7 +130,7 @@ pub fn update_user_weights_checked(
 
 /// Calculate user's effective rewards weight, given their actual weight and minimum weight for
 /// rewards eligibility
-fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
+pub fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
     if weight >= minimum_eligible_weight {
         weight
     } else {

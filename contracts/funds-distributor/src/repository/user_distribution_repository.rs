@@ -1,6 +1,7 @@
 use crate::asset_types::RewardAsset;
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
+use crate::rewards::calculate_user_reward;
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
 use funds_distributor_api::error::DistributorResult;
 use RewardAsset::{Cw20, Native};
@@ -31,6 +32,52 @@ pub trait UserDistributionRepositoryMut: UserDistributionRepository {
         user: Addr,
         distribution_info: UserDistributionInfo,
     ) -> DistributorResult<()>;
+
+    fn initialize_distribution_info(
+        &mut self,
+        global_indices: Vec<(RewardAsset, Decimal)>,
+        user: Addr,
+    ) -> DistributorResult<()> {
+        for (asset, global_index) in global_indices {
+            let distribution = self.get_distribution_info(asset.clone(), user.clone())?;
+            if distribution.is_none() {
+                self.set_distribution_info(
+                    asset,
+                    user.clone(),
+                    UserDistributionInfo {
+                        user_index: global_index,
+                        pending_rewards: Uint128::zero(),
+                    },
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn update_user_indices(
+        &mut self,
+        user: Addr,
+        all_global_indices: Vec<(RewardAsset, Decimal)>,
+        old_user_weight: Uint128,
+    ) -> DistributorResult<()> {
+        for (asset, global_index) in all_global_indices {
+            let distribution = self.get_distribution_info(asset.clone(), user.clone())?;
+
+            let reward = calculate_user_reward(global_index, distribution, old_user_weight)?;
+
+            self.set_distribution_info(
+                asset,
+                user.clone(),
+                UserDistributionInfo {
+                    user_index: global_index,
+                    pending_rewards: reward,
+                },
+            )?;
+        }
+
+        Ok(())
+    }
 }
 
 /////////////////////////////
