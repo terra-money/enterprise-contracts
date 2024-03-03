@@ -228,7 +228,7 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
     Ok(execute_claim_rewards_response(user.to_string()).add_submessages(submsgs))
 }
 
-fn is_restricted_user(deps: Deps, user: String) -> DistributorResult<bool> {
+pub fn is_restricted_user(deps: Deps, user: String) -> DistributorResult<bool> {
     let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
 
     let is_restricted_user: IsRestrictedUserResponse = deps.querier.query_wasm_smart(

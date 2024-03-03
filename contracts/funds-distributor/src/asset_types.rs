@@ -1,9 +1,6 @@
 use cosmwasm_std::Addr;
 use cw_asset::AssetInfo;
 
-pub type NativeAsset = String;
-pub type Cw20Asset = Addr;
-
 #[derive(Clone)]
 pub enum RewardAsset {
     Native { denom: String },

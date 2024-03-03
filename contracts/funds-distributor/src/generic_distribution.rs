@@ -21,6 +21,7 @@ pub fn distribute(ctx: &mut Context, assets: Vec<(RewardAsset, Uint128)>) -> Dis
 
     assert_assets_whitelisted(ctx, distribution_assets.clone())?;
 
+    // TODO: use immutable instead of mutable here
     let weights_repository = weights_repository_mut(ctx.deps.branch());
 
     let total_weight = weights_repository.get_total_weight()?;

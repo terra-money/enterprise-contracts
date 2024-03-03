@@ -1,3 +1,4 @@
+use crate::repository::user_distribution_repository::UserDistributionInfo;
 use crate::rewards::calculate_user_reward;
 use crate::state::NATIVE_GLOBAL_INDICES;
 use cosmwasm_schema::cw_serde;
@@ -15,6 +16,15 @@ pub struct NativeDistribution {
     pub user_index: Decimal,
     /// User's unclaimed rewards
     pub pending_rewards: Uint128,
+}
+
+impl From<NativeDistribution> for UserDistributionInfo {
+    fn from(value: NativeDistribution) -> Self {
+        UserDistributionInfo {
+            user_index: value.user_index,
+            pending_rewards: value.pending_rewards,
+        }
+    }
 }
 
 pub struct NativeDistributionIndexes<'a> {
