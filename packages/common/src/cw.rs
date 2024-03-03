@@ -20,6 +20,14 @@ impl<'a> Context<'a> {
             env: self.env.clone(),
         }
     }
+
+    pub fn branch(&mut self) -> Context {
+        Context {
+            deps: self.deps.branch(),
+            env: self.env.clone(),
+            info: self.info.clone(),
+        }
+    }
 }
 
 #[derive(Clone)]
