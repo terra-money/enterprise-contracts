@@ -14,8 +14,10 @@ use crate::rewards::calculate_user_reward;
 use common::cw::Context;
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
 use cw_asset::{Asset, AssetInfo};
+use funds_distributor_api::api::{Cw20Reward, NativeReward, UserRewardsResponse};
 use funds_distributor_api::error::DistributorError::{RestrictedUser, Unauthorized};
 use funds_distributor_api::error::DistributorResult;
+use RewardAsset::{Cw20, Native};
 
 /// Calculates claims, updates internal state, and returns the assets to be sent to the user.
 pub fn claim(
@@ -96,4 +98,30 @@ fn calculate_claimable_rewards(
     }
 
     Ok(rewards)
+}
+
+pub fn query_rewards(
+    deps: Deps,
+    user: Addr,
+    assets: Vec<RewardAsset>,
+) -> DistributorResult<UserRewardsResponse> {
+    let mut native_rewards = vec![];
+    let mut cw20_rewards = vec![];
+
+    let claimable_rewards = calculate_claimable_rewards(deps, user, assets)?;
+
+    for (asset, amount, _) in claimable_rewards {
+        match asset {
+            Native { denom } => native_rewards.push(NativeReward { denom, amount }),
+            Cw20 { addr } => cw20_rewards.push(Cw20Reward {
+                asset: addr.to_string(),
+                amount,
+            }),
+        }
+    }
+
+    Ok(UserRewardsResponse {
+        native_rewards,
+        cw20_rewards,
+    })
 }
