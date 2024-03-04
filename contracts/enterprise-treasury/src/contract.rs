@@ -196,13 +196,15 @@ fn distribute_funds(
                 let asset = Asset::cw20(addr, asset.amount);
                 submsgs.push(SubMsg::new(asset.send_msg(
                     funds_distributor.to_string(),
-                    to_json_binary(&Distribute {})?,
+                    to_json_binary(&Distribute {
+                        distribution_type: msg.distribution_type.clone(),
+                    })?,
                 )?))
             }
             AssetInfoUnchecked::Cw1155(_, _) => {
                 return Err(Std(StdError::generic_err(
                     "cw1155 assets are not supported at this time",
-                )))
+                )));
             }
             _ => return Err(Std(StdError::generic_err("unknown asset type"))),
         }
@@ -211,7 +213,9 @@ fn distribute_funds(
     if native_funds.is_empty().not() {
         submsgs.push(SubMsg::new(wasm_execute(
             funds_distributor.to_string(),
-            &DistributeNative {},
+            &DistributeNative {
+                distribution_type: None,
+            }, // TODO: have variable type here
             native_funds,
         )?));
     }

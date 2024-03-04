@@ -4,13 +4,12 @@ use crate::repository::asset_repository::{
 use crate::repository::user_distribution_repository::{
     user_distribution_repository_mut, UserDistributionRepositoryMut,
 };
-use crate::repository::weights_repository::{
-    weights_repository, weights_repository_mut, WeightsRepository, WeightsRepositoryMut,
-};
-use crate::state::{ADMIN, EFFECTIVE_TOTAL_WEIGHT};
+use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
+use crate::state::ADMIN;
 use common::cw::Context;
 use cosmwasm_std::{Addr, DepsMut, Response, Uint128};
 use cw_storage_plus::Map;
+use funds_distributor_api::api::DistributionType::{Membership, Participation};
 use funds_distributor_api::api::{UpdateUserWeightsMsg, UserWeight};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
@@ -32,31 +31,27 @@ pub const EFFECTIVE_USER_WEIGHTS: Map<Addr, Uint128> = Map::new("effective_user_
 pub fn save_initial_weights(
     ctx: &mut Context,
     initial_weights: Vec<UserWeight>,
-    minimum_eligible_weight: Uint128,
 ) -> DistributorResult<()> {
-    let mut effective_total_weight = EFFECTIVE_TOTAL_WEIGHT
-        .may_load(ctx.deps.storage)?
-        .unwrap_or_default();
+    let mut total_weight = weights_repository(ctx.deps.as_ref(), Membership).get_total_weight()?;
 
     for user_weight in initial_weights {
         let user = ctx.deps.api.addr_validate(&user_weight.user)?;
 
-        if USER_WEIGHTS.has(ctx.deps.storage, user.clone())
-            || EFFECTIVE_USER_WEIGHTS.has(ctx.deps.storage, user.clone())
-        {
+        let existing_user_weight =
+            weights_repository(ctx.deps.as_ref(), Membership).get_user_weight(user.clone())?;
+        if existing_user_weight.is_some() {
             return Err(DuplicateInitialWeight);
         }
 
-        USER_WEIGHTS.save(ctx.deps.storage, user.clone(), &user_weight.weight)?;
+        let effective_user_weight = weights_repository_mut(ctx.deps.branch(), Membership)
+            .set_user_weight(user, user_weight.weight)?;
 
-        let effective_user_weight =
-            calculate_effective_weight(user_weight.weight, minimum_eligible_weight);
-        EFFECTIVE_USER_WEIGHTS.save(ctx.deps.storage, user, &effective_user_weight)?;
-
-        effective_total_weight += effective_user_weight;
+        total_weight += effective_user_weight;
     }
 
-    EFFECTIVE_TOTAL_WEIGHT.save(ctx.deps.storage, &effective_total_weight)?;
+    weights_repository_mut(ctx.deps.branch(), Membership).set_total_weight(total_weight)?;
+
+    weights_repository_mut(ctx.deps.branch(), Participation).set_total_weight(Uint128::zero())?;
 
     Ok(())
 }
@@ -82,12 +77,16 @@ fn update_user_weights_checked(
     mut deps: DepsMut,
     msg: UpdateUserWeightsMsg,
 ) -> DistributorResult<()> {
-    let mut total_weight = weights_repository(deps.as_ref()).get_total_weight()?;
+    // TODO: check if we need variable distribution type here, we probably do
+    let distribution_type = Membership;
+    let mut total_weight =
+        weights_repository(deps.as_ref(), distribution_type.clone()).get_total_weight()?;
 
     for user_weight_change in msg.new_user_weights {
         let user = deps.api.addr_validate(&user_weight_change.user)?;
 
-        let old_user_weight = weights_repository(deps.as_ref()).get_user_weight(user.clone())?;
+        let old_user_weight = weights_repository(deps.as_ref(), distribution_type.clone())
+            .get_user_weight(user.clone())?;
 
         match old_user_weight {
             None => {
@@ -103,7 +102,7 @@ fn update_user_weights_checked(
             }
         };
 
-        let new_user_weight = weights_repository_mut(deps.branch())
+        let new_user_weight = weights_repository_mut(deps.branch(), distribution_type.clone())
             .set_user_weight(user.clone(), user_weight_change.weight)?;
 
         let old_user_weight = old_user_weight.unwrap_or_default();
@@ -111,7 +110,7 @@ fn update_user_weights_checked(
         total_weight = total_weight - old_user_weight + new_user_weight;
     }
 
-    weights_repository_mut(deps.branch()).set_total_weight(total_weight)?;
+    weights_repository_mut(deps.branch(), distribution_type).set_total_weight(total_weight)?;
 
     Ok(())
 }
@@ -149,14 +148,4 @@ fn update_user_indices(
     )?;
 
     Ok(())
-}
-
-/// Calculate user's effective rewards weight, given their actual weight and minimum weight for
-/// rewards eligibility
-pub fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
-    if weight >= minimum_eligible_weight {
-        weight
-    } else {
-        Uint128::zero()
-    }
 }

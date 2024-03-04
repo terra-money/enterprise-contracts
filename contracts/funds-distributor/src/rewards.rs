@@ -6,9 +6,10 @@ use crate::repository::asset_repository::{
 use crate::repository::user_distribution_repository::{
     user_distribution_repository, UserDistributionRepository,
 };
-use crate::repository::weights_repository::{weights_repository, WeightsRepository};
+use crate::repository::weights_repository::weights_repository;
 use common::cw::QueryContext;
 use cosmwasm_std::{Addr, Decimal, Deps, Fraction, Uint128};
+use funds_distributor_api::api::DistributionType::Membership;
 use funds_distributor_api::api::{
     Cw20Reward, NativeReward, UserRewardsParams, UserRewardsResponse,
 };
@@ -86,7 +87,8 @@ pub fn calculate_claimable_rewards(
     user: Addr,
     assets: Vec<RewardAsset>,
 ) -> DistributorResult<Vec<(RewardAsset, Uint128, Decimal)>> {
-    let user_weight = weights_repository(deps)
+    // TODO: calculate rewards for both types
+    let user_weight = weights_repository(deps, Membership)
         .get_user_weight(user.clone())?
         .unwrap_or_default();
 

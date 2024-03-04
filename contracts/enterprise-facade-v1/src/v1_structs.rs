@@ -327,7 +327,10 @@ impl From<DistributeFundsMsg> for DistributeFundsV1Msg {
 
 impl From<DistributeFundsV1Msg> for DistributeFundsMsg {
     fn from(value: DistributeFundsV1Msg) -> Self {
-        DistributeFundsMsg { funds: value.funds }
+        DistributeFundsMsg {
+            funds: value.funds,
+            distribution_type: None,
+        }
     }
 }
 

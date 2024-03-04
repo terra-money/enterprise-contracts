@@ -1,6 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
 use cw_asset::{AssetInfo, AssetInfoUnchecked, AssetUnchecked};
+use funds_distributor_api::api::DistributionType;
 
 #[cw_serde]
 pub struct SetAdminMsg {
@@ -33,6 +34,7 @@ pub struct SpendMsg {
 pub struct DistributeFundsMsg {
     pub funds: Vec<AssetUnchecked>,
     pub funds_distributor_contract: String,
+    pub distribution_type: Option<DistributionType>, // TODO: check if this needs a migration, since it's stored inside PROPOSALS
 }
 
 #[cw_serde]

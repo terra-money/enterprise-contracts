@@ -15,6 +15,7 @@ common = { path = "../common" }
 cw-asset = "2.4.0"
 cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
+funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }
 thiserror = "1"
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }

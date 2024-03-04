@@ -1170,6 +1170,7 @@ fn distribute_funds(
                 funds_distributor_contract: enterprise_components
                     .funds_distributor_contract
                     .to_string(),
+                distribution_type: msg.distribution_type,
             },
         ),
         vec![],

@@ -3,7 +3,7 @@ use crate::repository::asset_repository::{
     asset_distribution_repository, asset_distribution_repository_mut, AssetDistributionRepository,
     AssetDistributionRepositoryMut,
 };
-use crate::repository::weights_repository::{weights_repository, WeightsRepository};
+use crate::repository::weights_repository::weights_repository;
 use crate::state::ENTERPRISE_CONTRACT;
 use common::cw::Context;
 use cosmwasm_std::{Decimal, Deps, DepsMut, Response, Uint128};
@@ -13,6 +13,8 @@ use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use enterprise_treasury_api::api::{AssetWhitelistParams, AssetWhitelistResponse};
 use enterprise_treasury_api::msg::QueryMsg::AssetWhitelist;
+use funds_distributor_api::api::DistributionType;
+use funds_distributor_api::api::DistributionType::Membership;
 use funds_distributor_api::error::DistributorError::{
     DistributingNonWhitelistedAsset, ZeroTotalWeight,
 };
@@ -24,7 +26,10 @@ use std::ops::Not;
 
 /// Distributes new rewards for a native asset, using funds found in MessageInfo.
 /// Will increase global index for each of the assets being distributed.
-pub fn distribute_native(ctx: &mut Context) -> DistributorResult<Response> {
+pub fn distribute_native(
+    ctx: &mut Context,
+    distribution_type: Option<DistributionType>,
+) -> DistributorResult<Response> {
     let funds = ctx.info.funds.clone();
 
     let assets = funds
@@ -32,19 +37,25 @@ pub fn distribute_native(ctx: &mut Context) -> DistributorResult<Response> {
         .map(|coin| (RewardAsset::native(coin.denom.clone()), coin.amount))
         .collect();
 
-    let total_weight = distribute(ctx.deps.branch(), assets)?;
+    let distribution_type = distribution_type.unwrap_or(Membership);
+    let total_weight = distribute(ctx.deps.branch(), assets, distribution_type)?;
 
     Ok(execute_distribute_native_response(total_weight))
 }
 
 /// Distributes new rewards for a CW20 asset.
 /// Will increase global index for the asset being distributed.
-pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DistributorResult<Response> {
+pub fn distribute_cw20(
+    ctx: &mut Context,
+    cw20_msg: Cw20ReceiveMsg,
+    distribution_type: Option<DistributionType>,
+) -> DistributorResult<Response> {
     let cw20_addr = ctx.info.sender.clone();
 
     let assets = vec![(RewardAsset::cw20(cw20_addr.clone()), cw20_msg.amount)];
 
-    let total_weight = distribute(ctx.deps.branch(), assets)?;
+    let distribution_type = distribution_type.unwrap_or(Membership);
+    let total_weight = distribute(ctx.deps.branch(), assets, distribution_type)?;
 
     Ok(cw20_hook_distribute_cw20_response(
         total_weight,
@@ -56,12 +67,13 @@ pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> Distribut
 fn distribute(
     mut deps: DepsMut,
     assets: Vec<(RewardAsset, Uint128)>,
+    distribution_type: DistributionType,
 ) -> DistributorResult<Uint128> {
     let distribution_assets = assets.iter().map(|(asset, _)| asset.into()).collect();
 
     assert_assets_whitelisted(deps.as_ref(), distribution_assets)?;
 
-    let total_weight = weights_repository(deps.as_ref()).get_total_weight()?;
+    let total_weight = weights_repository(deps.as_ref(), distribution_type).get_total_weight()?;
     if total_weight.is_zero() {
         return Err(ZeroTotalWeight);
     }

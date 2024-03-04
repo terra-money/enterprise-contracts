@@ -41,7 +41,7 @@ pub fn instantiate(
 
     let mut ctx = Context { deps, env, info };
 
-    save_initial_weights(&mut ctx, msg.initial_weights, minimum_eligible_weight)?;
+    save_initial_weights(&mut ctx, msg.initial_weights)?;
 
     Ok(instantiate_response(admin.to_string()))
 }
@@ -59,7 +59,9 @@ pub fn execute(
         ExecuteMsg::UpdateMinimumEligibleWeight(msg) => {
             execute_update_minimum_eligible_weight(ctx, msg)
         }
-        ExecuteMsg::DistributeNative {} => distribute_native(ctx),
+        ExecuteMsg::DistributeNative { distribution_type } => {
+            distribute_native(ctx, distribution_type)
+        }
         ExecuteMsg::ClaimRewards(msg) => claim_rewards(ctx, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
     }
@@ -67,7 +69,9 @@ pub fn execute(
 
 fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DistributorResult<Response> {
     match from_json(&cw20_msg.msg) {
-        Ok(Cw20HookMsg::Distribute {}) => distribute_cw20(ctx, cw20_msg),
+        Ok(Cw20HookMsg::Distribute { distribution_type }) => {
+            distribute_cw20(ctx, cw20_msg, distribution_type)
+        }
         _ => Err(StdError::generic_err("Received unknown CW20 hook message").into()),
     }
 }

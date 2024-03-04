@@ -5,6 +5,7 @@ use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_utils::{Duration, Expiration};
 use enterprise_outposts_api::api::{DeployCrossChainTreasuryMsg, RemoteTreasuryTarget};
 use enterprise_protocol::api::{UpdateMetadataMsg, UpgradeDaoMsg};
+use funds_distributor_api::api::DistributionType;
 use multisig_membership_api::api::UserWeight;
 use nft_staking_api::api::NftTokenId;
 use poll_engine_api::api::{Vote, VoteOutcome};
@@ -257,6 +258,7 @@ pub struct ModifyMultisigMembershipMsg {
 #[cw_serde]
 pub struct DistributeFundsMsg {
     pub funds: Vec<AssetUnchecked>,
+    pub distribution_type: Option<DistributionType>, // TODO: check if this needs migration, now that the field has been added
 }
 
 #[cw_serde]

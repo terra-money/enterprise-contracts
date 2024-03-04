@@ -49,6 +49,12 @@ pub struct MinimumEligibleWeightResponse {
 }
 
 #[cw_serde]
+pub enum DistributionType {
+    Membership,
+    Participation,
+}
+
+#[cw_serde]
 pub struct NativeReward {
     pub denom: String,
     pub amount: Uint128,

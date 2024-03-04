@@ -1735,6 +1735,7 @@ dependencies = [
  "enterprise-outposts-api",
  "enterprise-protocol",
  "enterprise-treasury-api",
+ "funds-distributor-api",
  "membership-common-api",
  "multisig-membership-api",
  "nft-staking-api",
@@ -1850,6 +1851,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-asset",
  "cw-orch",
+ "funds-distributor-api",
  "membership-common-api",
  "thiserror",
 ]

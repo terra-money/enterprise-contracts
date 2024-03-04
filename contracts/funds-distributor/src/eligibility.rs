@@ -1,10 +1,12 @@
 use crate::cw20_distributions::update_user_cw20_distributions;
 use crate::native_distributions::update_user_native_distributions;
-use crate::state::{ADMIN, EFFECTIVE_TOTAL_WEIGHT};
+use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
+use crate::state::ADMIN;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, DepsMut, Order, Response, StdResult, Uint128};
 use cw_storage_plus::Item;
+use funds_distributor_api::api::DistributionType::Membership;
 use funds_distributor_api::api::{MinimumEligibleWeightResponse, UpdateMinimumEligibleWeightMsg};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
@@ -78,7 +80,7 @@ pub fn update_minimum_eligible_weight(
         })
         .collect_vec();
 
-    let mut effective_total_weight = EFFECTIVE_TOTAL_WEIGHT.load(deps.storage)?;
+    let mut total_weight = weights_repository(deps.as_ref(), Membership).get_total_weight()?;
 
     // whether effective weights for users should become their actual weights, or zero
     let use_actual_weights = old_minimum_weight > new_minimum_weight;
@@ -104,13 +106,12 @@ pub fn update_minimum_eligible_weight(
         EFFECTIVE_USER_WEIGHTS.save(deps.storage, user, &new_effective_weight)?;
 
         // update total weight
-        effective_total_weight =
-            effective_total_weight - old_effective_weight + new_effective_weight;
+        total_weight = total_weight - old_effective_weight + new_effective_weight;
     }
 
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &new_minimum_weight)?;
 
-    EFFECTIVE_TOTAL_WEIGHT.save(deps.storage, &effective_total_weight)?;
+    weights_repository_mut(deps.branch(), Membership).set_total_weight(total_weight)?;
 
     Ok(())
 }
