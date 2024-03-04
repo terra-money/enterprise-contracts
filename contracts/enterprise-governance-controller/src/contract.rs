@@ -44,6 +44,7 @@ use enterprise_governance_controller_api::api::{
     ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg,
     UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
     UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
+    UpdateNumberProposalsTrackedMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, DuplicateNftDeposit, InsufficientProposalDeposit, InvalidCosmosMessage,
@@ -99,7 +100,7 @@ use token_staking_api::msg::QueryMsg::TokenConfig;
 use DaoType::{Denom, Multisig, Nft, Token};
 use Expiration::{AtHeight, AtTime};
 use PollRejectionReason::{IsRejectingOutcome, IsVetoOutcome, QuorumNotReached};
-use ProposalAction::{DeployCrossChainTreasury, ExecuteTreasuryMsgs};
+use ProposalAction::{DeployCrossChainTreasury, ExecuteTreasuryMsgs, UpdateNumberProposalsTracked};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise-governance-controller";
@@ -477,6 +478,7 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         ModifyMultisigMembership(_) => ProposalActionType::ModifyMultisigMembership,
         DistributeFunds(_) => ProposalActionType::DistributeFunds,
         UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
+        UpdateNumberProposalsTracked(_) => ProposalActionType::UpdateNumberProposalsTracked,
         AddAttestation(_) => ProposalActionType::AddAttestation,
         RemoveAttestation {} => ProposalActionType::RemoveAttestation,
         DeployCrossChainTreasury(_) => ProposalActionType::DeployCrossChainTreasury,
@@ -892,6 +894,7 @@ fn execute_proposal_actions_submsgs(
             }
             DistributeFunds(msg) => distribute_funds(ctx, msg)?,
             UpdateMinimumWeightForRewards(msg) => update_minimum_weight_for_rewards(ctx, msg)?,
+            UpdateNumberProposalsTracked(msg) => update_number_proposals_tracked(ctx, msg)?,
             AddAttestation(msg) => add_attestation(ctx, msg)?,
             RemoveAttestation {} => remove_attestation(ctx)?,
             DeployCrossChainTreasury(msg) => deploy_cross_chain_treasury(ctx, msg)?,
@@ -1196,6 +1199,24 @@ fn update_minimum_weight_for_rewards(
                 minimum_eligible_weight: msg.minimum_weight_for_rewards,
             },
         ),
+        vec![],
+    )?);
+
+    Ok(vec![submsg])
+}
+
+fn update_number_proposals_tracked(
+    ctx: &mut Context,
+    msg: UpdateNumberProposalsTrackedMsg,
+) -> GovernanceControllerResult<Vec<SubMsg>> {
+    let funds_distributor =
+        query_enterprise_components(ctx.deps.as_ref())?.funds_distributor_contract;
+
+    let submsg = SubMsg::new(wasm_execute(
+        funds_distributor.to_string(),
+        &UpdateNumberProposalsTrackedMsg {
+            number_proposals_tracked: msg.number_proposals_tracked,
+        },
         vec![],
     )?);
 

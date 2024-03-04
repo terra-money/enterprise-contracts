@@ -30,7 +30,7 @@ use enterprise_protocol::error::DaoError::{
 use enterprise_protocol::msg::QueryMsg::DaoInfo;
 use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{MinimumDepositNotAllowed, UnsupportedOperationForDaoType};
-use ProposalAction::{AddAttestation, ExecuteTreasuryMsgs};
+use ProposalAction::{AddAttestation, ExecuteTreasuryMsgs, UpdateNumberProposalsTracked};
 
 const MAXIMUM_PROPOSAL_ACTIONS: u8 = 10;
 
@@ -134,6 +134,7 @@ pub fn validate_proposal_actions(
             }
             UpdateMetadata(_)
             | UpdateMinimumWeightForRewards(_)
+            | UpdateNumberProposalsTracked(_)
             | AddAttestation(_)
             | RemoveAttestation {} => {
                 // no-op
@@ -504,6 +505,7 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::ModifyMultisigMembership
                     | ProposalActionType::DistributeFunds
                     | ProposalActionType::UpdateMinimumWeightForRewards
+                    | ProposalActionType::UpdateNumberProposalsTracked
                     | ProposalActionType::AddAttestation => {
                         return Err(UnsupportedCouncilProposalAction {
                             action: action_type,

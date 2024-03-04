@@ -162,6 +162,7 @@ pub enum ProposalActionType {
     ModifyMultisigMembership,
     DistributeFunds,
     UpdateMinimumWeightForRewards,
+    UpdateNumberProposalsTracked,
     AddAttestation,
     RemoveAttestation,
     DeployCrossChainTreasury,
@@ -182,6 +183,7 @@ pub enum ProposalAction {
     ModifyMultisigMembership(ModifyMultisigMembershipMsg),
     DistributeFunds(DistributeFundsMsg),
     UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
+    UpdateNumberProposalsTracked(UpdateNumberProposalsTrackedMsg),
     AddAttestation(AddAttestationMsg),
     RemoveAttestation {},
     DeployCrossChainTreasury(DeployCrossChainTreasuryMsg),
@@ -264,6 +266,11 @@ pub struct DistributeFundsMsg {
 #[cw_serde]
 pub struct UpdateMinimumWeightForRewardsMsg {
     pub minimum_weight_for_rewards: Uint128,
+}
+
+#[cw_serde]
+pub struct UpdateNumberProposalsTrackedMsg {
+    pub number_proposals_tracked: u8,
 }
 
 #[cw_serde]

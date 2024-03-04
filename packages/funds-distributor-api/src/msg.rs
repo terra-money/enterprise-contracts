@@ -1,7 +1,8 @@
 use crate::api::{
     ClaimRewardsMsg, DistributionType, MinimumEligibleWeightResponse, NewProposalCreatedMsg,
     NumberProposalsTrackedResponse, ProposalIdsTrackedResponse, UpdateMinimumEligibleWeightMsg,
-    UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse, UserWeight,
+    UpdateNumberProposalsTrackedMsg, UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse,
+    UserWeight,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -23,6 +24,7 @@ pub enum ExecuteMsg {
     UpdateUserWeights(UpdateUserWeightsMsg),
     NewProposalCreated(NewProposalCreatedMsg),
     UpdateMinimumEligibleWeight(UpdateMinimumEligibleWeightMsg),
+    UpdateNumberProposalsTracked(UpdateNumberProposalsTrackedMsg),
     DistributeNative {
         distribution_type: Option<DistributionType>,
     },

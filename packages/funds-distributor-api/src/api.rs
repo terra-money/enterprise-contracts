@@ -20,6 +20,12 @@ pub struct UpdateMinimumEligibleWeightMsg {
 }
 
 #[cw_serde]
+pub struct UpdateNumberProposalsTrackedMsg {
+    /// New number of proposals to track for calculation of participation rewards
+    pub number_proposals_tracked: u8,
+}
+
+#[cw_serde]
 pub struct UserWeight {
     pub user: String,
     pub weight: Uint128,
