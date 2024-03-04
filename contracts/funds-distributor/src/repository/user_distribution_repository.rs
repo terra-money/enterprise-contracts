@@ -3,6 +3,7 @@ use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::calculate_user_reward;
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
+use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
 use RewardAsset::{Cw20, Native};
 
@@ -86,6 +87,7 @@ pub trait UserDistributionRepositoryMut: UserDistributionRepository {
 
 pub struct GeneralUserDistributionRepository<'a> {
     deps: Deps<'a>,
+    distribution_type: DistributionType,
 }
 
 impl UserDistributionRepository for GeneralUserDistributionRepository<'_> {
@@ -95,10 +97,10 @@ impl UserDistributionRepository for GeneralUserDistributionRepository<'_> {
         user: Addr,
     ) -> DistributorResult<Option<UserDistributionInfo>> {
         let distribution = match asset {
-            Native { denom } => NATIVE_DISTRIBUTIONS()
+            Native { denom } => NATIVE_DISTRIBUTIONS(self.distribution_type.clone())
                 .may_load(self.deps.storage, (user, denom))?
                 .map(|it| it.into()),
-            Cw20 { addr } => CW20_DISTRIBUTIONS()
+            Cw20 { addr } => CW20_DISTRIBUTIONS(self.distribution_type.clone())
                 .may_load(self.deps.storage, (user, addr))?
                 .map(|it| it.into()),
         };
@@ -108,12 +110,14 @@ impl UserDistributionRepository for GeneralUserDistributionRepository<'_> {
 
 pub struct GeneralUserDistributionRepositoryMut<'a> {
     deps: DepsMut<'a>,
+    distribution_type: DistributionType,
 }
 
 impl GeneralUserDistributionRepositoryMut<'_> {
     pub fn as_ref(&self) -> GeneralUserDistributionRepository {
         GeneralUserDistributionRepository {
             deps: self.deps.as_ref(),
+            distribution_type: self.distribution_type.clone(),
         }
     }
 }
@@ -137,7 +141,7 @@ impl UserDistributionRepositoryMut for GeneralUserDistributionRepositoryMut<'_> 
     ) -> DistributorResult<()> {
         match asset {
             Native { denom } => {
-                NATIVE_DISTRIBUTIONS().save(
+                NATIVE_DISTRIBUTIONS(self.distribution_type.clone()).save(
                     self.deps.storage,
                     (user.clone(), denom.clone()),
                     &NativeDistribution {
@@ -149,7 +153,7 @@ impl UserDistributionRepositoryMut for GeneralUserDistributionRepositoryMut<'_> 
                 )?;
             }
             Cw20 { addr } => {
-                CW20_DISTRIBUTIONS().save(
+                CW20_DISTRIBUTIONS(self.distribution_type.clone()).save(
                     self.deps.storage,
                     (user.clone(), addr.clone()),
                     &Cw20Distribution {
@@ -166,10 +170,22 @@ impl UserDistributionRepositoryMut for GeneralUserDistributionRepositoryMut<'_> 
     }
 }
 
-pub fn user_distribution_repository(deps: Deps) -> GeneralUserDistributionRepository {
-    GeneralUserDistributionRepository { deps }
+pub fn user_distribution_repository(
+    deps: Deps,
+    distribution_type: DistributionType,
+) -> GeneralUserDistributionRepository {
+    GeneralUserDistributionRepository {
+        deps,
+        distribution_type,
+    }
 }
 
-pub fn user_distribution_repository_mut(deps: DepsMut) -> GeneralUserDistributionRepositoryMut {
-    GeneralUserDistributionRepositoryMut { deps }
+pub fn user_distribution_repository_mut(
+    deps: DepsMut,
+    distribution_type: DistributionType,
+) -> GeneralUserDistributionRepositoryMut {
+    GeneralUserDistributionRepositoryMut {
+        deps,
+        distribution_type,
+    }
 }

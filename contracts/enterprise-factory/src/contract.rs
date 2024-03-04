@@ -306,7 +306,7 @@ fn finalize_dao_creation(deps: DepsMut, env: Env, info: MessageInfo) -> DaoResul
             .require_enterprise_treasury_address()?
             .to_string(),
     )
-    .add_submessage(finalize_creation_submsg);
+        .add_submessage(finalize_creation_submsg);
 
     if let Some(treasuries) = dao_being_created
         .require_create_dao_msg()?
@@ -744,6 +744,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                         enterprise_contract: enterprise_contract.to_string(),
                         initial_weights,
                         minimum_eligible_weight: create_dao_msg.minimum_weight_for_rewards,
+                        participation_proposals_tracked: create_dao_msg.proposals_tracked_for_participation_rewards,
                     })?,
                     funds: vec![],
                     label: "Funds distributor".to_string(),

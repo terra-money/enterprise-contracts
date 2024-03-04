@@ -10,6 +10,7 @@ use cw_asset::{Asset, AssetInfo};
 use enterprise_protocol::api::{IsRestrictedUserParams, IsRestrictedUserResponse};
 use enterprise_protocol::msg::QueryMsg::IsRestrictedUser;
 use funds_distributor_api::api::ClaimRewardsMsg;
+use funds_distributor_api::api::DistributionType::{Membership, Participation};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_claim_rewards_response;
@@ -49,22 +50,33 @@ fn calculate_and_remove_claimable_rewards(
     user: Addr,
     assets: Vec<RewardAsset>,
 ) -> DistributorResult<Vec<Asset>> {
-    let claimable_rewards = calculate_claimable_rewards(deps.as_ref(), user.clone(), assets)?;
+    // TODO: sort this out, there is a more generic way to accomplish this
+    let mut claimable_rewards =
+        calculate_claimable_rewards(deps.as_ref(), user.clone(), assets.clone(), Membership)?;
+    let mut claimable_rewards_participation =
+        calculate_claimable_rewards(deps.as_ref(), user.clone(), assets, Participation)?;
+
+    claimable_rewards.append(&mut claimable_rewards_participation);
 
     let mut rewards = vec![];
 
     for (asset, reward, global_index) in claimable_rewards {
+        // TODO: duplicates will be present
         let reward = Asset::new(AssetInfo::from(&asset), reward);
         rewards.push(reward);
 
-        user_distribution_repository_mut(deps.branch()).set_distribution_info(
-            asset,
-            user.clone(),
-            UserDistributionInfo {
-                user_index: global_index,
-                pending_rewards: Uint128::zero(),
-            },
-        )?;
+        // TODO: what happens when we add another enum value?
+        for distribution_type in [Membership, Participation] {
+            user_distribution_repository_mut(deps.branch(), distribution_type)
+                .set_distribution_info(
+                    asset.clone(),
+                    user.clone(),
+                    UserDistributionInfo {
+                        user_index: global_index,
+                        pending_rewards: Uint128::zero(),
+                    },
+                )?;
+        }
     }
 
     Ok(rewards)

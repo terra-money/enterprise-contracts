@@ -14,6 +14,8 @@ pub struct InstantiateMsg {
     pub initial_weights: Vec<UserWeight>,
     /// Optional minimum weight that the user must have to be eligible for rewards distributions
     pub minimum_eligible_weight: Option<Uint128>,
+    /// Number of last proposals to track for user participation. If not set, will result to 0
+    pub participation_proposals_tracked: Option<u8>,
 }
 
 #[cw_serde]

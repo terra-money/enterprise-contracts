@@ -2,6 +2,7 @@ use crate::asset_types::RewardAsset;
 use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Decimal, Deps, DepsMut};
+use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
 use RewardAsset::{Cw20, Native};
 
@@ -103,10 +104,16 @@ impl<'a> GeneralDistributionRepositoryMut<'a> {
     }
 }
 
-pub fn asset_distribution_repository(deps: Deps) -> GeneralDistributionRepository {
+pub fn asset_distribution_repository(
+    deps: Deps,
+    distribution_type: DistributionType,
+) -> GeneralDistributionRepository {
     GeneralDistributionRepository { deps }
 }
 
-pub fn asset_distribution_repository_mut(deps: DepsMut) -> GeneralDistributionRepositoryMut {
+pub fn asset_distribution_repository_mut(
+    deps: DepsMut,
+    distribution_type: DistributionType,
+) -> GeneralDistributionRepositoryMut {
     GeneralDistributionRepositoryMut { deps }
 }

@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Deps, StdResult};
 use cw_asset::AssetInfo;
 use funds_distributor_api::error::DistributorResult;
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub enum RewardAsset {
     Native { denom: String },
     Cw20 { addr: Addr },

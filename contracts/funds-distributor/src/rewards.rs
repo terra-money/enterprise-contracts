@@ -9,11 +9,12 @@ use crate::repository::user_distribution_repository::{
 use crate::repository::weights_repository::weights_repository;
 use common::cw::QueryContext;
 use cosmwasm_std::{Addr, Decimal, Deps, Fraction, Uint128};
-use funds_distributor_api::api::DistributionType::Membership;
+use funds_distributor_api::api::DistributionType::{Membership, Participation};
 use funds_distributor_api::api::{
-    Cw20Reward, NativeReward, UserRewardsParams, UserRewardsResponse,
+    Cw20Reward, DistributionType, NativeReward, UserRewardsParams, UserRewardsResponse,
 };
 use funds_distributor_api::error::DistributorResult;
+use std::collections::HashMap;
 
 /// Calculates user's currently available rewards for an asset, given its current global index
 /// and user's weight.
@@ -61,24 +62,47 @@ fn query_rewards(
     user: Addr,
     assets: Vec<RewardAsset>,
 ) -> DistributorResult<UserRewardsResponse> {
-    let mut native_rewards = vec![];
-    let mut cw20_rewards = vec![];
+    let mut native_rewards: HashMap<String, Uint128> = HashMap::new();
+    let mut cw20_rewards: HashMap<Addr, Uint128> = HashMap::new();
 
-    let claimable_rewards = calculate_claimable_rewards(deps, user, assets)?;
+    for distribution_type in [Membership, Participation] {
+        let claimable_rewards =
+            calculate_claimable_rewards(deps, user.clone(), assets.clone(), distribution_type)?;
 
-    for (asset, amount, _) in claimable_rewards {
-        match asset {
-            Native { denom } => native_rewards.push(NativeReward { denom, amount }),
-            Cw20 { addr } => cw20_rewards.push(Cw20Reward {
-                asset: addr.to_string(),
-                amount,
-            }),
+        for (asset, amount, _) in claimable_rewards {
+            match asset {
+                Native { denom } => match native_rewards.get(&denom) {
+                    None => {
+                        native_rewards.insert(denom, amount);
+                    }
+                    Some(value) => {
+                        native_rewards.insert(denom, amount.checked_add(*value)?);
+                    }
+                },
+                Cw20 { addr } => match cw20_rewards.get(&addr) {
+                    None => {
+                        cw20_rewards.insert(addr, amount);
+                    }
+                    Some(value) => {
+                        cw20_rewards.insert(addr, amount.checked_add(*value)?);
+                    }
+                },
+            }
         }
     }
 
     Ok(UserRewardsResponse {
-        native_rewards,
-        cw20_rewards,
+        native_rewards: native_rewards
+            .into_iter()
+            .map(|(denom, amount)| NativeReward { denom, amount })
+            .collect(),
+        cw20_rewards: cw20_rewards
+            .into_iter()
+            .map(|(asset, amount)| Cw20Reward {
+                asset: asset.to_string(),
+                amount,
+            })
+            .collect(),
     })
 }
 
@@ -86,18 +110,18 @@ pub fn calculate_claimable_rewards(
     deps: Deps,
     user: Addr,
     assets: Vec<RewardAsset>,
+    distribution_type: DistributionType,
 ) -> DistributorResult<Vec<(RewardAsset, Uint128, Decimal)>> {
-    // TODO: calculate rewards for both types
-    let user_weight = weights_repository(deps, Membership)
+    let mut rewards: Vec<(RewardAsset, Uint128, Decimal)> = vec![];
+
+    let user_weight = weights_repository(deps, distribution_type.clone())
         .get_user_weight(user.clone())?
         .unwrap_or_default();
 
-    let mut rewards: Vec<(RewardAsset, Uint128, Decimal)> = vec![];
-
     for asset in assets {
-        let distribution = user_distribution_repository(deps)
+        let distribution = user_distribution_repository(deps, distribution_type.clone())
             .get_distribution_info(asset.clone(), user.clone())?;
-        let global_index = asset_distribution_repository(deps)
+        let global_index = asset_distribution_repository(deps, distribution_type.clone())
             .get_global_index(asset.clone())?
             .unwrap_or_default();
 

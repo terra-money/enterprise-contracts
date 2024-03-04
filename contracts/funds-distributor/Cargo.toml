@@ -43,9 +43,11 @@ cw20 = "1.0.1"
 cw-asset = "2.4.0"
 itertools = "0.10.5"
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+enterprise-governance-api = { path = "../../packages/enterprise-governance-api" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
 membership-common-api = { path = "../../packages/membership-common-api" }
+poll-engine-api = { path = "../../packages/poll-engine-api" }
 cw-orch = { version = "0.18.1", optional = true }
 

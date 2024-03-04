@@ -37,6 +37,11 @@ pub struct CreateDaoMsg {
     /// E.g. a value of 3 here means that a user in token or NFT DAO needs at least 3 staked
     /// DAO assets, or a weight of 3 in multisig DAO, to be eligible for rewards.
     pub minimum_weight_for_rewards: Option<Uint128>,
+    /// Number of last proposals the DAO will be tracking to determine participation rewards for
+    /// users.
+    /// If left empty or 0, will effectively turn participation rewards off.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proposals_tracked_for_participation_rewards: Option<u8>,
     /// Optional cross chain treasuries to deploy during DAO creation.
     pub cross_chain_treasuries: Option<Vec<DeployCrossChainTreasuryMsg>>,
     /// Optional text that users will have to attest to before being able to participate in DAO's

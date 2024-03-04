@@ -10,7 +10,7 @@ use common::cw::Context;
 use cosmwasm_std::{Addr, DepsMut, Response, Uint128};
 use cw_storage_plus::Map;
 use funds_distributor_api::api::DistributionType::{Membership, Participation};
-use funds_distributor_api::api::{UpdateUserWeightsMsg, UserWeight};
+use funds_distributor_api::api::{DistributionType, UpdateUserWeightsMsg, UserWeight};
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_update_user_weights_response;
@@ -92,13 +92,18 @@ fn update_user_weights_checked(
             None => {
                 // we have not encountered this user, so we need to ensure their distribution
                 // indices are set to current global indices
-                initialize_user_indices(deps.branch(), user.clone())?;
+                initialize_user_indices(deps.branch(), user.clone(), distribution_type.clone())?;
             }
             Some(old_user_weight) => {
                 // the user already had their weight previously, so we use that weight
                 // to calculate how many rewards for each asset they've accrued since we last
                 // calculated their pending rewards
-                update_user_indices(deps.branch(), user.clone(), old_user_weight)?;
+                update_user_indices(
+                    deps.branch(),
+                    user.clone(),
+                    old_user_weight,
+                    distribution_type.clone(),
+                )?;
             }
         };
 
@@ -119,11 +124,16 @@ fn update_user_weights_checked(
 ///
 /// Will initialize all their rewards for assets with existing distributions to 0, and set
 /// their rewards indices to current global index for each asset.
-fn initialize_user_indices(deps: DepsMut, user: Addr) -> DistributorResult<()> {
+fn initialize_user_indices(
+    deps: DepsMut,
+    user: Addr,
+    distribution_type: DistributionType,
+) -> DistributorResult<()> {
     let all_global_indices =
-        asset_distribution_repository(deps.as_ref()).get_all_global_indices()?;
+        asset_distribution_repository(deps.as_ref(), distribution_type.clone())
+            .get_all_global_indices()?;
 
-    user_distribution_repository_mut(deps)
+    user_distribution_repository_mut(deps, distribution_type)
         .initialize_distribution_info(all_global_indices, user)?;
 
     Ok(())
@@ -137,11 +147,13 @@ fn update_user_indices(
     deps: DepsMut,
     user: Addr,
     old_user_weight: Uint128,
+    distribution_type: DistributionType,
 ) -> DistributorResult<()> {
     let all_global_indices =
-        asset_distribution_repository(deps.as_ref()).get_all_global_indices()?;
+        asset_distribution_repository(deps.as_ref(), distribution_type.clone())
+            .get_all_global_indices()?;
 
-    user_distribution_repository_mut(deps).update_user_indices(
+    user_distribution_repository_mut(deps, distribution_type).update_user_indices(
         user,
         all_global_indices,
         old_user_weight,

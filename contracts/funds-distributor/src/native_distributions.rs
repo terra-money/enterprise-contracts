@@ -5,7 +5,16 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, Decimal, DepsMut, StdResult, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
+use funds_distributor_api::api::DistributionType;
+use funds_distributor_api::api::DistributionType::{Membership, Participation};
 use funds_distributor_api::error::DistributorResult;
+
+// TODO: having to use these constants is ugly, but Rust is uglier
+const NAMESPACE_MEMBERSHIP: &str = "native_distributions";
+const NAMESPACE_MEMBERSHIP_USER_IDX: &str = "native_distributions__user";
+
+const NAMESPACE_PARTICIPATION: &str = "native_distributions_participation";
+const NAMESPACE_PARTICIPATION_USER_IDX: &str = "native_distributions_participation__user";
 
 #[cw_serde]
 /// State of a single user's specific native rewards.
@@ -40,15 +49,21 @@ impl IndexList<NativeDistribution> for NativeDistributionIndexes<'_> {
 
 #[allow(non_snake_case)]
 pub fn NATIVE_DISTRIBUTIONS<'a>(
+    distribution_type: DistributionType,
 ) -> IndexedMap<'a, (Addr, String), NativeDistribution, NativeDistributionIndexes<'a>> {
+    let (namespace, namespace_user_idx) = match distribution_type {
+        Membership => (NAMESPACE_MEMBERSHIP, NAMESPACE_MEMBERSHIP_USER_IDX),
+        Participation => (NAMESPACE_PARTICIPATION, NAMESPACE_PARTICIPATION_USER_IDX),
+    };
+
     let indexes = NativeDistributionIndexes {
         user: MultiIndex::new(
             |_, native_distribution| native_distribution.user.clone(),
-            "native_distributions",
-            "native_distributions__user",
+            namespace,
+            namespace_user_idx,
         ),
     };
-    IndexedMap::new("native_distributions", indexes)
+    IndexedMap::new(namespace, indexes)
 }
 
 // convenience trait to unify duplicate code between this and CW20 distributions
@@ -56,38 +71,4 @@ impl From<NativeDistribution> for (Decimal, Uint128) {
     fn from(item: NativeDistribution) -> Self {
         (item.user_index, item.pending_rewards)
     }
-}
-
-/// Updates user's reward indices for all native assets.
-///
-/// Will calculate newly pending rewards since the last update to the user's reward index until now,
-/// using their last weight to calculate the newly accrued rewards.
-pub fn update_user_native_distributions(
-    deps: DepsMut,
-    user: Addr,
-    old_user_weight: Uint128,
-) -> DistributorResult<()> {
-    let native_global_indices = NATIVE_GLOBAL_INDICES
-        .range(deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<(String, Decimal)>>>()?;
-
-    for (denom, global_index) in native_global_indices {
-        let distribution =
-            NATIVE_DISTRIBUTIONS().may_load(deps.storage, (user.clone(), denom.clone()))?;
-
-        let reward = calculate_user_reward(global_index, distribution, old_user_weight)?;
-
-        NATIVE_DISTRIBUTIONS().save(
-            deps.storage,
-            (user.clone(), denom.clone()),
-            &NativeDistribution {
-                user: user.clone(),
-                denom,
-                user_index: global_index,
-                pending_rewards: reward,
-            },
-        )?;
-    }
-
-    Ok(())
 }

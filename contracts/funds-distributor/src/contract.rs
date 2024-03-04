@@ -16,6 +16,7 @@ use cw20::Cw20ReceiveMsg;
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use funds_distributor_api::response::instantiate_response;
+use crate::repository::weights_repository::{PARTICIPATION_PROPOSAL_IDS, PROPOSALS_TRACKED};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:funds-distributor";
@@ -38,6 +39,8 @@ pub fn instantiate(
 
     let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
+
+    PROPOSALS_TRACKED.save(deps.storage, &msg.participation_proposals_tracked.unwrap_or_default())?;
 
     let mut ctx = Context { deps, env, info };
 

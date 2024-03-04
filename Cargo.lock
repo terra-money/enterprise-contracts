@@ -2039,11 +2039,13 @@ dependencies = [
  "cw2 1.1.2",
  "cw20 1.1.2",
  "enterprise-factory-api",
+ "enterprise-governance-api",
  "enterprise-protocol",
  "enterprise-treasury-api",
  "funds-distributor-api",
  "itertools 0.10.5",
  "membership-common-api",
+ "poll-engine-api",
 ]
 
 [[package]]

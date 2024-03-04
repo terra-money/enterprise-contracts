@@ -73,14 +73,15 @@ fn distribute(
 
     assert_assets_whitelisted(deps.as_ref(), distribution_assets)?;
 
-    let total_weight = weights_repository(deps.as_ref(), distribution_type).get_total_weight()?;
+    let total_weight =
+        weights_repository(deps.as_ref(), distribution_type.clone()).get_total_weight()?;
     if total_weight.is_zero() {
         return Err(ZeroTotalWeight);
     }
 
     for (reward_asset, amount) in assets {
         // TODO: what if an asset appears multiple times?
-        let global_index = asset_distribution_repository(deps.as_ref())
+        let global_index = asset_distribution_repository(deps.as_ref(), distribution_type.clone())
             .get_global_index(reward_asset.clone())?
             .unwrap_or(Decimal::zero());
 
@@ -90,7 +91,7 @@ fn distribute(
 
         let new_global_index = global_index.checked_add(index_increment)?;
 
-        asset_distribution_repository_mut(deps.branch())
+        asset_distribution_repository_mut(deps.branch(), distribution_type.clone())
             .set_global_index(reward_asset, new_global_index)?;
     }
 
@@ -157,7 +158,7 @@ fn assert_assets_whitelisted(deps: Deps, mut assets: Vec<AssetInfo>) -> Distribu
     }
 }
 
-fn query_enterprise_components(deps: Deps) -> DistributorResult<ComponentContractsResponse> {
+pub fn query_enterprise_components(deps: Deps) -> DistributorResult<ComponentContractsResponse> {
     let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
 
     let component_contracts: ComponentContractsResponse = deps
