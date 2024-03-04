@@ -14,7 +14,6 @@ mod user_weights;
 
 mod asset_types;
 mod generic_claim;
-mod generic_distribution;
 
 #[cfg(test)]
 mod tests;
