@@ -13,7 +13,6 @@ mod state;
 mod user_weights;
 
 mod asset_types;
-mod generic_claim;
 
 #[cfg(test)]
 mod tests;

@@ -1,3 +1,9 @@
+use crate::asset_types::RewardAsset;
+use crate::repository::asset_repository::{
+    asset_distribution_repository, asset_distribution_repository_mut, AssetDistributionRepository,
+    AssetDistributionRepositoryMut,
+};
+use crate::repository::weights_repository::{weights_repository, WeightsRepository};
 use crate::state::ENTERPRISE_CONTRACT;
 use common::cw::Context;
 use cosmwasm_std::{Decimal, Deps, DepsMut, Response, Uint128};
@@ -15,9 +21,6 @@ use funds_distributor_api::response::{
     cw20_hook_distribute_cw20_response, execute_distribute_native_response,
 };
 use std::ops::Not;
-use crate::asset_types::RewardAsset;
-use crate::repository::asset_repository::{asset_distribution_repository, asset_distribution_repository_mut, AssetDistributionRepository, AssetDistributionRepositoryMut};
-use crate::repository::weights_repository::{weights_repository, WeightsRepository};
 
 /// Distributes new rewards for a native asset, using funds found in MessageInfo.
 /// Will increase global index for each of the assets being distributed.
@@ -50,11 +53,11 @@ pub fn distribute_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> Distribut
     ))
 }
 
-fn distribute(mut deps: DepsMut, assets: Vec<(RewardAsset, Uint128)>) -> DistributorResult<Uint128> {
-    let distribution_assets = assets
-        .iter()
-        .map(|(asset, _)| asset.into())
-        .collect();
+fn distribute(
+    mut deps: DepsMut,
+    assets: Vec<(RewardAsset, Uint128)>,
+) -> DistributorResult<Uint128> {
+    let distribution_assets = assets.iter().map(|(asset, _)| asset.into()).collect();
 
     assert_assets_whitelisted(deps.as_ref(), distribution_assets)?;
 
@@ -75,16 +78,14 @@ fn distribute(mut deps: DepsMut, assets: Vec<(RewardAsset, Uint128)>) -> Distrib
 
         let new_global_index = global_index.checked_add(index_increment)?;
 
-        asset_distribution_repository_mut(deps.branch()).set_global_index(reward_asset, new_global_index)?;
+        asset_distribution_repository_mut(deps.branch())
+            .set_global_index(reward_asset, new_global_index)?;
     }
 
     Ok(total_weight)
 }
 
-fn assert_assets_whitelisted(
-    deps: Deps,
-    mut assets: Vec<AssetInfo>,
-) -> DistributorResult<()> {
+fn assert_assets_whitelisted(deps: Deps, mut assets: Vec<AssetInfo>) -> DistributorResult<()> {
     let enterprise_components = query_enterprise_components(deps)?;
 
     // query asset whitelist with no bounds

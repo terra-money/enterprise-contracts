@@ -1,5 +1,6 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Deps, StdResult};
 use cw_asset::AssetInfo;
+use funds_distributor_api::error::DistributorResult;
 
 #[derive(Clone)]
 pub enum RewardAsset {
@@ -35,4 +36,21 @@ impl From<&RewardAsset> for AssetInfo {
             RewardAsset::Cw20 { addr } => AssetInfo::cw20(addr.clone()),
         }
     }
+}
+
+pub fn to_reward_assets(
+    deps: Deps,
+    native_assets: Vec<String>,
+    cw20_assets: Vec<String>,
+) -> DistributorResult<Vec<RewardAsset>> {
+    let mut assets: Vec<RewardAsset> = native_assets.iter().map(RewardAsset::native).collect();
+    let mut cw20_assets = cw20_assets
+        .iter()
+        .map(|addr| deps.api.addr_validate(addr))
+        .map(|res| res.map(RewardAsset::cw20))
+        .collect::<StdResult<Vec<RewardAsset>>>()?;
+
+    assets.append(&mut cw20_assets);
+
+    Ok(assets)
 }
