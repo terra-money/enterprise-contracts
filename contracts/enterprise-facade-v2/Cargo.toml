@@ -54,6 +54,7 @@ enterprise-governance-controller-api = { path = "../../packages/enterprise-gover
 enterprise-facade-common = { path = "../../packages/enterprise-facade-common" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
+funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 multisig-membership-api = { path = "../../packages/multisig-membership-api" }
 serde-json-wasm = "0.5.0"
 cw-orch = { version = "0.18.1", optional = true }

@@ -13,12 +13,13 @@ use enterprise_facade_api::api::{
     DaoInfoResponse, DaoMetadata, DaoSocialData, DaoType, DenomClaimAsset, DenomUserStake,
     ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse,
     MemberVoteParams, MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftUserStake,
-    NftWhitelistParams, NftWhitelistResponse, Proposal, ProposalParams, ProposalResponse,
-    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
-    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TokenUserStake,
-    TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStake, UserStakeParams,
-    UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
+    NftWhitelistParams, NftWhitelistResponse, NumberProposalsTrackedResponse, Proposal,
+    ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
+    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
+    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
+    StakedNftsResponse, TokenUserStake, TotalStakedAmountResponse, TreasuryAddressResponse,
+    UnstakeMsg, UserStake, UserStakeParams, UserStakeResponse, V2MigrationStage,
+    V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -359,6 +360,32 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         Ok(NftWhitelistResponse {
             nfts: nft_whitelist.nfts,
         })
+    }
+
+    fn query_number_proposals_tracked(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<NumberProposalsTrackedResponse> {
+        let version = self.query_dao_info(qctx.clone())?.dao_version;
+
+        // TODO: is this the correct version?
+        let v1_2_0 = Version::new(1, 2, 0);
+
+        if version < v1_2_0 {
+            Ok(NumberProposalsTrackedResponse {
+                number_proposals_tracked: None,
+            })
+        } else {
+            let components = self.component_contracts(qctx.deps)?;
+
+            let number_proposals_tracked: funds_distributor_api::api::NumberProposalsTrackedResponse =
+                qctx.deps.querier.query_wasm_smart(components.funds_distributor_contract.to_string(),
+                                                   &funds_distributor_api::msg::QueryMsg::NumberProposalsTracked {})?;
+
+            Ok(NumberProposalsTrackedResponse {
+                number_proposals_tracked: Some(number_proposals_tracked.number_proposals_tracked),
+            })
+        }
     }
 
     fn query_proposal(

@@ -79,6 +79,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(contract)?;
             to_json_binary(&facade.query_nft_whitelist(qctx, params)?)?
         }
+        QueryMsg::NumberProposalsTracked { contract } => {
+            let facade = get_facade(contract)?;
+            to_json_binary(&facade.query_number_proposals_tracked(qctx)?)?
+        }
         QueryMsg::Proposal { contract, params } => {
             let facade = get_facade(contract)?;
             to_json_binary(&facade.query_proposal(qctx, params)?)?

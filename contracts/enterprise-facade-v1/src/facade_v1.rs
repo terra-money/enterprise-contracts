@@ -30,11 +30,11 @@ use enterprise_facade_api::api::{
     CreateProposalWithTokenDepositMsg, DaoInfoResponse, DaoType, ExecuteProposalMsg,
     GovConfigFacade, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    Proposal, ProposalParams, ProposalResponse, ProposalStatus, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams,
-    StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg,
-    UserStakeParams, UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
+    NumberProposalsTrackedResponse, Proposal, ProposalParams, ProposalResponse, ProposalStatus,
+    ProposalStatusParams, ProposalStatusResponse, ProposalType, ProposalVotesParams,
+    ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg,
+    StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse,
+    UnstakeMsg, UserStakeParams, UserStakeResponse, V2MigrationStage, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::DaoError::UnsupportedOperationForDaoType;
 use enterprise_facade_api::error::EnterpriseFacadeError::Dao;
@@ -167,6 +167,16 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         params: NftWhitelistParams,
     ) -> EnterpriseFacadeResult<NftWhitelistResponse> {
         self.query_enterprise_contract(qctx.deps, &NftWhitelist(params))
+    }
+
+    fn query_number_proposals_tracked(
+        &self,
+        _: QueryContext,
+    ) -> EnterpriseFacadeResult<NumberProposalsTrackedResponse> {
+        // TODO: consider throwing an error here
+        Ok(NumberProposalsTrackedResponse {
+            number_proposals_tracked: None,
+        })
     }
 
     fn query_proposal(

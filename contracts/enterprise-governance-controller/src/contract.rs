@@ -1413,6 +1413,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
 
             PROPOSAL_INFOS.save(deps.storage, poll_id, &proposal_info)?;
 
+            if proposal_info.proposal_type == General {
+                // TODO: invoke funds distributor callback for new proposal
+            }
+
             Ok(reply_create_poll_response(poll_id))
         }
         END_POLL_REPLY_ID => {

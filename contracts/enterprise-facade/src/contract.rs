@@ -7,9 +7,9 @@ use cw2::set_contract_version;
 use enterprise_facade_api::api::{
     AdapterResponse, AssetWhitelistResponse, ClaimsResponse, ComponentContractsResponse,
     DaoInfoResponse, MemberInfoResponse, MemberVoteResponse, MultisigMembersResponse,
-    NftWhitelistResponse, ProposalResponse, ProposalStatusResponse, ProposalVotesResponse,
-    ProposalsResponse, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse,
-    UserStakeResponse, V2MigrationStageResponse,
+    NftWhitelistResponse, NumberProposalsTrackedResponse, ProposalResponse, ProposalStatusResponse,
+    ProposalVotesResponse, ProposalsResponse, StakedNftsResponse, TotalStakedAmountResponse,
+    TreasuryAddressResponse, UserStakeResponse, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::{
@@ -26,9 +26,9 @@ use QueryMsg::{
     ComponentContracts, CreateCouncilProposalAdapted, CreateProposalAdapted,
     CreateProposalWithDenomDepositAdapted, CreateProposalWithNftDepositAdapted,
     CreateProposalWithTokenDepositAdapted, CrossChainTreasuries, DaoInfo, HasUnmovedStakesOrClaims,
-    ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist, Proposal, ProposalStatus,
-    ProposalVotes, Proposals, ReleasableClaims, StakeAdapted, StakedNfts, TotalStakedAmount,
-    UnstakeAdapted, UserStake,
+    ListMultisigMembers, MemberInfo, MemberVote, NftWhitelist, NumberProposalsTracked, Proposal,
+    ProposalStatus, ProposalVotes, Proposals, ReleasableClaims, StakeAdapted, StakedNfts,
+    TotalStakedAmount, UnstakeAdapted, UserStake,
 };
 
 // version info for migration info
@@ -160,6 +160,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
                 &NftWhitelist {
                     contract: facade.dao_address,
                     params,
+                },
+            )?;
+            to_json_binary(&response)?
+        }
+        NumberProposalsTracked { contract } => {
+            let facade = get_facade(deps, contract)?;
+
+            let response: NumberProposalsTrackedResponse = deps.querier.query_wasm_smart(
+                facade.facade_address.to_string(),
+                &NumberProposalsTracked {
+                    contract: facade.dao_address,
                 },
             )?;
             to_json_binary(&response)?

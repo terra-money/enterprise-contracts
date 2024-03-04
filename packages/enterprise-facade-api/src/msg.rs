@@ -4,11 +4,11 @@ use crate::api::{
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
     ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
-    V2MigrationStageResponse,
+    NumberProposalsTrackedResponse, ProposalParams, ProposalResponse, ProposalStatusParams,
+    ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
+    ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse,
+    TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStakeParams,
+    UserStakeResponse, V2MigrationStageResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
@@ -59,6 +59,8 @@ pub enum QueryMsg {
         contract: Addr,
         params: NftWhitelistParams,
     },
+    #[returns(NumberProposalsTrackedResponse)]
+    NumberProposalsTracked { contract: Addr },
     #[returns(ProposalResponse)]
     Proposal {
         contract: Addr,

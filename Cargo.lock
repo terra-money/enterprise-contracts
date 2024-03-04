@@ -1589,6 +1589,7 @@ dependencies = [
  "enterprise-protocol",
  "enterprise-treasury-api",
  "enterprise-versioning-api",
+ "funds-distributor-api",
  "membership-common-api",
  "multisig-membership-api",
  "nft-staking-api",

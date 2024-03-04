@@ -5,11 +5,11 @@ use enterprise_facade_api::api::{
     CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoInfoResponse,
     ExecuteProposalMsg, ListMultisigMembersMsg, MemberInfoResponse, MemberVoteParams,
     MemberVoteResponse, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
-    V2MigrationStageResponse,
+    NumberProposalsTrackedResponse, ProposalParams, ProposalResponse, ProposalStatusParams,
+    ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams,
+    ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse,
+    TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStakeParams,
+    UserStakeResponse, V2MigrationStageResponse,
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_governance_controller_api::api::CreateProposalWithNftDepositMsg;
@@ -61,6 +61,11 @@ pub trait EnterpriseFacade {
         qctx: QueryContext,
         params: NftWhitelistParams,
     ) -> EnterpriseFacadeResult<NftWhitelistResponse>;
+
+    fn query_number_proposals_tracked(
+        &self,
+        qctx: QueryContext,
+    ) -> EnterpriseFacadeResult<NumberProposalsTrackedResponse>;
 
     fn query_proposal(
         &self,

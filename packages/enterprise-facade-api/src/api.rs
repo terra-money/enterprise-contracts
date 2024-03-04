@@ -322,6 +322,11 @@ pub struct NftWhitelistResponse {
 }
 
 #[cw_serde]
+pub struct NumberProposalsTrackedResponse {
+    pub number_proposals_tracked: Option<u8>,
+}
+
+#[cw_serde]
 pub struct MemberInfoResponse {
     pub voting_power: Decimal,
 }
