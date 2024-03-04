@@ -427,6 +427,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                         filter: params.filter.map(map_proposal_filter),
                         start_after: params.start_after,
                         limit: params.limit,
+                        order: None,
                     },
                 ),
             )?;

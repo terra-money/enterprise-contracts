@@ -2041,6 +2041,7 @@ dependencies = [
  "cw20 1.1.2",
  "enterprise-factory-api",
  "enterprise-governance-api",
+ "enterprise-governance-controller-api",
  "enterprise-protocol",
  "enterprise-treasury-api",
  "funds-distributor-api",

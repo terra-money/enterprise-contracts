@@ -1,4 +1,5 @@
 use common::commons::ModifyValue;
+use common::cw::Order;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128, Uint64};
 use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
@@ -333,7 +334,8 @@ pub struct ProposalsParams {
     pub filter: Option<ProposalStatusFilter>,
     pub start_after: Option<ProposalId>,
     pub limit: Option<u32>,
-    // TODO: allow ordering
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<Order>,
 }
 
 #[serde_as]

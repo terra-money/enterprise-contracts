@@ -1694,7 +1694,7 @@ pub fn query_proposals(
                         .map_or(DEFAULT_QUERY_LIMIT as u64, |limit| limit as u64)
                         .min(MAX_QUERY_LIMIT as u64),
                 ),
-                order_by: None,
+                order_by: msg.order,
             },
         }),
     )?;
