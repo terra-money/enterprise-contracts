@@ -9,7 +9,7 @@ use enterprise_governance_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Que
 use poll_engine::execute::initialize_poll_engine;
 use poll_engine::query::{
     query_poll, query_poll_status, query_poll_voter, query_poll_voters, query_polls,
-    query_simulate_end_poll_status, query_voter,
+    query_simulate_end_poll_status, query_total_votes, query_voter, query_voter_total_votes,
 };
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, PollStatus, UpdateVotesParams, VoteOutcome,
@@ -142,6 +142,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> PollResult<Binary> {
             params.start_after,
             params.limit,
         )?)?,
+        QueryMsg::TotalVotes(params) => to_json_binary(&query_total_votes(&qctx, params)?)?,
+        QueryMsg::VoterTotalVotes(params) => {
+            to_json_binary(&query_voter_total_votes(&qctx, params)?)?
+        }
     };
     Ok(response)
 }

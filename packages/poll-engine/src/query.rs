@@ -1,13 +1,15 @@
 use cosmwasm_std::{Order, Uint128};
 use cw_storage_plus::Bound;
 use itertools::Itertools;
+use std::ops::Add;
 
 use common::cw::{Pagination, QueryContext};
 
 use crate::state::{polls, votes, PollHelpers, PollStorage, VoteStorage};
 use poll_engine_api::api::{
     PollId, PollParams, PollResponse, PollStatusResponse, PollVoterParams, PollVoterResponse,
-    PollVotersParams, PollVotersResponse, PollsParams, PollsResponse, VoterResponse,
+    PollVotersParams, PollVotersResponse, PollsParams, PollsResponse, TotalVotesParams,
+    TotalVotesResponse, VoterResponse, VoterTotalVotesParams,
 };
 use poll_engine_api::error::*;
 
@@ -175,6 +177,46 @@ pub fn query_voter(
     };
 
     Ok(VoterResponse { votes })
+}
+
+// TODO: test
+pub fn query_total_votes(
+    qctx: &QueryContext,
+    params: TotalVotesParams,
+) -> PollResult<TotalVotesResponse> {
+    let mut total_votes = Uint128::zero();
+
+    for poll_id in params.poll_ids {
+        // TODO: is it faster to query a bunch of them and then filter the ones we need? we can set lowest and highest as Bound, and then filter
+        let poll_info = query_poll(qctx, PollParams { poll_id })?;
+
+        total_votes = total_votes.add(Uint128::from(poll_info.poll.total_votes()));
+        // TODO: checked add?
+    }
+
+    Ok(TotalVotesResponse { total_votes })
+}
+
+// TODO: test
+pub fn query_voter_total_votes(
+    qctx: &QueryContext,
+    params: VoterTotalVotesParams,
+) -> PollResult<TotalVotesResponse> {
+    let voter = qctx.deps.api.addr_validate(&params.voter_addr)?;
+
+    let mut total_votes = Uint128::zero();
+
+    for poll_id in params.poll_ids {
+        // TODO: is it faster to query a bunch of them and then filter the ones we need? we can set lowest and highest as Bound, and then filter
+        let votes = votes()
+            .may_load(qctx.deps.storage, (voter.clone(), poll_id))?
+            .map(|it| it.amount)
+            .unwrap_or_default();
+
+        total_votes = total_votes.add(Uint128::from(votes)); // TODO: checked add?
+    }
+
+    Ok(TotalVotesResponse { total_votes })
 }
 
 #[cfg(test)]

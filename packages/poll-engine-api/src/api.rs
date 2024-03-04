@@ -122,7 +122,8 @@ pub struct CreatePollParams {
     /// The poll type, e.g. "CoinVoting"
     pub scheme: VotingScheme,
     /// End-time for poll.
-    pub ends_at: Timestamp, // TODO: consider supporting Height as well as Timestamp
+    pub ends_at: Timestamp,
+    // TODO: consider supporting Height as well as Timestamp
     /// Quorum to be reached for the poll to be valid.
     pub quorum: Decimal,
     /// Threshold ratio for a vote option to be the winning one.
@@ -315,4 +316,23 @@ pub struct VoterParams {
 pub struct VoterResponse {
     /// The voter's votes on any poll.
     pub votes: Vec<Vote>,
+}
+
+#[cw_serde]
+/// Params for querying total amount of votes on a set of polls.
+pub struct TotalVotesParams {
+    pub poll_ids: Vec<PollId>,
+}
+
+#[cw_serde]
+/// Response model for querying total amount of votes on a set of polls.
+pub struct TotalVotesResponse {
+    pub total_votes: Uint128,
+}
+
+#[cw_serde]
+/// Params for querying total amount of votes for the given voter on a set of polls.
+pub struct VoterTotalVotesParams {
+    pub voter_addr: String,
+    pub poll_ids: Vec<PollId>,
 }

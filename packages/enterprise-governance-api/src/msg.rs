@@ -3,7 +3,8 @@ use cosmwasm_std::Uint128;
 use poll_engine_api::api::{
     CastVoteParams, CreatePollParams, EndPollParams, PollId, PollParams, PollResponse,
     PollStatusResponse, PollVoterParams, PollVoterResponse, PollVotersParams, PollVotersResponse,
-    PollsParams, PollsResponse, UpdateVotesParams, VoterParams, VoterResponse,
+    PollsParams, PollsResponse, TotalVotesParams, TotalVotesResponse, UpdateVotesParams,
+    VoterParams, VoterResponse, VoterTotalVotesParams,
 };
 
 #[cw_serde]
@@ -39,6 +40,10 @@ pub enum QueryMsg {
     PollVoters(PollVotersParams),
     #[returns(VoterResponse)]
     Voter(VoterParams),
+    #[returns(TotalVotesResponse)]
+    TotalVotes(TotalVotesParams),
+    #[returns(TotalVotesResponse)]
+    VoterTotalVotes(VoterTotalVotesParams),
 }
 
 #[cw_serde]
