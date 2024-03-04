@@ -15,4 +15,4 @@ cosmwasm-std = "1"
 cosmwasm-schema = "1.1"
 cw20 = "1.0.1"
 thiserror = "1"
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }

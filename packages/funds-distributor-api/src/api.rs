@@ -48,6 +48,18 @@ pub struct MinimumEligibleWeightResponse {
     pub minimum_eligible_weight: Uint128,
 }
 
+// TODO: this is a really crappy name
+#[cw_serde]
+pub struct NumberProposalsTrackedResponse {
+    pub number_proposals_tracked: u8,
+}
+
+// TODO: this is a really crappy name
+#[cw_serde]
+pub struct ProposalIdsTrackedResponse {
+    pub proposal_ids: Vec<u64>, // TODO: use ProposalId type
+}
+
 #[cw_serde]
 pub enum DistributionType {
     Membership,

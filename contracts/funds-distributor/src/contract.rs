@@ -3,6 +3,9 @@ use crate::distributing::{distribute_cw20, distribute_native};
 use crate::eligibility::{
     execute_update_minimum_eligible_weight, query_minimum_eligible_weight, MINIMUM_ELIGIBLE_WEIGHT,
 };
+use crate::participation::{
+    query_number_proposals_tracked, query_proposal_ids_tracked, PROPOSALS_TRACKED,
+};
 use crate::rewards::query_user_rewards;
 use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -16,7 +19,6 @@ use cw20::Cw20ReceiveMsg;
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use funds_distributor_api::response::instantiate_response;
-use crate::repository::weights_repository::{PARTICIPATION_PROPOSAL_IDS, PROPOSALS_TRACKED};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:funds-distributor";
@@ -40,7 +42,10 @@ pub fn instantiate(
     let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
 
-    PROPOSALS_TRACKED.save(deps.storage, &msg.participation_proposals_tracked.unwrap_or_default())?;
+    PROPOSALS_TRACKED.save(
+        deps.storage,
+        &msg.participation_proposals_tracked.unwrap_or_default(),
+    )?;
 
     let mut ctx = Context { deps, env, info };
 
@@ -93,6 +98,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DistributorResult<Binary> {
         QueryMsg::MinimumEligibleWeight {} => {
             to_json_binary(&query_minimum_eligible_weight(qctx)?)?
         }
+        QueryMsg::NumberProposalsTracked {} => {
+            to_json_binary(&query_number_proposals_tracked(qctx)?)?
+        }
+        QueryMsg::ProposalIdsTracked {} => to_json_binary(&query_proposal_ids_tracked(qctx)?)?,
     };
     Ok(response)
 }

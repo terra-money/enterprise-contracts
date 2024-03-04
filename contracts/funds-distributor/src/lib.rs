@@ -14,5 +14,6 @@ mod user_weights;
 
 mod asset_types;
 
+mod participation;
 #[cfg(test)]
 mod tests;

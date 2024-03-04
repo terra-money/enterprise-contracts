@@ -1,17 +1,18 @@
+use crate::distributing::query_enterprise_components;
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
+use crate::participation::{get_proposal_ids_tracked, PARTICIPATION_TOTAL_WEIGHT};
 use crate::state::EFFECTIVE_TOTAL_WEIGHT;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
-use cw_storage_plus::{Item, Map};
 use enterprise_governance_api::msg::QueryMsg::VoterTotalVotes;
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
-use poll_engine_api::api::{PollId, TotalVotesResponse, VoterTotalVotesParams};
-use crate::distributing::query_enterprise_components;
+use poll_engine_api::api::{TotalVotesResponse, VoterTotalVotesParams};
 
 pub trait WeightsRepository {
     fn get_total_weight(&self) -> DistributorResult<Uint128>;
 
+    // TODO: it gets confusing whether this queries live data or uses some local copy
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>>;
 }
 
@@ -98,14 +99,6 @@ impl MembershipWeightsRepositoryMut<'_> {
 ////////// PARTICIPATION //////////
 ///////////////////////////////////
 
-const PARTICIPATION_TOTAL_WEIGHT: Item<Uint128> = Item::new("participation_total_weight");
-
-const PARTICIPATION_USER_WEIGHTS: Map<Addr, Uint128> = Map::new("participation_user_weights");
-
-// TODO: hide behind the interface
-pub const PROPOSALS_TRACKED: Item<u8> = Item::new("proposals_tracked");
-pub const PARTICIPATION_PROPOSAL_IDS: Map<PollId, ()> = Map::new("participation_proposal_ids");
-
 pub struct ParticipationWeightsRepository<'a> {
     deps: Deps<'a>,
 }
@@ -119,9 +112,14 @@ impl WeightsRepository for ParticipationWeightsRepository<'_> {
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
         let components = query_enterprise_components(self.deps)?;
 
+        let tracked_proposal_ids = get_proposal_ids_tracked(self.deps)?;
+
         let user_weight: TotalVotesResponse = self.deps.querier.query_wasm_smart(
             components.enterprise_governance_contract.to_string(),
-            &VoterTotalVotes(VoterTotalVotesParams { voter_addr: user.to_string(), poll_ids: vec![] }), // TODO: insert proper proposal IDs
+            &VoterTotalVotes(VoterTotalVotesParams {
+                voter_addr: user.to_string(),
+                poll_ids: tracked_proposal_ids,
+            }),
         )?;
 
         Ok(Some(user_weight.total_votes))

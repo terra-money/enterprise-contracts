@@ -1,7 +1,7 @@
 use crate::api::{
     ClaimRewardsMsg, DistributionType, MinimumEligibleWeightResponse,
-    UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse,
-    UserWeight,
+    NumberProposalsTrackedResponse, ProposalIdsTrackedResponse, UpdateMinimumEligibleWeightMsg,
+    UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse, UserWeight,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -43,6 +43,10 @@ pub enum QueryMsg {
     UserRewards(UserRewardsParams),
     #[returns(MinimumEligibleWeightResponse)]
     MinimumEligibleWeight {},
+    #[returns(NumberProposalsTrackedResponse)]
+    NumberProposalsTracked {},
+    #[returns(ProposalIdsTrackedResponse)]
+    ProposalIdsTracked {},
 }
 
 #[cw_serde]
