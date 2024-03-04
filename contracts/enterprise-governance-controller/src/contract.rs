@@ -73,7 +73,10 @@ use enterprise_treasury_api::api::{
     ExecuteCosmosMsgsMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::msg::ExecuteMsg::{ExecuteCosmosMsgs, Spend};
-use funds_distributor_api::api::{UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
+use funds_distributor_api::api::{
+    NewProposalCreatedMsg, UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg,
+};
+use funds_distributor_api::msg::ExecuteMsg::NewProposalCreated;
 use membership_common_api::api::{
     TotalWeightParams, TotalWeightResponse, UserWeightChange, UserWeightParams, UserWeightResponse,
     WeightsChangedMsg,
@@ -1413,11 +1416,22 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> GovernanceControllerResult<
 
             PROPOSAL_INFOS.save(deps.storage, poll_id, &proposal_info)?;
 
-            if proposal_info.proposal_type == General {
-                // TODO: invoke funds distributor callback for new proposal
-            }
+            let submsgs = if proposal_info.proposal_type == General {
+                let funds_distributor =
+                    query_enterprise_components(deps.as_ref())?.funds_distributor_contract;
 
-            Ok(reply_create_poll_response(poll_id))
+                vec![SubMsg::new(wasm_execute(
+                    funds_distributor.to_string(),
+                    &NewProposalCreated(NewProposalCreatedMsg {
+                        proposal_id: poll_id,
+                    }),
+                    vec![],
+                )?)]
+            } else {
+                vec![]
+            };
+
+            Ok(reply_create_poll_response(poll_id).add_submessages(submsgs))
         }
         END_POLL_REPLY_ID => {
             let info = MessageInfo {

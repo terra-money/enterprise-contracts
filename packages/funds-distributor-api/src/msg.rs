@@ -1,5 +1,5 @@
 use crate::api::{
-    ClaimRewardsMsg, DistributionType, MinimumEligibleWeightResponse,
+    ClaimRewardsMsg, DistributionType, MinimumEligibleWeightResponse, NewProposalCreatedMsg,
     NumberProposalsTrackedResponse, ProposalIdsTrackedResponse, UpdateMinimumEligibleWeightMsg,
     UpdateUserWeightsMsg, UserRewardsParams, UserRewardsResponse, UserWeight,
 };
@@ -21,6 +21,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     UpdateUserWeights(UpdateUserWeightsMsg),
+    NewProposalCreated(NewProposalCreatedMsg),
     UpdateMinimumEligibleWeight(UpdateMinimumEligibleWeightMsg),
     DistributeNative {
         distribution_type: Option<DistributionType>,

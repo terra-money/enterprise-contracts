@@ -8,6 +8,12 @@ pub struct UpdateUserWeightsMsg {
 }
 
 #[cw_serde]
+pub struct NewProposalCreatedMsg {
+    /// New weights that the users have, after the change
+    pub proposal_id: u64, // TODO: use ProposalId type
+}
+
+#[cw_serde]
 pub struct UpdateMinimumEligibleWeightMsg {
     /// New minimum weight that the user must have to be eligible for rewards distributions
     pub minimum_eligible_weight: Uint128,

@@ -10,6 +10,12 @@ pub fn execute_update_user_weights_response() -> Response {
     Response::new().add_attribute("action", "update_user_weights")
 }
 
+pub fn execute_new_proposal_created_response(proposal_id: u64) -> Response {
+    Response::new()
+        .add_attribute("action", "new_proposal_created")
+        .add_attribute("proposal_id", proposal_id.to_string())
+}
+
 pub fn execute_update_minimum_eligible_weight_response(
     old_minimum_weight: Uint128,
     new_minimum_weight: Uint128,
