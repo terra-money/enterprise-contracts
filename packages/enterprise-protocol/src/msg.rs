@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct MigrateMsg {
-    pub move_excess_membership_assets: Option<bool>,
+    pub move_excess_membership_assets_to: Option<String>,
 }
 
 #[cw_serde]

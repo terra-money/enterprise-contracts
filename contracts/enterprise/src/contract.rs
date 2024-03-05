@@ -495,7 +495,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
                 contract_addr: component_contracts.membership_contract.to_string(),
                 new_code_id: version_info.version.token_staking_membership_code_id,
                 msg: to_json_binary(&token_staking_api::msg::MigrateMsg {
-                    move_excess_membership_assets: msg.move_excess_membership_assets,
+                    move_excess_membership_assets_to: msg.move_excess_membership_assets_to,
                 })?,
             }));
 
