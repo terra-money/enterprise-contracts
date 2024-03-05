@@ -7,7 +7,7 @@ use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use membership_common::enterprise_contract::ENTERPRISE_CONTRACT;
 use membership_common::total_weight::load_total_weight;
-use std::ops::{Add, Not, Sub};
+use std::ops::{Not, Sub};
 use token_staking_api::api::TokenClaim;
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::MigrateMsg;
@@ -34,7 +34,7 @@ pub fn migrate_to_v1_1_1(
     let token_balance =
         Cw20Contract(config.token_contract.clone()).balance(&deps.querier, env.contract.address)?;
 
-    let total_owned_by_users = total_weight.add(total_claims);
+    let total_owned_by_users = total_weight.checked_add(total_claims)?;
 
     if token_balance > total_owned_by_users {
         // send the excess balance to treasury
