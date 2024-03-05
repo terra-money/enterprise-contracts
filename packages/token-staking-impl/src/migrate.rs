@@ -7,7 +7,7 @@ use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use membership_common::enterprise_contract::ENTERPRISE_CONTRACT;
 use membership_common::total_weight::load_total_weight;
-use std::ops::{Add, Sub};
+use std::ops::{Add, Not, Sub};
 use token_staking_api::api::TokenClaim;
 use token_staking_api::error::TokenStakingResult;
 use token_staking_api::msg::MigrateMsg;
@@ -17,7 +17,7 @@ pub fn migrate_to_v1_1_1(
     env: Env,
     msg: MigrateMsg,
 ) -> TokenStakingResult<Vec<SubMsg>> {
-    if msg.move_excess_membership_assets.unwrap_or(false) {
+    if msg.move_excess_membership_assets.unwrap_or(false).not() {
         return Ok(vec![]);
     }
 
