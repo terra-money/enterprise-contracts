@@ -479,7 +479,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> DaoResult<Response>
     let migrate_funds_distributor_msg = SubMsg::new(Wasm(Migrate {
         contract_addr: component_contracts.funds_distributor_contract.to_string(),
         new_code_id: version_info.version.funds_distributor_code_id,
-        msg: to_json_binary(&enterprise_governance_controller_api::msg::MigrateMsg {})?,
+        msg: to_json_binary(&funds_distributor_api::msg::MigrateMsg {})?,
     }));
 
     let response = Response::new()
