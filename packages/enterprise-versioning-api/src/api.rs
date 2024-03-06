@@ -12,6 +12,16 @@ pub struct Version {
     pub patch: u64,
 }
 
+impl Version {
+    pub fn new(major: u64, minor: u64, patch: u64) -> Version {
+        Version {
+            major,
+            minor,
+            patch,
+        }
+    }
+}
+
 impl From<Version> for (u64, u64, u64) {
     fn from(version: Version) -> Self {
         (version.major, version.minor, version.patch)
