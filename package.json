@@ -7,7 +7,8 @@
   "author": "Terra Money <core@terra.money>",
   "type": "module",
   "workspaces": [
-    "contracts"
+    "contracts",
+    "tests-cradle"
   ],
   "scripts": {
     "deploy:enterprise-factory": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/deploy_enterprise_factory.ts --network testnet --signer pisco",
@@ -24,7 +25,8 @@
     "warp:migration-jobs:mainnet": "yarn terrariums run tasks/warp_migration_jobs.ts --network mainnet --signer phoenix",
     "docker:enterprise-api": "docker build . -f apps/enterprise-api/Dockerfile -t payments/api",
     "docker:enterprise-indexers": "docker build . -f indexers/enterprise/Dockerfile -t payments/indexers",
-    "postinstall": "husky install"
+    "postinstall": "husky install",
+    "tests-cradle": "yarn workspace tests-cradle start"
   },
   "dependencies": {
     "@terra-money/terrariums": "file:../terrariums",
