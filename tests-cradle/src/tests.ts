@@ -3,13 +3,12 @@ import {Version} from "./types/enterprise_versioning";
 import {VersionMigrateMsg} from "./types/enterprise_governance_controller";
 import {getDaoComponents} from "./enterprise_utils";
 import {verifyTokenStakingWorks} from "./token_staking";
-import {queryAllMembers} from "./membership_utils";
+import {assertUserWeightsUnchanged, queryAllMembers} from "./membership_utils";
 import {upgradeDao} from "./proposals";
 import {queryDaoInfo} from "./dao_queries";
 import {verifyNftStakingWorks} from "./nft_staking";
 import {hasDaoCouncil} from "./council";
 import {DaoContracts} from "./main";
-import assert = require("node:assert");
 
 export const verifyUpgradeCorrectness = async (ctx: ExecuteCtx, daoEnterprise: string, newVersion: Version, migrateMsgs: VersionMigrateMsg[], nextVersion: Version, secondNextVersion: Version) => {
     const dao = await getDaoComponents(ctx.lcd, daoEnterprise);
@@ -31,10 +30,13 @@ export const verifyUpgradeCorrectness = async (ctx: ExecuteCtx, daoEnterprise: s
     const currentMembers = await queryAllMembers(ctx.lcd, dao);
 
     console.log('Asserting member weights have remained unchanged.');
-    assert(JSON.stringify(currentMembers.sort()) === JSON.stringify(initialMembers.sort()), "Member weights should remain the same");
+    assertUserWeightsUnchanged(currentMembers, initialMembers);
 
     await upgradeDao(ctx, dao, nextVersion, [], 'general');
-    await upgradeDao(ctx, dao, secondNextVersion, [], 'council');
+
+    if (hasCouncil) {
+        await upgradeDao(ctx, dao, secondNextVersion, [], 'council');
+    }
 
     const newDaoInfo = await queryDaoInfo(ctx.lcd, dao);
     console.log('New DAO version:', JSON.stringify(newDaoInfo.dao_version));

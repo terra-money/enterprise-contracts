@@ -62,3 +62,7 @@ export const assertUserWeight = async (lcd: LCDClient, dao: DaoContracts, user: 
 
     assert(userWeight === weight, "User weight was different from expected");
 }
+
+export const assertUserWeightsUnchanged = (oldMembers: UserWeightResponse[], newMembers: UserWeightResponse[]) => {
+    assert(JSON.stringify(oldMembers.sort()) === JSON.stringify(newMembers.sort()), "Member weights should remain the same");
+}
