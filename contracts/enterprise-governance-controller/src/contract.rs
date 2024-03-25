@@ -1316,7 +1316,7 @@ pub fn receive_cw20(
             };
             create_proposal(ctx, msg, Some(deposit), sender)
         }
-        _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
+        _ => Err(StdError::generic_err("Received unknown CW20 hook message").into()),
     }
 }
 

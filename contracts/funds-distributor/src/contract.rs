@@ -9,7 +9,7 @@ use crate::user_weights::{save_initial_weights, update_user_weights};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{
     entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response,
+    Response, StdError,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -68,7 +68,7 @@ pub fn execute(
 fn receive_cw20(ctx: &mut Context, cw20_msg: Cw20ReceiveMsg) -> DistributorResult<Response> {
     match from_json(&cw20_msg.msg) {
         Ok(Cw20HookMsg::Distribute {}) => distribute_cw20(ctx, cw20_msg),
-        _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
+        _ => Err(StdError::generic_err("Received unknown CW20 hook message").into()),
     }
 }
 

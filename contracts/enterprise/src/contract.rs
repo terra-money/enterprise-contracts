@@ -16,9 +16,8 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
-use enterprise_protocol::api::DaoType::Nft;
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, ExecuteMsgsMsg, FinalizeInstantiationMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoType, ExecuteMsgsMsg, FinalizeInstantiationMsg,
     IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
     UpgradeDaoMsg,
 };
@@ -38,6 +37,7 @@ use enterprise_versioning_api::api::{
 use enterprise_versioning_api::msg::QueryMsg::Versions;
 use std::collections::HashMap;
 use std::ops::Not;
+use DaoType::Nft;
 
 pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
 
@@ -465,7 +465,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
 
     let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
 
-    let migrate_governance_controller_msg = SubMsg::new(Wasm(Migrate {
+    let migrate_gov_controller_msg = SubMsg::new(Wasm(Migrate {
         contract_addr: component_contracts
             .enterprise_governance_controller_contract
             .to_string(),
@@ -477,7 +477,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
 
     let mut response = Response::new()
         .add_attribute("action", "migrate")
-        .add_submessage(migrate_governance_controller_msg);
+        .add_submessage(migrate_gov_controller_msg);
 
     let dao_type = DAO_TYPE.load(deps.storage)?;
 

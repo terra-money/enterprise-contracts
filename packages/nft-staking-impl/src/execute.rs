@@ -3,7 +3,7 @@ use crate::config::{Config, NftContractAddr, CONFIG};
 use crate::ics721_query::query_ics721_proxy_nft_addr;
 use crate::nft_staking::{save_nft_stake, NftStake, NFT_STAKES};
 use common::cw::{Context, ReleaseAt};
-use cosmwasm_std::{from_json, wasm_execute, Response, SubMsg, Uint128};
+use cosmwasm_std::{from_json, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw721::Cw721ExecuteMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::member_weights::{
@@ -61,7 +61,7 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
         Ok(Cw721HookMsg::AddClaim { user, release_at }) => {
             add_nft_claim(ctx, msg, user, release_at)
         }
-        _ => Ok(Response::new().add_attribute("action", "receive_nft_unknown")),
+        _ => Err(StdError::generic_err("Received unknown CW721 hook message").into()),
     }
 }
 

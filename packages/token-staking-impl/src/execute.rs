@@ -1,7 +1,7 @@
 use crate::claims::{add_claim, get_releasable_claims, TOKEN_CLAIMS};
 use crate::config::CONFIG;
 use common::cw::{Context, ReleaseAt};
-use cosmwasm_std::{from_json, wasm_execute, Response, SubMsg, Uint128};
+use cosmwasm_std::{from_json, wasm_execute, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_utils::Duration::{Height, Time};
 use membership_common::member_weights::{
@@ -35,7 +35,7 @@ pub fn receive_cw20(ctx: &mut Context, msg: Cw20ReceiveMsg) -> TokenStakingResul
         Ok(Cw20HookMsg::Stake { user }) => stake_token(ctx, msg, user),
         Ok(Cw20HookMsg::AddStakes { stakers }) => add_stakes(ctx, msg, stakers),
         Ok(Cw20HookMsg::AddClaims { claims }) => add_token_claims(ctx, msg, claims),
-        _ => Ok(Response::new().add_attribute("action", "receive_cw20_unknown")),
+        _ => Err(StdError::generic_err("Received unknown CW20 hook message").into()),
     }
 }
 

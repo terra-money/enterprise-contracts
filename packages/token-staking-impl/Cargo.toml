@@ -1,6 +1,6 @@
 [package]
 name = "token-staking-impl"
-version = "1.0.0"
+version = "1.1.1"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -12,6 +12,7 @@ interface = ["dep:cw-orch"]
 
 [dependencies]
 common = { path = "../common" }
+enterprise-protocol = { path = "../enterprise-protocol" }
 membership-common-api = { path = "../membership-common-api" }
 membership-common = { path = "../membership-common" }
 cosmwasm-std = "1"
@@ -22,4 +23,4 @@ cw20 = "1.0.1"
 token-staking-api = { path = "../token-staking-api" }
 itertools = "0.10.5"
 thiserror = "1"
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }

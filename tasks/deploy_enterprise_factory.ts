@@ -62,7 +62,7 @@ task(async ({network, deployer, executor, signer, refs}) => {
 
     // await deployEnterpriseFactory(refs, network, deployer, signer);
 
-    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 1, 0);
+    // await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 1, 1);
 
     // await instantiateDao(refs, network, executor);
 

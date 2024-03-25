@@ -224,5 +224,72 @@
       "codeId": "2648",
       "address": "terra1k8ndq0leu5ngzrpjxs333t0m7de0tpqcarswuw6qpjemyvdfqf4s5q4va4"
     }
+  },
+  "cradle": {
+    "enterprise": {
+      "codeId": "2690"
+    },
+    "enterprise-governance-controller": {
+      "codeId": "2691"
+    },
+    "funds-distributor": {
+      "codeId": "2692"
+    },
+    "token-staking-membership": {
+      "codeId": "2693"
+    },
+    "nft-staking-membership": {
+      "codeId": "2694"
+    },
+    "enterprise-factory": {
+      "codeId": "2500",
+      "address": "terra1y2dwydnnnctdwwmvs23ct60fj626t66qk53cae2gc55k3ce92jmqldj0sf"
+    },
+    "enterprise-facade": {
+      "codeId": "2514",
+      "address": "terra136k05x7uzu0awwxgr8wtqunedjpnv4jzmc4ery40czx5338ht8vq0ja9xq"
+    },
+    "enterprise-versioning": {
+      "codeId": "2220",
+      "address": "terra1vff3unw6t795t6zm62j94grscl8qfeurzpvdtpeclmwc0n5hm5csxuhjmw"
+    },
+    "cw3_fixed_multisig": {
+      "codeId": "1316"
+    },
+    "cw20_base": {
+      "codeId": "1317"
+    },
+    "cw721_base": {
+      "codeId": "1318"
+    },
+    "enterprise-governance": {
+      "codeId": "2179"
+    },
+    "attestation": {
+      "codeId": "2177"
+    },
+    "denom-staking-membership": {
+      "codeId": "2185"
+    },
+    "enterprise-treasury": {
+      "codeId": "2247"
+    },
+    "enterprise-outposts": {
+      "codeId": "2389"
+    },
+    "multisig-membership": {
+      "codeId": "2187"
+    },
+    "enterprise-facade-v1": {
+      "codeId": "2512",
+      "address": "terra1scm08396nmqe4ld289x62qvxtjrm3g6h4qrmxy9m7wnvpcw9vkasrzdzz3"
+    },
+    "enterprise-facade-v2": {
+      "codeId": "2513",
+      "address": "terra1ynjgm5arrajh3qk0af6mlgma70zn7k5xagtftasfsc2m7dex0fcs06y2lp"
+    },
+    "cw721_metadata_onchain": {
+      "codeId": "2111"
+    }
   }
 }
