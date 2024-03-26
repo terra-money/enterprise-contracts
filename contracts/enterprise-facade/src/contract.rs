@@ -13,13 +13,14 @@ use enterprise_facade_api::api::{
 };
 use enterprise_facade_api::error::EnterpriseFacadeResult;
 use enterprise_facade_api::msg::QueryMsg::{
-    ExecuteProposalAdapted, HasIncompleteV2Migration, TreasuryAddress, V2MigrationStage,
+    ExecuteProposalAdapted, HasIncompleteV2Migration, Members, TreasuryAddress, V2MigrationStage,
 };
 use enterprise_facade_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_outposts_api::api::CrossChainTreasuriesResponse;
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
+use membership_common_api::api::MembersResponse;
 use QueryMsg::{
     AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
     ComponentContracts, CreateCouncilProposalAdapted, CreateProposalAdapted,
@@ -109,6 +110,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bin
             let response: MemberInfoResponse = deps.querier.query_wasm_smart(
                 facade.facade_address.to_string(),
                 &MemberInfo {
+                    contract: facade.dao_address,
+                    msg,
+                },
+            )?;
+            to_json_binary(&response)?
+        }
+        Members { contract, msg } => {
+            let facade = get_facade(deps, contract)?;
+
+            let response: MembersResponse = deps.querier.query_wasm_smart(
+                facade.facade_address.to_string(),
+                &Members {
                     contract: facade.dao_address,
                     msg,
                 },

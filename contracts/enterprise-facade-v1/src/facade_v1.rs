@@ -46,6 +46,7 @@ use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
 use enterprise_versioning_api::api::{Version, VersionParams, VersionResponse};
+use membership_common_api::api::{MembersParams, MembersResponse};
 use poll_engine::state::PollHelpers;
 use poll_engine_api::api::{Poll, PollRejectionReason, PollStatus, VotingScheme};
 use EnterpriseFacadeError::UnsupportedOperation;
@@ -133,6 +134,15 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
         msg: QueryMemberInfoMsg,
     ) -> EnterpriseFacadeResult<MemberInfoResponse> {
         self.query_enterprise_contract(qctx.deps, &MemberInfo(msg))
+    }
+
+    fn query_members(
+        &self,
+        _: QueryContext,
+        _: MembersParams,
+    ) -> EnterpriseFacadeResult<MembersResponse> {
+        // TODO: can we actually not support this for real?
+        Err(UnsupportedOperation)
     }
 
     fn query_list_multisig_members(

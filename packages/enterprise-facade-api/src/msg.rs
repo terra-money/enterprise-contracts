@@ -17,6 +17,7 @@ use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasur
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
+use membership_common_api::api::{MembersParams, MembersResponse};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -41,6 +42,8 @@ pub enum QueryMsg {
         contract: Addr,
         msg: QueryMemberInfoMsg,
     },
+    #[returns(MembersResponse)]
+    Members { contract: Addr, msg: MembersParams },
     #[returns(MultisigMembersResponse)]
     ListMultisigMembers {
         contract: Addr,

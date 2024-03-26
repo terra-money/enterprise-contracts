@@ -51,8 +51,9 @@ enterprise-facade-common = { path = "../../packages/enterprise-facade-common" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-versioning-api = { path = "../../packages/enterprise-versioning-api" }
 multisig-membership-api = { path = "../../packages/multisig-membership-api" }
+membership-common-api = { path = "../../packages/membership-common-api" }
 poll-engine-api = { path = "../../packages/poll-engine-api" }
 poll-engine = { path = "../../packages/poll-engine" }
 serde_with = { version = "2" }
 serde-json-wasm = "0.5.0"
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }

@@ -17,6 +17,7 @@ use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasur
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
 };
+use membership_common_api::api::{MembersParams, MembersResponse};
 
 pub trait EnterpriseFacade {
     fn query_treasury_address(
@@ -36,6 +37,12 @@ pub trait EnterpriseFacade {
         qctx: QueryContext,
         msg: QueryMemberInfoMsg,
     ) -> EnterpriseFacadeResult<MemberInfoResponse>;
+
+    fn query_members(
+        &self,
+        qctx: QueryContext,
+        msg: MembersParams,
+    ) -> EnterpriseFacadeResult<MembersResponse>;
 
     fn query_list_multisig_members(
         &self,

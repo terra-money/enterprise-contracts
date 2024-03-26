@@ -69,6 +69,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> EnterpriseFacadeResult<Bina
             let facade = get_facade(contract)?;
             to_json_binary(&facade.query_member_info(qctx, msg)?)?
         }
+        QueryMsg::Members { contract, msg } => {
+            let facade = get_facade(contract)?;
+            to_json_binary(&facade.query_members(qctx, msg)?)?
+        }
         QueryMsg::ListMultisigMembers { contract, msg } => {
             let facade = get_facade(contract)?;
             to_json_binary(&facade.query_list_multisig_members(qctx, msg)?)?

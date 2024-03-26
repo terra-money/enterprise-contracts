@@ -261,6 +261,21 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
         }
     }
 
+    fn query_members(
+        &self,
+        qctx: QueryContext,
+        msg: MembersParams,
+    ) -> EnterpriseFacadeResult<MembersResponse> {
+        let membership = self.component_contracts(qctx.deps)?.membership_contract;
+
+        let members: MembersResponse = qctx
+            .deps
+            .querier
+            .query_wasm_smart(membership.to_string(), &Members(msg))?;
+
+        Ok(members)
+    }
+
     fn query_list_multisig_members(
         &self,
         qctx: QueryContext,

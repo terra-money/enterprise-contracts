@@ -23,7 +23,8 @@ enterprise-treasury-api = { path = "../enterprise-treasury-api" }
 enterprise-outposts-api = { path = "../../packages/enterprise-outposts-api" }
 enterprise-versioning-api = { path = "../enterprise-versioning-api" }
 enterprise-protocol = { path = "../../packages/enterprise-protocol" }
+membership-common-api = { path = "../../packages/membership-common-api" }
 serde_with = { version = "2", features = ["json", "macros"] }
 strum_macros = "0.24"
 thiserror = "1"
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }
