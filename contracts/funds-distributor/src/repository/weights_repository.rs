@@ -34,7 +34,7 @@ pub struct MembershipWeightsRepository<'a> {
 
 impl WeightsRepository for MembershipWeightsRepository<'_> {
     fn get_total_weight(&self) -> DistributorResult<Uint128> {
-        let total_weight = EFFECTIVE_TOTAL_WEIGHT.load(self.deps.storage)?;
+        let total_weight = EFFECTIVE_TOTAL_WEIGHT.may_load(self.deps.storage)?.unwrap_or_default();
         Ok(total_weight)
     }
 
