@@ -8,9 +8,7 @@ use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight, set_member_weight,
 };
 use membership_common::total_weight::{decrement_total_weight, increment_total_weight};
-use membership_common::validate::{
-    enterprise_governance_controller_only, validate_user_not_restricted,
-};
+use membership_common::validate::enterprise_governance_controller_only;
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
 use token_staking_api::api::{
@@ -44,8 +42,6 @@ fn stake_token(
     msg: Cw20ReceiveMsg,
     user: String,
 ) -> TokenStakingResult<Response> {
-    validate_user_not_restricted(ctx.deps.as_ref(), user.clone())?;
-
     let user = ctx.deps.api.addr_validate(&user)?;
 
     let old_weight = get_member_weight(ctx.deps.storage, user.clone())?;
@@ -83,8 +79,6 @@ fn add_stakes(
         if staker.staked_amount.is_zero() {
             continue;
         }
-
-        validate_user_not_restricted(ctx.deps.as_ref(), staker.user.clone())?;
 
         let user = ctx.deps.api.addr_validate(&staker.user)?;
 

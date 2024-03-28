@@ -4,8 +4,8 @@ use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, Uint128};
 use cw_asset::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 use cw_utils::Duration;
 use enterprise_governance_controller_api::api::ProposalAction::{
-    DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RemoveAttestation,
-    RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
+    DistributeFunds, ExecuteMsgs, ModifyMultisigMembership, RequestFundingFromDao,
+    UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
     UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::{
@@ -30,7 +30,7 @@ use enterprise_protocol::error::DaoError::{
 use enterprise_protocol::msg::QueryMsg::DaoInfo;
 use std::collections::{HashMap, HashSet};
 use GovernanceControllerError::{MinimumDepositNotAllowed, UnsupportedOperationForDaoType};
-use ProposalAction::{AddAttestation, ExecuteTreasuryMsgs, UpdateNumberProposalsTracked};
+use ProposalAction::{ExecuteTreasuryMsgs, UpdateNumberProposalsTracked};
 
 const MAXIMUM_PROPOSAL_ACTIONS: u8 = 10;
 
@@ -134,9 +134,7 @@ pub fn validate_proposal_actions(
             }
             UpdateMetadata(_)
             | UpdateMinimumWeightForRewards(_)
-            | UpdateNumberProposalsTracked(_)
-            | AddAttestation(_)
-            | RemoveAttestation {} => {
+            | UpdateNumberProposalsTracked(_) => {
                 // no-op
             }
             ProposalAction::DeployCrossChainTreasury(_) => {
@@ -505,8 +503,7 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::ModifyMultisigMembership
                     | ProposalActionType::DistributeFunds
                     | ProposalActionType::UpdateMinimumWeightForRewards
-                    | ProposalActionType::UpdateNumberProposalsTracked
-                    | ProposalActionType::AddAttestation => {
+                    | ProposalActionType::UpdateNumberProposalsTracked => {
                         return Err(UnsupportedCouncilProposalAction {
                             action: action_type,
                         });
@@ -515,7 +512,6 @@ pub fn validate_allowed_council_proposal_types(
                     | ProposalActionType::UpdateAssetWhitelist
                     | ProposalActionType::UpdateNftWhitelist
                     | ProposalActionType::UpgradeDao
-                    | ProposalActionType::RemoveAttestation
                     | ProposalActionType::DeployCrossChainTreasury => {
                         // allowed proposal action types
                     }

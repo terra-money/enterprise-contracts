@@ -44,9 +44,6 @@ pub struct CreateDaoMsg {
     pub proposals_tracked_for_participation_rewards: Option<u8>,
     /// Optional cross chain treasuries to deploy during DAO creation.
     pub cross_chain_treasuries: Option<Vec<DeployCrossChainTreasuryMsg>>,
-    /// Optional text that users will have to attest to before being able to participate in DAO's
-    /// governance and certain other functions.
-    pub attestation_text: Option<String>,
 }
 
 #[cw_serde]

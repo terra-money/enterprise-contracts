@@ -103,18 +103,8 @@ pub struct UpgradeDaoMsg {
 }
 
 #[cw_serde]
-pub struct SetAttestationMsg {
-    pub attestation_text: String,
-}
-
-#[cw_serde]
 pub struct ExecuteMsgsMsg {
     pub msgs: Vec<String>,
-}
-
-#[cw_serde]
-pub struct IsRestrictedUserParams {
-    pub user: String,
 }
 
 // Responses
@@ -138,9 +128,4 @@ pub struct ComponentContractsResponse {
     pub membership_contract: Addr,
     pub council_membership_contract: Addr,
     pub attestation_contract: Option<Addr>,
-}
-
-#[cw_serde]
-pub struct IsRestrictedUserResponse {
-    pub is_restricted: bool,
 }

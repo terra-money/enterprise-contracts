@@ -28,28 +28,27 @@ use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_api::msg::QueryMsg::SimulateEndPollStatus;
 use enterprise_governance_controller_api::api::ProposalAction::{
-    AddAttestation, DistributeFunds, ExecuteEnterpriseMsgs, ExecuteMsgs, ModifyMultisigMembership,
-    RemoveAttestation, RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig,
-    UpdateMetadata, UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
+    DistributeFunds, ExecuteEnterpriseMsgs, ExecuteMsgs, ModifyMultisigMembership,
+    RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
+    UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
 use enterprise_governance_controller_api::api::{
-    AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg,
-    CreateProposalWithNftDepositMsg, DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg,
-    ExecuteProposalMsg, ExecuteTreasuryMsgsMsg, GovConfig, GovConfigResponse, MemberVoteParams,
-    MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType,
-    ProposalDeposit, ProposalDepositAsset, ProposalId, ProposalInfo, ProposalParams,
-    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg,
-    UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
-    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
+    CastVoteMsg, ConfigResponse, CreateProposalMsg, CreateProposalWithNftDepositMsg,
+    DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
+    ExecuteTreasuryMsgsMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
+    ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
+    ProposalDepositAsset, ProposalId, ProposalInfo, ProposalParams, ProposalResponse,
+    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
+    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg,
+    UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
     UpdateNumberProposalsTrackedMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, DuplicateNftDeposit, InsufficientProposalDeposit, InvalidCosmosMessage,
     InvalidDepositType, NoDaoCouncil, NoSuchProposal, NoVotesAvailable, NoVotingPower,
-    ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, RestrictedUser, Std, Unauthorized,
+    ProposalAlreadyExecuted, ProposalCannotBeExecutedYet, Std, Unauthorized,
     UnsupportedCouncilProposalAction, UnsupportedOperationForDaoType, WrongProposalType,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerResult;
@@ -66,10 +65,9 @@ use enterprise_outposts_api::api::{
     DeployCrossChainTreasuryMsg, ExecuteCrossChainTreasuryMsg, RemoteTreasuryTarget,
 };
 use enterprise_protocol::api::{
-    ComponentContractsResponse, DaoInfoResponse, DaoType, IsRestrictedUserParams,
-    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
+    ComponentContractsResponse, DaoInfoResponse, DaoType, UpdateMetadataMsg, UpgradeDaoMsg,
 };
-use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
+use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
 use enterprise_treasury_api::api::{
     ExecuteCosmosMsgsMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
@@ -342,8 +340,6 @@ fn create_proposal(
     deposit: Option<ProposalDeposit>,
     proposer: Addr,
 ) -> GovernanceControllerResult<Response> {
-    unrestricted_users_only(ctx.deps.as_ref(), proposer.to_string())?;
-
     let gov_config = GOV_CONFIG.load(ctx.deps.storage)?;
 
     let qctx = QueryContext {
@@ -402,8 +398,6 @@ fn create_council_proposal(
     ctx: &mut Context,
     msg: CreateProposalMsg,
 ) -> GovernanceControllerResult<Response> {
-    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
-
     let dao_council = COUNCIL_GOV_CONFIG.load(ctx.deps.storage)?;
 
     match dao_council {
@@ -479,8 +473,6 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         DistributeFunds(_) => ProposalActionType::DistributeFunds,
         UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
         UpdateNumberProposalsTracked(_) => ProposalActionType::UpdateNumberProposalsTracked,
-        AddAttestation(_) => ProposalActionType::AddAttestation,
-        RemoveAttestation {} => ProposalActionType::RemoveAttestation,
         DeployCrossChainTreasury(_) => ProposalActionType::DeployCrossChainTreasury,
     }
 }
@@ -534,8 +526,6 @@ fn create_poll(
 }
 
 fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
-    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
-
     let qctx = QueryContext::from(ctx.deps.as_ref(), ctx.env.clone());
     let user_available_votes = get_user_available_votes(qctx, ctx.info.sender.clone())?;
 
@@ -597,8 +587,6 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
 }
 
 fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
-    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
-
     let dao_council = COUNCIL_GOV_CONFIG.load(ctx.deps.storage)?;
 
     match dao_council {
@@ -652,8 +640,6 @@ fn execute_proposal(
     ctx: &mut Context,
     msg: ExecuteProposalMsg,
 ) -> GovernanceControllerResult<Response> {
-    unrestricted_users_only(ctx.deps.as_ref(), ctx.info.sender.to_string())?;
-
     let proposal_info = PROPOSAL_INFOS
         .may_load(ctx.deps.storage, msg.proposal_id)?
         .ok_or(NoSuchProposal)?;
@@ -895,8 +881,6 @@ fn execute_proposal_actions_submsgs(
             DistributeFunds(msg) => distribute_funds(ctx, msg)?,
             UpdateMinimumWeightForRewards(msg) => update_minimum_weight_for_rewards(ctx, msg)?,
             UpdateNumberProposalsTracked(msg) => update_number_proposals_tracked(ctx, msg)?,
-            AddAttestation(msg) => add_attestation(ctx, msg)?,
-            RemoveAttestation {} => remove_attestation(ctx)?,
             DeployCrossChainTreasury(msg) => deploy_cross_chain_treasury(ctx, msg)?,
         };
         submsgs.append(&mut actions)
@@ -1217,35 +1201,6 @@ fn update_number_proposals_tracked(
         &UpdateNumberProposalsTrackedMsg {
             number_proposals_tracked: msg.number_proposals_tracked,
         },
-        vec![],
-    )?);
-
-    Ok(vec![submsg])
-}
-
-fn add_attestation(
-    ctx: &mut Context,
-    msg: AddAttestationMsg,
-) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
-
-    let submsg = SubMsg::new(wasm_execute(
-        enterprise_contract.to_string(),
-        &enterprise_protocol::msg::ExecuteMsg::SetAttestation(SetAttestationMsg {
-            attestation_text: msg.attestation_text,
-        }),
-        vec![],
-    )?);
-
-    Ok(vec![submsg])
-}
-
-fn remove_attestation(ctx: &mut Context) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
-
-    let submsg = SubMsg::new(wasm_execute(
-        enterprise_contract.to_string(),
-        &enterprise_protocol::msg::ExecuteMsg::RemoveAttestation {},
         vec![],
     )?);
 
@@ -2119,25 +2074,4 @@ fn query_council_total_weight(
     )?;
 
     Ok(total_weight.total_weight)
-}
-
-/// Checks whether the user should be restricted from participating, i.e. there is an attestation
-/// that they didn't sign.
-fn is_restricted_user(deps: Deps, user: String) -> GovernanceControllerResult<bool> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
-
-    let is_restricted_user: IsRestrictedUserResponse = deps.querier.query_wasm_smart(
-        enterprise_contract.to_string(),
-        &IsRestrictedUser(IsRestrictedUserParams { user }),
-    )?;
-
-    Ok(is_restricted_user.is_restricted)
-}
-
-fn unrestricted_users_only(deps: Deps, user: String) -> GovernanceControllerResult<()> {
-    if is_restricted_user(deps, user)? {
-        return Err(RestrictedUser);
-    }
-
-    Ok(())
 }

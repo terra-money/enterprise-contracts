@@ -3,19 +3,15 @@ use crate::repository::user_distribution_repository::{
     user_distribution_repository_mut, UserDistributionInfo, UserDistributionRepositoryMut,
 };
 use crate::rewards;
-use crate::state::ENTERPRISE_CONTRACT;
 use common::cw::Context;
-use cosmwasm_std::{Addr, Deps, DepsMut, Response, StdResult, SubMsg, Uint128};
+use cosmwasm_std::{Addr, DepsMut, Response, StdResult, SubMsg, Uint128};
 use cw_asset::{Asset, AssetInfo};
-use enterprise_protocol::api::{IsRestrictedUserParams, IsRestrictedUserResponse};
-use enterprise_protocol::msg::QueryMsg::IsRestrictedUser;
 use funds_distributor_api::api::ClaimRewardsMsg;
 use funds_distributor_api::api::DistributionType::{Membership, Participation};
 use funds_distributor_api::error::DistributorError::Unauthorized;
-use funds_distributor_api::error::{DistributorError, DistributorResult};
+use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::execute_claim_rewards_response;
 use rewards::calculate_claimable_rewards;
-use DistributorError::RestrictedUser;
 
 /// Attempt to claim rewards for the given parameters.
 ///
@@ -27,10 +23,6 @@ pub fn claim_rewards(ctx: &mut Context, msg: ClaimRewardsMsg) -> DistributorResu
 
     if ctx.info.sender != user {
         return Err(Unauthorized);
-    }
-
-    if is_restricted_user(ctx.deps.as_ref(), msg.user.clone())? {
-        return Err(RestrictedUser);
     }
 
     let assets = to_reward_assets(ctx.deps.as_ref(), msg.native_denoms, msg.cw20_assets)?;
@@ -80,15 +72,4 @@ fn calculate_and_remove_claimable_rewards(
     }
 
     Ok(rewards)
-}
-
-fn is_restricted_user(deps: Deps, user: String) -> DistributorResult<bool> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
-
-    let is_restricted_user: IsRestrictedUserResponse = deps.querier.query_wasm_smart(
-        enterprise_contract.to_string(),
-        &IsRestrictedUser(IsRestrictedUserParams { user }),
-    )?;
-
-    Ok(is_restricted_user.is_restricted)
 }

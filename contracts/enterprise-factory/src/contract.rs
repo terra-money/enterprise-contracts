@@ -72,7 +72,6 @@ pub const ENTERPRISE_GOVERNANCE_INSTANTIATE_REPLY_ID: u64 = 7;
 pub const ENTERPRISE_GOVERNANCE_CONTROLLER_INSTANTIATE_REPLY_ID: u64 = 8;
 pub const ENTERPRISE_OUTPOSTS_INSTANTIATE_REPLY_ID: u64 = 9;
 pub const ENTERPRISE_TREASURY_INSTANTIATE_REPLY_ID: u64 = 10;
-pub const ATTESTATION_INSTANTIATE_REPLY_ID: u64 = 11;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -619,19 +618,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_submessage(enterprise_outposts_submsg)
                 .add_submessage(enterprise_treasury_submsg);
 
-            let response = match create_dao_msg.attestation_text {
-                Some(attestation_text) => response.add_submessage(SubMsg::reply_on_success(
-                    wasm_instantiate(
-                        version_info.attestation_code_id,
-                        &attestation_api::msg::InstantiateMsg { attestation_text },
-                        vec![],
-                        "Attestation contract".to_string(),
-                    )?,
-                    ATTESTATION_INSTANTIATE_REPLY_ID,
-                )),
-                None => response,
-            };
-
             let finalize_submsg = SubMsg::new(wasm_execute(
                 env.contract.address.to_string(),
                 &FinalizeDaoCreation {},
@@ -757,21 +743,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 .add_attribute("dao_address", enterprise_treasury_contract.to_string())
                 .add_submessage(membership_submsg)
                 .add_submessage(funds_distributor_submsg))
-        }
-        ATTESTATION_INSTANTIATE_REPLY_ID => {
-            let contract_address = parse_reply_instantiate_data(msg)
-                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
-                .contract_address;
-            let attestation_contract = deps.api.addr_validate(&contract_address)?;
-
-            DAO_BEING_CREATED.update(deps.storage, |info| -> StdResult<DaoBeingCreated> {
-                Ok(DaoBeingCreated {
-                    attestation_addr: Some(attestation_contract),
-                    ..info
-                })
-            })?;
-
-            Ok(Response::new())
         }
         _ => Err(DaoError::Std(StdError::generic_err(
             "No such reply ID found",

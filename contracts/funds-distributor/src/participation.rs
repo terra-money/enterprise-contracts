@@ -88,10 +88,8 @@ pub fn execute_update_number_proposals_tracked(
     let old_number_tracked = PROPOSALS_TRACKED.load(ctx.deps.storage)?;
 
     // TODO: we know part of them if we had N > 0 before, we can reuse them
-    let mut new_tracked_proposal_ids: Vec<ProposalId> = get_last_n_general_proposal_ids(
-        ctx.deps.as_ref(),
-        msg.number_proposals_tracked,
-    )?;
+    let mut new_tracked_proposal_ids: Vec<ProposalId> =
+        get_last_n_general_proposal_ids(ctx.deps.as_ref(), msg.number_proposals_tracked)?;
 
     PARTICIPATION_PROPOSAL_IDS.clear(ctx.deps.storage);
     for proposal_id in new_tracked_proposal_ids {

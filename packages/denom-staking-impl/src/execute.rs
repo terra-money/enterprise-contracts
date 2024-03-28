@@ -12,9 +12,7 @@ use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight,
 };
 use membership_common::total_weight::{decrement_total_weight, increment_total_weight};
-use membership_common::validate::{
-    enterprise_governance_controller_only, validate_user_not_restricted,
-};
+use membership_common::validate::enterprise_governance_controller_only;
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
 
@@ -35,8 +33,6 @@ pub fn stake_denom(ctx: &mut Context, user: Option<String>) -> DenomStakingResul
         .map(|user| ctx.deps.api.addr_validate(&user))
         .transpose()?
         .unwrap_or_else(|| ctx.info.sender.clone());
-
-    validate_user_not_restricted(ctx.deps.as_ref(), user.to_string())?;
 
     let old_weight = get_member_weight(ctx.deps.storage, user.clone())?;
     let new_weight = increment_member_weight(ctx.deps.storage, user.clone(), coin.amount)?;

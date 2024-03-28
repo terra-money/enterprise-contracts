@@ -1,7 +1,6 @@
 use crate::api::{
     ComponentContractsResponse, DaoInfoResponse, DaoMetadata, DaoType, ExecuteMsgsMsg,
-    FinalizeInstantiationMsg, IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg,
-    UpdateMetadataMsg, UpgradeDaoMsg,
+    FinalizeInstantiationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Timestamp;
@@ -22,9 +21,6 @@ pub enum ExecuteMsg {
     UpdateMetadata(UpdateMetadataMsg),
     UpgradeDao(UpgradeDaoMsg),
 
-    SetAttestation(SetAttestationMsg),
-    RemoveAttestation {},
-
     ExecuteMsgs(ExecuteMsgsMsg),
 
     // called only right after instantiation
@@ -44,10 +40,4 @@ pub enum QueryMsg {
 
     #[returns(ComponentContractsResponse)]
     ComponentContracts {},
-
-    /// Query whether a user should be restricted from certain DAO actions, such as governance and
-    /// rewards claiming.
-    /// Is determined by checking if there is an attestation, and if the user has signed it or not.
-    #[returns(IsRestrictedUserResponse)]
-    IsRestrictedUser(IsRestrictedUserParams),
 }

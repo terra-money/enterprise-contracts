@@ -34,7 +34,6 @@ optimize = """docker run --rm -v "${process.cwd()}":/code \
 """
 
 [dependencies]
-attestation-api = { path = "../../packages/attestation-api" }
 common = { path = "../../packages/common" }
 cosmwasm-std = "1"
 cosmwasm-schema = "1"

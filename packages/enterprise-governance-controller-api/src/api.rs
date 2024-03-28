@@ -164,8 +164,6 @@ pub enum ProposalActionType {
     DistributeFunds,
     UpdateMinimumWeightForRewards,
     UpdateNumberProposalsTracked,
-    AddAttestation,
-    RemoveAttestation,
     DeployCrossChainTreasury,
 }
 
@@ -185,8 +183,6 @@ pub enum ProposalAction {
     DistributeFunds(DistributeFundsMsg),
     UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg),
     UpdateNumberProposalsTracked(UpdateNumberProposalsTrackedMsg),
-    AddAttestation(AddAttestationMsg),
-    RemoveAttestation {},
     DeployCrossChainTreasury(DeployCrossChainTreasuryMsg),
 }
 
@@ -272,11 +268,6 @@ pub struct UpdateMinimumWeightForRewardsMsg {
 #[cw_serde]
 pub struct UpdateNumberProposalsTrackedMsg {
     pub number_proposals_tracked: u8,
-}
-
-#[cw_serde]
-pub struct AddAttestationMsg {
-    pub attestation_text: String,
 }
 
 #[cw_serde]

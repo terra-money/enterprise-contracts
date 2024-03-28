@@ -1,28 +1,10 @@
 use crate::enterprise_contract::ENTERPRISE_CONTRACT;
 use common::cw::Context;
-use cosmwasm_std::{Addr, Deps};
-use enterprise_protocol::api::{
-    ComponentContractsResponse, IsRestrictedUserParams, IsRestrictedUserResponse,
-};
-use enterprise_protocol::msg::QueryMsg::{ComponentContracts, IsRestrictedUser};
+use cosmwasm_std::Addr;
+use enterprise_protocol::api::ComponentContractsResponse;
+use enterprise_protocol::msg::QueryMsg::ComponentContracts;
 use membership_common_api::error::MembershipError::Unauthorized;
-use membership_common_api::error::{MembershipError, MembershipResult};
-use MembershipError::RestrictedUser;
-
-pub fn validate_user_not_restricted(deps: Deps, user: String) -> MembershipResult<()> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(deps.storage)?;
-
-    let response: IsRestrictedUserResponse = deps.querier.query_wasm_smart(
-        enterprise_contract.to_string(),
-        &IsRestrictedUser(IsRestrictedUserParams { user }),
-    )?;
-
-    if response.is_restricted {
-        Err(RestrictedUser)
-    } else {
-        Ok(())
-    }
-}
+use membership_common_api::error::MembershipResult;
 
 /// Assert that the caller is admin.
 /// If the validation succeeds, returns the admin address.

@@ -4,22 +4,18 @@ use crate::state::{
     IS_INSTANTIATION_FINALIZED,
 };
 use crate::validate::enterprise_governance_controller_caller_only;
-use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
-use attestation_api::msg::QueryMsg::HasUserSigned;
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
 use cosmwasm_std::WasmMsg::Migrate;
 use cosmwasm_std::{
-    entry_point, to_json_binary, wasm_instantiate, Binary, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
+    entry_point, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, SubMsg,
 };
 use cw2::set_contract_version;
-use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, DaoType, ExecuteMsgsMsg, FinalizeInstantiationMsg,
-    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
-    UpgradeDaoMsg,
+    UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, DuplicateVersionMigrateMsgFound, MigratingToLowerVersion, Unauthorized,
@@ -28,7 +24,6 @@ use enterprise_protocol::error::DaoResult;
 use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_protocol::response::{
     execute_execute_msgs_response, execute_finalize_instantiation_response,
-    execute_remove_attestation_response, execute_set_attestation_response,
     execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
 };
 use enterprise_versioning_api::api::{
@@ -38,8 +33,6 @@ use enterprise_versioning_api::msg::QueryMsg::Versions;
 use std::collections::HashMap;
 use std::ops::Not;
 use DaoType::Nft;
-
-pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise";
@@ -89,8 +82,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::FinalizeInstantiation(msg) => finalize_instantiation(ctx, msg),
         ExecuteMsg::UpdateMetadata(msg) => update_metadata(ctx, msg),
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
-        ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
-        ExecuteMsg::RemoveAttestation {} => remove_attestation(ctx),
         ExecuteMsg::ExecuteMsgs(msg) => execute_msgs(ctx, msg),
     }
 }
@@ -294,48 +285,6 @@ fn get_versions_between_current_and_target(
     Ok(versions)
 }
 
-fn set_attestation(ctx: &mut Context, msg: SetAttestationMsg) -> DaoResult<Response> {
-    enterprise_governance_controller_caller_only(ctx)?;
-
-    let versioning_contract = ENTERPRISE_VERSIONING_CONTRACT.load(ctx.deps.storage)?;
-    let version = DAO_VERSION.load(ctx.deps.storage)?;
-
-    let version_response: VersionResponse = ctx.deps.querier.query_wasm_smart(
-        versioning_contract.to_string(),
-        &enterprise_versioning_api::msg::QueryMsg::Version(VersionParams { version }),
-    )?;
-
-    let instantiate_attestation_submsg = SubMsg::reply_on_success(
-        wasm_instantiate(
-            version_response.version.attestation_code_id,
-            &attestation_api::msg::InstantiateMsg {
-                attestation_text: msg.attestation_text,
-            },
-            vec![],
-            "Attestation contract".to_string(),
-        )?,
-        INSTANTIATE_ATTESTATION_REPLY_ID,
-    );
-
-    Ok(execute_set_attestation_response().add_submessage(instantiate_attestation_submsg))
-}
-
-fn remove_attestation(ctx: &mut Context) -> DaoResult<Response> {
-    enterprise_governance_controller_caller_only(ctx)?;
-
-    COMPONENT_CONTRACTS.update(
-        ctx.deps.storage,
-        |components| -> StdResult<ComponentContracts> {
-            Ok(ComponentContracts {
-                attestation_contract: None,
-                ..components
-            })
-        },
-    )?;
-
-    Ok(execute_remove_attestation_response())
-}
-
 fn execute_msgs(ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Response> {
     enterprise_governance_controller_caller_only(ctx)?;
 
@@ -349,29 +298,8 @@ fn execute_msgs(ctx: &mut Context, msg: ExecuteMsgsMsg) -> DaoResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> DaoResult<Response> {
-    match msg.id {
-        INSTANTIATE_ATTESTATION_REPLY_ID => {
-            let attestation_addr = parse_reply_instantiate_data(msg)
-                .map_err(|_| StdError::generic_err("error parsing instantiate reply"))?
-                .contract_address;
-
-            let attestation_addr = deps.api.addr_validate(&attestation_addr)?;
-
-            COMPONENT_CONTRACTS.update(
-                deps.storage,
-                |components| -> StdResult<ComponentContracts> {
-                    Ok(ComponentContracts {
-                        attestation_contract: Some(attestation_addr),
-                        ..components
-                    })
-                },
-            )?;
-
-            Ok(Response::new())
-        }
-        _ => Err(StdError::generic_err(format!("unknown reply ID: {}", msg.id)).into()),
-    }
+pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> DaoResult<Response> {
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -381,9 +309,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> DaoResult<Binary> {
     let response = match msg {
         QueryMsg::DaoInfo {} => to_json_binary(&query_dao_info(qctx)?)?,
         QueryMsg::ComponentContracts {} => to_json_binary(&query_component_contracts(qctx)?)?,
-        QueryMsg::IsRestrictedUser(params) => {
-            to_json_binary(&query_is_restricted_user(qctx, params)?)?
-        }
     };
     Ok(response)
 }
@@ -418,31 +343,6 @@ pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContr
         council_membership_contract: component_contracts.council_membership_contract,
         attestation_contract: component_contracts.attestation_contract,
     })
-}
-
-/// Query whether a user should be restricted from certain DAO actions, such as governance and
-/// rewards claiming.
-/// Is determined by checking if there is an attestation, and if the user has signed it or not.
-pub fn query_is_restricted_user(
-    qctx: QueryContext,
-    params: IsRestrictedUserParams,
-) -> DaoResult<IsRestrictedUserResponse> {
-    let component_contracts = COMPONENT_CONTRACTS.load(qctx.deps.storage)?;
-
-    let is_restricted = match component_contracts.attestation_contract {
-        None => false,
-        Some(attestation_contract) => {
-            let has_user_signed_response: HasUserSignedResponse =
-                qctx.deps.querier.query_wasm_smart(
-                    attestation_contract.to_string(),
-                    &HasUserSigned(HasUserSignedParams { user: params.user }),
-                )?;
-
-            has_user_signed_response.has_signed.not()
-        }
-    };
-
-    Ok(IsRestrictedUserResponse { is_restricted })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

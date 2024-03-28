@@ -10,9 +10,7 @@ use membership_common::member_weights::{
     decrement_member_weight, get_member_weight, increment_member_weight,
 };
 use membership_common::total_weight::{decrement_total_weight, increment_total_weight};
-use membership_common::validate::{
-    enterprise_governance_controller_only, validate_user_not_restricted,
-};
+use membership_common::validate::enterprise_governance_controller_only;
 use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
 use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
@@ -66,8 +64,6 @@ pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Re
 }
 
 fn stake_nft(ctx: &mut Context, msg: ReceiveNftMsg, user: String) -> NftStakingResult<Response> {
-    validate_user_not_restricted(ctx.deps.as_ref(), user.clone())?;
-
     let token_id = msg.token_id;
 
     let existing_stake = NFT_STAKES().may_load(ctx.deps.storage, token_id.clone())?;
