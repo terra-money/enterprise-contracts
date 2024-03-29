@@ -62,7 +62,7 @@ pub fn new_proposal_created(
     Ok(execute_new_proposal_created_response(msg.proposal_id))
 }
 
-fn query_total_participation_weight(deps: Deps) -> DistributorResult<Uint128> {
+pub fn query_total_participation_weight(deps: Deps) -> DistributorResult<Uint128> {
     // TODO: optimize, we don't have to read it again
     let proposal_ids_tracked = get_proposal_ids_tracked(deps)?;
 

@@ -1,6 +1,8 @@
 use crate::distributing::query_enterprise_components;
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
-use crate::participation::{get_proposal_ids_tracked, PARTICIPATION_TOTAL_WEIGHT};
+use crate::participation::{
+    get_proposal_ids_tracked, query_total_participation_weight, PARTICIPATION_TOTAL_WEIGHT,
+};
 use crate::state::EFFECTIVE_TOTAL_WEIGHT;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
@@ -107,7 +109,7 @@ pub struct ParticipationWeightsRepository<'a> {
 
 impl WeightsRepository for ParticipationWeightsRepository<'_> {
     fn get_total_weight(&self) -> DistributorResult<Uint128> {
-        let total_weight = PARTICIPATION_TOTAL_WEIGHT.load(self.deps.storage)?;
+        let total_weight = query_total_participation_weight(self.deps)?;
         Ok(total_weight)
     }
 
