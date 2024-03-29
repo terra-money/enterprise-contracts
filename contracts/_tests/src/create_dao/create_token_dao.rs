@@ -60,8 +60,8 @@ fn create_new_token_dao() -> anyhow::Result<()> {
         asset_whitelist: Some(vec![AssetInfoUnchecked::cw20(CW20_TOKEN1)]),
         nft_whitelist: None,
         minimum_weight_for_rewards: Some(2u8.into()),
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;
@@ -129,8 +129,7 @@ fn create_new_token_dao() -> anyhow::Result<()> {
 }
 
 #[test]
-fn create_new_token_dao_without_marketing_owner_sets_gov_controller_marketing_owner(
-) -> anyhow::Result<()> {
+fn create_new_token_dao_without_marketing_owner_sets_gov_controller_marketing_owner() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let marketing_info = TokenMarketingInfo {
@@ -171,8 +170,7 @@ fn create_new_token_dao_without_marketing_owner_sets_gov_controller_marketing_ow
 }
 
 #[test]
-fn create_new_token_dao_without_marketing_info_sets_gov_controller_marketing_owner(
-) -> anyhow::Result<()> {
+fn create_new_token_dao_without_marketing_info_sets_gov_controller_marketing_owner() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let token_membership = NewCw20MembershipMsg {
@@ -294,8 +292,8 @@ fn import_cw20_token_dao() -> anyhow::Result<()> {
         ]),
         nft_whitelist: None,
         minimum_weight_for_rewards: Some(3u8.into()),
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;

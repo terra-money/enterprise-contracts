@@ -1,11 +1,14 @@
-use cosmwasm_std::{Addr, Uint128};
-use cw_multi_test::App;
+use cosmwasm_std::{Addr, coins, Uint128, wasm_execute};
+use cw_multi_test::{App, AppResponse, Executor};
 use funds_distributor_api::api::{
     Cw20Reward, MinimumEligibleWeightResponse, NativeReward, UserRewardsParams, UserRewardsResponse,
 };
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::QueryMsg::{MinimumEligibleWeight, UserRewards};
 use itertools::Itertools;
+use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
+use crate::helpers::cw_multitest_helpers::{ADMIN};
+use crate::traits::ImplApp;
 
 pub trait FundsDistributorContract {
     fn minimum_eligible_weight(&self) -> DistributorResult<Uint128>;
@@ -100,5 +103,22 @@ impl TestFundsDistributorContract<'_> {
             self.user_rewards(user, native, cw20).unwrap().cw20_rewards,
             expected_rewards
         );
+    }
+}
+
+impl TestFundsDistributorContract<'_> {
+    pub fn distribute_native(&self, app: &mut App, denom: impl Into<String>, amount: u128) -> anyhow::Result<AppResponse> {
+        let distributor = ADMIN;
+
+        let coins = coins(amount, denom);
+
+        app.mint_native(vec![(distributor, coins.clone())]);
+
+        let response = app.execute(
+            Addr::unchecked(distributor),
+            wasm_execute(self.addr.to_string(), &DistributeNative { distribution_type: None }, coins)?.into(),
+        )?;
+
+        Ok(response)
     }
 }

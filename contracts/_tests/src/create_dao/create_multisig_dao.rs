@@ -28,8 +28,8 @@ fn create_new_multisig_dao() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: None,
         minimum_weight_for_rewards: None,
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;
@@ -138,8 +138,8 @@ fn import_cw3_dao() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: None,
         minimum_weight_for_rewards: None,
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;
@@ -256,8 +256,8 @@ fn import_non_cw3_dao_fails() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: None,
         minimum_weight_for_rewards: None,
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     let result = create_dao(&mut app, msg);

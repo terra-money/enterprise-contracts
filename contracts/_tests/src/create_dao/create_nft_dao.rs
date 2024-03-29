@@ -35,8 +35,8 @@ fn create_new_nft_dao() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: Some(vec![NFT_TOKEN1.to_string()]),
         minimum_weight_for_rewards: Some(2u8.into()),
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;
@@ -108,8 +108,8 @@ fn create_new_nft_dao_without_minter() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: None,
         minimum_weight_for_rewards: None,
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;
@@ -162,8 +162,8 @@ fn import_cw721_dao() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: Some(vec![NFT_TOKEN1.to_string()]),
         minimum_weight_for_rewards: Some(2u8.into()),
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;
@@ -240,8 +240,8 @@ fn import_non_cw721_dao_fails() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: None,
         minimum_weight_for_rewards: None,
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     let result = create_dao(&mut app, msg);
@@ -271,8 +271,8 @@ fn create_new_nft_unstaking_shorter_than_voting_fails() -> anyhow::Result<()> {
         asset_whitelist: None,
         nft_whitelist: None,
         minimum_weight_for_rewards: None,
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     let result = create_dao(&mut app, msg);

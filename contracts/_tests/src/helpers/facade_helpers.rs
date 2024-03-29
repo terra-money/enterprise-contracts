@@ -7,30 +7,9 @@ use cw_asset::AssetInfo;
 use cw_multi_test::App;
 use denom_staking_api::api::DenomConfigResponse;
 use denom_staking_api::msg::QueryMsg::DenomConfig;
-use enterprise_facade_api::api::{
-    AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams,
-    ClaimsResponse, ComponentContractsResponse, CreateProposalMsg,
-    CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoCouncil,
-    DaoInfoResponse, DaoMetadata, DaoType, ExecuteProposalMsg, GovConfigFacade,
-    ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse,
-    MultisigMember, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse,
-    ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse,
-    ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
-    QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse,
-    TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse,
-    V2MigrationStageResponse,
-};
+use enterprise_facade_api::api::{AdapterResponse, AssetWhitelistParams, AssetWhitelistResponse, CastVoteMsg, ClaimsParams, ClaimsResponse, ComponentContractsResponse, CreateProposalMsg, CreateProposalWithDenomDepositMsg, CreateProposalWithTokenDepositMsg, DaoCouncil, DaoInfoResponse, DaoMetadata, DaoType, ExecuteProposalMsg, GovConfigFacade, ListMultisigMembersMsg, Logo, MemberInfoResponse, MemberVoteParams, MemberVoteResponse, MultisigMember, MultisigMembersResponse, NftWhitelistParams, NftWhitelistResponse, ProposalParams, ProposalResponse, ProposalStatusParams, ProposalStatusResponse, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse, QueryMemberInfoMsg, StakeMsg, StakedNftsParams, StakedNftsResponse, TotalStakedAmountResponse, TreasuryAddressResponse, UnstakeMsg, UserStakeParams, UserStakeResponse, V2MigrationStageResponse, NumberProposalsTrackedResponse};
 use enterprise_facade_api::error::{EnterpriseFacadeError, EnterpriseFacadeResult};
-use enterprise_facade_api::msg::QueryMsg::{
-    AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims,
-    ComponentContracts, CreateCouncilProposalAdapted, CreateProposalAdapted,
-    CreateProposalWithDenomDepositAdapted, CreateProposalWithNftDepositAdapted,
-    CreateProposalWithTokenDepositAdapted, CrossChainTreasuries, DaoInfo, ExecuteProposalAdapted,
-    HasIncompleteV2Migration, HasUnmovedStakesOrClaims, ListMultisigMembers, MemberInfo,
-    MemberVote, Members, NftWhitelist, Proposal, ProposalStatus, ProposalVotes, Proposals,
-    ReleasableClaims, StakeAdapted, StakedNfts, TotalStakedAmount, TreasuryAddress, UnstakeAdapted,
-    UserStake, V2MigrationStage,
-};
+use enterprise_facade_api::msg::QueryMsg::{AssetWhitelist, CastCouncilVoteAdapted, CastVoteAdapted, ClaimAdapted, Claims, ComponentContracts, CreateCouncilProposalAdapted, CreateProposalAdapted, CreateProposalWithDenomDepositAdapted, CreateProposalWithNftDepositAdapted, CreateProposalWithTokenDepositAdapted, CrossChainTreasuries, DaoInfo, ExecuteProposalAdapted, HasIncompleteV2Migration, HasUnmovedStakesOrClaims, ListMultisigMembers, MemberInfo, MemberVote, Members, NftWhitelist, Proposal, ProposalStatus, ProposalVotes, Proposals, ReleasableClaims, StakeAdapted, StakedNfts, TotalStakedAmount, TreasuryAddress, UnstakeAdapted, UserStake, V2MigrationStage, NumberProposalsTracked};
 use enterprise_facade_common::facade::EnterpriseFacade;
 use enterprise_governance_controller_api::api::{
     CreateProposalWithNftDepositMsg, DaoCouncilSpec, GovConfig,
@@ -46,6 +25,13 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
+
+pub fn facade(app: &App, dao_addr: Addr) -> TestFacade {
+    TestFacade {
+        app,
+        dao_addr,
+    }
+}
 
 // Helper implementation of the Enterprise facade to use in the tests
 pub struct TestFacade<'a> {
@@ -116,6 +102,12 @@ impl EnterpriseFacade for TestFacade<'_> {
         self.query_facade(&NftWhitelist {
             contract: self.dao_addr.clone(),
             params,
+        })
+    }
+
+    fn query_number_proposals_tracked(&self) -> EnterpriseFacadeResult<NumberProposalsTrackedResponse> {
+        self.query_facade(&NumberProposalsTracked {
+            contract: self.dao_addr.clone(),
         })
     }
 
@@ -484,10 +476,6 @@ impl<'a> TestFacade<'a> {
 
     pub fn council_membership_addr(&self) -> Addr {
         self.components().council_membership_contract.unwrap()
-    }
-
-    pub fn attestation_addr(&self) -> Addr {
-        self.components().attestation_contract.unwrap()
     }
 
     fn components(&self) -> ComponentContractsResponse {

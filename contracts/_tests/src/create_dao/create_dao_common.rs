@@ -55,7 +55,6 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
         threshold: Decimal::percent(54),
         allowed_proposal_action_types: Some(vec![
             ProposalActionType::DeployCrossChainTreasury,
-            ProposalActionType::RemoveAttestation,
         ]),
     };
     let attestation_text = "Attestation text for this DAO";
@@ -70,8 +69,8 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
         ]),
         nft_whitelist: Some(vec![NFT_TOKEN1, NFT_TOKEN2].into_string()),
         minimum_weight_for_rewards: Some(6u8.into()),
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None, // TODO: how do we test this?
-        attestation_text: Some(attestation_text.into()),
     };
 
     create_dao(&mut app, msg)?;
@@ -108,7 +107,6 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
         &facade.council_membership_addr(),
         CODE_ID_MEMBERSHIP_MULTISIG,
     );
-    assert_addr_code_id(&app, &facade.attestation_addr(), CODE_ID_ATTESTATION);
 
     assert_eq!(facade.factory_addr(), ADDR_FACTORY);
 
@@ -157,11 +155,6 @@ fn create_dao_initializes_common_dao_data_properly() -> anyhow::Result<()> {
     facade
         .council_membership()
         .assert_user_weights(vec![(USER1, 1), (USER2, 1), (USER3, 0)]);
-
-    let attestation_text_resp: AttestationTextResponse = app
-        .wrap()
-        .query_wasm_smart(facade.attestation_addr().to_string(), &AttestationText {})?;
-    assert_eq!(attestation_text_resp.text, attestation_text.to_string());
 
     Ok(())
 }

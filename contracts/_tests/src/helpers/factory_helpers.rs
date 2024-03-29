@@ -28,8 +28,8 @@ pub fn default_create_dao_msg() -> CreateDaoMsg {
         asset_whitelist: Some(vec![AssetInfoUnchecked::cw20(CW20_TOKEN1)]),
         nft_whitelist: Some(vec![NFT_TOKEN1.to_string()]),
         minimum_weight_for_rewards: Some(2u8.into()),
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     }
 }
 
@@ -137,7 +137,6 @@ pub fn default_dao_council() -> DaoCouncilSpec {
         threshold: Decimal::percent(55),
         allowed_proposal_action_types: Some(vec![
             ProposalActionType::DeployCrossChainTreasury,
-            ProposalActionType::RemoveAttestation,
         ]),
     }
 }
@@ -149,6 +148,16 @@ pub fn default_token_marketing_info() -> TokenMarketingInfo {
         marketing_owner: Some("marketing_owner".to_string()),
         logo_url: Some("logo_url".to_string()),
     }
+}
+
+// TODO: a lot of manual construction of this going on, replace wit this convenience
+pub fn asset_whitelist(native: Vec<&str>, cw20: Vec<&str>) -> Option<Vec<AssetInfoUnchecked>> {
+    let mut assets = vec![];
+
+    native.into_iter().for_each(|it| assets.push(AssetInfoUnchecked::native(it)));
+    cw20.into_iter().for_each(|it| assets.push(AssetInfoUnchecked::cw20(it)));
+
+    Some(assets)
 }
 
 // TODO: create an interface to the factory
@@ -171,6 +180,17 @@ pub fn create_dao_and_get_facade(app: &mut App, msg: CreateDaoMsg) -> anyhow::Re
     let facade = TestFacade { app, dao_addr };
 
     Ok(facade)
+}
+
+// TODO: we should either switch to this and then instantiate TestFacade every time we need it and consume it immediately,
+// TODO: or RefCell in the facade
+pub fn create_dao_and_get_addr(app: &mut App, msg: CreateDaoMsg) -> anyhow::Result<Addr> {
+    create_dao(app, msg)?;
+
+    // TODO: use DAO ID from response above, instead of fetching just the first one
+    let dao_addr = get_first_dao(&app)?;
+
+    Ok(dao_addr)
 }
 
 pub fn query_all_daos(app: &App) -> DaoResult<AllDaosResponse> {

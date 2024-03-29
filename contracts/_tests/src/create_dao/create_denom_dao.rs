@@ -31,8 +31,8 @@ fn new_denom_dao() -> anyhow::Result<()> {
         asset_whitelist: Some(vec![AssetInfoUnchecked::cw20(CW20_TOKEN2)]),
         nft_whitelist: None,
         minimum_weight_for_rewards: Some(3u8.into()),
+        proposals_tracked_for_participation_rewards: None,
         cross_chain_treasuries: None,
-        attestation_text: None,
     };
 
     create_dao(&mut app, msg)?;

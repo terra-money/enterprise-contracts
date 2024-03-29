@@ -5,7 +5,7 @@ use crate::helpers::factory_helpers::{
 use cosmwasm_std::Decimal;
 use enterprise_factory_api::api::CreateDaoMsg;
 use enterprise_governance_controller_api::api::ProposalActionType::{
-    AddAttestation, DistributeFunds, ExecuteEnterpriseMsgs, ExecuteMsgs, ExecuteTreasuryMsgs,
+    DistributeFunds, ExecuteEnterpriseMsgs, ExecuteMsgs, ExecuteTreasuryMsgs,
     ModifyMultisigMembership, RequestFundingFromDao, UpdateCouncil, UpdateGovConfig,
     UpdateMinimumWeightForRewards,
 };
@@ -213,7 +213,6 @@ fn dangerous_council_actions_not_allowed() -> anyhow::Result<()> {
         ModifyMultisigMembership,
         DistributeFunds,
         UpdateMinimumWeightForRewards,
-        AddAttestation,
     ];
 
     for action in dangerous_actions {
