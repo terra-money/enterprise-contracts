@@ -22,6 +22,7 @@ use funds_distributor_api::response::{
     execute_update_number_proposals_tracked_response,
 };
 use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse};
+use crate::repository::era_repository::{get_current_era, increment_era, set_user_first_era_with_weight_if_empty};
 
 // TODO: hide those storages behind an interface
 
@@ -53,7 +54,7 @@ pub fn new_proposal_created(
     }
     PARTICIPATION_PROPOSAL_IDS.save(ctx.deps.storage, msg.proposal_id, &())?;
 
-    // TODO: trigger a new era
+    increment_era(ctx.deps.branch())?;
 
     let total_votes = query_total_participation_weight(ctx.deps.as_ref())?;
 
@@ -98,7 +99,7 @@ pub fn execute_update_number_proposals_tracked(
         PARTICIPATION_PROPOSAL_IDS.save(ctx.deps.storage, proposal_id, &())?;
     }
 
-    // TODO: trigger a new era
+    increment_era(ctx.deps.branch())?;
 
     let new_total_weight = query_total_participation_weight(ctx.deps.as_ref())?;
 
@@ -114,9 +115,13 @@ pub fn pre_user_votes_change(
     ctx: &mut Context,
     msg: PreUserVotesChangeMsg,
 ) -> DistributorResult<Response> {
+    let current_era = get_current_era(ctx.deps.as_ref())?;
+
     // TODO: when there's multiple users, this will perform a query to gov contract for each user. we can optimize by introducing bulk query
     for user in msg.users {
         let user = ctx.deps.api.addr_validate(&user)?;
+
+        set_user_first_era_with_weight_if_empty(ctx.deps.branch(), user.clone(), current_era, Participation)?;
 
         // TODO: we can optimize this for simple vote casts by just storing their last known participation weight,
         // TODO: querying their current vote amount on this proposal

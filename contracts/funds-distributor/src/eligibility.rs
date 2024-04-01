@@ -17,6 +17,7 @@ use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::execute_update_minimum_eligible_weight_response;
 use itertools::Itertools;
 use std::ops::Range;
+use crate::repository::era_repository::increment_era;
 
 /// Minimum weight that a user should have to be eligible for receiving rewards.
 pub const MINIMUM_ELIGIBLE_WEIGHT: Item<Uint128> = Item::new("minimum_eligible_weight");
@@ -118,6 +119,8 @@ pub fn update_minimum_eligible_weight(
         // update total weight
         total_weight = total_weight - old_effective_weight + new_effective_weight;
     }
+
+    increment_era(deps.branch())?;
 
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &new_minimum_weight)?;
 

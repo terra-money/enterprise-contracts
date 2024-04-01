@@ -116,25 +116,40 @@ pub fn calculate_claimable_rewards(
     assets: Vec<RewardAsset>,
     distribution_type: DistributionType,
 ) -> DistributorResult<Vec<(RewardAsset, EraId, Uint128, Decimal)>> {
+    println!("calculating rewards for {}, distribution type: {}", user.to_string(), match distribution_type {
+        Membership => "membership",
+        Participation => "participation"
+    });
     let mut rewards: Vec<(RewardAsset, EraId, Uint128, Decimal)> = vec![];
+
+    let current_era = get_current_era(deps)?;
+    println!("current era is: {}", current_era.to_string());
 
     let last_claimed_era = get_user_last_fully_claimed_era(deps, user.clone())?;
     let first_relevant_era = match last_claimed_era {
         Some(last_claimed_era) => last_claimed_era,
         None => {
-            let first_era_with_weight = get_user_first_era_with_weight(deps, user.clone())?;
+            let first_era_with_weight = get_user_first_era_with_weight(deps, user.clone(), distribution_type.clone())?;
             match first_era_with_weight {
                 Some(first_era_with_weight) => first_era_with_weight,
                 None => {
-                    todo!("we should be sure that the user has 0 rewards here, right?")
+                    let mut rewards = vec![];
+                    for asset in assets {
+                        let global_index = global_indices_repository(deps, distribution_type.clone())
+                            .get_global_index(asset.clone(), current_era)?
+                            .unwrap_or_default();
+                        rewards.push((asset, current_era, Uint128::zero(), global_index))
+                    }
+                    return Ok(rewards);
                 }
             }
         }
     };
 
-    let current_era = get_current_era(deps)?;
+    println!("first relevant era is {}", first_relevant_era.to_string());
 
-    for era in first_relevant_era..current_era {
+    for era in first_relevant_era..=current_era {
+        println!("iterating bro");
         // TODO: use era here
         let user_weight = weights_repository(deps, distribution_type.clone())
             .get_user_weight(user.clone())?

@@ -1,8 +1,5 @@
 use crate::participation::pre_user_votes_change;
-use crate::repository::era_repository::{
-    get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era,
-    set_user_last_resolved_era, FIRST_ERA,
-};
+use crate::repository::era_repository::{get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era, set_user_last_resolved_era, FIRST_ERA, set_user_first_era_with_weight_if_empty};
 use crate::repository::global_indices_repository::{
     global_indices_repository, GlobalIndicesRepository,
 };
@@ -43,6 +40,8 @@ pub fn save_initial_weights(
 
     for user_weight in initial_weights {
         let user = ctx.deps.api.addr_validate(&user_weight.user)?;
+
+        set_user_first_era_with_weight_if_empty(ctx.deps.branch(), user.clone(), FIRST_ERA, Membership)?;
 
         let existing_user_weight =
             weights_repository(ctx.deps.as_ref(), Membership).get_user_weight(user.clone())?;
@@ -89,8 +88,13 @@ fn update_user_weights_checked(
     let mut total_weight =
         weights_repository(ctx.deps.as_ref(), distribution_type.clone()).get_total_weight()?;
 
+    let current_era = get_current_era(ctx.deps.as_ref())?;
+
     for user_weight_change in &msg.new_user_weights {
         let user = ctx.deps.api.addr_validate(&user_weight_change.user)?;
+
+        // TODO: this is not correct, we need tests to reveal it doesn't work because it shouldn't touch the era if user
+        set_user_first_era_with_weight_if_empty(ctx.deps.branch(), user.clone(), current_era, Membership)?;
 
         let old_user_weight = weights_repository(ctx.deps.as_ref(), distribution_type.clone())
             .get_user_weight(user.clone())?;
@@ -183,7 +187,7 @@ pub fn update_user_indices(
         Some(last_resolved_era) => last_resolved_era + 1,
         None => {
             let first_era_with_weight =
-                get_user_first_era_with_weight(deps.as_ref(), user.clone())?;
+                get_user_first_era_with_weight(deps.as_ref(), user.clone(), distribution_type.clone())?;
             match first_era_with_weight {
                 Some(era) => era,
                 None => {
@@ -193,7 +197,7 @@ pub fn update_user_indices(
         }
     };
 
-    for era in first_era_of_interest..current_era {
+    for era in first_era_of_interest..=current_era {
         let all_global_indices =
             global_indices_repository(deps.as_ref(), distribution_type.clone())
                 .get_all_global_indices(era)?;
