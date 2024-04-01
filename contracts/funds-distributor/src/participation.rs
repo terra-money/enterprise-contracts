@@ -46,7 +46,7 @@ struct TrackedParticipationProposalIndexes<'a> {
 impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalIndexes<'_> {
     fn get_indexes(
         &'_ self,
-    ) -> Box<dyn Iterator<Item = &'_ dyn Index<TrackedParticipationProposal>> + '_> {
+    ) -> Box<dyn Iterator<Item=&'_ dyn Index<TrackedParticipationProposal>> + '_> {
         let v: Vec<&dyn Index<TrackedParticipationProposal>> = vec![&self.proposal];
         Box::new(v.into_iter())
     }
@@ -101,6 +101,7 @@ pub fn new_proposal_created(
 
     // TODO: should we fail if it is greater than?
     if (proposal_ids_tracked.len() as u8) == proposals_to_track {
+
         // we are tracking maximum proposals, so we copy over all from the previous era excluding
         // the oldest proposal ID (lowest number)
 
