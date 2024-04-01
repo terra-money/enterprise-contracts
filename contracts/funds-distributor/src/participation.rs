@@ -23,9 +23,7 @@ use funds_distributor_api::api::{
 };
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
-use funds_distributor_api::response::{
-    execute_new_proposal_created_response, execute_pre_user_votes_change_response,
-};
+use funds_distributor_api::response::{execute_new_proposal_created_response, execute_pre_user_votes_change_response, execute_update_number_proposals_tracked_response};
 use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse};
 
 // TODO: hide those storages behind an interface
@@ -183,15 +181,14 @@ pub fn execute_update_number_proposals_tracked(
         )?;
     }
 
-    todo!("implement further");
+    // TODO: store the new weights properly. this can also be improved later, if we just figure out the difference between old and new proposal weights
     // let new_total_weight = query_total_participation_weight(ctx.deps.as_ref())?;
     //
     // weights_repository_mut(ctx.deps.branch(), Participation).set_total_weight(new_total_weight)?;
-    //
-    // Ok(execute_update_number_proposals_tracked_response(
-    //     old_number_tracked,
-    //     msg.number_proposals_tracked,
-    // ))
+
+    Ok(execute_update_number_proposals_tracked_response(
+        msg.number_proposals_tracked,
+    ))
 }
 
 pub fn pre_user_votes_change(

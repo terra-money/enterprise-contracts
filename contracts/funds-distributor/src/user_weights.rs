@@ -105,7 +105,6 @@ fn update_user_weights_checked(
     for user_weight_change in &msg.new_user_weights {
         let user = ctx.deps.api.addr_validate(&user_weight_change.user)?;
 
-        // TODO: this is not correct, we need tests to reveal it doesn't work because it shouldn't touch the era if user
         set_user_first_era_with_weight_if_empty(
             ctx.deps.branch(),
             user.clone(),

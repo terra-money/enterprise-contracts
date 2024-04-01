@@ -116,18 +116,9 @@ pub fn calculate_claimable_rewards(
     assets: Vec<RewardAsset>,
     distribution_type: DistributionType,
 ) -> DistributorResult<Vec<(RewardAsset, EraId, Uint128, Decimal)>> {
-    println!(
-        "calculating rewards for {}, distribution type: {}",
-        user,
-        match distribution_type {
-            Membership => "membership",
-            Participation => "participation",
-        }
-    );
     let mut rewards: Vec<(RewardAsset, EraId, Uint128, Decimal)> = vec![];
 
     let current_era = get_current_era(deps)?;
-    println!("current era is: {}", current_era);
 
     let last_claimed_era = get_user_last_fully_claimed_era(deps, user.clone())?;
     let first_relevant_era = match last_claimed_era {
@@ -152,10 +143,7 @@ pub fn calculate_claimable_rewards(
         }
     };
 
-    println!("first relevant era is {}", first_relevant_era);
-
     for era in first_relevant_era..=current_era {
-        println!("iterating bro");
         let user_weight = weights_repository(deps, distribution_type.clone())
             .get_user_weight(user.clone(), era)?
             .unwrap_or_default();

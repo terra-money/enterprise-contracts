@@ -4,14 +4,14 @@ use crate::participation::get_proposal_ids_tracked;
 use crate::state::EraId;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
-use cw_storage_plus::Map;
-use enterprise_governance_api::msg::QueryMsg::VoterTotalVotes;
+use cw_storage_plus::{Item, Map};
+use enterprise_governance_api::msg::QueryMsg::{TotalVotes, VoterTotalVotes};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
-use poll_engine_api::api::{VoterTotalVotesParams, VoterTotalVotesResponse};
+use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse, VoterTotalVotesParams, VoterTotalVotesResponse};
 
 /// Total weight of all users eligible for rewards for the given era.
-const ERA_EFFECTIVE_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("era_total_weight");
+const ERA_EFFECTIVE_TOTAL_WEIGHT: Item<Uint128> = Item::new("era_total_weight");
 
 const PARTICIPATION_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("participation_total_weight");
 
@@ -42,7 +42,7 @@ pub struct MembershipWeightsRepository<'a> {
 impl WeightsRepository for MembershipWeightsRepository<'_> {
     fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
         let total_weight = ERA_EFFECTIVE_TOTAL_WEIGHT
-            .may_load(self.deps.storage, era_id)?
+            .may_load(self.deps.storage)?
             .unwrap_or_default();
         Ok(total_weight)
     }
@@ -78,7 +78,7 @@ impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
 
 impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
     fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()> {
-        ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, era_id, &total_weight)?;
+        ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, &total_weight)?;
         Ok(())
     }
 
@@ -115,10 +115,22 @@ pub struct ParticipationWeightsRepository<'a> {
 
 impl WeightsRepository for ParticipationWeightsRepository<'_> {
     fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
-        let total_weight = PARTICIPATION_TOTAL_WEIGHT
-            .may_load(self.deps.storage, era_id)?
-            .unwrap_or_default();
-        Ok(total_weight)
+        let components = query_enterprise_components(self.deps)?;
+
+        let tracked_proposal_ids = get_proposal_ids_tracked(self.deps, era_id)?;
+
+        let total_weight: TotalVotesResponse = self.deps.querier.query_wasm_smart(
+            components.enterprise_governance_contract.to_string(),
+            &TotalVotes(TotalVotesParams {
+                poll_ids: tracked_proposal_ids,
+            }),
+        )?;
+        // TODO: revert to this (loading of local weight), but we need to figure out how to ensure it's fresh
+        // TODO: the reason it wasn't fresh is because we're setting it prior to user votes being registered, meaning it doesn't account for the vote change
+        // let total_weight = PARTICIPATION_TOTAL_WEIGHT
+        //     .may_load(self.deps.storage, era_id)?
+        //     .unwrap_or_default();
+        Ok(total_weight.total_votes)
     }
 
     // TODO: this should go to interactor, not here

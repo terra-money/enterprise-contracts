@@ -31,12 +31,10 @@ pub fn execute_update_minimum_eligible_weight_response(
 }
 
 pub fn execute_update_number_proposals_tracked_response(
-    old_number_tracked: u8,
     new_number_tracked: u8,
 ) -> Response {
     Response::new()
         .add_attribute("action", "update_number_proposals_tracked")
-        .add_attribute("old_number_tracked", old_number_tracked.to_string())
         .add_attribute("new_number_tracked", new_number_tracked.to_string())
 }
 

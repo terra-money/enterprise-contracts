@@ -214,8 +214,8 @@ fn distribute_funds(
         submsgs.push(SubMsg::new(wasm_execute(
             funds_distributor.to_string(),
             &DistributeNative {
-                distribution_type: None,
-            }, // TODO: have variable type here
+                distribution_type: msg.distribution_type,
+            },
             native_funds,
         )?));
     }
