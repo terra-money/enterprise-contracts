@@ -1,6 +1,6 @@
 use crate::repository::user_distribution_repository::UserDistributionInfo;
 use crate::rewards::calculate_user_reward;
-use crate::state::CW20_GLOBAL_INDICES;
+use crate::state::{EraId, CW20_GLOBAL_INDICES};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, Decimal, DepsMut, StdResult, Uint128};
@@ -20,6 +20,7 @@ const NAMESPACE_PARTICIPATION_USER_IDX: &str = "cw20_distributions_participation
 /// State of a single user's specific CW20 rewards.
 pub struct Cw20Distribution {
     pub user: Addr,
+    pub era_id: EraId,
     pub cw20_asset: Addr,
     /// The last global index at which the user's pending rewards were calculated
     pub user_index: Decimal,
@@ -37,7 +38,7 @@ impl From<Cw20Distribution> for UserDistributionInfo {
 }
 
 pub struct Cw20DistributionIndexes<'a> {
-    pub user: MultiIndex<'a, Addr, Cw20Distribution, (Addr, Addr)>,
+    pub user: MultiIndex<'a, Addr, Cw20Distribution, (Addr, EraId, Addr)>,
 }
 
 impl IndexList<Cw20Distribution> for Cw20DistributionIndexes<'_> {
@@ -50,7 +51,7 @@ impl IndexList<Cw20Distribution> for Cw20DistributionIndexes<'_> {
 #[allow(non_snake_case)]
 pub fn CW20_DISTRIBUTIONS<'a>(
     distribution_type: DistributionType,
-) -> IndexedMap<'a, (Addr, Addr), Cw20Distribution, Cw20DistributionIndexes<'a>> {
+) -> IndexedMap<'a, (Addr, EraId, Addr), Cw20Distribution, Cw20DistributionIndexes<'a>> {
     let (namespace, namespace_user_idx) = match distribution_type {
         Membership => (NAMESPACE_MEMBERSHIP, NAMESPACE_MEMBERSHIP_USER_IDX),
         Participation => (NAMESPACE_PARTICIPATION, NAMESPACE_PARTICIPATION_USER_IDX),

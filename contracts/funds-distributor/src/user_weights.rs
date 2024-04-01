@@ -1,6 +1,10 @@
 use crate::participation::pre_user_votes_change;
-use crate::repository::asset_repository::{
-    asset_distribution_repository, AssetDistributionRepository,
+use crate::repository::era_repository::{
+    get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era,
+    set_user_last_resolved_era, FIRST_ERA,
+};
+use crate::repository::global_indices_repository::{
+    global_indices_repository, GlobalIndicesRepository,
 };
 use crate::repository::user_distribution_repository::{
     user_distribution_repository_mut, UserDistributionRepositoryMut,
@@ -144,12 +148,17 @@ pub fn initialize_user_indices(
     user: Addr,
     distribution_type: DistributionType,
 ) -> DistributorResult<()> {
-    let all_global_indices =
-        asset_distribution_repository(deps.as_ref(), distribution_type.clone())
-            .get_all_global_indices()?;
+    let current_era = get_current_era(deps.as_ref())?;
 
-    user_distribution_repository_mut(deps, distribution_type)
-        .initialize_distribution_info(all_global_indices, user)?;
+    let all_global_indices = global_indices_repository(deps.as_ref(), distribution_type.clone())
+        .get_all_global_indices(current_era)?;
+
+    // TODO: now that we have eras, this may be incorrect - users may have had non-zero weights from the previous eras
+    user_distribution_repository_mut(deps, distribution_type).initialize_distribution_info(
+        all_global_indices,
+        user,
+        current_era,
+    )?;
 
     Ok(())
 }
@@ -159,20 +168,43 @@ pub fn initialize_user_indices(
 /// Will calculate newly pending rewards since the last update to the user's reward index until now,
 /// using their last weight to calculate the newly accrued rewards.
 pub fn update_user_indices(
-    deps: DepsMut,
+    mut deps: DepsMut,
     user: Addr,
+    // TODO: for participation (at least), this weight isn't constant for all eras that are going to be updated here
+    // TODO: for membership, we have to determine what the effective weight was for each era
     old_user_weight: Uint128,
     distribution_type: DistributionType,
 ) -> DistributorResult<()> {
-    let all_global_indices =
-        asset_distribution_repository(deps.as_ref(), distribution_type.clone())
-            .get_all_global_indices()?;
+    let current_era = get_current_era(deps.as_ref())?;
 
-    user_distribution_repository_mut(deps, distribution_type).update_user_indices(
-        user,
-        all_global_indices,
-        old_user_weight,
-    )?;
+    let user_last_resolved_era = get_user_last_resolved_era(deps.as_ref(), user.clone())?;
+    // TODO: lol rename this value
+    let first_era_of_interest = match user_last_resolved_era {
+        Some(last_resolved_era) => last_resolved_era + 1,
+        None => {
+            let first_era_with_weight =
+                get_user_first_era_with_weight(deps.as_ref(), user.clone())?;
+            match first_era_with_weight {
+                Some(era) => era,
+                None => {
+                    todo!("nothing to update here, right? the user has no weights, we shouldn't even end up here - this case should go to initialize_user_indices?")
+                }
+            }
+        }
+    };
+
+    for era in first_era_of_interest..current_era {
+        let all_global_indices =
+            global_indices_repository(deps.as_ref(), distribution_type.clone())
+                .get_all_global_indices(era)?;
+
+        user_distribution_repository_mut(deps.branch(), distribution_type.clone())
+            .update_user_indices(user.clone(), era, all_global_indices, old_user_weight)?;
+    }
+
+    if current_era > FIRST_ERA {
+        set_user_last_resolved_era(deps.branch(), user, current_era - 1)?;
+    }
 
     Ok(())
 }

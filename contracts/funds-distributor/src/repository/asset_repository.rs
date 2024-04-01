@@ -1,11 +1,14 @@
 use crate::asset_types::RewardAsset;
-use crate::state::{CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES, PARTICIPATION_CW20_GLOBAL_INDICES, PARTICIPATION_NATIVE_GLOBAL_INDICES};
+use crate::state::{
+    CW20_GLOBAL_INDICES, NATIVE_GLOBAL_INDICES, PARTICIPATION_CW20_GLOBAL_INDICES,
+    PARTICIPATION_NATIVE_GLOBAL_INDICES,
+};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut};
 use cw_storage_plus::Map;
-use DistributionType::{Membership, Participation};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
+use DistributionType::{Membership, Participation};
 use RewardAsset::{Cw20, Native};
 
 pub trait AssetDistributionRepository {
@@ -47,10 +50,13 @@ pub struct GeneralDistributionRepository<'a> {
 
 impl<'a> AssetDistributionRepository for GeneralDistributionRepository<'a> {
     fn get_global_index(&self, asset: RewardAsset) -> DistributorResult<Option<Decimal>> {
-        let global_index = match asset {
-            Native { denom } => native_global_indices(&self.distribution_type).may_load(self.deps.storage, denom)?,
-            Cw20 { addr } => cw20_global_indices(&self.distribution_type).may_load(self.deps.storage, addr)?,
-        };
+        let global_index =
+            match asset {
+                Native { denom } => native_global_indices(&self.distribution_type)
+                    .may_load(self.deps.storage, denom)?,
+                Cw20 { addr } => cw20_global_indices(&self.distribution_type)
+                    .may_load(self.deps.storage, addr)?,
+            };
         Ok(global_index)
     }
 
@@ -104,10 +110,18 @@ impl<'a> AssetDistributionRepositoryMut for GeneralDistributionRepositoryMut<'a>
     ) -> DistributorResult<()> {
         match asset {
             Native { denom } => {
-                native_global_indices(&self.distribution_type).save(self.deps.storage, denom, &global_index)?;
+                native_global_indices(&self.distribution_type).save(
+                    self.deps.storage,
+                    denom,
+                    &global_index,
+                )?;
             }
             Cw20 { addr } => {
-                cw20_global_indices(&self.distribution_type).save(self.deps.storage, addr, &global_index)?;
+                cw20_global_indices(&self.distribution_type).save(
+                    self.deps.storage,
+                    addr,
+                    &global_index,
+                )?;
             }
         }
         Ok(())
@@ -127,12 +141,18 @@ pub fn asset_distribution_repository(
     deps: Deps,
     distribution_type: DistributionType,
 ) -> GeneralDistributionRepository {
-    GeneralDistributionRepository { deps, distribution_type }
+    GeneralDistributionRepository {
+        deps,
+        distribution_type,
+    }
 }
 
 pub fn asset_distribution_repository_mut(
     deps: DepsMut,
     distribution_type: DistributionType,
 ) -> GeneralDistributionRepositoryMut {
-    GeneralDistributionRepositoryMut { deps, distribution_type }
+    GeneralDistributionRepositoryMut {
+        deps,
+        distribution_type,
+    }
 }

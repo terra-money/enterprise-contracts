@@ -97,13 +97,14 @@ pub fn update_minimum_eligible_weight(
 
         // update the state of user's rewards distributions to current global indices, placing any
         // newly accrued rewards since last updates into their pending rewards
-        let all_global_indices =
-            asset_distribution_repository(deps.as_ref(), Membership).get_all_global_indices()?;
-        user_distribution_repository_mut(deps.branch(), Membership).update_user_indices(
-            user.clone(),
-            all_global_indices,
-            old_effective_weight,
-        )?;
+        // TODO: either uncomment or modify in a way appropriate. should most likely trigger a new era and do nothing else
+        // let all_global_indices =
+        //     asset_distribution_repository(deps.as_ref(), Membership).get_all_global_indices()?;
+        // user_distribution_repository_mut(deps.branch(), Membership).update_user_indices(
+        //     user.clone(),
+        //     all_global_indices,
+        //     old_effective_weight,
+        // )?;
 
         let new_effective_weight = if use_actual_weights {
             user_weight

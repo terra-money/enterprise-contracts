@@ -7,6 +7,7 @@ use crate::participation::{
     execute_update_number_proposals_tracked, new_proposal_created, pre_user_votes_change,
     query_number_proposals_tracked, query_proposal_ids_tracked, PROPOSALS_TRACKED,
 };
+use crate::repository::era_repository::{set_current_era, FIRST_ERA};
 use crate::rewards::query_user_rewards;
 use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -27,7 +28,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -47,6 +48,8 @@ pub fn instantiate(
         deps.storage,
         &msg.participation_proposals_tracked.unwrap_or_default(),
     )?;
+
+    set_current_era(deps.branch(), FIRST_ERA)?;
 
     let mut ctx = Context { deps, env, info };
 

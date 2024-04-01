@@ -1,8 +1,12 @@
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 
+pub type EraId = u64;
+
 pub const ADMIN: Item<Addr> = Item::new("admin");
 pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract");
+
+// TODO: do we need separate storage for assets that have global indices (now that we have eras)?
 
 /// Total weight of all users eligible for rewards.
 pub const EFFECTIVE_TOTAL_WEIGHT: Item<Uint128> = Item::new("total_weight");
@@ -18,7 +22,9 @@ pub const NATIVE_GLOBAL_INDICES: Map<String, Decimal> = Map::new("native_global_
 pub const CW20_GLOBAL_INDICES: Map<Addr, Decimal> = Map::new("cw20_global_indices");
 
 /// Tracks global index for native denomination rewards for participation
-pub const PARTICIPATION_NATIVE_GLOBAL_INDICES: Map<String, Decimal> = Map::new("participation_native_global_indices");
+pub const PARTICIPATION_NATIVE_GLOBAL_INDICES: Map<String, Decimal> =
+    Map::new("participation_native_global_indices");
 
 /// Tracks global index for CW20 token rewards for participation.
-pub const PARTICIPATION_CW20_GLOBAL_INDICES: Map<Addr, Decimal> = Map::new("participation_cw20_global_indices");
+pub const PARTICIPATION_CW20_GLOBAL_INDICES: Map<Addr, Decimal> =
+    Map::new("participation_cw20_global_indices");

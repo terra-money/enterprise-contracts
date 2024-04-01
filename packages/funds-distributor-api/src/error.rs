@@ -20,6 +20,9 @@ pub enum DistributorError {
 
     #[error("Attempting to distribute an asset that is not whitelisted")]
     DistributingNonWhitelistedAsset,
+
+    #[error("Attempting to claim, but no rewards were found")]
+    NothingToClaim,
 }
 
 impl From<OverflowError> for DistributorError {

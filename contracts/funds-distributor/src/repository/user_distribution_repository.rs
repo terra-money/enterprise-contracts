@@ -2,6 +2,7 @@ use crate::asset_types::RewardAsset;
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
 use crate::rewards::calculate_user_reward;
+use crate::state::EraId;
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
@@ -23,6 +24,7 @@ pub trait UserDistributionRepository {
         &self,
         asset: RewardAsset,
         user: Addr,
+        era_id: EraId,
     ) -> DistributorResult<Option<UserDistributionInfo>>;
 }
 
@@ -31,6 +33,7 @@ pub trait UserDistributionRepositoryMut: UserDistributionRepository {
         &mut self,
         asset: RewardAsset,
         user: Addr,
+        era_id: EraId,
         distribution_info: UserDistributionInfo,
     ) -> DistributorResult<()>;
 
@@ -38,13 +41,15 @@ pub trait UserDistributionRepositoryMut: UserDistributionRepository {
         &mut self,
         global_indices: Vec<(RewardAsset, Decimal)>,
         user: Addr,
+        era: EraId,
     ) -> DistributorResult<()> {
         for (asset, global_index) in global_indices {
-            let distribution = self.get_distribution_info(asset.clone(), user.clone())?;
+            let distribution = self.get_distribution_info(asset.clone(), user.clone(), era)?;
             if distribution.is_none() {
                 self.set_distribution_info(
                     asset,
                     user.clone(),
+                    era,
                     UserDistributionInfo {
                         user_index: global_index,
                         pending_rewards: Uint128::zero(),
@@ -59,17 +64,19 @@ pub trait UserDistributionRepositoryMut: UserDistributionRepository {
     fn update_user_indices(
         &mut self,
         user: Addr,
+        era_id: EraId,
         all_global_indices: Vec<(RewardAsset, Decimal)>,
         old_user_weight: Uint128,
     ) -> DistributorResult<()> {
         for (asset, global_index) in all_global_indices {
-            let distribution = self.get_distribution_info(asset.clone(), user.clone())?;
+            let distribution = self.get_distribution_info(asset.clone(), user.clone(), era_id)?;
 
             let reward = calculate_user_reward(global_index, distribution, old_user_weight)?;
 
             self.set_distribution_info(
                 asset,
                 user.clone(),
+                era_id,
                 UserDistributionInfo {
                     user_index: global_index,
                     pending_rewards: reward,
@@ -95,13 +102,14 @@ impl UserDistributionRepository for GeneralUserDistributionRepository<'_> {
         &self,
         asset: RewardAsset,
         user: Addr,
+        era_id: EraId,
     ) -> DistributorResult<Option<UserDistributionInfo>> {
         let distribution = match asset {
             Native { denom } => NATIVE_DISTRIBUTIONS(self.distribution_type.clone())
-                .may_load(self.deps.storage, (user, denom))?
+                .may_load(self.deps.storage, (user, era_id, denom))?
                 .map(|it| it.into()),
             Cw20 { addr } => CW20_DISTRIBUTIONS(self.distribution_type.clone())
-                .may_load(self.deps.storage, (user, addr))?
+                .may_load(self.deps.storage, (user, era_id, addr))?
                 .map(|it| it.into()),
         };
         Ok(distribution)
@@ -127,8 +135,9 @@ impl UserDistributionRepository for GeneralUserDistributionRepositoryMut<'_> {
         &self,
         asset: RewardAsset,
         user: Addr,
+        era_id: EraId,
     ) -> DistributorResult<Option<UserDistributionInfo>> {
-        self.as_ref().get_distribution_info(asset, user)
+        self.as_ref().get_distribution_info(asset, user, era_id)
     }
 }
 
@@ -137,15 +146,17 @@ impl UserDistributionRepositoryMut for GeneralUserDistributionRepositoryMut<'_> 
         &mut self,
         asset: RewardAsset,
         user: Addr,
+        era_id: EraId,
         distribution_info: UserDistributionInfo,
     ) -> DistributorResult<()> {
         match asset {
             Native { denom } => {
                 NATIVE_DISTRIBUTIONS(self.distribution_type.clone()).save(
                     self.deps.storage,
-                    (user.clone(), denom.clone()),
+                    (user.clone(), era_id, denom.clone()),
                     &NativeDistribution {
                         user,
+                        era_id,
                         denom,
                         user_index: distribution_info.user_index,
                         pending_rewards: distribution_info.pending_rewards,
@@ -155,9 +166,10 @@ impl UserDistributionRepositoryMut for GeneralUserDistributionRepositoryMut<'_> 
             Cw20 { addr } => {
                 CW20_DISTRIBUTIONS(self.distribution_type.clone()).save(
                     self.deps.storage,
-                    (user.clone(), addr.clone()),
+                    (user.clone(), era_id, addr.clone()),
                     &Cw20Distribution {
                         user,
+                        era_id,
                         cw20_asset: addr,
                         user_index: distribution_info.user_index,
                         pending_rewards: distribution_info.pending_rewards,
