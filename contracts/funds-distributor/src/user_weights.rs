@@ -52,8 +52,8 @@ pub fn save_initial_weights(
             Membership,
         )?;
 
-        let existing_user_weight =
-            weights_repository(ctx.deps.as_ref(), Membership).get_user_weight(user.clone())?;
+        let existing_user_weight = weights_repository(ctx.deps.as_ref(), Membership)
+            .get_user_weight(user.clone(), FIRST_ERA)?;
         if existing_user_weight.is_some() {
             return Err(DuplicateInitialWeight);
         }
@@ -114,7 +114,7 @@ fn update_user_weights_checked(
         )?;
 
         let old_user_weight = weights_repository(ctx.deps.as_ref(), distribution_type.clone())
-            .get_user_weight(user.clone())?;
+            .get_user_weight(user.clone(), current_era)?; // TODO: definitely just the current era?
 
         match old_user_weight {
             None => {

@@ -1,7 +1,6 @@
 use crate::distributing::query_enterprise_components;
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::participation::get_proposal_ids_tracked;
-use crate::repository::era_repository::get_current_era;
 use crate::state::EraId;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
@@ -20,7 +19,8 @@ pub trait WeightsRepository {
     fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128>;
 
     // TODO: it gets confusing whether this queries live data or uses some local copy, split into interactor and repository
-    fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>>;
+    // TODO: it seems to not make much sense to use era_id for membership weights
+    fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>>;
 }
 
 pub trait WeightsRepositoryMut<'a>: WeightsRepository {
@@ -47,7 +47,8 @@ impl WeightsRepository for MembershipWeightsRepository<'_> {
         Ok(total_weight)
     }
 
-    fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
+    // TODO: era is useless here, right?
+    fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
         let user_weight = EFFECTIVE_USER_WEIGHTS.may_load(self.deps.storage, user)?;
         Ok(user_weight)
     }
@@ -70,8 +71,8 @@ impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
         self.as_ref().get_total_weight(era_id)
     }
 
-    fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
-        self.as_ref().get_user_weight(user)
+    fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
+        self.as_ref().get_user_weight(user, era_id)
     }
 }
 
@@ -121,12 +122,10 @@ impl WeightsRepository for ParticipationWeightsRepository<'_> {
     }
 
     // TODO: this should go to interactor, not here
-    fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
+    fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
         let components = query_enterprise_components(self.deps)?;
 
-        // TODO: do we always use current era here?
-        let current_era = get_current_era(self.deps)?;
-        let tracked_proposal_ids = get_proposal_ids_tracked(self.deps, current_era)?;
+        let tracked_proposal_ids = get_proposal_ids_tracked(self.deps, era_id)?;
 
         let user_weight: VoterTotalVotesResponse = self.deps.querier.query_wasm_smart(
             components.enterprise_governance_contract.to_string(),
@@ -157,8 +156,8 @@ impl WeightsRepository for ParticipationWeightsRepositoryMut<'_> {
         self.as_ref().get_total_weight(era_id)
     }
 
-    fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
-        self.as_ref().get_user_weight(user)
+    fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
+        self.as_ref().get_user_weight(user, era_id)
     }
 }
 

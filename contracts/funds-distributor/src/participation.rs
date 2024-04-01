@@ -1,6 +1,7 @@
 use crate::distributing::query_enterprise_components;
 use crate::repository::era_repository::{
-    get_current_era, increment_era, set_current_era, set_user_first_era_with_weight_if_empty,
+    get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era, increment_era,
+    set_current_era, set_user_first_era_with_weight_if_empty,
 };
 use crate::repository::user_distribution_repository::UserDistributionInfo;
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
@@ -45,7 +46,7 @@ struct TrackedParticipationProposalIndexes<'a> {
 impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalIndexes<'_> {
     fn get_indexes(
         &'_ self,
-    ) -> Box<dyn Iterator<Item=&'_ dyn Index<TrackedParticipationProposal>> + '_> {
+    ) -> Box<dyn Iterator<Item = &'_ dyn Index<TrackedParticipationProposal>> + '_> {
         let v: Vec<&dyn Index<TrackedParticipationProposal>> = vec![&self.proposal];
         Box::new(v.into_iter())
     }
@@ -100,7 +101,6 @@ pub fn new_proposal_created(
 
     // TODO: should we fail if it is greater than?
     if (proposal_ids_tracked.len() as u8) == proposals_to_track {
-
         // we are tracking maximum proposals, so we copy over all from the previous era excluding
         // the oldest proposal ID (lowest number)
 
@@ -203,29 +203,58 @@ pub fn pre_user_votes_change(
     for user in msg.users {
         let user = ctx.deps.api.addr_validate(&user)?;
 
-        set_user_first_era_with_weight_if_empty(
-            ctx.deps.branch(),
-            user.clone(),
-            current_era,
-            Participation,
-        )?;
+        let last_resolved_era = get_user_last_resolved_era(ctx.deps.as_ref(), user.clone())?;
+
+        let first_relevant_era = match last_resolved_era {
+            Some(last_resolved_era) => Some(last_resolved_era + 1), // TODO: what if last resolved era is current era?
+            None => get_user_first_era_with_weight(ctx.deps.as_ref(), user.clone(), Participation)?,
+        };
+
+        // TODO: resume here
+
+        // TODO: we probably have to split handling of current era and past eras
+        match first_relevant_era {
+            Some(first_relevant_era) => {
+                for era in first_relevant_era..=current_era {
+                    let user_total_votes = weights_repository(ctx.deps.as_ref(), Participation)
+                        .get_user_weight(user.clone(), era)?;
+                    // TODO: we really shouldn't query it all for each era here
+                    match user_total_votes {
+                        // TODO: not sure if this initialize_user_indices works
+                        // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
+                        // we'll assume their indices have been initialized
+                        None => {
+                            if era == current_era {
+                                initialize_user_indices(
+                                    ctx.deps.branch(),
+                                    user.clone(),
+                                    Participation,
+                                )?
+                            }
+                        }
+                        Some(total) => update_user_indices(
+                            ctx.deps.branch(),
+                            user.clone(),
+                            total,
+                            Participation,
+                        )?,
+                    }
+                }
+            }
+            None => {
+                set_user_first_era_with_weight_if_empty(
+                    ctx.deps.branch(),
+                    user.clone(),
+                    current_era,
+                    Participation,
+                )?;
+                initialize_user_indices(ctx.deps.branch(), user.clone(), Participation)?;
+            }
+        }
 
         // TODO: we can optimize this for simple vote casts by just storing their last known participation weight,
         // TODO: querying their current vote amount on this proposal
         // TODO: and then just using their new weight to deduce the new weight
-
-        let user_total_votes =
-            weights_repository(ctx.deps.as_ref(), Participation).get_user_weight(user.clone())?;
-
-        match user_total_votes {
-            // TODO: not sure if this initialize_user_indices works
-            // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
-            // we'll assume their indices have been initialized
-            None => initialize_user_indices(ctx.deps.branch(), user.clone(), Participation)?,
-            Some(total) => {
-                update_user_indices(ctx.deps.branch(), user.clone(), total, Participation)?
-            }
-        }
     }
 
     Ok(execute_pre_user_votes_change_response())
