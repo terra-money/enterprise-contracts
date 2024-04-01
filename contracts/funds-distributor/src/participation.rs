@@ -10,7 +10,7 @@ use common::cw::Order::Descending;
 use common::cw::{Context, QueryContext};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Decimal, Deps, Response, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Response, StdError, StdResult, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use enterprise_governance_api::msg::QueryMsg::TotalVotes;
 use enterprise_governance_controller_api::api::ProposalType::General;
@@ -33,19 +33,19 @@ pub const NUMBER_PROPOSALS_TRACKED: Item<u8> = Item::new("proposals_tracked");
 
 #[cw_serde]
 /// A single proposal ID tracked within a distribution era.
-pub struct TrackedParticipationProposal {
+struct TrackedParticipationProposal {
     pub era_id: EraId,
     pub proposal_id: ProposalId,
 }
 
-pub struct TrackedParticipationProposalIndexes<'a> {
+struct TrackedParticipationProposalIndexes<'a> {
     pub proposal: MultiIndex<'a, ProposalId, TrackedParticipationProposal, (EraId, ProposalId)>,
 }
 
 impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalIndexes<'_> {
     fn get_indexes(
         &'_ self,
-    ) -> Box<dyn Iterator<Item = &'_ dyn Index<TrackedParticipationProposal>> + '_> {
+    ) -> Box<dyn Iterator<Item=&'_ dyn Index<TrackedParticipationProposal>> + '_> {
         let v: Vec<&dyn Index<TrackedParticipationProposal>> = vec![&self.proposal];
         Box::new(v.into_iter())
     }
@@ -53,7 +53,7 @@ impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalInd
 
 // TODO: fill up in migration... or do we even offer it in migration? maybe just let them set N through a proposal
 #[allow(non_snake_case)]
-pub fn TRACKED_PARTICIPATION_PROPOSALS<'a>() -> IndexedMap<
+fn TRACKED_PARTICIPATION_PROPOSALS<'a>() -> IndexedMap<
     'a,
     (EraId, ProposalId),
     TrackedParticipationProposal,
@@ -67,6 +67,17 @@ pub fn TRACKED_PARTICIPATION_PROPOSALS<'a>() -> IndexedMap<
         ),
     };
     IndexedMap::new("tracked_participation_proposals", indexes)
+}
+
+fn save_tracked_proposal(deps: DepsMut, era_id: EraId, proposal_id: ProposalId) -> StdResult<()> {
+    TRACKED_PARTICIPATION_PROPOSALS().save(
+        deps.storage,
+        (era_id, proposal_id),
+        &TrackedParticipationProposal {
+            era_id,
+            proposal_id,
+        },
+    )
 }
 
 pub fn new_proposal_created(
@@ -84,28 +95,38 @@ pub fn new_proposal_created(
         return Ok(Response::new());
     }
 
-    // TODO: should we fail if it is greater than?
-    if (proposal_ids_tracked.len() as u8) == proposals_to_track {
-        let first_tracked = proposal_ids_tracked.iter().min().ok_or_else(|| {
-            StdError::generic_err(
-                "Invalid state - couldn't find first tracked proposal ID for participation rewards",
-            )
-        })?;
-
-        TRACKED_PARTICIPATION_PROPOSALS()
-            .remove(ctx.deps.storage, (current_era, *first_tracked))?;
-    }
-    TRACKED_PARTICIPATION_PROPOSALS().save(
-        ctx.deps.storage,
-        (current_era, msg.proposal_id),
-        &TrackedParticipationProposal {
-            era_id: current_era,
-            proposal_id: msg.proposal_id,
-        },
-    )?;
-
     let next_era = current_era + 1;
     set_current_era(ctx.deps.branch(), next_era)?;
+
+    // TODO: should we fail if it is greater than?
+    if (proposal_ids_tracked.len() as u8) == proposals_to_track {
+
+        // we are tracking maximum proposals, so we copy over all from the previous era excluding
+        // the oldest proposal ID (lowest number)
+
+        let mut first_tracked_proposal = None;
+
+        // TODO: do we check here if tracked proposals are empty?
+        for tracked_proposal in proposal_ids_tracked {
+            if let Some(id) = first_tracked_proposal {
+                if id > tracked_proposal {
+                    save_tracked_proposal(ctx.deps.branch(), next_era, id)?;
+                    first_tracked_proposal = Some(tracked_proposal)
+                } else {
+                    save_tracked_proposal(ctx.deps.branch(), next_era, tracked_proposal)?;
+                }
+            } else {
+                first_tracked_proposal = Some(tracked_proposal)
+            }
+        }
+    } else {
+        // we aren't tracking enough proposals yet, just copy over all the ones from the previous era
+        for id in proposal_ids_tracked {
+            save_tracked_proposal(ctx.deps.branch(), next_era, id)?;
+        }
+    }
+
+    save_tracked_proposal(ctx.deps.branch(), next_era, msg.proposal_id)?;
 
     // TODO: we know that the new proposal has 0 votes, just check if we removed one and remove its votes from previous era's total
     let total_votes = query_total_participation_weight(ctx.deps.as_ref(), next_era)?;
