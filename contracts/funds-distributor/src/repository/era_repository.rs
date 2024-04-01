@@ -1,9 +1,9 @@
 use crate::state::EraId;
 use cosmwasm_std::{Addr, Deps, DepsMut, StdResult};
 use cw_storage_plus::{Item, Map};
-use DistributionType::{Membership, Participation};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
+use DistributionType::{Membership, Participation};
 
 pub const FIRST_ERA: EraId = 1;
 
@@ -14,8 +14,10 @@ const USER_LAST_CLAIMED_ERA: Map<Addr, EraId> = Map::new("user_last_claimed_era"
 const USER_LAST_RESOLVED_ERA: Map<Addr, EraId> = Map::new("user_last_resolved_era");
 
 /// The first era in which this user had a weight.
-const MEMBERSHIP_USER_FIRST_ERA_WITH_WEIGHT: Map<Addr, EraId> = Map::new("membership_user_first_era_with_weight");
-const PARTICIPATION_USER_FIRST_ERA_WITH_WEIGHT: Map<Addr, EraId> = Map::new("participation_user_first_era_with_weight");
+const MEMBERSHIP_USER_FIRST_ERA_WITH_WEIGHT: Map<Addr, EraId> =
+    Map::new("membership_user_first_era_with_weight");
+const PARTICIPATION_USER_FIRST_ERA_WITH_WEIGHT: Map<Addr, EraId> =
+    Map::new("participation_user_first_era_with_weight");
 
 pub fn get_current_era(deps: Deps) -> DistributorResult<EraId> {
     let era_id = CURRENT_ERA_ID.load(deps.storage)?;
@@ -29,9 +31,7 @@ pub fn set_current_era(deps: DepsMut, era_id: EraId) -> DistributorResult<()> {
 }
 
 pub fn increment_era(deps: DepsMut) -> DistributorResult<()> {
-    CURRENT_ERA_ID.update(deps.storage, |era| -> StdResult<EraId> {
-        Ok(era + 1)
-    })?;
+    CURRENT_ERA_ID.update(deps.storage, |era| -> StdResult<EraId> { Ok(era + 1) })?;
 
     Ok(())
 }
@@ -91,7 +91,9 @@ pub fn set_user_first_era_with_weight_if_empty(
     Ok(())
 }
 
-fn user_first_era_with_weight_map(distribution_type: DistributionType) -> Map<'static, Addr, EraId> {
+fn user_first_era_with_weight_map(
+    distribution_type: DistributionType,
+) -> Map<'static, Addr, EraId> {
     match distribution_type {
         Membership => MEMBERSHIP_USER_FIRST_ERA_WITH_WEIGHT,
         Participation => PARTICIPATION_USER_FIRST_ERA_WITH_WEIGHT,

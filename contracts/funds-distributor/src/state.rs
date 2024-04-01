@@ -1,15 +1,13 @@
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 
+// TODO: move to era repository
 pub type EraId = u64;
 
 pub const ADMIN: Item<Addr> = Item::new("admin");
 pub const ENTERPRISE_CONTRACT: Item<Addr> = Item::new("enterprise_contract");
 
 // TODO: do we need separate storage for assets that have global indices (now that we have eras)?
-
-/// Total weight of all users eligible for rewards.
-pub const EFFECTIVE_TOTAL_WEIGHT: Item<Uint128> = Item::new("total_weight");
 
 /// Tracks global index for native denomination rewards.
 /// Global index is simply a decimal number representing the amount of currency rewards paid

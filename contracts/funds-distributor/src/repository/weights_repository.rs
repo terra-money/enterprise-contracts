@@ -1,25 +1,30 @@
 use crate::distributing::query_enterprise_components;
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
-use crate::participation::{
-    get_proposal_ids_tracked, query_total_participation_weight, PARTICIPATION_TOTAL_WEIGHT,
-};
-use crate::state::EFFECTIVE_TOTAL_WEIGHT;
+use crate::participation::get_proposal_ids_tracked;
+use crate::repository::era_repository::get_current_era;
+use crate::state::EraId;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
+use cw_storage_plus::Map;
 use enterprise_governance_api::msg::QueryMsg::VoterTotalVotes;
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
 use poll_engine_api::api::{VoterTotalVotesParams, VoterTotalVotesResponse};
 
+/// Total weight of all users eligible for rewards for the given era.
+const ERA_EFFECTIVE_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("era_total_weight");
+
+const PARTICIPATION_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("participation_total_weight");
+
 pub trait WeightsRepository {
-    fn get_total_weight(&self) -> DistributorResult<Uint128>;
+    fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128>;
 
     // TODO: it gets confusing whether this queries live data or uses some local copy, split into interactor and repository
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>>;
 }
 
 pub trait WeightsRepositoryMut<'a>: WeightsRepository {
-    fn set_total_weight(&mut self, total_weight: Uint128) -> DistributorResult<()>;
+    fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()>;
 
     /// Sets a user's weight to a new value.
     /// Returns the user's new effective weight that will be applied to them.
@@ -35,9 +40,9 @@ pub struct MembershipWeightsRepository<'a> {
 }
 
 impl WeightsRepository for MembershipWeightsRepository<'_> {
-    fn get_total_weight(&self) -> DistributorResult<Uint128> {
-        let total_weight = EFFECTIVE_TOTAL_WEIGHT
-            .may_load(self.deps.storage)?
+    fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
+        let total_weight = ERA_EFFECTIVE_TOTAL_WEIGHT
+            .may_load(self.deps.storage, era_id)?
             .unwrap_or_default();
         Ok(total_weight)
     }
@@ -61,8 +66,8 @@ impl MembershipWeightsRepositoryMut<'_> {
 }
 
 impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
-    fn get_total_weight(&self) -> DistributorResult<Uint128> {
-        self.as_ref().get_total_weight()
+    fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
+        self.as_ref().get_total_weight(era_id)
     }
 
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
@@ -71,8 +76,8 @@ impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
 }
 
 impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
-    fn set_total_weight(&mut self, total_weight: Uint128) -> DistributorResult<()> {
-        EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, &total_weight)?;
+    fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()> {
+        ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, era_id, &total_weight)?;
         Ok(())
     }
 
@@ -108,8 +113,10 @@ pub struct ParticipationWeightsRepository<'a> {
 }
 
 impl WeightsRepository for ParticipationWeightsRepository<'_> {
-    fn get_total_weight(&self) -> DistributorResult<Uint128> {
-        let total_weight = query_total_participation_weight(self.deps)?;
+    fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
+        let total_weight = PARTICIPATION_TOTAL_WEIGHT
+            .may_load(self.deps.storage, era_id)?
+            .unwrap_or_default();
         Ok(total_weight)
     }
 
@@ -117,7 +124,9 @@ impl WeightsRepository for ParticipationWeightsRepository<'_> {
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
         let components = query_enterprise_components(self.deps)?;
 
-        let tracked_proposal_ids = get_proposal_ids_tracked(self.deps)?;
+        // TODO: do we always use current era here?
+        let current_era = get_current_era(self.deps)?;
+        let tracked_proposal_ids = get_proposal_ids_tracked(self.deps, current_era)?;
 
         let user_weight: VoterTotalVotesResponse = self.deps.querier.query_wasm_smart(
             components.enterprise_governance_contract.to_string(),
@@ -144,8 +153,8 @@ impl ParticipationWeightsRepositoryMut<'_> {
 }
 
 impl WeightsRepository for ParticipationWeightsRepositoryMut<'_> {
-    fn get_total_weight(&self) -> DistributorResult<Uint128> {
-        self.as_ref().get_total_weight()
+    fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
+        self.as_ref().get_total_weight(era_id)
     }
 
     fn get_user_weight(&self, user: Addr) -> DistributorResult<Option<Uint128>> {
@@ -154,8 +163,8 @@ impl WeightsRepository for ParticipationWeightsRepositoryMut<'_> {
 }
 
 impl<'a> WeightsRepositoryMut<'a> for ParticipationWeightsRepositoryMut<'a> {
-    fn set_total_weight(&mut self, total_weight: Uint128) -> DistributorResult<()> {
-        PARTICIPATION_TOTAL_WEIGHT.save(self.deps.storage, &total_weight)?;
+    fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()> {
+        PARTICIPATION_TOTAL_WEIGHT.save(self.deps.storage, era_id, &total_weight)?;
         Ok(())
     }
 

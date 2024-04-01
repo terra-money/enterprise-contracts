@@ -74,13 +74,13 @@ fn distribute(
 
     assert_assets_whitelisted(deps.as_ref(), distribution_assets)?;
 
-    let total_weight =
-        weights_repository(deps.as_ref(), distribution_type.clone()).get_total_weight()?;
+    let current_era = get_current_era(deps.as_ref())?;
+
+    let total_weight = weights_repository(deps.as_ref(), distribution_type.clone())
+        .get_total_weight(current_era)?;
     if total_weight.is_zero() {
         return Err(ZeroTotalWeight);
     }
-
-    let current_era = get_current_era(deps.as_ref())?;
 
     for (reward_asset, amount) in assets {
         // TODO: what if an asset appears multiple times?

@@ -116,10 +116,14 @@ pub fn calculate_claimable_rewards(
     assets: Vec<RewardAsset>,
     distribution_type: DistributionType,
 ) -> DistributorResult<Vec<(RewardAsset, EraId, Uint128, Decimal)>> {
-    println!("calculating rewards for {}, distribution type: {}", user.to_string(), match distribution_type {
-        Membership => "membership",
-        Participation => "participation"
-    });
+    println!(
+        "calculating rewards for {}, distribution type: {}",
+        user.to_string(),
+        match distribution_type {
+            Membership => "membership",
+            Participation => "participation",
+        }
+    );
     let mut rewards: Vec<(RewardAsset, EraId, Uint128, Decimal)> = vec![];
 
     let current_era = get_current_era(deps)?;
@@ -129,15 +133,17 @@ pub fn calculate_claimable_rewards(
     let first_relevant_era = match last_claimed_era {
         Some(last_claimed_era) => last_claimed_era,
         None => {
-            let first_era_with_weight = get_user_first_era_with_weight(deps, user.clone(), distribution_type.clone())?;
+            let first_era_with_weight =
+                get_user_first_era_with_weight(deps, user.clone(), distribution_type.clone())?;
             match first_era_with_weight {
                 Some(first_era_with_weight) => first_era_with_weight,
                 None => {
                     let mut rewards = vec![];
                     for asset in assets {
-                        let global_index = global_indices_repository(deps, distribution_type.clone())
-                            .get_global_index(asset.clone(), current_era)?
-                            .unwrap_or_default();
+                        let global_index =
+                            global_indices_repository(deps, distribution_type.clone())
+                                .get_global_index(asset.clone(), current_era)?
+                                .unwrap_or_default();
                         rewards.push((asset, current_era, Uint128::zero(), global_index))
                     }
                     return Ok(rewards);

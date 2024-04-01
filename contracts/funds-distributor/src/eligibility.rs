@@ -1,6 +1,7 @@
 use crate::repository::asset_repository::{
     asset_distribution_repository, AssetDistributionRepository,
 };
+use crate::repository::era_repository::{get_current_era, increment_era};
 use crate::repository::user_distribution_repository::{
     user_distribution_repository_mut, UserDistributionRepositoryMut,
 };
@@ -17,7 +18,6 @@ use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::execute_update_minimum_eligible_weight_response;
 use itertools::Itertools;
 use std::ops::Range;
-use crate::repository::era_repository::increment_era;
 
 /// Minimum weight that a user should have to be eligible for receiving rewards.
 pub const MINIMUM_ELIGIBLE_WEIGHT: Item<Uint128> = Item::new("minimum_eligible_weight");
@@ -85,7 +85,10 @@ pub fn update_minimum_eligible_weight(
         })
         .collect_vec();
 
-    let mut total_weight = weights_repository(deps.as_ref(), Membership).get_total_weight()?;
+    // TODO: NO freaking idea if we should use the current era here or something else
+    let current_era = get_current_era(deps.as_ref())?;
+    let mut total_weight =
+        weights_repository(deps.as_ref(), Membership).get_total_weight(current_era)?;
 
     // whether effective weights for users should become their actual weights, or zero
     let use_actual_weights = old_minimum_weight > new_minimum_weight;
@@ -124,7 +127,9 @@ pub fn update_minimum_eligible_weight(
 
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &new_minimum_weight)?;
 
-    weights_repository_mut(deps.branch(), Membership).set_total_weight(total_weight)?;
+    // TODO: we almost CERTAINLY shouldn't use the current era here
+    weights_repository_mut(deps.branch(), Membership)
+        .set_total_weight(total_weight, current_era)?;
 
     Ok(())
 }

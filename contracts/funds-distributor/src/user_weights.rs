@@ -1,5 +1,8 @@
 use crate::participation::pre_user_votes_change;
-use crate::repository::era_repository::{get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era, set_user_last_resolved_era, FIRST_ERA, set_user_first_era_with_weight_if_empty};
+use crate::repository::era_repository::{
+    get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era,
+    set_user_first_era_with_weight_if_empty, set_user_last_resolved_era, FIRST_ERA,
+};
 use crate::repository::global_indices_repository::{
     global_indices_repository, GlobalIndicesRepository,
 };
@@ -36,12 +39,18 @@ pub fn save_initial_weights(
     ctx: &mut Context,
     initial_weights: Vec<UserWeight>,
 ) -> DistributorResult<()> {
-    let mut total_weight = weights_repository(ctx.deps.as_ref(), Membership).get_total_weight()?;
+    let mut total_weight =
+        weights_repository(ctx.deps.as_ref(), Membership).get_total_weight(FIRST_ERA)?;
 
     for user_weight in initial_weights {
         let user = ctx.deps.api.addr_validate(&user_weight.user)?;
 
-        set_user_first_era_with_weight_if_empty(ctx.deps.branch(), user.clone(), FIRST_ERA, Membership)?;
+        set_user_first_era_with_weight_if_empty(
+            ctx.deps.branch(),
+            user.clone(),
+            FIRST_ERA,
+            Membership,
+        )?;
 
         let existing_user_weight =
             weights_repository(ctx.deps.as_ref(), Membership).get_user_weight(user.clone())?;
@@ -55,9 +64,11 @@ pub fn save_initial_weights(
         total_weight += effective_user_weight;
     }
 
-    weights_repository_mut(ctx.deps.branch(), Membership).set_total_weight(total_weight)?;
+    weights_repository_mut(ctx.deps.branch(), Membership)
+        .set_total_weight(total_weight, FIRST_ERA)?;
 
-    weights_repository_mut(ctx.deps.branch(), Participation).set_total_weight(Uint128::zero())?;
+    weights_repository_mut(ctx.deps.branch(), Participation)
+        .set_total_weight(Uint128::zero(), FIRST_ERA)?;
 
     Ok(())
 }
@@ -85,16 +96,22 @@ fn update_user_weights_checked(
 ) -> DistributorResult<()> {
     // TODO: check if we need variable distribution type here, we probably do
     let distribution_type = Membership;
-    let mut total_weight =
-        weights_repository(ctx.deps.as_ref(), distribution_type.clone()).get_total_weight()?;
 
     let current_era = get_current_era(ctx.deps.as_ref())?;
+
+    let mut total_weight = weights_repository(ctx.deps.as_ref(), distribution_type.clone())
+        .get_total_weight(current_era)?;
 
     for user_weight_change in &msg.new_user_weights {
         let user = ctx.deps.api.addr_validate(&user_weight_change.user)?;
 
         // TODO: this is not correct, we need tests to reveal it doesn't work because it shouldn't touch the era if user
-        set_user_first_era_with_weight_if_empty(ctx.deps.branch(), user.clone(), current_era, Membership)?;
+        set_user_first_era_with_weight_if_empty(
+            ctx.deps.branch(),
+            user.clone(),
+            current_era,
+            Membership,
+        )?;
 
         let old_user_weight = weights_repository(ctx.deps.as_ref(), distribution_type.clone())
             .get_user_weight(user.clone())?;
@@ -130,7 +147,9 @@ fn update_user_weights_checked(
         total_weight = total_weight - old_user_weight + new_user_weight;
     }
 
-    weights_repository_mut(ctx.deps.branch(), distribution_type).set_total_weight(total_weight)?;
+    // TODO: not sure if current era is correct here
+    weights_repository_mut(ctx.deps.branch(), distribution_type)
+        .set_total_weight(total_weight, current_era)?;
 
     // TODO: a bit dirty, but will do the trick
     pre_user_votes_change(
@@ -186,8 +205,11 @@ pub fn update_user_indices(
     let first_era_of_interest = match user_last_resolved_era {
         Some(last_resolved_era) => last_resolved_era + 1,
         None => {
-            let first_era_with_weight =
-                get_user_first_era_with_weight(deps.as_ref(), user.clone(), distribution_type.clone())?;
+            let first_era_with_weight = get_user_first_era_with_weight(
+                deps.as_ref(),
+                user.clone(),
+                distribution_type.clone(),
+            )?;
             match first_era_with_weight {
                 Some(era) => era,
                 None => {

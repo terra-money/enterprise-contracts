@@ -5,7 +5,7 @@ use crate::eligibility::{
 };
 use crate::participation::{
     execute_update_number_proposals_tracked, new_proposal_created, pre_user_votes_change,
-    query_number_proposals_tracked, query_proposal_ids_tracked, PROPOSALS_TRACKED,
+    query_number_proposals_tracked, query_proposal_ids_tracked, NUMBER_PROPOSALS_TRACKED,
 };
 use crate::repository::era_repository::{set_current_era, FIRST_ERA};
 use crate::rewards::query_user_rewards;
@@ -44,7 +44,7 @@ pub fn instantiate(
     let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
 
-    PROPOSALS_TRACKED.save(
+    NUMBER_PROPOSALS_TRACKED.save(
         deps.storage,
         &msg.participation_proposals_tracked.unwrap_or_default(),
     )?;
