@@ -1,6 +1,6 @@
 [package]
 name = "enterprise-governance"
-version = "1.0.0"
+version = "1.3.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -41,7 +41,7 @@ cw2 = "1.0.1"
 enterprise-governance-api = { path = "../../packages/enterprise-governance-api" }
 poll-engine-api = { path = "../../packages/poll-engine-api" }
 poll-engine = { path = "../../packages/poll-engine" }
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }
 
 
 [dev-dependencies]

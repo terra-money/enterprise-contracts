@@ -368,10 +368,9 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
     ) -> EnterpriseFacadeResult<NumberProposalsTrackedResponse> {
         let version = self.query_dao_info(qctx.clone())?.dao_version;
 
-        // TODO: is this the correct version?
-        let v1_2_0 = Version::new(1, 2, 0);
+        let v1_3_0 = Version::new(1, 3, 0);
 
-        if version < v1_2_0 {
+        if version < v1_3_0 {
             Ok(NumberProposalsTrackedResponse {
                 number_proposals_tracked: None,
             })

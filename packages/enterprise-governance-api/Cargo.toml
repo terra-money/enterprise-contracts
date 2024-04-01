@@ -1,6 +1,6 @@
 [package]
 name = "enterprise-governance-api"
-version = "1.0.0"
+version = "1.3.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
@@ -14,4 +14,4 @@ interface = ["dep:cw-orch"]
 cosmwasm-schema = "1.1"
 cosmwasm-std = "1"
 poll-engine-api = { path = "../poll-engine-api" }
-cw-orch = {version = "0.18.1", optional = true }
+cw-orch = { version = "0.18.1", optional = true }

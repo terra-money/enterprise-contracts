@@ -1,6 +1,6 @@
 [package]
 name = "enterprise-governance-controller-api"
-version = "1.0.0"
+version = "1.3.0"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2021"
 
