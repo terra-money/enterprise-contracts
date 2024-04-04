@@ -97,7 +97,7 @@ fn update_user_weights_checked(
     // TODO: check if we need variable distribution type here, we probably do
     let distribution_type = Membership;
 
-    let current_era = get_current_era(ctx.deps.as_ref())?;
+    let current_era = get_current_era(ctx.deps.as_ref(), distribution_type.clone())?;
 
     let mut total_weight = weights_repository(ctx.deps.as_ref(), distribution_type.clone())
         .get_total_weight(current_era)?;
@@ -170,7 +170,7 @@ pub fn initialize_user_indices(
     user: Addr,
     distribution_type: DistributionType,
 ) -> DistributorResult<()> {
-    let current_era = get_current_era(deps.as_ref())?;
+    let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
 
     let all_global_indices = global_indices_repository(deps.as_ref(), distribution_type.clone())
         .get_all_global_indices(current_era)?;
@@ -197,9 +197,10 @@ pub fn update_user_indices(
     old_user_weight: Uint128,
     distribution_type: DistributionType,
 ) -> DistributorResult<()> {
-    let current_era = get_current_era(deps.as_ref())?;
+    let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
 
-    let user_last_resolved_era = get_user_last_resolved_era(deps.as_ref(), user.clone())?;
+    let user_last_resolved_era =
+        get_user_last_resolved_era(deps.as_ref(), user.clone(), distribution_type.clone())?;
     // TODO: lol rename this value
     let first_era_of_interest = match user_last_resolved_era {
         Some(last_resolved_era) => last_resolved_era + 1,
@@ -228,7 +229,7 @@ pub fn update_user_indices(
     }
 
     if current_era > FIRST_ERA {
-        set_user_last_resolved_era(deps.branch(), user, current_era - 1)?;
+        set_user_last_resolved_era(deps.branch(), user, current_era - 1, distribution_type)?;
     }
 
     Ok(())

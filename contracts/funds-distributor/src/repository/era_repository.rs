@@ -7,11 +7,39 @@ use DistributionType::{Membership, Participation};
 
 pub const FIRST_ERA: EraId = 1;
 
-const CURRENT_ERA_ID: Item<EraId> = Item::new("current_era_id");
+const MEMBERSHIP_CURRENT_ERA_ID: Item<EraId> = Item::new("membership_current_era_id");
+const PARTICIPATION_CURRENT_ERA_ID: Item<EraId> = Item::new("participation_current_era_id");
 
-const USER_LAST_CLAIMED_ERA: Map<Addr, EraId> = Map::new("user_last_claimed_era");
+fn current_era_item(distribution_type: DistributionType) -> Item<'static, EraId> {
+    match distribution_type {
+        Membership => MEMBERSHIP_CURRENT_ERA_ID,
+        Participation => PARTICIPATION_CURRENT_ERA_ID,
+    }
+}
 
-const USER_LAST_RESOLVED_ERA: Map<Addr, EraId> = Map::new("user_last_resolved_era");
+const MEMBERSHIP_USER_LAST_CLAIMED_ERA: Map<Addr, EraId> =
+    Map::new("membership_user_last_claimed_era");
+const PARTICIPATION_USER_LAST_CLAIMED_ERA: Map<Addr, EraId> =
+    Map::new("participation_user_last_claimed_era");
+
+fn user_last_claimed_era_map(distribution_type: DistributionType) -> Map<'static, Addr, EraId> {
+    match distribution_type {
+        Membership => MEMBERSHIP_USER_LAST_CLAIMED_ERA,
+        Participation => PARTICIPATION_USER_LAST_CLAIMED_ERA,
+    }
+}
+
+const MEMBERSHIP_USER_LAST_RESOLVED_ERA: Map<Addr, EraId> =
+    Map::new("membership_user_last_resolved_era");
+const PARTICIPATION_USER_LAST_RESOLVED_ERA: Map<Addr, EraId> =
+    Map::new("participation_user_last_resolved_era");
+
+fn user_last_resolved_era_map(distribution_type: DistributionType) -> Map<'static, Addr, EraId> {
+    match distribution_type {
+        Membership => MEMBERSHIP_USER_LAST_RESOLVED_ERA,
+        Participation => PARTICIPATION_USER_LAST_RESOLVED_ERA,
+    }
+}
 
 /// The first era in which this user had a weight.
 const MEMBERSHIP_USER_FIRST_ERA_WITH_WEIGHT: Map<Addr, EraId> =
@@ -19,25 +47,37 @@ const MEMBERSHIP_USER_FIRST_ERA_WITH_WEIGHT: Map<Addr, EraId> =
 const PARTICIPATION_USER_FIRST_ERA_WITH_WEIGHT: Map<Addr, EraId> =
     Map::new("participation_user_first_era_with_weight");
 
-pub fn get_current_era(deps: Deps) -> DistributorResult<EraId> {
-    let era_id = CURRENT_ERA_ID.load(deps.storage)?;
+pub fn get_current_era(
+    deps: Deps,
+    distribution_type: DistributionType,
+) -> DistributorResult<EraId> {
+    let era_id = current_era_item(distribution_type).load(deps.storage)?;
     Ok(era_id)
 }
 
-pub fn set_current_era(deps: DepsMut, era_id: EraId) -> DistributorResult<()> {
-    CURRENT_ERA_ID.save(deps.storage, &era_id)?;
+pub fn set_current_era(
+    deps: DepsMut,
+    era_id: EraId,
+    distribution_type: DistributionType,
+) -> DistributorResult<()> {
+    current_era_item(distribution_type).save(deps.storage, &era_id)?;
 
     Ok(())
 }
 
-pub fn increment_era(deps: DepsMut) -> DistributorResult<()> {
-    CURRENT_ERA_ID.update(deps.storage, |era| -> StdResult<EraId> { Ok(era + 1) })?;
+pub fn increment_era(deps: DepsMut, distribution_type: DistributionType) -> DistributorResult<()> {
+    current_era_item(distribution_type)
+        .update(deps.storage, |era| -> StdResult<EraId> { Ok(era + 1) })?;
 
     Ok(())
 }
 
-pub fn get_user_last_fully_claimed_era(deps: Deps, user: Addr) -> DistributorResult<Option<EraId>> {
-    let era = USER_LAST_CLAIMED_ERA.may_load(deps.storage, user)?;
+pub fn get_user_last_fully_claimed_era(
+    deps: Deps,
+    user: Addr,
+    distribution_type: DistributionType,
+) -> DistributorResult<Option<EraId>> {
+    let era = user_last_claimed_era_map(distribution_type).may_load(deps.storage, user)?;
     Ok(era)
 }
 
@@ -45,13 +85,18 @@ pub fn set_user_last_claimed_era(
     deps: DepsMut,
     user: Addr,
     era_id: EraId,
+    distribution_type: DistributionType,
 ) -> DistributorResult<()> {
-    USER_LAST_CLAIMED_ERA.save(deps.storage, user, &era_id)?;
+    user_last_claimed_era_map(distribution_type).save(deps.storage, user, &era_id)?;
     Ok(())
 }
 
-pub fn get_user_last_resolved_era(deps: Deps, user: Addr) -> DistributorResult<Option<EraId>> {
-    let era = USER_LAST_RESOLVED_ERA.may_load(deps.storage, user)?;
+pub fn get_user_last_resolved_era(
+    deps: Deps,
+    user: Addr,
+    distribution_type: DistributionType,
+) -> DistributorResult<Option<EraId>> {
+    let era = user_last_resolved_era_map(distribution_type).may_load(deps.storage, user)?;
     Ok(era)
 }
 
@@ -60,8 +105,9 @@ pub fn set_user_last_resolved_era(
     deps: DepsMut,
     user: Addr,
     era_id: EraId,
+    distribution_type: DistributionType,
 ) -> DistributorResult<()> {
-    USER_LAST_RESOLVED_ERA.save(deps.storage, user, &era_id)?;
+    user_last_resolved_era_map(distribution_type).save(deps.storage, user, &era_id)?;
     Ok(())
 }
 

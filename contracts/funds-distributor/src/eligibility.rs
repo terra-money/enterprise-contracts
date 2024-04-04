@@ -1,10 +1,4 @@
-use crate::repository::asset_repository::{
-    asset_distribution_repository, AssetDistributionRepository,
-};
 use crate::repository::era_repository::{get_current_era, increment_era};
-use crate::repository::user_distribution_repository::{
-    user_distribution_repository_mut, UserDistributionRepositoryMut,
-};
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
 use crate::state::ADMIN;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
@@ -86,7 +80,7 @@ pub fn update_minimum_eligible_weight(
         .collect_vec();
 
     // TODO: NO freaking idea if we should use the current era here or something else
-    let current_era = get_current_era(deps.as_ref())?;
+    let current_era = get_current_era(deps.as_ref(), Membership)?;
     let mut total_weight =
         weights_repository(deps.as_ref(), Membership).get_total_weight(current_era)?;
 
@@ -123,7 +117,7 @@ pub fn update_minimum_eligible_weight(
         total_weight = total_weight - old_effective_weight + new_effective_weight;
     }
 
-    increment_era(deps.branch())?;
+    increment_era(deps.branch(), Membership)?;
 
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &new_minimum_weight)?;
 

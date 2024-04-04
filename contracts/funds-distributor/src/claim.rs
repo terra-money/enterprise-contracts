@@ -14,8 +14,6 @@ use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::execute_claim_rewards_response;
 use rewards::calculate_claimable_rewards;
 use std::collections::HashMap;
-use std::thread::current;
-use RewardAsset::{Cw20, Native};
 
 /// Attempt to claim rewards for the given parameters.
 ///
@@ -81,9 +79,17 @@ fn calculate_and_remove_claimable_rewards(
         }
     }
 
-    let current_era = get_current_era(deps.as_ref())?;
-    if current_era > FIRST_ERA {
-        set_user_last_claimed_era(deps, user, current_era - 1)?;
+    // TODO: what happens when we add another enum value?
+    for distribution_type in [Membership, Participation] {
+        let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
+        if current_era > FIRST_ERA {
+            set_user_last_claimed_era(
+                deps.branch(),
+                user.clone(),
+                current_era - 1,
+                distribution_type,
+            )?;
+        }
     }
 
     Ok(rewards

@@ -4,7 +4,6 @@ use cosmwasm_std::Decimal;
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::api::DistributionType::{Membership, Participation};
-use std::rc::Rc;
 
 // TODO: perhaps a regular Map<(EraId, String), Decimal> would do, EraId can be prefixed with it, no need for index
 // TODO: double check to ensure the storage namespaces don't collide with the other distributions namespaces

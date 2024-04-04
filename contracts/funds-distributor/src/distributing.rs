@@ -74,7 +74,7 @@ fn distribute(
 
     assert_assets_whitelisted(deps.as_ref(), distribution_assets)?;
 
-    let current_era = get_current_era(deps.as_ref())?;
+    let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
 
     let total_weight = weights_repository(deps.as_ref(), distribution_type.clone())
         .get_total_weight(current_era)?;

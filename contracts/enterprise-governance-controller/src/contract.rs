@@ -72,7 +72,10 @@ use enterprise_treasury_api::api::{
     ExecuteCosmosMsgsMsg, SpendMsg, UpdateAssetWhitelistMsg, UpdateNftWhitelistMsg,
 };
 use enterprise_treasury_api::msg::ExecuteMsg::{ExecuteCosmosMsgs, Spend};
-use funds_distributor_api::api::{DistributionType, NewProposalCreatedMsg, PreUserVotesChangeMsg, UpdateMinimumEligibleWeightMsg, UpdateUserWeightsMsg};
+use funds_distributor_api::api::{
+    NewProposalCreatedMsg, PreUserVotesChangeMsg, UpdateMinimumEligibleWeightMsg,
+    UpdateUserWeightsMsg,
+};
 use funds_distributor_api::msg::ExecuteMsg::{NewProposalCreated, PreUserVotesChange};
 use membership_common_api::api::{
     TotalWeightParams, TotalWeightResponse, UserWeightChange, UserWeightParams, UserWeightResponse,
@@ -593,8 +596,8 @@ fn cast_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<
         msg.outcome,
         user_available_votes,
     )
-        .add_submessage(pre_user_votes_change_submsg)
-        .add_submessage(cast_vote_submessage))
+    .add_submessage(pre_user_votes_change_submsg)
+    .add_submessage(cast_vote_submessage))
 }
 
 fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControllerResult<Response> {
@@ -642,7 +645,7 @@ fn cast_council_vote(ctx: &mut Context, msg: CastVoteMsg) -> GovernanceControlle
                 msg.outcome,
                 1u8.into(),
             )
-                .add_submessage(cast_vote_submessage))
+            .add_submessage(cast_vote_submessage))
         }
     }
 }
@@ -674,7 +677,7 @@ fn execute_proposal(
         msg.proposal_id,
         proposal_info.proposal_type,
     )
-        .add_submessages(submsgs))
+    .add_submessages(submsgs))
 }
 
 fn return_proposal_deposit_submsgs(
@@ -718,7 +721,7 @@ fn send_proposal_deposit_to(
                     },
                     vec![],
                 )
-                    .map(SubMsg::new)
+                .map(SubMsg::new)
             })
             .collect::<StdResult<Vec<SubMsg>>>()?,
     };
@@ -800,7 +803,7 @@ fn resolve_ended_proposal(
             return Err(PollInProgress {
                 poll_id: proposal_id.into(),
             }
-                .into());
+            .into());
         }
         PollStatus::Passed { .. } => {
             set_proposal_executed(ctx.deps.storage, proposal_id, ctx.env.block.clone())?;
@@ -1209,9 +1212,11 @@ fn update_number_proposals_tracked(
 
     let submsg = SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
-        &funds_distributor_api::msg::ExecuteMsg::UpdateNumberProposalsTracked(funds_distributor_api::api::UpdateNumberProposalsTrackedMsg {
-            number_proposals_tracked: msg.number_proposals_tracked,
-        }),
+        &funds_distributor_api::msg::ExecuteMsg::UpdateNumberProposalsTracked(
+            funds_distributor_api::api::UpdateNumberProposalsTrackedMsg {
+                number_proposals_tracked: msg.number_proposals_tracked,
+            },
+        ),
         vec![],
     )?);
 
@@ -1571,10 +1576,10 @@ fn parse_poll_id(msg: Reply) -> GovernanceControllerResult<PollId> {
             .value
             .as_str(),
     )
-        .map_err(|_| CustomError {
-            val: "Invalid poll ID in reply".to_string(),
-        })
-        .map(|poll_id| poll_id.u64())
+    .map_err(|_| CustomError {
+        val: "Invalid poll ID in reply".to_string(),
+    })
+    .map(|poll_id| poll_id.u64())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

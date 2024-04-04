@@ -8,8 +8,11 @@ use cw_storage_plus::{Item, Map};
 use enterprise_governance_api::msg::QueryMsg::{TotalVotes, VoterTotalVotes};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
-use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse, VoterTotalVotesParams, VoterTotalVotesResponse};
+use poll_engine_api::api::{
+    TotalVotesParams, TotalVotesResponse, VoterTotalVotesParams, VoterTotalVotesResponse,
+};
 
+// TODO: revert back to era-specific storage
 /// Total weight of all users eligible for rewards for the given era.
 const ERA_EFFECTIVE_TOTAL_WEIGHT: Item<Uint128> = Item::new("era_total_weight");
 
@@ -40,7 +43,7 @@ pub struct MembershipWeightsRepository<'a> {
 }
 
 impl WeightsRepository for MembershipWeightsRepository<'_> {
-    fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
+    fn get_total_weight(&self, _: EraId) -> DistributorResult<Uint128> {
         let total_weight = ERA_EFFECTIVE_TOTAL_WEIGHT
             .may_load(self.deps.storage)?
             .unwrap_or_default();
@@ -48,7 +51,7 @@ impl WeightsRepository for MembershipWeightsRepository<'_> {
     }
 
     // TODO: era is useless here, right?
-    fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
+    fn get_user_weight(&self, user: Addr, _: EraId) -> DistributorResult<Option<Uint128>> {
         let user_weight = EFFECTIVE_USER_WEIGHTS.may_load(self.deps.storage, user)?;
         Ok(user_weight)
     }
@@ -77,7 +80,7 @@ impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
 }
 
 impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
-    fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()> {
+    fn set_total_weight(&mut self, total_weight: Uint128, _: EraId) -> DistributorResult<()> {
         ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, &total_weight)?;
         Ok(())
     }

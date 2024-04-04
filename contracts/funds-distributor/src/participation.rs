@@ -1,9 +1,8 @@
 use crate::distributing::query_enterprise_components;
 use crate::repository::era_repository::{
-    get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era, increment_era,
-    set_current_era, set_user_first_era_with_weight_if_empty,
+    get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era, set_current_era,
+    set_user_first_era_with_weight_if_empty,
 };
-use crate::repository::user_distribution_repository::UserDistributionInfo;
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
 use crate::state::{EraId, ADMIN};
 use crate::user_weights::{initialize_user_indices, update_user_indices};
@@ -11,19 +10,22 @@ use common::cw::Order::Descending;
 use common::cw::{Context, QueryContext};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Response, StdError, StdResult, Uint128};
-use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
+use cosmwasm_std::{Deps, DepsMut, Response, StdResult, Uint128};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use enterprise_governance_api::msg::QueryMsg::TotalVotes;
 use enterprise_governance_controller_api::api::ProposalType::General;
 use enterprise_governance_controller_api::api::{ProposalId, ProposalsParams, ProposalsResponse};
-use funds_distributor_api::api::DistributionType::{Membership, Participation};
+use funds_distributor_api::api::DistributionType::Participation;
 use funds_distributor_api::api::{
-    DistributionType, NewProposalCreatedMsg, NumberProposalsTrackedResponse, PreUserVotesChangeMsg,
+    NewProposalCreatedMsg, NumberProposalsTrackedResponse, PreUserVotesChangeMsg,
     ProposalIdsTrackedResponse, UpdateNumberProposalsTrackedMsg,
 };
 use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
-use funds_distributor_api::response::{execute_new_proposal_created_response, execute_pre_user_votes_change_response, execute_update_number_proposals_tracked_response};
+use funds_distributor_api::response::{
+    execute_new_proposal_created_response, execute_pre_user_votes_change_response,
+    execute_update_number_proposals_tracked_response,
+};
 use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse};
 
 // TODO: hide those storages behind an interface
@@ -44,7 +46,7 @@ struct TrackedParticipationProposalIndexes<'a> {
 impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalIndexes<'_> {
     fn get_indexes(
         &'_ self,
-    ) -> Box<dyn Iterator<Item=&'_ dyn Index<TrackedParticipationProposal>> + '_> {
+    ) -> Box<dyn Iterator<Item = &'_ dyn Index<TrackedParticipationProposal>> + '_> {
         let v: Vec<&dyn Index<TrackedParticipationProposal>> = vec![&self.proposal];
         Box::new(v.into_iter())
     }
@@ -84,7 +86,7 @@ pub fn new_proposal_created(
     msg: NewProposalCreatedMsg,
 ) -> DistributorResult<Response> {
     // TODO: optimize this, we don't have to read through all of them
-    let current_era = get_current_era(ctx.deps.as_ref())?;
+    let current_era = get_current_era(ctx.deps.as_ref(), Participation)?;
     // TODO: do we use current era here for real?
     let proposal_ids_tracked = get_proposal_ids_tracked(ctx.deps.as_ref(), current_era)?;
 
@@ -95,11 +97,10 @@ pub fn new_proposal_created(
     }
 
     let next_era = current_era + 1;
-    set_current_era(ctx.deps.branch(), next_era)?;
+    set_current_era(ctx.deps.branch(), next_era, Participation)?;
 
     // TODO: should we fail if it is greater than?
     if (proposal_ids_tracked.len() as u8) == proposals_to_track {
-
         // we are tracking maximum proposals, so we copy over all from the previous era excluding
         // the oldest proposal ID (lowest number)
 
@@ -161,10 +162,10 @@ pub fn execute_update_number_proposals_tracked(
         return Err(Unauthorized);
     }
 
-    let current_era = get_current_era(ctx.deps.as_ref())?;
+    let current_era = get_current_era(ctx.deps.as_ref(), Participation)?;
     let next_era = current_era + 1;
 
-    set_current_era(ctx.deps.branch(), next_era)?;
+    set_current_era(ctx.deps.branch(), next_era, Participation)?;
 
     // TODO: we know part of them if we had N > 0 before, we can reuse them
     let new_tracked_proposal_ids: Vec<ProposalId> =
@@ -197,13 +198,14 @@ pub fn pre_user_votes_change(
     ctx: &mut Context,
     msg: PreUserVotesChangeMsg,
 ) -> DistributorResult<Response> {
-    let current_era = get_current_era(ctx.deps.as_ref())?;
+    let current_era = get_current_era(ctx.deps.as_ref(), Participation)?;
 
     // TODO: when there's multiple users, this will perform a query to gov contract for each user. we can optimize by introducing bulk query
     for user in msg.users {
         let user = ctx.deps.api.addr_validate(&user)?;
 
-        let last_resolved_era = get_user_last_resolved_era(ctx.deps.as_ref(), user.clone())?;
+        let last_resolved_era =
+            get_user_last_resolved_era(ctx.deps.as_ref(), user.clone(), Participation)?;
 
         let first_relevant_era = match last_resolved_era {
             Some(last_resolved_era) => Some(last_resolved_era + 1), // TODO: what if last resolved era is current era?
@@ -273,7 +275,7 @@ pub fn query_number_proposals_tracked(
 pub fn query_proposal_ids_tracked(
     qctx: QueryContext,
 ) -> DistributorResult<ProposalIdsTrackedResponse> {
-    let current_era = get_current_era(qctx.deps)?;
+    let current_era = get_current_era(qctx.deps, Participation)?;
     let proposal_ids = get_proposal_ids_tracked(qctx.deps, current_era)?;
 
     Ok(ProposalIdsTrackedResponse { proposal_ids })

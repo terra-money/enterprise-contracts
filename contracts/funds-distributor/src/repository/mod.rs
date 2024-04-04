@@ -1,4 +1,3 @@
-pub mod asset_repository;
 mod cw20_global_indices;
 pub mod era_repository;
 pub mod global_indices_repository;

@@ -118,9 +118,10 @@ pub fn calculate_claimable_rewards(
 ) -> DistributorResult<Vec<(RewardAsset, EraId, Uint128, Decimal)>> {
     let mut rewards: Vec<(RewardAsset, EraId, Uint128, Decimal)> = vec![];
 
-    let current_era = get_current_era(deps)?;
+    let current_era = get_current_era(deps, distribution_type.clone())?;
 
-    let last_claimed_era = get_user_last_fully_claimed_era(deps, user.clone())?;
+    let last_claimed_era =
+        get_user_last_fully_claimed_era(deps, user.clone(), distribution_type.clone())?;
     let first_relevant_era = match last_claimed_era {
         Some(last_claimed_era) => last_claimed_era,
         None => {

@@ -1,12 +1,9 @@
 use crate::repository::user_distribution_repository::UserDistributionInfo;
-use crate::rewards::calculate_user_reward;
-use crate::state::{EraId, CW20_GLOBAL_INDICES};
+use crate::state::EraId;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Decimal, DepsMut, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use funds_distributor_api::api::DistributionType;
-use funds_distributor_api::error::DistributorResult;
 use DistributionType::{Membership, Participation};
 
 // TODO: having to use these constants is ugly, but Rust is uglier

@@ -18,6 +18,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
+use funds_distributor_api::api::DistributionType::{Membership, Participation};
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use funds_distributor_api::response::instantiate_response;
@@ -49,7 +50,9 @@ pub fn instantiate(
         &msg.participation_proposals_tracked.unwrap_or_default(),
     )?;
 
-    set_current_era(deps.branch(), FIRST_ERA)?;
+    // TODO: unify this under a single function (like set_initial_eras)
+    set_current_era(deps.branch(), FIRST_ERA, Membership)?;
+    set_current_era(deps.branch(), FIRST_ERA, Participation)?;
 
     let mut ctx = Context { deps, env, info };
 
