@@ -181,6 +181,8 @@ pub fn execute_update_number_proposals_tracked(
         )?;
     }
 
+    NUMBER_PROPOSALS_TRACKED.save(ctx.deps.storage, &msg.number_proposals_tracked)?;
+
     // TODO: store the new weights properly. this can also be improved later, if we just figure out the difference between old and new proposal weights
     // let new_total_weight = query_total_participation_weight(ctx.deps.as_ref())?;
     //
