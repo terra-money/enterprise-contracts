@@ -135,9 +135,7 @@ pub fn default_dao_council() -> DaoCouncilSpec {
         members: vec![USER1, USER2].into_string(),
         quorum: Decimal::percent(35),
         threshold: Decimal::percent(55),
-        allowed_proposal_action_types: Some(vec![
-            ProposalActionType::DeployCrossChainTreasury,
-        ]),
+        allowed_proposal_action_types: Some(vec![ProposalActionType::DeployCrossChainTreasury]),
     }
 }
 
@@ -154,8 +152,11 @@ pub fn default_token_marketing_info() -> TokenMarketingInfo {
 pub fn asset_whitelist(native: Vec<&str>, cw20: Vec<&str>) -> Option<Vec<AssetInfoUnchecked>> {
     let mut assets = vec![];
 
-    native.into_iter().for_each(|it| assets.push(AssetInfoUnchecked::native(it)));
-    cw20.into_iter().for_each(|it| assets.push(AssetInfoUnchecked::cw20(it)));
+    native
+        .into_iter()
+        .for_each(|it| assets.push(AssetInfoUnchecked::native(it)));
+    cw20.into_iter()
+        .for_each(|it| assets.push(AssetInfoUnchecked::cw20(it)));
 
     Some(assets)
 }

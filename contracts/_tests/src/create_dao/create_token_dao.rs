@@ -129,7 +129,8 @@ fn create_new_token_dao() -> anyhow::Result<()> {
 }
 
 #[test]
-fn create_new_token_dao_without_marketing_owner_sets_gov_controller_marketing_owner() -> anyhow::Result<()> {
+fn create_new_token_dao_without_marketing_owner_sets_gov_controller_marketing_owner(
+) -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let marketing_info = TokenMarketingInfo {
@@ -170,7 +171,8 @@ fn create_new_token_dao_without_marketing_owner_sets_gov_controller_marketing_ow
 }
 
 #[test]
-fn create_new_token_dao_without_marketing_info_sets_gov_controller_marketing_owner() -> anyhow::Result<()> {
+fn create_new_token_dao_without_marketing_info_sets_gov_controller_marketing_owner(
+) -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let token_membership = NewCw20MembershipMsg {

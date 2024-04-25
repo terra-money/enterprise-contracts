@@ -48,17 +48,17 @@ use std::cell::RefCell;
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
 
-pub fn facade(app: &App, dao_addr: Addr) -> TestFacade {
-    TestFacade { app, dao_addr }
+pub fn facade_rc(app: &RefCell<App>, dao_addr: Addr) -> TestFacadeRc {
+    TestFacadeRc { app, dao_addr }
 }
 
 // Helper implementation of the Enterprise facade to use in the tests
-pub struct TestFacade<'a> {
-    pub app: &'a App,
+pub struct TestFacadeRc<'a> {
+    pub app: &'a RefCell<App>,
     pub dao_addr: Addr,
 }
 
-impl EnterpriseFacade for TestFacade<'_> {
+impl EnterpriseFacade for TestFacadeRc<'_> {
     fn query_treasury_address(&self) -> EnterpriseFacadeResult<TreasuryAddressResponse> {
         self.query_facade(&TreasuryAddress {
             contract: self.dao_addr.clone(),
@@ -352,9 +352,10 @@ impl EnterpriseFacade for TestFacade<'_> {
     }
 }
 
-impl TestFacade<'_> {
+impl TestFacadeRc<'_> {
     fn query_facade<T: DeserializeOwned>(&self, msg: &impl Serialize) -> EnterpriseFacadeResult<T> {
         self.app
+            .borrow()
             .wrap()
             .query_wasm_smart(ADDR_FACADE, msg)
             .map_err(|e| EnterpriseFacadeError::Std(e))
@@ -362,7 +363,7 @@ impl TestFacade<'_> {
 }
 
 // convenience functions
-impl TestFacade<'_> {
+impl TestFacadeRc<'_> {
     pub fn member_info(
         &self,
         member: impl Into<String>,
@@ -374,7 +375,7 @@ impl TestFacade<'_> {
 }
 
 // assertion helpers
-impl TestFacade<'_> {
+impl TestFacadeRc<'_> {
     pub fn assert_multisig_members_list(
         &self,
         start_after: Option<&str>,
@@ -439,28 +440,27 @@ impl TestFacade<'_> {
     }
 }
 
-impl<'a> TestFacade<'a> {
+impl<'a> TestFacadeRc<'a> {
     pub fn membership(&self) -> TestMembershipContract<'a> {
-        todo!()
-        // TestMembershipContract {
-        //     app: &RefCell::new(self.app),
-        //     addr: self.components().membership_contract.unwrap(),
-        // }
+        TestMembershipContract {
+            app: self.app,
+            addr: self.components().membership_contract.unwrap(),
+        }
     }
 
     pub fn council_membership(&self) -> TestMembershipContract<'a> {
-        todo!()
-        // TestMembershipContract {
-        //     app: self.app,
-        //     addr: self.components().council_membership_contract.unwrap(),
-        // }
+        TestMembershipContract {
+            app: self.app,
+            addr: self.components().council_membership_contract.unwrap(),
+        }
     }
 
     pub fn funds_distributor(&self) -> TestFundsDistributorContract<'a> {
-        TestFundsDistributorContract {
-            app: self.app,
-            addr: self.components().funds_distributor_contract,
-        }
+        todo!()
+        // TestFundsDistributorContract {
+        //     app: self.app,
+        //     addr: self.components().funds_distributor_contract,
+        // }
     }
 
     pub fn factory_addr(&self) -> Addr {
@@ -506,7 +506,7 @@ impl<'a> TestFacade<'a> {
     }
 }
 
-impl TestFacade<'_> {
+impl TestFacadeRc<'_> {
     pub fn token_config(&self) -> EnterpriseFacadeResult<TokenConfigResponse> {
         let membership_contract = self
             .query_component_contracts()?
@@ -514,6 +514,7 @@ impl TestFacade<'_> {
             .unwrap();
         let token_config = self
             .app
+            .borrow()
             .wrap()
             .query_wasm_smart(membership_contract.to_string(), &TokenConfig {})?;
         Ok(token_config)
@@ -526,6 +527,7 @@ impl TestFacade<'_> {
             .unwrap();
         let nft_config = self
             .app
+            .borrow()
             .wrap()
             .query_wasm_smart(membership_contract.to_string(), &NftConfig {})?;
         Ok(nft_config)
@@ -538,6 +540,7 @@ impl TestFacade<'_> {
             .unwrap();
         let denom_config = self
             .app
+            .borrow()
             .wrap()
             .query_wasm_smart(membership_contract.to_string(), &DenomConfig {})?;
         Ok(denom_config)

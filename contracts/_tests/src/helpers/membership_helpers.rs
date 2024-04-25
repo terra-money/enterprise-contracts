@@ -6,6 +6,7 @@ use membership_common_api::api::{
 };
 use membership_common_api::error::MembershipResult;
 use membership_common_api::msg::QueryMsg::{TotalWeight, UserWeight};
+use std::cell::RefCell;
 
 pub trait MembershipContract {
     fn user_weight(&self, user: impl Into<String>) -> MembershipResult<Uint128>;
@@ -13,13 +14,13 @@ pub trait MembershipContract {
 }
 
 pub struct TestMembershipContract<'a> {
-    pub app: &'a App,
+    pub app: &'a RefCell<App>,
     pub addr: Addr,
 }
 
 impl MembershipContract for TestMembershipContract<'_> {
     fn user_weight(&self, user: impl Into<String>) -> MembershipResult<Uint128> {
-        let user_weight: UserWeightResponse = self.app.wrap().query_wasm_smart(
+        let user_weight: UserWeightResponse = self.app.borrow().wrap().query_wasm_smart(
             self.addr.to_string(),
             &UserWeight(UserWeightParams { user: user.into() }),
         )?;
@@ -27,7 +28,7 @@ impl MembershipContract for TestMembershipContract<'_> {
     }
 
     fn total_weight(&self) -> MembershipResult<Uint128> {
-        let total_weight: TotalWeightResponse = self.app.wrap().query_wasm_smart(
+        let total_weight: TotalWeightResponse = self.app.borrow().wrap().query_wasm_smart(
             self.addr.to_string(),
             &TotalWeight(TotalWeightParams {
                 expiration: Never {},

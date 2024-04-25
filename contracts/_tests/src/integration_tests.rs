@@ -73,7 +73,7 @@ fn test() {
         Some("description"),
         vec![action],
     )
-        .unwrap();
+    .unwrap();
 
     run_vote_council_proposal(&mut app, contracts.clone(), COUNCIL[0], 1, VoteOutcome::Yes)
         .unwrap();
@@ -197,7 +197,7 @@ fn test_token() {
         vec![action.clone()],
         None,
     )
-        .unwrap_err();
+    .unwrap_err();
     run_create_gov_proposal(
         &mut app,
         &contracts,
@@ -210,7 +210,7 @@ fn test_token() {
             MINIMUM_DEPOSIT,
         )),
     )
-        .unwrap();
+    .unwrap();
 
     let id = qy_all_proposals(&app, &contracts)
         .last()
@@ -355,7 +355,7 @@ fn test_minimum_deposit_on_denom_membership() {
         vec![action.clone()],
         None,
     )
-        .unwrap_err();
+    .unwrap_err();
     run_create_gov_proposal(
         &mut app,
         &contracts,
@@ -368,7 +368,7 @@ fn test_minimum_deposit_on_denom_membership() {
             MINIMUM_DEPOSIT,
         )),
     )
-        .unwrap();
+    .unwrap();
 
     let id = qy_all_proposals(&app, &contracts)
         .last()

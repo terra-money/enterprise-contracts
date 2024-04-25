@@ -7,6 +7,8 @@ pub mod cw_multitest_helpers;
 #[cfg(test)]
 pub mod facade_helpers;
 #[cfg(test)]
+pub mod facade_helpers_rc;
+#[cfg(test)]
 pub mod factory_helpers;
 #[cfg(test)]
 pub mod funds_distributor_helpers;
