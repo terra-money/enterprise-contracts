@@ -152,6 +152,10 @@
     },
     "cw721_metadata_onchain": {
       "codeId": "2111"
+    },
+    "ics721-callback-proxy": {
+      "codeId": "2648",
+      "address": "terra1k8ndq0leu5ngzrpjxs333t0m7de0tpqcarswuw6qpjemyvdfqf4s5q4va4"
     }
   },
   "staging": {
@@ -219,6 +223,10 @@
     },
     "cw721_metadata_onchain": {
       "codeId": "2111"
+    },
+    "ics721-callback-proxy": {
+      "codeId": "2648",
+      "address": "terra1k8ndq0leu5ngzrpjxs333t0m7de0tpqcarswuw6qpjemyvdfqf4s5q4va4"
     }
   },
   "cradle": {
