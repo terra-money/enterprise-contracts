@@ -1,5 +1,5 @@
 use crate::api::CreateProposalMsg;
-use cosmwasm_std::{from_json, to_json_binary, to_json_string, StdResult};
+use cosmwasm_std::{from_json, to_json_string, StdResult};
 
 #[test]
 fn stuff() -> StdResult<()> {
