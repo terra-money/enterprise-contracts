@@ -2,27 +2,20 @@ use crate::helpers::cw_multitest_helpers::{
     startup_with_versioning, ADMIN, CW20_TOKEN1, ULUNA, USER1, USER2,
 };
 use crate::helpers::facade_helpers::facade;
-use crate::helpers::factory_helpers::{
-    asset_whitelist, create_dao_and_get_addr, default_create_dao_msg,
-    default_gov_config, default_new_token_membership, new_multisig_membership,
-    new_token_membership,
-};
+use crate::helpers::factory_helpers::{asset_whitelist, create_dao_and_get_addr, default_create_dao_msg, default_gov_config, default_new_token_membership, new_denom_membership, new_multisig_membership, new_token_membership};
 use crate::traits::ImplApp;
 use cosmwasm_std::{coins, Addr, Uint128};
-use cw_asset::AssetUnchecked;
+use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use cw_multi_test::{App, AppResponse, Executor};
 use enterprise_facade_api::api::{NumberProposalsTrackedResponse, ProposalId};
 use enterprise_factory_api::api::CreateDaoMsg;
-use enterprise_governance_controller_api::api::{
-    CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteProposalMsg, GovConfig,
-    ProposalAction, UpdateNumberProposalsTrackedMsg,
-};
+use enterprise_governance_controller_api::api::{CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteProposalMsg, GovConfig, ProposalAction, UpdateAssetWhitelistProposalActionMsg, UpdateNumberProposalsTrackedMsg};
 use enterprise_governance_controller_api::msg::ExecuteMsg::{
     CastVote, CreateProposal, ExecuteProposal,
 };
-use funds_distributor_api::api::DistributionType;
-use funds_distributor_api::api::DistributionType::Participation;
-use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
+use funds_distributor_api::api::{ClaimRewardsMsg, DistributionType};
+use funds_distributor_api::api::DistributionType::{Membership, Participation};
+use funds_distributor_api::msg::ExecuteMsg::{ClaimRewards, DistributeNative};
 use funds_distributor_api::msg::QueryMsg::NumberProposalsTracked;
 use poll_engine_api::api::VoteOutcome;
 use poll_engine_api::api::VoteOutcome::Yes;
@@ -395,6 +388,105 @@ fn radzion_bug() -> anyhow::Result<()> {
 }
 
 #[test]
+fn radzion_bug2() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let msg = CreateDaoMsg {
+        // dao_membership: new_denom_membership(ULUNA, 120),
+        dao_membership: new_multisig_membership(vec![(USER1, 1)]),
+        asset_whitelist: None,
+        proposals_tracked_for_participation_rewards: Some(1),
+        gov_config: GovConfig {
+            allow_early_proposal_execution: true,
+            vote_duration: 120,
+            ..default_gov_config()
+        },
+        ..default_create_dao_msg()
+    };
+
+    let dao = create_dao_and_get_addr(&mut app, msg)?;
+
+    // app.mint_native(vec![(USER1, coins(1000, ULUNA))]);
+    //
+    // let membership = facade(&app, dao.clone()).membership().addr;
+    // app.execute_contract(Addr::unchecked(USER1), membership, &denom_staking_api::msg::ExecuteMsg::Stake { user: None }, &coins(1000, ULUNA))?;
+
+    create_proposal(&mut app, USER1, dao.clone(), vec![
+        ProposalAction::UpdateAssetWhitelist(
+            UpdateAssetWhitelistProposalActionMsg {
+                remote_treasury_target: None,
+                add: vec![AssetInfoUnchecked::native(ULUNA)],
+                remove: vec![],
+            }
+        ),
+    ])?;
+
+    cast_vote(&mut app, dao.clone(), USER1, 1, Yes)?;
+
+    execute_proposal(&mut app, USER1, dao.clone(), 1)?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 1000, Participation, dao.clone())?;
+
+    app.mint_native(vec![(
+        facade(&app, dao.clone()).treasury_addr().to_string(),
+        coins(1000, ULUNA),
+    )]);
+
+    create_proposal(
+        &mut app,
+        USER1,
+        dao.clone(),
+        vec![distribute_native_funds_action(ULUNA, 1000, Participation)],
+    )?;
+
+    cast_vote(&mut app, dao.clone(), USER1, 2, Yes)?;
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 1000)]);
+
+    execute_proposal(&mut app, USER1, dao.clone(), 2)?;
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 2000)]);
+
+    create_proposal(
+        &mut app,
+        USER1,
+        dao.clone(),
+        vec![],
+    )?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 1000, Membership, dao.clone())?;
+    claim_native_rewards(&mut app, USER1, ULUNA, dao.clone())?;
+
+    println!("yooo");
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 1000, Membership, dao.clone())?;
+    claim_native_rewards(&mut app, USER1, ULUNA, dao.clone())?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 1000, Membership, dao.clone())?;
+    claim_native_rewards(&mut app, USER1, ULUNA, dao.clone())?;
+
+    create_proposal(
+        &mut app,
+        USER1,
+        dao.clone(),
+        vec![],
+    )?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 1000, Membership, dao.clone())?;
+
+    facade(&app, dao.clone()).funds_distributor().assert_native_user_rewards(
+        USER1,
+        vec![(ULUNA, 1000)],
+    );
+
+    Ok(())
+}
+
+#[test]
 fn update_n_bug() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
@@ -531,5 +623,23 @@ fn distribute_native_funds(
             distribution_type: Some(distribution_type),
         },
         &coins(amount, denom),
+    )
+}
+
+fn claim_native_rewards(
+    app: &mut App,
+    user: &str,
+    denom: &str,
+    dao: Addr,
+) -> anyhow::Result<AppResponse> {
+    app.execute_contract(
+        Addr::unchecked(user),
+        facade(&app, dao).funds_distributor().addr,
+        &ClaimRewards(ClaimRewardsMsg {
+            user: USER1.to_string(),
+            native_denoms: vec![denom.to_string()],
+            cw20_assets: vec![],
+        }),
+        &vec![],
     )
 }

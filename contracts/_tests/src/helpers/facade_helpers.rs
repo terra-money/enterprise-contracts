@@ -441,11 +441,11 @@ impl TestFacade<'_> {
 
 impl<'a> TestFacade<'a> {
     pub fn membership(&self) -> TestMembershipContract<'a> {
-        todo!()
-        // TestMembershipContract {
-        //     app: &RefCell::new(self.app),
-        //     addr: self.components().membership_contract.unwrap(),
-        // }
+        // todo!()
+        TestMembershipContract {
+            app: self.app,
+            addr: self.components().membership_contract.unwrap(),
+        }
     }
 
     pub fn council_membership(&self) -> TestMembershipContract<'a> {

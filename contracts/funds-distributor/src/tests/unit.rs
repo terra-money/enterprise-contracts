@@ -309,6 +309,7 @@ pub fn users_under_minimum_eligible_weight_receive_no_rewards() -> DistributorRe
             enterprise_contract: ENTERPRISE_CONTRACT.to_string(),
             initial_weights: vec![],
             minimum_eligible_weight: Some(4u8.into()),
+            participation_proposals_tracked: None,
         },
     )?;
 
@@ -392,6 +393,7 @@ pub fn minimum_eligible_weight_decrease_calculates_existing_rewards_properly() -
             enterprise_contract: ENTERPRISE_CONTRACT.to_string(),
             initial_weights: vec![user_weight("user1", 4u8), user_weight("user2", 6u8)],
             minimum_eligible_weight: Some(5u8.into()),
+            participation_proposals_tracked: None,
         },
     )?;
 
@@ -454,6 +456,7 @@ fn instantiate_default(ctx: &mut Context) -> DistributorResult<()> {
             enterprise_contract: ENTERPRISE_CONTRACT.to_string(),
             initial_weights: vec![],
             minimum_eligible_weight: None,
+            participation_proposals_tracked: None,
         },
     )?;
     Ok(())
@@ -478,7 +481,7 @@ fn distribute_native(ctx: &mut Context, funds: &[Coin]) -> DistributorResult<Res
         ctx.deps.branch(),
         ctx.env.clone(),
         mock_info(ctx.info.sender.as_ref(), funds),
-        ExecuteMsg::DistributeNative {},
+        ExecuteMsg::DistributeNative { distribution_type: None },
     )
 }
 
@@ -494,7 +497,7 @@ fn distribute_cw20(
         ExecuteMsg::Receive(Cw20ReceiveMsg {
             sender: ctx.info.sender.to_string(),
             amount: amount.into(),
-            msg: to_json_binary(&Cw20HookMsg::Distribute {})?,
+            msg: to_json_binary(&Cw20HookMsg::Distribute { distribution_type: None })?,
         }),
     )
 }

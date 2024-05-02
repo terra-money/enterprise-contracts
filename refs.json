@@ -89,7 +89,8 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2497"
+      "codeId": "2858",
+      "address": "terra1nmtsv3vnkpwc8yu3v22wtdu3azmu4vxyasad26z6nd9mezgqgdyqjpxsdc"
     },
     "enterprise-factory": {
       "codeId": "2500",

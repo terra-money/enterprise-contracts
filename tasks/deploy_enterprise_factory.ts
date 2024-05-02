@@ -50,11 +50,78 @@ type TokenConfig = {
     unlocking_period: Object,
 }
 
+const NFT = "terra1q9kj6w498jhe8dkchmnwd4msht309ya6ssruurrhkwt5gv5979qq64gyly";
+const AUCTION = "terra1nmtsv3vnkpwc8yu3v22wtdu3azmu4vxyasad26z6nd9mezgqgdyqjpxsdc";
+
 task(async ({network, deployer, executor, signer, refs}) => {
     // deployer.buildContract(ENTERPRISE);
     // deployer.optimizeContract(ENTERPRISE);
 
-    await deployIcs721CallbackProxy(refs, network, deployer, signer);
+    // await deployIcs721CallbackProxy(refs, network, deployer, signer);
+
+    const mint = async (tokenId: string) => {
+        await executor.execute(
+            NFT,
+            {
+                mint: {
+                    token_id: tokenId,
+                    owner: signer.key.accAddress,
+                    extension: {
+                        artist_name: "Monkey3",
+                        track_name: "Spirals",
+                        audio_track_url: "https://music.youtube.com/watch?v=hexsiXKTS1Q&si=abRgGXtuOtkFkvs-"
+                    }
+                }
+            }
+        )
+    }
+
+    const createAuction = async (tokenId: string) => {
+        const createAuctionMsg = {
+            create_auction: {
+                duration: {
+                    height: 60,
+                },
+                minimum_bid_amount: "10",
+            }
+        }
+        await executor.execute(
+            NFT,
+            {
+                send_nft: {
+                    contract: AUCTION,
+                    msg: Buffer.from(JSON.stringify(createAuctionMsg)).toString('base64'),
+                    token_id: tokenId,
+                }
+            }
+        )
+    }
+
+    const queryAuctions = async () => {
+
+    }
+
+    try {
+        await createAuction("1");
+    } catch (e) {
+        console.log(e);
+    }
+
+    // try {
+    //     await deployer.instantiate(
+    //         ENTERPRISE,
+    //         {
+    //             whitelisted_nft: "terra1q9kj6w498jhe8dkchmnwd4msht309ya6ssruurrhkwt5gv5979qq64gyly",
+    //             price_asset: {
+    //                 native: {
+    //                     denom: "uluna",
+    //                 }
+    //             }
+    //         }
+    //     );
+    // } catch (e) {
+    //     console.log(e);
+    // }
 
     // await deployEnterpriseVersioning(refs, network, deployer, signer);
 
