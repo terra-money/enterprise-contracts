@@ -423,14 +423,9 @@ fn distribute_participation_after_n_updates() -> anyhow::Result<()> {
 
     execute_proposal(&mut app, USER1, dao.clone(), 2)?;
 
-    let number_proposals_tracked = facade(&app, dao.clone())
+    facade(&app, dao.clone())
         .funds_distributor()
-        .number_proposals_tracked()?;
-
-    assert_eq!(
-        number_proposals_tracked,
-        1u8,
-    );
+        .assert_number_proposals_tracked(1);
 
     distribute_native_funds(&mut app, ADMIN, ULUNA, 5, Participation, dao.clone())?;
 
@@ -441,6 +436,57 @@ fn distribute_participation_after_n_updates() -> anyhow::Result<()> {
     facade(&app, dao.clone())
         .funds_distributor()
         .assert_native_user_rewards(USER2, vec![(ULUNA, 7)]);
+
+    Ok(())
+}
+
+#[test]
+fn distribute_participation_after_new_proposal() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let msg = CreateDaoMsg {
+        dao_membership: new_multisig_membership(vec![(USER1, 1), (USER2, 2)]),
+        asset_whitelist: asset_whitelist(vec![ULUNA], vec![]),
+        proposals_tracked_for_participation_rewards: Some(2),
+        gov_config: GovConfig {
+            allow_early_proposal_execution: true,
+            ..default_gov_config()
+        },
+        ..default_create_dao_msg()
+    };
+
+    let dao = create_dao_and_get_addr(&mut app, msg)?;
+
+    create_proposal(&mut app, USER1, dao.clone(), vec![])?;
+
+    cast_vote(&mut app, dao.clone(), USER1, 1, Yes)?;
+    cast_vote(&mut app, dao.clone(), USER2, 1, Yes)?;
+
+    create_proposal(&mut app, USER1, dao.clone(), vec![])?;
+
+    cast_vote(&mut app, dao.clone(), USER1, 2, Yes)?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 4, Participation, dao.clone())?;
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 2)]);
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER2, vec![(ULUNA, 2)]);
+
+    create_proposal(&mut app, USER1, dao.clone(), vec![])?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 5, Participation, dao.clone())?;
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 7)]);
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER2, vec![(ULUNA, 2)]);
 
     Ok(())
 }

@@ -66,6 +66,10 @@ impl TestFundsDistributorContract<'_> {
         assert_eq!(self.minimum_eligible_weight().unwrap(), weight.into());
     }
 
+    pub fn assert_number_proposals_tracked(&self, number_proposals_tracked: u8) {
+        assert_eq!(self.number_proposals_tracked().unwrap(), number_proposals_tracked);
+    }
+
     pub fn assert_native_user_rewards(
         &self,
         user: impl Into<String>,
