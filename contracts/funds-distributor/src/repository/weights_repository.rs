@@ -80,7 +80,7 @@ impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
 }
 
 impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
-    fn set_total_weight(&mut self, total_weight: Uint128, _: EraId) -> DistributorResult<()> {
+    fn set_total_weight(&mut self, total_weight: Uint128, e: EraId) -> DistributorResult<()> {
         ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, &total_weight)?;
         Ok(())
     }

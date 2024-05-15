@@ -1,5 +1,5 @@
 use crate::asset_types::RewardAsset;
-use crate::repository::era_repository::get_current_era;
+use crate::repository::era_repository::{FIRST_ERA, get_current_era};
 use crate::repository::global_indices_repository::{
     global_indices_repository, global_indices_repository_mut, GlobalIndicesRepository,
     GlobalIndicesRepositoryMut,

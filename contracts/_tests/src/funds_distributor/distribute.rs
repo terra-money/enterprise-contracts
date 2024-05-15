@@ -19,7 +19,7 @@ use funds_distributor_api::msg::ExecuteMsg::{ClaimRewards, DistributeNative};
 use funds_distributor_api::msg::QueryMsg::NumberProposalsTracked;
 use poll_engine_api::api::VoteOutcome;
 use poll_engine_api::api::VoteOutcome::Yes;
-use ProposalAction::{DistributeFunds, UpdateNumberProposalsTracked};
+use ProposalAction::{DistributeFunds, UpdateAssetWhitelist, UpdateNumberProposalsTracked};
 
 #[test]
 fn distribute_total_weight_0_fails() -> anyhow::Result<()> {
@@ -387,12 +387,12 @@ fn radzion_bug() -> anyhow::Result<()> {
     Ok(())
 }
 
+// TODO: this seems to add no new value to the suite
 #[test]
 fn radzion_bug2() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let msg = CreateDaoMsg {
-        // dao_membership: new_denom_membership(ULUNA, 120),
         dao_membership: new_multisig_membership(vec![(USER1, 1)]),
         asset_whitelist: None,
         proposals_tracked_for_participation_rewards: Some(1),
@@ -401,6 +401,7 @@ fn radzion_bug2() -> anyhow::Result<()> {
             vote_duration: 120,
             ..default_gov_config()
         },
+        minimum_weight_for_rewards: Some(Uint128::one()),
         ..default_create_dao_msg()
     };
 
@@ -412,7 +413,7 @@ fn radzion_bug2() -> anyhow::Result<()> {
     // app.execute_contract(Addr::unchecked(USER1), membership, &denom_staking_api::msg::ExecuteMsg::Stake { user: None }, &coins(1000, ULUNA))?;
 
     create_proposal(&mut app, USER1, dao.clone(), vec![
-        ProposalAction::UpdateAssetWhitelist(
+        UpdateAssetWhitelist(
             UpdateAssetWhitelistProposalActionMsg {
                 remote_treasury_target: None,
                 add: vec![AssetInfoUnchecked::native(ULUNA)],
@@ -460,8 +461,6 @@ fn radzion_bug2() -> anyhow::Result<()> {
 
     distribute_native_funds(&mut app, ADMIN, ULUNA, 1000, Membership, dao.clone())?;
     claim_native_rewards(&mut app, USER1, ULUNA, dao.clone())?;
-
-    println!("yooo");
 
     distribute_native_funds(&mut app, ADMIN, ULUNA, 1000, Membership, dao.clone())?;
     claim_native_rewards(&mut app, USER1, ULUNA, dao.clone())?;
