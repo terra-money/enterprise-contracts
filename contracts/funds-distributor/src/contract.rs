@@ -43,7 +43,7 @@ pub fn instantiate(
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
     let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
-    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
+    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, FIRST_ERA, &minimum_eligible_weight)?;
 
     NUMBER_PROPOSALS_TRACKED.save(
         deps.storage,

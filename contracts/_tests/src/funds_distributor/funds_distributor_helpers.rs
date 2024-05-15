@@ -1,16 +1,23 @@
-use cosmwasm_std::{Addr, coins, Uint128};
-use cw_asset::AssetUnchecked;
-use cw_multi_test::{App, AppResponse, Executor};
-use enterprise_facade_api::api::ProposalId;
-use enterprise_governance_controller_api::api::{CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteProposalMsg, ProposalAction, UpdateNumberProposalsTrackedMsg};
-use enterprise_governance_controller_api::api::ProposalAction::{DistributeFunds, UpdateNumberProposalsTracked};
-use enterprise_governance_controller_api::msg::ExecuteMsg::{CastVote, CreateProposal, ExecuteProposal};
-use funds_distributor_api::api::{ClaimRewardsMsg, DistributionType};
-use funds_distributor_api::msg::ExecuteMsg::{ClaimRewards, DistributeNative};
-use poll_engine_api::api::VoteOutcome;
 use crate::helpers::cw_multitest_helpers::USER1;
 use crate::helpers::facade_helpers::facade;
 use crate::traits::ImplApp;
+use cosmwasm_std::{coins, Addr, Uint128};
+use cw_asset::AssetUnchecked;
+use cw_multi_test::{App, AppResponse, Executor};
+use enterprise_facade_api::api::ProposalId;
+use enterprise_governance_controller_api::api::ProposalAction::{
+    DistributeFunds, UpdateMinimumWeightForRewards, UpdateNumberProposalsTracked,
+};
+use enterprise_governance_controller_api::api::{
+    CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteProposalMsg, ProposalAction,
+    UpdateMinimumWeightForRewardsMsg, UpdateNumberProposalsTrackedMsg,
+};
+use enterprise_governance_controller_api::msg::ExecuteMsg::{
+    CastVote, CreateProposal, ExecuteProposal,
+};
+use funds_distributor_api::api::{ClaimRewardsMsg, DistributionType};
+use funds_distributor_api::msg::ExecuteMsg::{ClaimRewards, DistributeNative};
+use poll_engine_api::api::VoteOutcome;
 
 // TODO: move to GovControllerContract trait somehow
 pub fn create_proposal(
@@ -73,6 +80,13 @@ pub fn execute_proposal(
 pub fn update_number_proposals_tracked(n: u8) -> ProposalAction {
     UpdateNumberProposalsTracked(UpdateNumberProposalsTrackedMsg {
         number_proposals_tracked: n,
+    })
+}
+
+// TODO: move to gov controller helpers
+pub fn update_minimum_weight_for_rewards(minimum_weight_for_rewards: u8) -> ProposalAction {
+    UpdateMinimumWeightForRewards(UpdateMinimumWeightForRewardsMsg {
+        minimum_weight_for_rewards: Uint128::from(minimum_weight_for_rewards),
     })
 }
 

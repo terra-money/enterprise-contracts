@@ -46,7 +46,7 @@ struct TrackedParticipationProposalIndexes<'a> {
 impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalIndexes<'_> {
     fn get_indexes(
         &'_ self,
-    ) -> Box<dyn Iterator<Item=&'_ dyn Index<TrackedParticipationProposal>> + '_> {
+    ) -> Box<dyn Iterator<Item = &'_ dyn Index<TrackedParticipationProposal>> + '_> {
         let v: Vec<&dyn Index<TrackedParticipationProposal>> = vec![&self.proposal];
         Box::new(v.into_iter())
     }
@@ -187,7 +187,8 @@ pub fn execute_update_number_proposals_tracked(
     // TODO: store the new weights properly. this can also be improved later, if we just figure out the difference between old and new proposal weights
     let new_total_weight = query_total_participation_weight(ctx.deps.as_ref(), next_era)?;
 
-    weights_repository_mut(ctx.deps.branch(), Participation).set_total_weight(new_total_weight, next_era)?;
+    weights_repository_mut(ctx.deps.branch(), Participation)
+        .set_total_weight(new_total_weight, next_era)?;
 
     Ok(execute_update_number_proposals_tracked_response(
         msg.number_proposals_tracked,

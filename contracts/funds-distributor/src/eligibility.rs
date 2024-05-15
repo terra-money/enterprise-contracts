@@ -1,10 +1,10 @@
-use crate::repository::era_repository::{get_current_era, increment_era};
+use crate::repository::era_repository::{get_current_era, set_current_era};
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
-use crate::state::ADMIN;
+use crate::state::{EraId, ADMIN};
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::{Addr, DepsMut, Order, Response, StdResult, Uint128};
-use cw_storage_plus::Item;
+use cw_storage_plus::Map;
 use funds_distributor_api::api::DistributionType::Membership;
 use funds_distributor_api::api::{MinimumEligibleWeightResponse, UpdateMinimumEligibleWeightMsg};
 use funds_distributor_api::error::DistributorError::Unauthorized;
@@ -14,7 +14,8 @@ use itertools::Itertools;
 use std::ops::Range;
 
 /// Minimum weight that a user should have to be eligible for receiving rewards.
-pub const MINIMUM_ELIGIBLE_WEIGHT: Item<Uint128> = Item::new("minimum_eligible_weight");
+/// Defined per-era.
+pub const MINIMUM_ELIGIBLE_WEIGHT: Map<EraId, Uint128> = Map::new("minimum_eligible_weight");
 
 pub fn execute_update_minimum_eligible_weight(
     ctx: &mut Context,
@@ -26,10 +27,17 @@ pub fn execute_update_minimum_eligible_weight(
         return Err(Unauthorized);
     }
 
-    let old_minimum_weight = MINIMUM_ELIGIBLE_WEIGHT.load(ctx.deps.storage)?;
+    let current_era = get_current_era(ctx.deps.as_ref(), Membership)?;
+
+    let old_minimum_weight = MINIMUM_ELIGIBLE_WEIGHT.load(ctx.deps.storage, current_era)?;
     let new_minimum_weight = msg.minimum_eligible_weight;
 
-    update_minimum_eligible_weight(ctx.deps.branch(), old_minimum_weight, new_minimum_weight)?;
+    update_minimum_eligible_weight(
+        ctx.deps.branch(),
+        current_era,
+        old_minimum_weight,
+        new_minimum_weight,
+    )?;
 
     Ok(execute_update_minimum_eligible_weight_response(
         old_minimum_weight,
@@ -43,6 +51,7 @@ pub fn execute_update_minimum_eligible_weight(
 // TODO: the name is very similar to the above, but this does not check for unauthorized use; reveal this through the name somehow
 pub fn update_minimum_eligible_weight(
     mut deps: DepsMut,
+    current_era: EraId,
     old_minimum_weight: Uint128,
     new_minimum_weight: Uint128,
 ) -> DistributorResult<()> {
@@ -80,9 +89,11 @@ pub fn update_minimum_eligible_weight(
         .collect_vec();
 
     // TODO: NO freaking idea if we should use the current era here or something else
-    let current_era = get_current_era(deps.as_ref(), Membership)?;
     let mut total_weight =
         weights_repository(deps.as_ref(), Membership).get_total_weight(current_era)?;
+
+    let next_era = current_era + 1;
+    set_current_era(deps.branch(), next_era, Membership)?;
 
     // whether effective weights for users should become their actual weights, or zero
     let use_actual_weights = old_minimum_weight > new_minimum_weight;
@@ -117,13 +128,9 @@ pub fn update_minimum_eligible_weight(
         total_weight = total_weight - old_effective_weight + new_effective_weight;
     }
 
-    increment_era(deps.branch(), Membership)?;
+    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, next_era, &new_minimum_weight)?;
 
-    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &new_minimum_weight)?;
-
-    // TODO: we almost CERTAINLY shouldn't use the current era here
-    weights_repository_mut(deps.branch(), Membership)
-        .set_total_weight(total_weight, current_era)?;
+    weights_repository_mut(deps.branch(), Membership).set_total_weight(total_weight, next_era)?;
 
     Ok(())
 }
@@ -131,7 +138,8 @@ pub fn update_minimum_eligible_weight(
 pub fn query_minimum_eligible_weight(
     qctx: QueryContext,
 ) -> DistributorResult<MinimumEligibleWeightResponse> {
-    let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(qctx.deps.storage)?;
+    let current_era = get_current_era(qctx.deps, Membership)?;
+    let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(qctx.deps.storage, current_era)?;
 
     Ok(MinimumEligibleWeightResponse {
         minimum_eligible_weight,

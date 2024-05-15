@@ -341,7 +341,8 @@ pub fn users_under_minimum_eligible_weight_receive_no_rewards() -> DistributorRe
 
 #[ignore = "to be fixed"]
 #[test]
-pub fn minimum_eligible_weight_increase_calculates_existing_rewards_properly() -> DistributorResult<()> {
+pub fn minimum_eligible_weight_increase_calculates_existing_rewards_properly(
+) -> DistributorResult<()> {
     let mut deps = mock_dependencies();
     let ctx = &mut mock_ctx(deps.as_mut());
     instantiate_default(ctx)?;
@@ -379,7 +380,8 @@ pub fn minimum_eligible_weight_increase_calculates_existing_rewards_properly() -
 
 #[ignore = "to be fixed"]
 #[test]
-pub fn minimum_eligible_weight_decrease_calculates_existing_rewards_properly() -> DistributorResult<()> {
+pub fn minimum_eligible_weight_decrease_calculates_existing_rewards_properly(
+) -> DistributorResult<()> {
     let mut deps = mock_dependencies();
     let ctx = &mut mock_ctx(deps.as_mut());
     instantiate_default(ctx)?;
@@ -481,7 +483,9 @@ fn distribute_native(ctx: &mut Context, funds: &[Coin]) -> DistributorResult<Res
         ctx.deps.branch(),
         ctx.env.clone(),
         mock_info(ctx.info.sender.as_ref(), funds),
-        ExecuteMsg::DistributeNative { distribution_type: None },
+        ExecuteMsg::DistributeNative {
+            distribution_type: None,
+        },
     )
 }
 
@@ -497,7 +501,9 @@ fn distribute_cw20(
         ExecuteMsg::Receive(Cw20ReceiveMsg {
             sender: ctx.info.sender.to_string(),
             amount: amount.into(),
-            msg: to_json_binary(&Cw20HookMsg::Distribute { distribution_type: None })?,
+            msg: to_json_binary(&Cw20HookMsg::Distribute {
+                distribution_type: None,
+            })?,
         }),
     )
 }

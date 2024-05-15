@@ -1,20 +1,22 @@
 use crate::distributing::query_enterprise_components;
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::participation::get_proposal_ids_tracked;
+use crate::repository::era_repository::get_current_era;
 use crate::state::EraId;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 use enterprise_governance_api::msg::QueryMsg::{TotalVotes, VoterTotalVotes};
 use funds_distributor_api::api::DistributionType;
+use funds_distributor_api::api::DistributionType::Membership;
 use funds_distributor_api::error::DistributorResult;
 use poll_engine_api::api::{
     TotalVotesParams, TotalVotesResponse, VoterTotalVotesParams, VoterTotalVotesResponse,
 };
+use DistributionType::Participation;
 
-// TODO: revert back to era-specific storage
 /// Total weight of all users eligible for rewards for the given era.
-const ERA_EFFECTIVE_TOTAL_WEIGHT: Item<Uint128> = Item::new("era_total_weight");
+const ERA_EFFECTIVE_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("era_total_weight");
 
 const PARTICIPATION_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("participation_total_weight");
 
@@ -43,17 +45,27 @@ pub struct MembershipWeightsRepository<'a> {
 }
 
 impl WeightsRepository for MembershipWeightsRepository<'_> {
-    fn get_total_weight(&self, _: EraId) -> DistributorResult<Uint128> {
+    fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
         let total_weight = ERA_EFFECTIVE_TOTAL_WEIGHT
-            .may_load(self.deps.storage)?
+            .may_load(self.deps.storage, era_id)?
             .unwrap_or_default();
         Ok(total_weight)
     }
 
-    // TODO: era is useless here, right?
-    fn get_user_weight(&self, user: Addr, _: EraId) -> DistributorResult<Option<Uint128>> {
-        let user_weight = EFFECTIVE_USER_WEIGHTS.may_load(self.deps.storage, user)?;
-        Ok(user_weight)
+    fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
+        let weight = USER_WEIGHTS.may_load(self.deps.storage, user)?;
+
+        match weight {
+            Some(weight) => {
+                let minimum_eligible_weight =
+                    MINIMUM_ELIGIBLE_WEIGHT.load(self.deps.storage, era_id)?;
+
+                let effective_weight = calculate_effective_weight(weight, minimum_eligible_weight);
+
+                Ok(Some(effective_weight))
+            }
+            None => Ok(None),
+        }
     }
 }
 
@@ -80,31 +92,30 @@ impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
 }
 
 impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
-    fn set_total_weight(&mut self, total_weight: Uint128, e: EraId) -> DistributorResult<()> {
-        ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, &total_weight)?;
+    fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()> {
+        ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, era_id, &total_weight)?;
         Ok(())
     }
 
     fn set_user_weight(&mut self, user: Addr, weight: Uint128) -> DistributorResult<Uint128> {
-        let minimum_eligible_weight = MINIMUM_ELIGIBLE_WEIGHT.load(self.deps.storage)?;
+        let current_era = get_current_era(self.deps.as_ref(), Membership)?;
+        let minimum_eligible_weight =
+            MINIMUM_ELIGIBLE_WEIGHT.load(self.deps.storage, current_era)?;
 
         USER_WEIGHTS.save(self.deps.storage, user.clone(), &weight)?;
 
-        let effective_user_weight =
-            Self::calculate_effective_weight(weight, minimum_eligible_weight);
+        let effective_user_weight = calculate_effective_weight(weight, minimum_eligible_weight);
         EFFECTIVE_USER_WEIGHTS.save(self.deps.storage, user, &effective_user_weight)?;
 
         Ok(effective_user_weight)
     }
 }
 
-impl MembershipWeightsRepositoryMut<'_> {
-    fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
-        if weight >= minimum_eligible_weight {
-            weight
-        } else {
-            Uint128::zero()
-        }
+fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
+    if weight >= minimum_eligible_weight {
+        weight
+    } else {
+        Uint128::zero()
     }
 }
 
@@ -192,8 +203,8 @@ pub fn weights_repository<'a>(
     distribution_type: DistributionType,
 ) -> Box<dyn WeightsRepository + 'a> {
     match distribution_type {
-        DistributionType::Membership => Box::new(MembershipWeightsRepository { deps }),
-        DistributionType::Participation => Box::new(ParticipationWeightsRepository { deps }),
+        Membership => Box::new(MembershipWeightsRepository { deps }),
+        Participation => Box::new(ParticipationWeightsRepository { deps }),
     }
 }
 
@@ -202,7 +213,7 @@ pub fn weights_repository_mut<'a>(
     distribution_type: DistributionType,
 ) -> Box<dyn WeightsRepositoryMut + 'a> {
     match distribution_type {
-        DistributionType::Membership => Box::new(MembershipWeightsRepositoryMut { deps }),
-        DistributionType::Participation => Box::new(ParticipationWeightsRepositoryMut { deps }),
+        Membership => Box::new(MembershipWeightsRepositoryMut { deps }),
+        Participation => Box::new(ParticipationWeightsRepositoryMut { deps }),
     }
 }

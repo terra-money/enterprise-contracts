@@ -1,5 +1,5 @@
 use crate::state::EraId;
-use cosmwasm_std::{Addr, Deps, DepsMut, StdResult};
+use cosmwasm_std::{Addr, Deps, DepsMut};
 use cw_storage_plus::{Item, Map};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
@@ -61,13 +61,6 @@ pub fn set_current_era(
     distribution_type: DistributionType,
 ) -> DistributorResult<()> {
     current_era_item(distribution_type).save(deps.storage, &era_id)?;
-
-    Ok(())
-}
-
-pub fn increment_era(deps: DepsMut, distribution_type: DistributionType) -> DistributorResult<()> {
-    current_era_item(distribution_type)
-        .update(deps.storage, |era| -> StdResult<EraId> { Ok(era + 1) })?;
 
     Ok(())
 }

@@ -2,10 +2,15 @@ use crate::helpers::cw_multitest_helpers::ADMIN;
 use crate::traits::ImplApp;
 use cosmwasm_std::{coins, wasm_execute, Addr, Uint128};
 use cw_multi_test::{App, AppResponse, Executor};
-use funds_distributor_api::api::{Cw20Reward, MinimumEligibleWeightResponse, NativeReward, NumberProposalsTrackedResponse, UserRewardsParams, UserRewardsResponse};
+use funds_distributor_api::api::{
+    Cw20Reward, MinimumEligibleWeightResponse, NativeReward, NumberProposalsTrackedResponse,
+    UserRewardsParams, UserRewardsResponse,
+};
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
-use funds_distributor_api::msg::QueryMsg::{MinimumEligibleWeight, NumberProposalsTracked, UserRewards};
+use funds_distributor_api::msg::QueryMsg::{
+    MinimumEligibleWeight, NumberProposalsTracked, UserRewards,
+};
 use itertools::Itertools;
 
 pub trait FundsDistributorContract {
@@ -67,7 +72,10 @@ impl TestFundsDistributorContract<'_> {
     }
 
     pub fn assert_number_proposals_tracked(&self, number_proposals_tracked: u8) {
-        assert_eq!(self.number_proposals_tracked().unwrap(), number_proposals_tracked);
+        assert_eq!(
+            self.number_proposals_tracked().unwrap(),
+            number_proposals_tracked
+        );
     }
 
     pub fn assert_native_user_rewards(
@@ -139,7 +147,7 @@ impl TestFundsDistributorContract<'_> {
                 },
                 coins,
             )?
-                .into(),
+            .into(),
         )?;
 
         Ok(response)
