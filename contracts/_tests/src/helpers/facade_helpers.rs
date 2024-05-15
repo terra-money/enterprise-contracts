@@ -44,7 +44,6 @@ use nft_staking_api::api::NftConfigResponse;
 use nft_staking_api::msg::QueryMsg::NftConfig;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::cell::RefCell;
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
 

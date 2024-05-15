@@ -24,7 +24,6 @@ pub trait WeightsRepository {
     fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128>;
 
     // TODO: it gets confusing whether this queries live data or uses some local copy, split into interactor and repository
-    // TODO: it seems to not make much sense to use era_id for membership weights
     fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>>;
 }
 
@@ -111,7 +110,8 @@ impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
     }
 }
 
-fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
+// TODO: this is a weird file for this function to live in, move somewhere better
+pub fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
     if weight >= minimum_eligible_weight {
         weight
     } else {

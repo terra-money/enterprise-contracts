@@ -100,9 +100,7 @@ pub fn update_minimum_eligible_weight(
 
     // go through all affected users and update their effective weights
     for (user, user_weight) in affected_users_weights {
-        let old_effective_weight = EFFECTIVE_USER_WEIGHTS
-            .may_load(deps.storage, user.clone())?
-            .unwrap_or_default();
+        let old_effective_weight = weights_repository(deps.as_ref(), Membership).get_user_weight(user.clone(), current_era)?.unwrap_or_default();
 
         // update the state of user's rewards distributions to current global indices, placing any
         // newly accrued rewards since last updates into their pending rewards

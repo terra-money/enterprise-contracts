@@ -1,6 +1,6 @@
 use crate::funds_distributor::funds_distributor_helpers::{
     cast_vote, create_proposal, distribute_native_funds, execute_proposal,
-    update_minimum_weight_for_rewards, update_number_proposals_tracked,
+    update_minimum_weight_for_rewards,
 };
 use crate::helpers::cw_multitest_helpers::{startup_with_versioning, ADMIN, ULUNA, USER1, USER2};
 use crate::helpers::facade_helpers::facade;

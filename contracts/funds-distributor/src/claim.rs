@@ -66,7 +66,7 @@ fn calculate_and_remove_claimable_rewards(
 
         // TODO: what happens when we add another enum value?
         for distribution_type in [Membership, Participation] {
-            user_distribution_repository_mut(deps.branch(), distribution_type)
+            user_distribution_repository_mut(deps.branch(), distribution_type.clone())
                 .set_distribution_info(
                     asset.clone(),
                     user.clone(),
@@ -76,19 +76,16 @@ fn calculate_and_remove_claimable_rewards(
                         pending_rewards: Uint128::zero(),
                     },
                 )?;
-        }
-    }
 
-    // TODO: what happens when we add another enum value?
-    for distribution_type in [Membership, Participation] {
-        let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
-        if current_era > FIRST_ERA {
-            set_user_last_claimed_era(
-                deps.branch(),
-                user.clone(),
-                current_era - 1,
-                distribution_type,
-            )?;
+            let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
+            if current_era > FIRST_ERA {
+                set_user_last_claimed_era(
+                    deps.branch(),
+                    user.clone(),
+                    current_era - 1,
+                    distribution_type,
+                )?;
+            }
         }
     }
 

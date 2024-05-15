@@ -1,6 +1,4 @@
 #[cfg(test)]
-pub mod asset_helpers;
-#[cfg(test)]
 pub mod cw20_helpers;
 #[cfg(test)]
 pub mod cw_multitest_helpers;

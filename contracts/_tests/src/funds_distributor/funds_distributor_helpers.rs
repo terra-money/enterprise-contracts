@@ -76,6 +76,24 @@ pub fn execute_proposal(
     Ok(())
 }
 
+// TODO: move to MembershipContract trait somehow
+pub fn stake_denom(
+    app: &mut App,
+    staker: &str,
+    dao: Addr,
+    denom: &str,
+    amount: u8,
+) -> anyhow::Result<()> {
+    app.mint_native(vec![(staker, coins(amount.into(), denom))]);
+    app.execute_contract(
+        Addr::unchecked(staker),
+        facade(&app, dao).membership_addr(),
+        &denom_staking_api::msg::ExecuteMsg::Stake { user: None },
+        &coins(amount.into(), denom),
+    )?;
+    Ok(())
+}
+
 // TODO: move to gov controller helpers
 pub fn update_number_proposals_tracked(n: u8) -> ProposalAction {
     UpdateNumberProposalsTracked(UpdateNumberProposalsTrackedMsg {
