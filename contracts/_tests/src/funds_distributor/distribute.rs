@@ -2,24 +2,20 @@ use crate::helpers::cw_multitest_helpers::{
     startup_with_versioning, ADMIN, CW20_TOKEN1, ULUNA, USER1, USER2,
 };
 use crate::helpers::facade_helpers::facade;
-use crate::helpers::factory_helpers::{asset_whitelist, create_dao_and_get_addr, default_create_dao_msg, default_gov_config, default_new_token_membership, new_denom_membership, new_multisig_membership, new_token_membership};
+use crate::helpers::factory_helpers::{asset_whitelist, create_dao_and_get_addr, default_create_dao_msg, default_gov_config, default_new_token_membership, new_multisig_membership, new_token_membership};
 use crate::traits::ImplApp;
 use cosmwasm_std::{coins, Addr, Uint128};
-use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
-use cw_multi_test::{App, AppResponse, Executor};
-use enterprise_facade_api::api::{NumberProposalsTrackedResponse, ProposalId};
+use cw_asset::{AssetInfoUnchecked};
+use cw_multi_test::{Executor};
+use enterprise_facade_api::api::{NumberProposalsTrackedResponse};
 use enterprise_factory_api::api::CreateDaoMsg;
-use enterprise_governance_controller_api::api::{CastVoteMsg, CreateProposalMsg, DistributeFundsMsg, ExecuteProposalMsg, GovConfig, ProposalAction, UpdateAssetWhitelistProposalActionMsg, UpdateNumberProposalsTrackedMsg};
-use enterprise_governance_controller_api::msg::ExecuteMsg::{
-    CastVote, CreateProposal, ExecuteProposal,
-};
-use funds_distributor_api::api::{ClaimRewardsMsg, DistributionType};
+use enterprise_governance_controller_api::api::{GovConfig, ProposalAction, UpdateAssetWhitelistProposalActionMsg};
 use funds_distributor_api::api::DistributionType::{Membership, Participation};
-use funds_distributor_api::msg::ExecuteMsg::{ClaimRewards, DistributeNative};
+use funds_distributor_api::msg::ExecuteMsg::{DistributeNative};
 use funds_distributor_api::msg::QueryMsg::NumberProposalsTracked;
-use poll_engine_api::api::VoteOutcome;
 use poll_engine_api::api::VoteOutcome::Yes;
-use ProposalAction::{DistributeFunds, UpdateAssetWhitelist, UpdateNumberProposalsTracked};
+use ProposalAction::{UpdateAssetWhitelist};
+use crate::funds_distributor::funds_distributor_helpers::{cast_vote, claim_native_rewards, create_proposal, distribute_native_funds, distribute_native_funds_action, execute_proposal, update_number_proposals_tracked};
 
 #[test]
 fn distribute_total_weight_0_fails() -> anyhow::Result<()> {
@@ -187,70 +183,17 @@ fn distribute_participation_with_new_proposal_keeps_working() -> anyhow::Result<
 
     let dao = create_dao_and_get_addr(&mut app, msg)?;
 
-    app.execute_contract(
-        Addr::unchecked(USER1),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CreateProposal(CreateProposalMsg {
-            title: "sth".to_string(),
-            description: None,
-            proposal_actions: vec![],
-            deposit_owner: None,
-        }),
-        &vec![],
-    )?;
+    create_proposal(&mut app, USER1, dao.clone(), vec![])?;
 
-    app.execute_contract(
-        Addr::unchecked(USER1),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CreateProposal(CreateProposalMsg {
-            title: "sth".to_string(),
-            description: None,
-            proposal_actions: vec![],
-            deposit_owner: None,
-        }),
-        &vec![],
-    )?;
+    create_proposal(&mut app, USER1, dao.clone(), vec![])?;
 
-    app.execute_contract(
-        Addr::unchecked(USER1),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CastVote(CastVoteMsg {
-            proposal_id: 1,
-            outcome: VoteOutcome::Yes,
-        }),
-        &vec![],
-    )?;
+    cast_vote(&mut app, dao.clone(), USER1, 1, Yes)?;
 
-    app.execute_contract(
-        Addr::unchecked(USER2),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CastVote(CastVoteMsg {
-            proposal_id: 1,
-            outcome: VoteOutcome::Yes,
-        }),
-        &vec![],
-    )?;
+    cast_vote(&mut app, dao.clone(), USER2, 1, Yes)?;
 
-    app.execute_contract(
-        Addr::unchecked(USER2),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CastVote(CastVoteMsg {
-            proposal_id: 2,
-            outcome: VoteOutcome::Yes,
-        }),
-        &vec![],
-    )?;
+    cast_vote(&mut app, dao.clone(), USER2, 2, Yes)?;
 
-    // TODO: use helper instead of this
-    app.mint_native(vec![(ADMIN, coins(10, ULUNA))]);
-    app.execute_contract(
-        Addr::unchecked(ADMIN),
-        facade(&app, dao.clone()).funds_distributor_addr(),
-        &DistributeNative {
-            distribution_type: Some(Participation),
-        },
-        &coins(10, ULUNA),
-    )?;
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 10, Participation, dao.clone())?;
 
     facade(&app, dao.clone())
         .funds_distributor()
@@ -259,47 +202,12 @@ fn distribute_participation_with_new_proposal_keeps_working() -> anyhow::Result<
         .funds_distributor()
         .assert_native_user_rewards(USER2, vec![(ULUNA, 8)]);
 
-    app.execute_contract(
-        Addr::unchecked(USER1),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CreateProposal(CreateProposalMsg {
-            title: "sth".to_string(),
-            description: None,
-            proposal_actions: vec![],
-            deposit_owner: None,
-        }),
-        &vec![],
-    )?;
+    create_proposal(&mut app, USER1, dao.clone(), vec![])?;
 
-    app.execute_contract(
-        Addr::unchecked(USER1),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CastVote(CastVoteMsg {
-            proposal_id: 2,
-            outcome: VoteOutcome::Yes,
-        }),
-        &vec![],
-    )?;
+    cast_vote(&mut app, dao.clone(), USER1, 2, Yes)?;
+    cast_vote(&mut app, dao.clone(), USER1, 3, Yes)?;
 
-    app.execute_contract(
-        Addr::unchecked(USER1),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CastVote(CastVoteMsg {
-            proposal_id: 3,
-            outcome: VoteOutcome::Yes,
-        }),
-        &vec![],
-    )?;
-
-    app.execute_contract(
-        Addr::unchecked(USER2),
-        facade(&app, dao.clone()).gov_controller_addr(),
-        &CastVote(CastVoteMsg {
-            proposal_id: 3,
-            outcome: VoteOutcome::Yes,
-        }),
-        &vec![],
-    )?;
+    cast_vote(&mut app, dao.clone(), USER2, 3, Yes)?;
 
     facade(&app, dao.clone())
         .funds_distributor()
@@ -308,16 +216,7 @@ fn distribute_participation_with_new_proposal_keeps_working() -> anyhow::Result<
         .funds_distributor()
         .assert_native_user_rewards(USER2, vec![(ULUNA, 8)]);
 
-    // TODO: use helper instead of this
-    app.mint_native(vec![(ADMIN, coins(12, ULUNA))]);
-    app.execute_contract(
-        Addr::unchecked(ADMIN),
-        facade(&app, dao.clone()).funds_distributor_addr(),
-        &DistributeNative {
-            distribution_type: Some(Participation),
-        },
-        &coins(12, ULUNA),
-    )?;
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 12, Participation, dao.clone())?;
 
     facade(&app, dao.clone())
         .funds_distributor()
@@ -528,117 +427,4 @@ fn update_n_bug() -> anyhow::Result<()> {
     );
 
     Ok(())
-}
-
-// TODO: move to GovControllerContract trait somehow
-fn create_proposal(
-    app: &mut App,
-    proposer: &str,
-    dao: Addr,
-    proposal_actions: Vec<ProposalAction>,
-) -> anyhow::Result<()> {
-    app.execute_contract(
-        Addr::unchecked(proposer),
-        facade(&app, dao).gov_controller_addr(),
-        &CreateProposal(CreateProposalMsg {
-            title: "sth".to_string(),
-            description: None,
-            proposal_actions,
-            deposit_owner: None,
-        }),
-        &vec![],
-    )?;
-    Ok(())
-}
-
-// TODO: move to GovControllerContract trait somehow
-fn cast_vote(
-    app: &mut App,
-    dao: Addr,
-    voter: &str,
-    proposal_id: ProposalId,
-    outcome: VoteOutcome,
-) -> anyhow::Result<()> {
-    app.execute_contract(
-        Addr::unchecked(voter),
-        facade(&app, dao).gov_controller_addr(),
-        &CastVote(CastVoteMsg {
-            proposal_id,
-            outcome,
-        }),
-        &vec![],
-    )?;
-    Ok(())
-}
-
-// TODO: move to GovControllerContract trait somehow
-fn execute_proposal(
-    app: &mut App,
-    executor: &str,
-    dao: Addr,
-    proposal_id: ProposalId,
-) -> anyhow::Result<()> {
-    app.execute_contract(
-        Addr::unchecked(executor),
-        facade(&app, dao).gov_controller_addr(),
-        &ExecuteProposal(ExecuteProposalMsg { proposal_id }),
-        &vec![],
-    )?;
-    Ok(())
-}
-
-// TODO: move to gov controller helpers
-fn update_number_proposals_tracked(n: u8) -> ProposalAction {
-    UpdateNumberProposalsTracked(UpdateNumberProposalsTrackedMsg {
-        number_proposals_tracked: n,
-    })
-}
-
-// TODO: move to gov controller helpers
-fn distribute_native_funds_action(
-    denom: &str,
-    amount: u128,
-    distribution_type: DistributionType,
-) -> ProposalAction {
-    DistributeFunds(DistributeFundsMsg {
-        funds: vec![AssetUnchecked::native(denom, Uint128::from(amount))],
-        distribution_type: Some(distribution_type),
-    })
-}
-
-fn distribute_native_funds(
-    app: &mut App,
-    distributor: &str,
-    denom: &str,
-    amount: u128,
-    distribution_type: DistributionType,
-    dao: Addr,
-) -> anyhow::Result<AppResponse> {
-    app.mint_native(vec![(distributor, coins(amount, denom))]);
-    app.execute_contract(
-        Addr::unchecked(distributor),
-        facade(&app, dao).funds_distributor().addr,
-        &DistributeNative {
-            distribution_type: Some(distribution_type),
-        },
-        &coins(amount, denom),
-    )
-}
-
-fn claim_native_rewards(
-    app: &mut App,
-    user: &str,
-    denom: &str,
-    dao: Addr,
-) -> anyhow::Result<AppResponse> {
-    app.execute_contract(
-        Addr::unchecked(user),
-        facade(&app, dao).funds_distributor().addr,
-        &ClaimRewards(ClaimRewardsMsg {
-            user: USER1.to_string(),
-            native_denoms: vec![denom.to_string()],
-            cw20_assets: vec![],
-        }),
-        &vec![],
-    )
 }
