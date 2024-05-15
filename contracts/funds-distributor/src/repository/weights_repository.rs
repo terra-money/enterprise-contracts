@@ -66,11 +66,7 @@ impl WeightsRepository for MembershipWeightsRepository<'_> {
                 Ok(Some(effective_weight))
             }
             None => {
-                let first_era_with_weight = get_user_first_era_with_weight(self.deps.clone(), user.clone(), Membership)?;
-
-                USER_WEIGHTS.range(self.deps.storage, None, None, Ascending)
-                    .collect::<StdResult<Vec<((EraId, Addr), Uint128)>>>()?
-                    .iter().for_each(|&(((era, _), weight))| println!("user: {}, era: {}, weight: {}", user.to_string(), era, weight));
+                let first_era_with_weight = get_user_first_era_with_weight(self.deps, user.clone(), Membership)?;
 
                 if let Some(first_era_with_weight) = first_era_with_weight {
                     let weight = USER_WEIGHTS.prefix_range(
