@@ -1,9 +1,17 @@
-use crate::funds_distributor::funds_distributor_helpers::{cast_vote, claim_native_rewards, create_proposal, distribute_native_funds, distribute_native_funds_action, execute_proposal, stake_denom, update_number_proposals_tracked};
+use crate::funds_distributor::funds_distributor_helpers::{
+    cast_vote, claim_native_rewards, create_proposal, distribute_native_funds,
+    distribute_native_funds_action, execute_proposal, stake_denom,
+    update_minimum_weight_for_rewards, update_number_proposals_tracked,
+};
 use crate::helpers::cw_multitest_helpers::{
-    startup_with_versioning, ADMIN, CW20_TOKEN1, ULUNA, USER1, USER2,
+    increase_time_block, startup_with_versioning, ADMIN, CW20_TOKEN1, ULUNA, USER1, USER2,
 };
 use crate::helpers::facade_helpers::facade;
-use crate::helpers::factory_helpers::{asset_whitelist, create_dao_and_get_addr, default_create_dao_msg, default_gov_config, default_new_token_membership, new_denom_membership, new_multisig_membership, new_token_membership};
+use crate::helpers::factory_helpers::{
+    asset_whitelist, create_dao_and_get_addr, default_create_dao_msg, default_gov_config,
+    default_new_token_membership, new_denom_membership, new_multisig_membership,
+    new_token_membership,
+};
 use crate::traits::ImplApp;
 use cosmwasm_std::{coins, Addr, Uint128};
 use cw_asset::AssetInfoUnchecked;
@@ -78,7 +86,8 @@ fn distribute_participation_with_single_proposal_and_no_votes_fails() -> anyhow:
 }
 
 #[test]
-fn distribute_participation_with_single_proposal_single_vote_distributes_all_rewards() -> anyhow::Result<()> {
+fn distribute_participation_with_single_proposal_single_vote_distributes_all_rewards(
+) -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let msg = CreateDaoMsg {
@@ -103,7 +112,8 @@ fn distribute_participation_with_single_proposal_single_vote_distributes_all_rew
 }
 
 #[test]
-fn distribute_participation_with_single_proposal_two_votes_distributes_properly() -> anyhow::Result<()> {
+fn distribute_participation_with_single_proposal_two_votes_distributes_properly(
+) -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let msg = CreateDaoMsg {
@@ -134,7 +144,8 @@ fn distribute_participation_with_single_proposal_two_votes_distributes_properly(
 }
 
 #[test]
-fn distribute_participation_with_several_proposals_and_two_votes_distributes_properly() -> anyhow::Result<()> {
+fn distribute_participation_with_several_proposals_and_two_votes_distributes_properly(
+) -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let msg = CreateDaoMsg {
@@ -535,6 +546,62 @@ fn distribute_participation_after_user_weight_change() -> anyhow::Result<()> {
     facade(&app, dao.clone())
         .funds_distributor()
         .assert_native_user_rewards(USER1, vec![(ULUNA, 12)]);
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER2, vec![(ULUNA, 4)]);
+
+    Ok(())
+}
+
+#[test]
+fn distribute_membership_after_user_weight_change() -> anyhow::Result<()> {
+    let mut app = startup_with_versioning();
+
+    let msg = CreateDaoMsg {
+        dao_membership: new_denom_membership(ULUNA, 300),
+        asset_whitelist: asset_whitelist(vec![ULUNA], vec![]),
+        minimum_weight_for_rewards: Some(1u8.into()),
+        gov_config: GovConfig {
+            allow_early_proposal_execution: true,
+            vote_duration: 300,
+            ..default_gov_config()
+        },
+        ..default_create_dao_msg()
+    };
+
+    let dao = create_dao_and_get_addr(&mut app, msg)?;
+
+    stake_denom(&mut app, USER1, dao.clone(), ULUNA, 1)?;
+    stake_denom(&mut app, USER2, dao.clone(), ULUNA, 2)?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 3, Membership, dao.clone())?;
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 1)]);
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER2, vec![(ULUNA, 2)]);
+
+    create_proposal(
+        &mut app,
+        USER1,
+        dao.clone(),
+        vec![update_minimum_weight_for_rewards(2)],
+    )?;
+    cast_vote(&mut app, dao.clone(), USER2, 1, Yes)?;
+    increase_time_block(&mut app, 30);
+    execute_proposal(&mut app, USER2, dao.clone(), 1)?;
+
+    stake_denom(&mut app, USER1, dao.clone(), ULUNA, 4)?;
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 7, Membership, dao.clone())?;
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 6)]);
 
     facade(&app, dao.clone())
         .funds_distributor()

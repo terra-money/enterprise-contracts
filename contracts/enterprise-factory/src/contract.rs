@@ -610,6 +610,7 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 council_members,
                 weight_change_hooks,
                 COUNCIL_MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+                false,
             )?;
 
             let response = Response::new()
@@ -698,7 +699,12 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                     if msg.multisig_members.is_empty() {
                         return Err(MultisigDaoWithNoInitialMembers);
                     }
-                    instantiate_new_multisig_membership(deps.branch(), msg, weight_change_hooks)?
+                    instantiate_new_multisig_membership(
+                        deps.branch(),
+                        msg,
+                        weight_change_hooks,
+                        true,
+                    )?
                 }
             };
 

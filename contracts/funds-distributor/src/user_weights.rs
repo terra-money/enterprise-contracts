@@ -10,7 +10,7 @@ use crate::repository::user_distribution_repository::{
     user_distribution_repository_mut, UserDistributionRepositoryMut,
 };
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
-use crate::state::ADMIN;
+use crate::state::{EraId, ADMIN};
 use common::cw::Context;
 use cosmwasm_std::{Addr, DepsMut, Response, Uint128};
 use cw_storage_plus::Map;
@@ -23,7 +23,7 @@ use funds_distributor_api::error::{DistributorError, DistributorResult};
 use funds_distributor_api::response::execute_update_user_weights_response;
 use DistributorError::DuplicateInitialWeight;
 
-pub const USER_WEIGHTS: Map<Addr, Uint128> = Map::new("user_weights");
+pub const USER_WEIGHTS: Map<(EraId, Addr), Uint128> = Map::new("user_weights");
 
 /// Effective user weights are their weights when taking into account minimum eligible weight
 /// for rewards.

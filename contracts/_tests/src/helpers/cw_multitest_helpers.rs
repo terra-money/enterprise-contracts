@@ -105,7 +105,7 @@ pub fn startup() -> App {
             attestation::contract::instantiate,
             attestation::contract::query,
         )
-            .with_reply(attestation::contract::reply),
+        .with_reply(attestation::contract::reply),
     ));
 
     assert_eq!(CODE_ID_ATTESTATION, code_id_attestation);
@@ -116,7 +116,7 @@ pub fn startup() -> App {
             enterprise_governance_controller::contract::instantiate,
             enterprise_governance_controller::contract::query,
         )
-            .with_reply(enterprise_governance_controller::contract::reply),
+        .with_reply(enterprise_governance_controller::contract::reply),
     ));
 
     assert_eq!(CODE_ID_GOV_CONTROLLER, code_id_controller);
@@ -127,7 +127,7 @@ pub fn startup() -> App {
             funds_distributor::contract::instantiate,
             funds_distributor::contract::query,
         )
-            .with_reply(funds_distributor::contract::reply),
+        .with_reply(funds_distributor::contract::reply),
     ));
 
     assert_eq!(CODE_ID_FUNDS_DISTRIBUTOR, code_id_funds_distributor);
@@ -138,7 +138,7 @@ pub fn startup() -> App {
             enterprise::contract::instantiate,
             enterprise::contract::query,
         )
-            .with_reply(enterprise::contract::reply),
+        .with_reply(enterprise::contract::reply),
     ));
 
     assert_eq!(CODE_ID_ENTERPRISE, code_id_enterprise);
@@ -149,7 +149,7 @@ pub fn startup() -> App {
             enterprise_facade::contract::instantiate,
             enterprise_facade::contract::query,
         )
-            .with_reply(enterprise_facade::contract::reply),
+        .with_reply(enterprise_facade::contract::reply),
     ));
 
     assert_eq!(CODE_ID_FACADE, code_id_facade);
@@ -160,7 +160,7 @@ pub fn startup() -> App {
             enterprise_facade_v1::contract::instantiate,
             enterprise_facade_v1::contract::query,
         )
-            .with_reply(enterprise_facade_v1::contract::reply),
+        .with_reply(enterprise_facade_v1::contract::reply),
     ));
 
     assert_eq!(CODE_ID_FACADE_V1, code_id_facade_v1);
@@ -171,7 +171,7 @@ pub fn startup() -> App {
             enterprise_facade_v2::contract::instantiate,
             enterprise_facade_v2::contract::query,
         )
-            .with_reply(enterprise_facade_v2::contract::reply),
+        .with_reply(enterprise_facade_v2::contract::reply),
     ));
 
     assert_eq!(CODE_ID_FACADE_V2, code_id_facade_v2);
@@ -182,7 +182,7 @@ pub fn startup() -> App {
             enterprise_factory::contract::instantiate,
             enterprise_factory::contract::query,
         )
-            .with_reply(enterprise_factory::contract::reply),
+        .with_reply(enterprise_factory::contract::reply),
     ));
 
     assert_eq!(CODE_ID_FACTORY, code_id_factory);
@@ -193,7 +193,7 @@ pub fn startup() -> App {
             enterprise_governance::contract::instantiate,
             enterprise_governance::contract::query,
         )
-            .with_reply(enterprise_governance::contract::reply),
+        .with_reply(enterprise_governance::contract::reply),
     ));
 
     assert_eq!(CODE_ID_GOVERNANCE, code_id_governance);
@@ -204,7 +204,7 @@ pub fn startup() -> App {
             enterprise_outposts::contract::instantiate,
             enterprise_outposts::contract::query,
         )
-            .with_reply(enterprise_outposts::contract::reply),
+        .with_reply(enterprise_outposts::contract::reply),
     ));
 
     assert_eq!(CODE_ID_OUTPOSTS, code_id_outposts);
@@ -215,7 +215,7 @@ pub fn startup() -> App {
             denom_staking_membership::contract::instantiate,
             denom_staking_membership::contract::query,
         )
-            .with_reply(denom_staking_membership::contract::reply),
+        .with_reply(denom_staking_membership::contract::reply),
     ));
 
     assert_eq!(CODE_ID_MEMBERSHIP_DENOM, code_id_membership_denom);
@@ -226,7 +226,7 @@ pub fn startup() -> App {
             nft_staking_membership::contract::instantiate,
             nft_staking_membership::contract::query,
         )
-            .with_reply(nft_staking_membership::contract::reply),
+        .with_reply(nft_staking_membership::contract::reply),
     ));
 
     assert_eq!(CODE_ID_MEMBERSHIP_NFT, code_id_membership_nft);
@@ -237,7 +237,7 @@ pub fn startup() -> App {
             multisig_membership::contract::instantiate,
             multisig_membership::contract::query,
         )
-            .with_reply(multisig_membership::contract::reply),
+        .with_reply(multisig_membership::contract::reply),
     ));
 
     assert_eq!(CODE_ID_MEMBERSHIP_MULTISIG, code_id_membership_multisig);
@@ -248,7 +248,7 @@ pub fn startup() -> App {
             token_staking_membership::contract::instantiate,
             token_staking_membership::contract::query,
         )
-            .with_reply(token_staking_membership::contract::reply),
+        .with_reply(token_staking_membership::contract::reply),
     ));
 
     assert_eq!(CODE_ID_MEMBERSHIP_TOKEN, code_id_membership_token);
@@ -259,7 +259,7 @@ pub fn startup() -> App {
             enterprise_treasury::contract::instantiate,
             enterprise_treasury::contract::query,
         )
-            .with_reply(enterprise_treasury::contract::reply),
+        .with_reply(enterprise_treasury::contract::reply),
     ));
 
     assert_eq!(CODE_ID_TREASURY, code_id_treasury);
@@ -270,7 +270,7 @@ pub fn startup() -> App {
             enterprise_versioning::contract::instantiate,
             enterprise_versioning::contract::query,
         )
-            .with_reply(enterprise_versioning::contract::reply),
+        .with_reply(enterprise_versioning::contract::reply),
     ));
 
     assert_eq!(CODE_ID_VERSIONING, code_id_versioning);
@@ -319,7 +319,7 @@ pub fn startup_with_versioning() -> App {
             "versioning",
             Some(ADMIN.to_string()),
         )
-            .unwrap(),
+        .unwrap(),
         ADDR_VERSIONING
     );
 
@@ -430,7 +430,7 @@ pub fn startup_default_dao() -> App {
         &msg,
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     app
 }
@@ -444,7 +444,7 @@ pub fn startup_custom_dao(dao_info: CreateDaoMsg) -> App {
         &dao_info.into_execute_msg(),
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     app
 }
@@ -807,7 +807,7 @@ pub fn run_membership_deposit(
                 msg: to_json_binary(&token_staking_api::msg::Cw20HookMsg::Stake {
                     user: sender.clone().into(),
                 })
-                    .unwrap(),
+                .unwrap(),
             };
 
             app.execute_contract(sender_addr.into_addr(), underline.into_addr(), &msg, &[])

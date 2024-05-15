@@ -1,11 +1,12 @@
 use crate::distributing::query_enterprise_components;
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::participation::get_proposal_ids_tracked;
-use crate::repository::era_repository::get_current_era;
+use crate::repository::era_repository::{get_current_era, get_user_first_era_with_weight};
 use crate::state::EraId;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
-use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
-use cw_storage_plus::Map;
+use cosmwasm_std::{Addr, Deps, DepsMut, StdResult, Uint128};
+use cosmwasm_std::Order::{Ascending, Descending};
+use cw_storage_plus::{Map, PrefixBound};
 use enterprise_governance_api::msg::QueryMsg::{TotalVotes, VoterTotalVotes};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::api::DistributionType::Membership;
@@ -15,6 +16,7 @@ use poll_engine_api::api::{
 };
 use DistributionType::Participation;
 
+// TODO: this is actually for membership only
 /// Total weight of all users eligible for rewards for the given era.
 const ERA_EFFECTIVE_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("era_total_weight");
 
@@ -52,7 +54,7 @@ impl WeightsRepository for MembershipWeightsRepository<'_> {
     }
 
     fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
-        let weight = USER_WEIGHTS.may_load(self.deps.storage, user)?;
+        let weight = USER_WEIGHTS.may_load(self.deps.storage, (era_id, user.clone()))?;
 
         match weight {
             Some(weight) => {
@@ -63,7 +65,26 @@ impl WeightsRepository for MembershipWeightsRepository<'_> {
 
                 Ok(Some(effective_weight))
             }
-            None => Ok(None),
+            None => {
+                let first_era_with_weight = get_user_first_era_with_weight(self.deps.clone(), user.clone(), Membership)?;
+
+                USER_WEIGHTS.range(self.deps.storage, None, None, Ascending)
+                    .collect::<StdResult<Vec<((EraId, Addr), Uint128)>>>()?
+                    .iter().for_each(|&(((era, _), weight))| println!("user: {}, era: {}, weight: {}", user.to_string(), era, weight));
+
+                if let Some(first_era_with_weight) = first_era_with_weight {
+                    let weight = USER_WEIGHTS.prefix_range(
+                        self.deps.storage, Some(PrefixBound::exclusive(era_id)), Some(PrefixBound::inclusive(first_era_with_weight)), Descending,
+                    )
+                        .take(1)
+                        .collect::<StdResult<Vec<((EraId, Addr), Uint128)>>>()?
+                        .first()
+                        .map(|&(_, weight)| weight);
+                    Ok(weight)
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
 }
@@ -101,7 +122,7 @@ impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
         let minimum_eligible_weight =
             MINIMUM_ELIGIBLE_WEIGHT.load(self.deps.storage, current_era)?;
 
-        USER_WEIGHTS.save(self.deps.storage, user.clone(), &weight)?;
+        USER_WEIGHTS.save(self.deps.storage, (current_era, user.clone()), &weight)?;
 
         let effective_user_weight = calculate_effective_weight(weight, minimum_eligible_weight);
         EFFECTIVE_USER_WEIGHTS.save(self.deps.storage, user, &effective_user_weight)?;
