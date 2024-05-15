@@ -2,16 +2,15 @@ use crate::helpers::cw_multitest_helpers::ADMIN;
 use crate::traits::ImplApp;
 use cosmwasm_std::{coins, wasm_execute, Addr, Uint128};
 use cw_multi_test::{App, AppResponse, Executor};
-use funds_distributor_api::api::{
-    Cw20Reward, MinimumEligibleWeightResponse, NativeReward, UserRewardsParams, UserRewardsResponse,
-};
+use funds_distributor_api::api::{Cw20Reward, MinimumEligibleWeightResponse, NativeReward, NumberProposalsTrackedResponse, UserRewardsParams, UserRewardsResponse};
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::ExecuteMsg::DistributeNative;
-use funds_distributor_api::msg::QueryMsg::{MinimumEligibleWeight, UserRewards};
+use funds_distributor_api::msg::QueryMsg::{MinimumEligibleWeight, NumberProposalsTracked, UserRewards};
 use itertools::Itertools;
 
 pub trait FundsDistributorContract {
     fn minimum_eligible_weight(&self) -> DistributorResult<Uint128>;
+    fn number_proposals_tracked(&self) -> DistributorResult<u8>;
     fn user_rewards(
         &self,
         user: impl Into<String>,
@@ -32,6 +31,14 @@ impl FundsDistributorContract for TestFundsDistributorContract<'_> {
             .wrap()
             .query_wasm_smart(self.addr.to_string(), &MinimumEligibleWeight {})?;
         Ok(minimum_weight_for_rewards.minimum_eligible_weight)
+    }
+
+    fn number_proposals_tracked(&self) -> DistributorResult<u8> {
+        let response: NumberProposalsTrackedResponse = self
+            .app
+            .wrap()
+            .query_wasm_smart(self.addr.to_string(), &NumberProposalsTracked {})?;
+        Ok(response.number_proposals_tracked)
     }
 
     fn user_rewards(
@@ -128,7 +135,7 @@ impl TestFundsDistributorContract<'_> {
                 },
                 coins,
             )?
-            .into(),
+                .into(),
         )?;
 
         Ok(response)

@@ -16,6 +16,7 @@ use funds_distributor_api::msg::QueryMsg::NumberProposalsTracked;
 use poll_engine_api::api::VoteOutcome::Yes;
 use ProposalAction::{UpdateAssetWhitelist};
 use crate::funds_distributor::funds_distributor_helpers::{cast_vote, claim_native_rewards, create_proposal, distribute_native_funds, distribute_native_funds_action, execute_proposal, update_number_proposals_tracked};
+use crate::helpers::funds_distributor_helpers::FundsDistributorContract;
 
 #[test]
 fn distribute_total_weight_0_fails() -> anyhow::Result<()> {
@@ -385,13 +386,13 @@ fn radzion_bug2() -> anyhow::Result<()> {
 }
 
 #[test]
-fn update_n_bug() -> anyhow::Result<()> {
+fn distribute_participation_after_n_updates() -> anyhow::Result<()> {
     let mut app = startup_with_versioning();
 
     let msg = CreateDaoMsg {
-        dao_membership: new_multisig_membership(vec![(USER1, 1)]),
+        dao_membership: new_multisig_membership(vec![(USER1, 1), (USER2, 2)]),
         asset_whitelist: asset_whitelist(vec![ULUNA], vec![]),
-        proposals_tracked_for_participation_rewards: Some(1),
+        proposals_tracked_for_participation_rewards: Some(2),
         gov_config: GovConfig {
             allow_early_proposal_execution: true,
             ..default_gov_config()
@@ -401,30 +402,45 @@ fn update_n_bug() -> anyhow::Result<()> {
 
     let dao = create_dao_and_get_addr(&mut app, msg)?;
 
-    create_proposal(
-        &mut app,
-        USER1,
-        dao.clone(),
-        vec![update_number_proposals_tracked(3)],
-    )?;
+    create_proposal(&mut app, USER1, dao.clone(), vec![])?;
 
     cast_vote(&mut app, dao.clone(), USER1, 1, Yes)?;
+    cast_vote(&mut app, dao.clone(), USER2, 1, Yes)?;
 
-    execute_proposal(&mut app, USER1, dao.clone(), 1)?;
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 3, Participation, dao.clone())?;
 
-    let funds = facade(&app, dao.clone())
+    facade(&app, dao.clone())
         .funds_distributor()
-        .addr
-        .to_string();
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 1)]);
 
-    let minimum_weight_for_rewards: NumberProposalsTrackedResponse = app
-        .wrap()
-        .query_wasm_smart(funds, &NumberProposalsTracked {})?;
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER2, vec![(ULUNA, 2)]);
+
+    create_proposal(&mut app, USER1, dao.clone(), vec![update_number_proposals_tracked(1)])?;
+
+    cast_vote(&mut app, dao.clone(), USER2, 2, Yes)?;
+
+    execute_proposal(&mut app, USER1, dao.clone(), 2)?;
+
+    let number_proposals_tracked = facade(&app, dao.clone())
+        .funds_distributor()
+        .number_proposals_tracked()?;
 
     assert_eq!(
-        minimum_weight_for_rewards.number_proposals_tracked,
-        Some(3u8)
+        number_proposals_tracked,
+        1u8,
     );
+
+    distribute_native_funds(&mut app, ADMIN, ULUNA, 5, Participation, dao.clone())?;
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER1, vec![(ULUNA, 1)]);
+
+    facade(&app, dao.clone())
+        .funds_distributor()
+        .assert_native_user_rewards(USER2, vec![(ULUNA, 7)]);
 
     Ok(())
 }
