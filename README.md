@@ -75,6 +75,10 @@ While developing and testing on Apple silicon or other ARM architectures, you ca
 
 ### Contract Deployment
 
+Contracts have deployment scripts that make it easier to publish them to various networks.
+
+#### Yarn + Terrariums setup
+
 This assumes that you already have Yarn installed (https://yarnpkg.com/).
 
 Once you clone the repository, you can do the following;
@@ -87,16 +91,15 @@ We are using `terrariums` to manage contract deployment. The `terrarium.json` fi
 script. Deployment scripts are located in the `tasks` directory.
 
 Terrariums synchronizes a `refs.json` file, that contains the `codeID` and `address` of deployed contracts on the
-various networks. This `refs.json` file can be synchronized to other locations by editing the `copy_refs_to` property in
-the `terrarium.json` file.
+various networks.
 
 #### terrarium.json setup
 
 To run deployment scripts, you need to first generate your own `terrarium.json` file using the
 provided `terrarium-template.json`.
 
-To do that, simply replace the `pisco` and `phoenix` signers' mnemonics to one of your wallets, for testnet and mainnet
-respectively.
+To do that, simply replace the signers' mnemonics to one of your wallets, for the networks you plan to use.
+
 After that, just rename `terrarium-template.json` to `terrarium.json` and you're ready to run the deployment scripts.
 
 #### Running the deployment scripts
@@ -104,13 +107,13 @@ After that, just rename `terrarium-template.json` to `terrarium.json` and you're
 To deploy a contract, you can run the following command:
 
 ```
-yarn deploy:<contract>
+yarn deploy:<contract>:<mainnet|testnet|staging|cradle>
 ```
 
 Enterprise factory testnet:
 
 ```
-yarn deploy:enterprise-factory
+yarn deploy:enterprise-factory:testnet
 ```
 
 Enterprise factory mainnet:
@@ -119,24 +122,30 @@ Enterprise factory mainnet:
 yarn deploy:enterprise-factory:mainnet
 ```
 
+#### Deployment sequence
+
+The contracts have certain interdependencies that require specific sequence in contract deployment.
+
+The correct deployment sequence:
+
+1. enterprise-versioning (global instance)
+2. enterprise-factory (global instance)
+3. enterprise-facade (global instance)
+4. New Enterprise version (will deploy code for each of the DAO-specific contracts, and package them into a version
+   denoted in the `tasks/deploy_enterprise_versioning.ts` file).
+
 #### Running the migration scripts
 
-To migrate a contract, you can run the following command:
+To migrate a contract, you can run commands similar to deployment, however you will use `migrate` instead of `deploy`:
 
 ```
-yarn migrate:<contract>
+yarn migrate:<contract>:<mainnet|testnet|staging|cradle>
 ```
 
 Enterprise factory testnet:
 
 ```
-yarn migrate:enterprise-factory
-```
-
-Enterprise factory mainnet:
-
-```
-yarn migrate:enterprise-factory:mainnet
+yarn migrate:enterprise-factory:testnet
 ```
 
 ### Cradle tests
