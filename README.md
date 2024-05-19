@@ -54,27 +54,24 @@ Each contract contains Rust unit and integration tests embedded within the contr
 cargo test
 ```
 
-### Compiling
-
-After making sure tests pass, you can compile each contract with the following:
-
-```sh
-cargo wasm
-```
-
-#### Production
+#### Compiling and building contracts
 
 For production builds, run the following:
 
 ```sh
-docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/workspace-optimizer:0.12.6
+./build.sh
 ```
 
 This performs several optimizations which can significantly reduce the final size of the contract binaries, which will
 be available inside the `artifacts/` directory.
+
+#### Faster builds for ARM
+
+While developing and testing on Apple silicon or other ARM architectures, you can build contract .wasm files using:
+
+```sh
+./build_arm.sh
+```
 
 ### Contract Deployment
 
@@ -140,6 +137,43 @@ Enterprise factory mainnet:
 
 ```
 yarn migrate:enterprise-factory:mainnet
+```
+
+### Cradle tests
+
+A suite of tests using [NewMetric's](https://www.newmetric.xyz/) Cradle has been created, and can be found
+under [tests-cradle/](./tests-cradle).
+
+#### Purpose
+
+The tests are designed to execute real transactions on a fork of mainnet.
+
+These are used as 'smoke tests' for new versions of Enterprise. They allow developers to exactly simulate existing DAOs
+upgrading to new versions and check whether basic functions (like proposals, or upgrading again) work, so that DAOs are
+not bricked after an update.
+
+#### Env setup for Cradle tests
+
+To run the tests, an `.env` file in the root directory of the repository is required.
+
+The file requires the following setup:
+
+```
+NETWORK=<mainnet|testnet>
+LCD_ENDPOINT=<Cradle LCD endpoint, can be found in your Cradle dashboard>
+JWT_TOKEN=<JWT token for your Cradle session>
+CHAIN_ID=<e.g. phoenix-1>
+MNEMONIC_KEY=<mnemonic of the wallet used to interact with the chain>
+```
+
+#### Running Cradle tests
+
+Before running Cradle tests, you need a valid setup in the form of an `.env` file, described above.
+
+To run the tests, run:
+
+```sh
+yarn tests-cradle
 ```
 
 ## License
