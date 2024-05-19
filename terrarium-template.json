@@ -9,6 +9,10 @@
       "chainID": "phoenix-1",
       "URL": "https://phoenix-lcd.terra.dev"
     },
+    "cradle": {
+      "chainID": "phoenix-1",
+      "URL": "<YOUR CRADLE LCD>"
+    },
     "testnet": {
       "chainID": "pisco-1",
       "URL": "https://pisco-lcd.terra.dev"
@@ -93,6 +97,10 @@
     "staging": {
       "mnemonic": "some other seed phrase for a wallet you are using on staging env (still mainnet though)",
       "network": "staging"
+    },
+    "cradle": {
+      "mnemonic": "some other seed phrase for a wallet you are using on cradle env (still mainnet though)",
+      "network": "cradle"
     }
   }
 }
