@@ -1,9 +1,7 @@
-# NFT staking membership
+# ICS721 callback proxy
 
-A contract for managing an NFT (CW721) staking membership for an Enterprise DAO.
-Essentially a proxy to the nft-staking library.
+A proxy that implements Ark's ICS721 contract's callbacks.
 
-Mainly serves to:
-- store users' NFT stakes
-- provide an interface to stake, unstake, and claim user NFTs
-- provide queries for user and total stakes, and user claims
+Allows receiving of callbacks together with incoming NFTs, and enables forwarding them to specific DAOs.
+
+Meant as a single global instance that works for all DAOs.
