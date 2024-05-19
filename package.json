@@ -15,7 +15,6 @@
     "deploy:enterprise-factory:mainnet": "yarn terrariums run tasks/deploy_enterprise_factory.ts --network mainnet --signer phoenix",
     "deploy:enterprise-factory:staging": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/deploy_enterprise_factory.ts --network staging --signer staging",
     "deploy:enterprise-factory:cradle": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/deploy_enterprise_factory.ts --network cradle --signer cradle",
-    "testdata:enterprise-factory:local": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/create_enterprise_test_data.ts --network localterra --signer pisco",
     "migrate:enterprise-factory": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_factory.ts --network testnet --signer pisco",
     "migrate:enterprise-factory:mainnet": "yarn terrariums run tasks/migrate_enterprise_factory.ts --network mainnet --signer phoenix",
     "migrate:enterprise-factory:staging": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_factory.ts --network staging --signer staging",
