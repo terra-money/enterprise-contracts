@@ -54,7 +54,7 @@
     "@cosmjs/proto-signing": "^0.32.2",
     "@cosmjs/stargate": "^0.32.2",
     "@terra-money/terra.js": "^3.1.3",
-    "@terra-money/terrariums": "file:../terrariums",
+    "@terra-money/terrariums": "^1.1.9",
     "@types/node": "^16.11.56",
     "cosmjs-types": "^0.9.0",
     "ts-node": "^10.9.1",
