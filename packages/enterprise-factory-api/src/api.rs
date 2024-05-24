@@ -65,6 +65,7 @@ pub enum CreateDaoMembershipMsg {
     NewCw20(Box<NewCw20MembershipMsg>),
     ImportCw721(ImportCw721MembershipMsg),
     NewCw721(NewCw721MembershipMsg),
+    NewIcs721(ImportIcs721MembershipMsg),
     ImportCw3(ImportCw3MembershipMsg),
     NewMultisig(NewMultisigMembershipMsg),
 }
@@ -117,6 +118,15 @@ pub struct NewCw721MembershipMsg {
     pub nft_name: String,
     pub nft_symbol: String,
     pub minter: Option<String>,
+    pub unlocking_period: Duration,
+}
+
+#[cw_serde]
+pub struct ImportIcs721MembershipMsg {
+    /// Address of the ICS721 proxy that will be minting this NFT
+    pub ics721_proxy: String,
+    /// class_id for this NFT. This helps the ICS721 identify which NFT on the original chain this represents.
+    pub class_id: String,
     pub unlocking_period: Duration,
 }
 

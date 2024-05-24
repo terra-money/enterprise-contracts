@@ -39,6 +39,14 @@
       "uluna_denom": "ibc/33B679C576A22B5D2CA314D8801155881C62037C34DBC3B32537FA5DBAB91080",
       "src_ibc_channel": "channel-324",
       "dest_ibc_channel": "channel-266"
+    },
+    "injective-1": {
+      "chain_global_proxy": "inj1h4gc2nar4lkhzhl0uwnp5pj2hexf0a6wwy9e85",
+      "enterprise_treasury_code_id": 359,
+      "ics_proxy_code_id": 358,
+      "uluna_denom": "ibc/0DDC992F19041FC1D499CCA1486721479EBAA7270604E15EDDFABA89D1E772E5",
+      "src_ibc_channel": "channel-255",
+      "dest_ibc_channel": "channel-151"
     }
   },
   "testnet": {

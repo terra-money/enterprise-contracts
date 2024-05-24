@@ -1,5 +1,6 @@
 use crate::claims::{add_claim, get_releasable_claims, NFT_CLAIMS};
-use crate::config::CONFIG;
+use crate::config::{Config, NftContractAddr, CONFIG};
+use crate::ics721_query::query_ics721_proxy_nft_addr;
 use crate::nft_staking::{save_nft_stake, NftStake, NFT_STAKES};
 use common::cw::{Context, ReleaseAt};
 use cosmwasm_std::{from_json, wasm_execute, Response, StdError, SubMsg, Uint128};
@@ -16,7 +17,7 @@ use membership_common::weight_change_hooks::report_weight_change_submsgs;
 use membership_common_api::api::UserWeightChange;
 use nft_staking_api::api::{ClaimMsg, ReceiveNftMsg, UnstakeMsg, UpdateUnlockingPeriodMsg};
 use nft_staking_api::error::NftStakingError::{
-    NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
+    Ics721StillNotTransferred, NftTokenAlreadyStaked, NoNftTokenStaked, Unauthorized,
 };
 use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::Cw721HookMsg;
@@ -25,8 +26,33 @@ use nft_staking_api::msg::Cw721HookMsg;
 pub fn receive_nft(ctx: &mut Context, msg: ReceiveNftMsg) -> NftStakingResult<Response> {
     let config = CONFIG.load(ctx.deps.storage)?;
 
+    // extract the NFT contract address, or fail if this is still in the ICS721-not-transferred stage
+    let nft_contract = match config.nft_contract_addr {
+        NftContractAddr::Cw721 { contract } => contract,
+        NftContractAddr::Ics721 { contract, class_id } => {
+            let nft_addr_opt =
+                query_ics721_proxy_nft_addr(ctx.deps.as_ref(), contract.to_string(), class_id)?;
+
+            let nft_addr = nft_addr_opt.ok_or(Ics721StillNotTransferred)?;
+
+            // this is the first time we see our NFT has been transferred
+            // we take the opportunity to save it to the config
+            CONFIG.save(
+                ctx.deps.storage,
+                &Config {
+                    nft_contract_addr: NftContractAddr::Cw721 {
+                        contract: nft_addr.clone(),
+                    },
+                    ..config
+                },
+            )?;
+
+            nft_addr
+        }
+    };
+
     // only designated NFT contract can invoke this
-    if ctx.info.sender != config.nft_contract {
+    if ctx.info.sender != nft_contract {
         return Err(Unauthorized);
     }
 
@@ -180,6 +206,10 @@ pub fn update_unlocking_period(
 
 /// Claim any unstaked items that are ready to be released.
 pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> NftStakingResult<Response> {
+    let config = CONFIG.load(ctx.deps.storage)?;
+
+    let nft_contract = config.require_cw721_addr()?;
+
     let user = msg
         .user
         .map(|user| ctx.deps.api.addr_validate(&user))
@@ -192,8 +222,6 @@ pub fn claim(ctx: &mut Context, msg: ClaimMsg) -> NftStakingResult<Response> {
 
     let releasable_claims =
         get_releasable_claims(ctx.deps.storage, &ctx.env.block, user.clone())?.claims;
-
-    let nft_contract = CONFIG.load(ctx.deps.storage)?.nft_contract;
 
     let send_nfts_submsgs = releasable_claims
         .iter()

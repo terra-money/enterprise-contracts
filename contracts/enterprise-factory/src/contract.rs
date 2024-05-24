@@ -4,7 +4,7 @@ use crate::multisig_membership::{
     instantiate_new_multisig_membership,
 };
 use crate::nft_membership::{
-    import_cw721_membership, instantiate_new_cw721_membership,
+    import_cw721_membership, import_ics721_membership, instantiate_new_cw721_membership,
     instantiate_nft_staking_membership_contract,
 };
 use crate::state::{
@@ -48,9 +48,10 @@ use enterprise_versioning_api::api::{Version, VersionInfo, VersionParams, Versio
 use enterprise_versioning_api::msg::QueryMsg::LatestVersion;
 use funds_distributor_api::api::UserWeight;
 use itertools::Itertools;
+use nft_staking_api::api::NftContract;
 use std::ops::Not;
 use CreateDaoMembershipMsg::{
-    ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewDenom, NewMultisig,
+    ImportCw20, ImportCw3, ImportCw721, NewCw20, NewCw721, NewDenom, NewIcs721, NewMultisig,
 };
 use ExecuteMsg::{CreateDao, CreateDaoWithVersion, UpdateConfig};
 
@@ -157,7 +158,7 @@ fn create_dao_with_version_info(
     let dao_type = match msg.dao_membership {
         NewDenom(_) => DaoType::Denom,
         ImportCw20(_) | NewCw20(_) => DaoType::Token,
-        ImportCw721(_) | NewCw721(_) => DaoType::Nft,
+        ImportCw721(_) | NewCw721(_) | NewIcs721(_) => DaoType::Nft,
         ImportCw3(_) | NewMultisig(_) => DaoType::Multisig,
     };
 
@@ -443,7 +444,9 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
             Ok(
                 Response::new().add_submessage(instantiate_nft_staking_membership_contract(
                     deps,
-                    cw721_address,
+                    NftContract::Cw721 {
+                        contract: cw721_address.to_string(),
+                    },
                     unlocking_period,
                     Some(vec![governance_controller.to_string()]),
                 )?),
@@ -701,6 +704,9 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> DaoResult<Response> {
                 }
                 NewCw721(msg) => instantiate_new_cw721_membership(deps.branch(), msg)?,
                 ImportCw3(msg) => import_cw3_membership(deps.branch(), msg, weight_change_hooks)?,
+                NewIcs721(msg) => {
+                    import_ics721_membership(deps.branch(), msg, weight_change_hooks)?
+                }
                 NewMultisig(msg) => {
                     // multisig DAO with no initial members is meaningless - it's locked from the get-go
                     if msg.multisig_members.is_empty() {

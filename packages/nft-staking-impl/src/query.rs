@@ -1,5 +1,6 @@
 use crate::claims::{get_claims, get_releasable_claims};
-use crate::config::CONFIG;
+use crate::config::{NftContractAddr, CONFIG};
+use crate::ics721_query::query_ics721_proxy_nft_addr;
 use crate::nft_staking::{NftStake, NFT_STAKES};
 use common::cw::QueryContext;
 use cosmwasm_std::Order::Ascending;
@@ -17,9 +18,10 @@ use membership_common_api::api::{
     UserWeightResponse,
 };
 use nft_staking_api::api::{
-    ClaimsParams, ClaimsResponse, NftConfigResponse, NftTokenId, StakedNftsParams,
-    StakedNftsResponse, UserNftStakeParams, UserNftStakeResponse,
+    ClaimsParams, ClaimsResponse, NftConfigResponse, NftContract, NftContractConfigResponse,
+    NftTokenId, StakedNftsParams, StakedNftsResponse, UserNftStakeParams, UserNftStakeResponse,
 };
+use nft_staking_api::error::NftStakingError::Ics721StillNotTransferred;
 use nft_staking_api::error::NftStakingResult;
 
 const MAX_QUERY_LIMIT: u8 = 100;
@@ -30,9 +32,46 @@ pub fn query_nft_config(qctx: &QueryContext) -> NftStakingResult<NftConfigRespon
 
     let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
 
+    let nft_contract = match config.nft_contract_addr {
+        NftContractAddr::Cw721 { contract } => contract,
+        NftContractAddr::Ics721 { contract, class_id } => {
+            // check if there is an NFT contract for the given class ID in the ICS721 proxy
+            let nft_contract =
+                query_ics721_proxy_nft_addr(qctx.deps, contract.to_string(), class_id)?;
+            match nft_contract {
+                Some(nft_contract_addr) => nft_contract_addr,
+                None => return Err(Ics721StillNotTransferred),
+            }
+        }
+    };
+
     Ok(NftConfigResponse {
         enterprise_contract,
-        nft_contract: config.nft_contract,
+        nft_contract,
+        unlocking_period: config.unlocking_period,
+    })
+}
+
+pub fn query_nft_contract_config(
+    qctx: &QueryContext,
+) -> NftStakingResult<NftContractConfigResponse> {
+    let config = CONFIG.load(qctx.deps.storage)?;
+
+    let enterprise_contract = ENTERPRISE_CONTRACT.load(qctx.deps.storage)?;
+
+    let nft_contract = match config.nft_contract_addr {
+        NftContractAddr::Cw721 { contract } => NftContract::Cw721 {
+            contract: contract.to_string(),
+        },
+        NftContractAddr::Ics721 { contract, class_id } => NftContract::Ics721 {
+            contract: contract.to_string(),
+            class_id,
+        },
+    };
+
+    Ok(NftContractConfigResponse {
+        enterprise_contract,
+        nft_contract,
         unlocking_period: config.unlocking_period,
     })
 }

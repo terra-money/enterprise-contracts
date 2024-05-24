@@ -46,5 +46,6 @@ enterprise-protocol = { path = "../../packages/enterprise-protocol" }
 enterprise-factory-api = { path = "../../packages/enterprise-factory-api" }
 funds-distributor-api = { path = "../../packages/funds-distributor-api" }
 enterprise-treasury-api = { path = "../../packages/enterprise-treasury-api" }
+membership-common-api = { path = "../../packages/membership-common-api" }
 cw-orch = { version = "0.18.1", optional = true }
 

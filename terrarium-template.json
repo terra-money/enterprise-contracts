@@ -63,6 +63,9 @@
     "funds-distributor": {
       "src": "./contracts/funds-distributor/"
     },
+    "ics721-callback-proxy": {
+      "src": "./contracts/ics721-callback-proxy/"
+    },
     "multisig-membership": {
       "src": "./contracts/multisig-membership/"
     },

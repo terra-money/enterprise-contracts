@@ -13,9 +13,10 @@ use crate::v1_structs::QueryV1Msg::{
     ProposalVotes, Proposals, ReleasableClaims, StakedNfts, TotalStakedAmount, UserStake,
 };
 use crate::v1_structs::{
-    CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteV1Msg,
-    ProposalActionV1, ProposalResponseV1, ProposalsResponseV1, TreasuryV1_0_0MigrationMsg,
-    UnstakeCw20V1Msg, UnstakeCw721V1Msg, UnstakeV1Msg, UpgradeDaoV1Msg, UserStakeV1Params,
+    CreateProposalV1Msg, Cw20HookV1Msg, Cw721HookV1Msg, DaoInfoResponseV1, ExecuteMsgsV1Msg,
+    ExecuteV1Msg, ProposalActionV1, ProposalResponseV1, ProposalsResponseV1,
+    TreasuryV1_0_0MigrationMsg, UnstakeCw20V1Msg, UnstakeCw721V1Msg, UnstakeV1Msg, UpgradeDaoV1Msg,
+    UserStakeV1Params,
 };
 use common::cw::QueryContext;
 use cosmwasm_schema::serde::de::DeserializeOwned;
@@ -590,6 +591,17 @@ impl EnterpriseFacadeV1 {
                 }
             }
             ProposalAction::ExecuteMsgs(msg) => Ok(ExecuteMsgs(msg.into())),
+            ProposalAction::ExecuteTreasuryMsgs(msg) => {
+                if msg.remote_treasury_target.is_some() {
+                    Err(StdError::generic_err("remote treasuries not supported"))
+                } else {
+                    Ok(ExecuteMsgs(ExecuteMsgsV1Msg {
+                        action_type: msg.action_type,
+                        msgs: msg.msgs,
+                    }))
+                }
+            }
+            ProposalAction::ExecuteEnterpriseMsgs(msg) => Ok(ExecuteMsgs(msg.into())),
             ProposalAction::ModifyMultisigMembership(msg) => {
                 Ok(ModifyMultisigMembership(msg.into()))
             }
@@ -599,9 +611,7 @@ impl EnterpriseFacadeV1 {
             }
             ProposalAction::AddAttestation(_)
             | ProposalAction::RemoveAttestation { .. }
-            | ProposalAction::DeployCrossChainTreasury(_)
-            | ProposalAction::ExecuteTreasuryMsgs(_)
-            | ProposalAction::ExecuteEnterpriseMsgs(_) => {
+            | ProposalAction::DeployCrossChainTreasury(_) => {
                 Err(StdError::generic_err("unsupported proposal action"))
             }
         }

@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "attestation-api",
  "common",
@@ -1460,7 +1460,6 @@ dependencies = [
  "funds-distributor-api",
  "nft-staking-api",
  "serde-json-wasm",
- "token-staking-api",
 ]
 
 [[package]]
@@ -1686,7 +1685,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise-governance-controller"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "common",
@@ -2038,6 +2037,7 @@ dependencies = [
  "enterprise-treasury-api",
  "funds-distributor-api",
  "itertools 0.10.5",
+ "membership-common-api",
 ]
 
 [[package]]
@@ -2546,6 +2546,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "ics721-callback-proxy"
+version = "1.0.0"
+dependencies = [
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw2 1.1.2",
+ "ics721-callback-proxy-api",
+ "ics721-callback-proxy-impl",
+]
+
+[[package]]
+name = "ics721-callback-proxy-api"
+version = "1.0.0"
+dependencies = [
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.2",
+ "ics721-types",
+ "thiserror",
+]
+
+[[package]]
+name = "ics721-callback-proxy-impl"
+version = "1.0.0"
+dependencies = [
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.2",
+ "cw721",
+ "ics721-callback-proxy-api",
+ "ics721-types",
+ "nft-staking-api",
+ "thiserror",
+]
+
+[[package]]
+name = "ics721-types"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw721",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2915,7 +2967,7 @@ dependencies = [
 
 [[package]]
 name = "nft-staking-api"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -2928,7 +2980,7 @@ dependencies = [
 
 [[package]]
 name = "nft-staking-impl"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -2946,7 +2998,7 @@ dependencies = [
 
 [[package]]
 name = "nft-staking-membership"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",

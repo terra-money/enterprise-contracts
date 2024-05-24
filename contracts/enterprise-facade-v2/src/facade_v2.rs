@@ -46,8 +46,11 @@ use membership_common_api::api::{
     UserWeightResponse,
 };
 use membership_common_api::msg::QueryMsg::{Members, TotalWeight, UserWeight};
-use nft_staking_api::api::{NftConfigResponse, UserNftStakeParams, UserNftStakeResponse};
-use nft_staking_api::msg::QueryMsg::{NftConfig, StakedNfts};
+use nft_staking_api::api::{
+    NftConfigResponse, NftContract, NftContractConfigResponse, UserNftStakeParams,
+    UserNftStakeResponse,
+};
+use nft_staking_api::msg::QueryMsg::{NftConfig, NftContractConfig, StakedNfts};
 use token_staking_api::api::TokenConfigResponse;
 use token_staking_api::msg::QueryMsg::TokenConfig;
 use V2MigrationStage::{MigrationCompleted, MigrationInProgress};
@@ -106,14 +109,28 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
                 )
             }
             DaoType::Nft => {
-                let nft_config: NftConfigResponse = qctx.deps.querier.query_wasm_smart(
-                    gov_config.dao_membership_contract.to_string(),
-                    &NftConfig {},
-                )?;
-                (
-                    nft_config.nft_contract.to_string(),
-                    nft_config.unlocking_period,
-                )
+                let v1_2_0 = Version::new(1, 2, 0);
+                if dao_info.dao_version >= v1_2_0 {
+                    let nft_config: NftContractConfigResponse =
+                        qctx.deps.querier.query_wasm_smart(
+                            gov_config.dao_membership_contract.to_string(),
+                            &NftContractConfig {},
+                        )?;
+                    let nft_contract = match nft_config.nft_contract {
+                        NftContract::Cw721 { contract } => contract,
+                        NftContract::Ics721 { class_id, .. } => class_id,
+                    };
+                    (nft_contract, nft_config.unlocking_period)
+                } else {
+                    let nft_config: NftConfigResponse = qctx.deps.querier.query_wasm_smart(
+                        gov_config.dao_membership_contract.to_string(),
+                        &NftConfig {},
+                    )?;
+                    (
+                        nft_config.nft_contract.to_string(),
+                        nft_config.unlocking_period,
+                    )
+                }
             }
             DaoType::Multisig => {
                 // doesn't make too much sense, but kept for backwards-compatibility since this was the previous behavior
