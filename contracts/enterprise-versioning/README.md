@@ -1,5 +1,8 @@
 # Enterprise versioning contract
 
 A contract for managing Enterprise's versions.
-Contains all the different contracts' code IDs for each of Enterprise's versions, so that we can migrate
-DAOs easily to new versions and use matching code IDs for each of the contracts.
+
+Serves as a global repository that maps Enterprise's versions to code IDs used for all DAO-specific contracts for that
+Enterprise version.
+
+Deploying a new Enterprise version is done essentially by adding a new version mapping here.
