@@ -7,7 +7,7 @@ edition = "2021"
 opt-level = 0
 debug = true
 
-[dependencies]
+[dev-dependencies]
 attestation-api = { path = "../../packages/attestation-api" }
 common = { path = "../../packages/common" }
 cosmwasm-std = "1"
@@ -64,6 +64,4 @@ serde_json = "1.0.105"
 serde-json-wasm = "1.0.0"
 anyhow = "1"
 cw-multi-test = "0.16.2"
-
-[dev-dependencies]
 
