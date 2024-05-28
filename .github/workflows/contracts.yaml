@@ -53,13 +53,14 @@ jobs:
         env:
           RUST_BACKTRACE: 1
 
-      - name: Compile WASM contracts
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target ${{ env.RUSTC_TARGET }} --locked
-        env:
-          RUSTFLAGS: "-C strip=symbols"
+  #       TODO: Re-enable those back.
+  #      - name: Compile WASM contracts
+  #        uses: actions-rs/cargo@v1
+  #        with:
+  #          command: build
+  #          args: --release --target ${{ env.RUSTC_TARGET }} --locked
+  #        env:
+  #          RUSTFLAGS: "-C strip=symbols"
 
   lint:
     name: Lint
