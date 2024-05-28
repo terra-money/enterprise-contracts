@@ -364,7 +364,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
 
     let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
 
-    let migrate_gov_controller_msg = SubMsg::new(Wasm(Migrate {
+    let migrate_governance_controller_msg = SubMsg::new(Wasm(Migrate {
         contract_addr: component_contracts
             .enterprise_governance_controller_contract
             .to_string(),
@@ -376,7 +376,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
 
     let mut response = Response::new()
         .add_attribute("action", "migrate")
-        .add_submessage(migrate_gov_controller_msg);
+        .add_submessage(migrate_governance_controller_msg);
 
     let dao_type = DAO_TYPE.load(deps.storage)?;
 

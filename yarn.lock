@@ -1507,9 +1507,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@terra-money/terrariums@file:../terrariums::locator=apps-monorepo%40workspace%3A.":
+"@terra-money/terrariums@npm:^1.1.9":
   version: 1.1.9
-  resolution: "@terra-money/terrariums@file:../terrariums#../terrariums::hash=560edd&locator=apps-monorepo%40workspace%3A."
+  resolution: "@terra-money/terrariums@npm:1.1.9"
   dependencies:
     "@terra-money/terra.js": ^3.1.3
     "@types/node": ^18.0.0
@@ -1522,7 +1522,7 @@ __metadata:
     yargs: ^17.5.1
   bin:
     terrariums: lib/src/cli.js
-  checksum: 8da74737e5a10ad274cddac4ebf04c1d023fcea0c30e43af9f5cb325188f0bc7b835592d9668030f30246bc30ff09dff61eae5db5860a713d89ef5c0e64270f4
+  checksum: a76866e4e236972a8fa0e418ef6b3d39be892bd4aca74f217239f093086b3f6d0a3c315b905d263032281bb79c7dea1700124788912cf40c2937554033fb57ff
   languageName: node
   linkType: hard
 
@@ -1886,7 +1886,7 @@ __metadata:
     "@cosmjs/proto-signing": ^0.32.2
     "@cosmjs/stargate": ^0.32.2
     "@terra-money/terra.js": ^3.1.3
-    "@terra-money/terrariums": "file:../terrariums"
+    "@terra-money/terrariums": ^1.1.9
     "@types/node": ^16.11.56
     cosmjs-types: ^0.9.0
     husky: ^8.0.1
