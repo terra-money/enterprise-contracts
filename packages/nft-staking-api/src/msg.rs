@@ -6,10 +6,7 @@ use crate::api::{
 use common::cw::ReleaseAt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
-use membership_common_api::api::{
-    MembersParams, MembersResponse, TotalWeightCheckpoint, TotalWeightParams, TotalWeightResponse,
-    UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
-};
+use membership_common_api::api::{MembersParams, MembersResponse, TotalWeightAboveParams, TotalWeightCheckpoint, TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse, WeightChangeHookMsg};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -52,6 +49,8 @@ pub enum QueryMsg {
     StakedNfts(StakedNftsParams),
     #[returns(TotalWeightResponse)]
     TotalWeight(TotalWeightParams),
+    #[returns(TotalWeightResponse)]
+    TotalWeightAbove(TotalWeightAboveParams),
     #[returns(ClaimsResponse)]
     Claims(ClaimsParams),
     #[returns(ClaimsResponse)]

@@ -5,7 +5,7 @@ use crate::repository::era_repository::{get_current_era, get_user_first_era_with
 use crate::state::EraId;
 use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
 use cosmwasm_std::{Addr, Deps, DepsMut, StdResult, Uint128};
-use cosmwasm_std::Order::{Ascending, Descending};
+use cosmwasm_std::Order::{Descending};
 use cw_storage_plus::{Map, PrefixBound};
 use enterprise_governance_api::msg::QueryMsg::{TotalVotes, VoterTotalVotes};
 use funds_distributor_api::api::DistributionType;
@@ -70,7 +70,7 @@ impl WeightsRepository for MembershipWeightsRepository<'_> {
 
                 if let Some(first_era_with_weight) = first_era_with_weight {
                     let weight = USER_WEIGHTS.prefix_range(
-                        self.deps.storage, Some(PrefixBound::exclusive(era_id)), Some(PrefixBound::inclusive(first_era_with_weight)), Descending,
+                        self.deps.storage, Some(PrefixBound::inclusive(first_era_with_weight)), Some(PrefixBound::exclusive(era_id)), Descending,
                     )
                         .take(1)
                         .collect::<StdResult<Vec<((EraId, Addr), Uint128)>>>()?

@@ -29,6 +29,7 @@ pub const USER_WEIGHTS: Map<(EraId, Addr), Uint128> = Map::new("user_weights");
 /// for rewards.
 /// This weight will be the same as user's real weight if they're over the minimum eligible weight,
 /// or 0 if they are under the minimum.
+// TODO: remove this? doesn't seem like we need it
 pub const EFFECTIVE_USER_WEIGHTS: Map<Addr, Uint128> = Map::new("effective_user_weights");
 
 /// Saves any initial weights given to the users.

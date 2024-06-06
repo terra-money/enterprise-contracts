@@ -3,6 +3,7 @@ use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+use membership_common::member_weights::query_total_weight_above;
 use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 use nft_staking_api::error::NftStakingResult;
 use nft_staking_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -69,6 +70,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
         QueryMsg::UserStake(params) => to_json_binary(&query_user_nft_stake(&qctx, params)?)?,
         QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(&qctx, params)?)?,
+        QueryMsg::TotalWeightAbove(params) => to_json_binary(&query_total_weight_above(&qctx, params)?)?,
         QueryMsg::Claims(params) => to_json_binary(&query_claims(&qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => {
             to_json_binary(&query_releasable_claims(&qctx, params)?)?

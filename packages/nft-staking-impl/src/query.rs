@@ -160,9 +160,10 @@ pub fn query_members(
         .unwrap_or(DEFAULT_QUERY_LIMIT as u32)
         .min(MAX_QUERY_LIMIT as u32);
 
-    let members = MEMBER_WEIGHTS
+    let members = MEMBER_WEIGHTS()
         .range(qctx.deps.storage, start_after, None, Ascending)
         .take(limit as usize)
+        .map(|res| res.map(|(addr, weight)| (addr, weight.weight)))
         .collect::<StdResult<Vec<(Addr, Uint128)>>>()?
         .into_iter()
         .map(|(user, weight)| UserWeightResponse { user, weight })

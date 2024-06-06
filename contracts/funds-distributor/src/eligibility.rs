@@ -12,6 +12,9 @@ use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::execute_update_minimum_eligible_weight_response;
 use itertools::Itertools;
 use std::ops::Range;
+use membership_common_api::api::{TotalWeightAboveParams, TotalWeightResponse};
+use membership_common_api::msg::QueryMsg::TotalWeightAbove;
+use crate::distributing::query_enterprise_components;
 
 /// Minimum weight that a user should have to be eligible for receiving rewards.
 /// Defined per-era.
@@ -131,7 +134,14 @@ pub fn update_minimum_eligible_weight(
 
     MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, next_era, &new_minimum_weight)?;
 
-    weights_repository_mut(deps.branch(), Membership).set_total_weight(total_weight, next_era)?;
+    let components = query_enterprise_components(deps.as_ref())?;
+
+    let total_weight_above: TotalWeightResponse = deps.querier.query_wasm_smart(
+        components.membership_contract.to_string(),
+        &TotalWeightAbove(TotalWeightAboveParams { above_weight_inclusive: new_minimum_weight }),
+    )?;
+
+    weights_repository_mut(deps.branch(), Membership).set_total_weight(total_weight_above.total_weight, next_era)?;
 
     Ok(())
 }
