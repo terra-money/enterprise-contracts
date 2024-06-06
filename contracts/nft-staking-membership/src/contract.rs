@@ -70,7 +70,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
         QueryMsg::UserStake(params) => to_json_binary(&query_user_nft_stake(&qctx, params)?)?,
         QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(&qctx, params)?)?,
-        QueryMsg::TotalWeightAbove(params) => to_json_binary(&query_total_weight_above(&qctx, params)?)?,
+        QueryMsg::TotalWeightAbove(params) => {
+            to_json_binary(&query_total_weight_above(&qctx, params)?)?
+        }
         QueryMsg::Claims(params) => to_json_binary(&query_claims(&qctx, params)?)?,
         QueryMsg::ReleasableClaims(params) => {
             to_json_binary(&query_releasable_claims(&qctx, params)?)?

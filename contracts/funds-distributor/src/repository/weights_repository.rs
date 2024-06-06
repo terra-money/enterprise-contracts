@@ -1,11 +1,11 @@
 use crate::distributing::query_enterprise_components;
 use crate::eligibility::MINIMUM_ELIGIBLE_WEIGHT;
 use crate::participation::get_proposal_ids_tracked;
+use crate::repository::era_repository::EraId;
 use crate::repository::era_repository::{get_current_era, get_user_first_era_with_weight};
-use crate::state::EraId;
-use crate::user_weights::{EFFECTIVE_USER_WEIGHTS, USER_WEIGHTS};
+use crate::user_weights::USER_WEIGHTS;
+use cosmwasm_std::Order::Descending;
 use cosmwasm_std::{Addr, Deps, DepsMut, StdResult, Uint128};
-use cosmwasm_std::Order::{Descending};
 use cw_storage_plus::{Map, PrefixBound};
 use enterprise_governance_api::msg::QueryMsg::{TotalVotes, VoterTotalVotes};
 use funds_distributor_api::api::DistributionType;
@@ -16,16 +16,12 @@ use poll_engine_api::api::{
 };
 use DistributionType::Participation;
 
-// TODO: this is actually for membership only
-/// Total weight of all users eligible for rewards for the given era.
-const ERA_EFFECTIVE_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("era_total_weight");
-
-const PARTICIPATION_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("participation_total_weight");
+/// Total membership weight of all users eligible for rewards for the given era.
+const MEMBERSHIP_TOTAL_WEIGHT: Map<EraId, Uint128> = Map::new("membership_total_weight");
 
 pub trait WeightsRepository {
     fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128>;
 
-    // TODO: it gets confusing whether this queries live data or uses some local copy, split into interactor and repository
     fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>>;
 }
 
@@ -47,7 +43,7 @@ pub struct MembershipWeightsRepository<'a> {
 
 impl WeightsRepository for MembershipWeightsRepository<'_> {
     fn get_total_weight(&self, era_id: EraId) -> DistributorResult<Uint128> {
-        let total_weight = ERA_EFFECTIVE_TOTAL_WEIGHT
+        let total_weight = MEMBERSHIP_TOTAL_WEIGHT
             .may_load(self.deps.storage, era_id)?
             .unwrap_or_default();
         Ok(total_weight)
@@ -66,18 +62,27 @@ impl WeightsRepository for MembershipWeightsRepository<'_> {
                 Ok(Some(effective_weight))
             }
             None => {
-                let first_era_with_weight = get_user_first_era_with_weight(self.deps, user.clone(), Membership)?;
+                let first_era_with_weight =
+                    get_user_first_era_with_weight(self.deps, user.clone(), Membership)?;
 
                 if let Some(first_era_with_weight) = first_era_with_weight {
-                    let weight = USER_WEIGHTS.prefix_range(
-                        self.deps.storage, Some(PrefixBound::inclusive(first_era_with_weight)), Some(PrefixBound::exclusive(era_id)), Descending,
-                    )
+                    // the user had their weight set at some point.
+                    // go through eras, starting with the current and going back to find
+                    // the last known user weight
+                    let weight = USER_WEIGHTS
+                        .prefix_range(
+                            self.deps.storage,
+                            Some(PrefixBound::inclusive(first_era_with_weight)),
+                            Some(PrefixBound::exclusive(era_id)),
+                            Descending,
+                        )
                         .take(1)
                         .collect::<StdResult<Vec<((EraId, Addr), Uint128)>>>()?
                         .first()
                         .map(|&(_, weight)| weight);
                     Ok(weight)
                 } else {
+                    // the user never had their weight set
                     Ok(None)
                 }
             }
@@ -109,7 +114,7 @@ impl WeightsRepository for MembershipWeightsRepositoryMut<'_> {
 
 impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
     fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()> {
-        ERA_EFFECTIVE_TOTAL_WEIGHT.save(self.deps.storage, era_id, &total_weight)?;
+        MEMBERSHIP_TOTAL_WEIGHT.save(self.deps.storage, era_id, &total_weight)?;
         Ok(())
     }
 
@@ -121,14 +126,12 @@ impl<'a> WeightsRepositoryMut<'a> for MembershipWeightsRepositoryMut<'a> {
         USER_WEIGHTS.save(self.deps.storage, (current_era, user.clone()), &weight)?;
 
         let effective_user_weight = calculate_effective_weight(weight, minimum_eligible_weight);
-        EFFECTIVE_USER_WEIGHTS.save(self.deps.storage, user, &effective_user_weight)?;
 
         Ok(effective_user_weight)
     }
 }
 
-// TODO: this is a weird file for this function to live in, move somewhere better
-pub fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
+fn calculate_effective_weight(weight: Uint128, minimum_eligible_weight: Uint128) -> Uint128 {
     if weight >= minimum_eligible_weight {
         weight
     } else {
@@ -164,7 +167,6 @@ impl WeightsRepository for ParticipationWeightsRepository<'_> {
         Ok(total_weight.total_votes)
     }
 
-    // TODO: this should go to interactor, not here
     fn get_user_weight(&self, user: Addr, era_id: EraId) -> DistributorResult<Option<Uint128>> {
         let components = query_enterprise_components(self.deps)?;
 
@@ -205,13 +207,19 @@ impl WeightsRepository for ParticipationWeightsRepositoryMut<'_> {
 }
 
 impl<'a> WeightsRepositoryMut<'a> for ParticipationWeightsRepositoryMut<'a> {
-    fn set_total_weight(&mut self, total_weight: Uint128, era_id: EraId) -> DistributorResult<()> {
-        PARTICIPATION_TOTAL_WEIGHT.save(self.deps.storage, era_id, &total_weight)?;
+    fn set_total_weight(
+        &mut self,
+        _total_weight: Uint128,
+        _era_id: EraId,
+    ) -> DistributorResult<()> {
+        // no-op - we're not locally caching participation weights
         Ok(())
     }
 
-    fn set_user_weight(&mut self, _user: Addr, _weight: Uint128) -> DistributorResult<Uint128> {
-        todo!("probably no-op")
+    fn set_user_weight(&mut self, _user: Addr, weight: Uint128) -> DistributorResult<Uint128> {
+        // no-op - we're not locally caching participation weights
+
+        Ok(weight)
     }
 }
 

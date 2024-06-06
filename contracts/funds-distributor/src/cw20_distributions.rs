@@ -1,5 +1,5 @@
+use crate::repository::era_repository::EraId;
 use crate::repository::user_distribution_repository::UserDistributionInfo;
-use crate::state::EraId;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};

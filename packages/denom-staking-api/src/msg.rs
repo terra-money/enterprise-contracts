@@ -4,7 +4,10 @@ use crate::api::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
-use membership_common_api::api::{MembersParams, MembersResponse, TotalWeightAboveParams, TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse, WeightChangeHookMsg};
+use membership_common_api::api::{
+    MembersParams, MembersResponse, TotalWeightAboveParams, TotalWeightParams, TotalWeightResponse,
+    UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {

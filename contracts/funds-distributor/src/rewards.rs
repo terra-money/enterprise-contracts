@@ -1,5 +1,6 @@
 use crate::asset_types::RewardAsset::{Cw20, Native};
 use crate::asset_types::{to_reward_assets, RewardAsset};
+use crate::repository::era_repository::EraId;
 use crate::repository::era_repository::{
     get_current_era, get_user_first_era_with_weight, get_user_last_fully_claimed_era,
 };
@@ -10,7 +11,6 @@ use crate::repository::user_distribution_repository::{
     user_distribution_repository, UserDistributionRepository,
 };
 use crate::repository::weights_repository::weights_repository;
-use crate::state::EraId;
 use common::cw::QueryContext;
 use cosmwasm_std::{Addr, Decimal, Deps, Fraction, Uint128};
 use funds_distributor_api::api::DistributionType::{Membership, Participation};
@@ -161,7 +161,6 @@ pub fn calculate_claimable_rewards(
                 continue;
             }
 
-            // TODO: no need to calculate for every era - old eras have nothing to calculate, just check pending rewards
             let reward = calculate_user_reward(global_index, distribution, user_weight)?;
 
             // if no user rewards due for the given asset, just skip - no need to send or store anything

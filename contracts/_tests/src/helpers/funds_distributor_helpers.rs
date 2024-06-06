@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Uint128};
-use cw_multi_test::{App};
+use cw_multi_test::App;
 use funds_distributor_api::api::{
     Cw20Reward, MinimumEligibleWeightResponse, NativeReward, NumberProposalsTrackedResponse,
     UserRewardsParams, UserRewardsResponse,

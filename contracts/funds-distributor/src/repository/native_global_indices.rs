@@ -1,4 +1,4 @@
-use crate::state::EraId;
+use crate::repository::era_repository::EraId;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Decimal;
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};

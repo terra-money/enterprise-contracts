@@ -64,7 +64,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> MultisigMembershipResult<Bi
         QueryMsg::Config {} => to_json_binary(&query_config(&qctx)?)?,
         QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(&qctx, params)?)?,
-        QueryMsg::TotalWeightAbove(params) => to_json_binary(&query_total_weight_above(&qctx, params)?)?,
+        QueryMsg::TotalWeightAbove(params) => {
+            to_json_binary(&query_total_weight_above(&qctx, params)?)?
+        }
         QueryMsg::Members(params) => to_json_binary(&query_members(&qctx, params)?)?,
     };
 

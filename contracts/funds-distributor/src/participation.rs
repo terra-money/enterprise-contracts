@@ -1,10 +1,10 @@
 use crate::distributing::query_enterprise_components;
 use crate::repository::era_repository::{
     get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era, set_current_era,
-    set_user_first_era_with_weight_if_empty,
+    set_user_first_era_with_weight_if_empty, EraId,
 };
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
-use crate::state::{EraId, ADMIN};
+use crate::state::ADMIN;
 use crate::user_weights::{initialize_user_indices, update_user_indices};
 use common::cw::Order::Descending;
 use common::cw::{Context, QueryContext};
@@ -27,6 +27,7 @@ use funds_distributor_api::response::{
     execute_update_number_proposals_tracked_response,
 };
 use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse};
+use std::cmp::min;
 
 // TODO: hide those storages behind an interface
 
@@ -52,7 +53,6 @@ impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalInd
     }
 }
 
-// TODO: fill up in migration... or do we even offer it in migration? maybe just let them set N through a proposal
 #[allow(non_snake_case)]
 fn TRACKED_PARTICIPATION_PROPOSALS<'a>() -> IndexedMap<
     'a,
@@ -85,9 +85,8 @@ pub fn new_proposal_created(
     ctx: &mut Context,
     msg: NewProposalCreatedMsg,
 ) -> DistributorResult<Response> {
-    // TODO: optimize this, we don't have to read through all of them
     let current_era = get_current_era(ctx.deps.as_ref(), Participation)?;
-    // TODO: do we use current era here for real?
+
     let proposal_ids_tracked = get_proposal_ids_tracked(ctx.deps.as_ref(), current_era)?;
 
     let proposals_to_track = NUMBER_PROPOSALS_TRACKED.load(ctx.deps.storage)?;
@@ -99,7 +98,7 @@ pub fn new_proposal_created(
     let next_era = current_era + 1;
     set_current_era(ctx.deps.branch(), next_era, Participation)?;
 
-    // TODO: should we fail if it is greater than?
+    // TODO: should we fail if it is greater than? shouldn't ever happen
     if (proposal_ids_tracked.len() as u8) == proposals_to_track {
         // we are tracking maximum proposals, so we copy over all from the previous era excluding
         // the oldest proposal ID (lowest number)
@@ -184,7 +183,7 @@ pub fn execute_update_number_proposals_tracked(
 
     NUMBER_PROPOSALS_TRACKED.save(ctx.deps.storage, &msg.number_proposals_tracked)?;
 
-    // TODO: store the new weights properly. this can also be improved later, if we just figure out the difference between old and new proposal weights
+    // TODO: can be improved: if we figure out the difference between old and new proposal weights, we don't have to query them all
     let new_total_weight = query_total_participation_weight(ctx.deps.as_ref(), next_era)?;
 
     weights_repository_mut(ctx.deps.branch(), Participation)
@@ -209,21 +208,19 @@ pub fn pre_user_votes_change(
             get_user_last_resolved_era(ctx.deps.as_ref(), user.clone(), Participation)?;
 
         let first_relevant_era = match last_resolved_era {
-            Some(last_resolved_era) => Some(last_resolved_era + 1), // TODO: what if last resolved era is current era?
+            Some(last_resolved_era) => Some(min(last_resolved_era + 1, current_era)), // TODO: this min(...) was not provoked by tests
             None => get_user_first_era_with_weight(ctx.deps.as_ref(), user.clone(), Participation)?,
         };
-
-        // TODO: resume here
 
         // TODO: we probably have to split handling of current era and past eras
         match first_relevant_era {
             Some(first_relevant_era) => {
                 for era in first_relevant_era..=current_era {
+                    // TODO: we really shouldn't query it all for each era here
                     let user_total_votes = weights_repository(ctx.deps.as_ref(), Participation)
                         .get_user_weight(user.clone(), era)?;
-                    // TODO: we really shouldn't query it all for each era here
                     match user_total_votes {
-                        // TODO: not sure if this initialize_user_indices works
+                        // TODO: check if this initialize_user_indices works
                         // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
                         // we'll assume their indices have been initialized
                         None => {
@@ -256,8 +253,8 @@ pub fn pre_user_votes_change(
         }
 
         // TODO: we can optimize this for simple vote casts by just storing their last known participation weight,
-        // TODO: querying their current vote amount on this proposal
-        // TODO: and then just using their new weight to deduce the new weight
+        // querying their current vote amount on this proposal
+        // and then just using their new weight to deduce the new weight
     }
 
     Ok(execute_pre_user_votes_change_response())

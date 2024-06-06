@@ -609,3 +609,5 @@ fn distribute_membership_after_user_weight_change() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// TODO: test distributing membership rewards, moving participation era, updating min eligibility weight, then reducing user's weight to below min

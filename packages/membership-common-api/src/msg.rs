@@ -1,4 +1,8 @@
-use crate::api::{AdminResponse, MembersParams, MembersResponse, TotalWeightAboveParams, TotalWeightParams, TotalWeightResponse, UserWeightParams, UserWeightResponse, WeightChangeHookMsg, WeightsChangedMsg};
+use crate::api::{
+    AdminResponse, MembersParams, MembersResponse, TotalWeightAboveParams, TotalWeightParams,
+    TotalWeightResponse, UserWeightParams, UserWeightResponse, WeightChangeHookMsg,
+    WeightsChangedMsg,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
