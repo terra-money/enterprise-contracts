@@ -1,7 +1,7 @@
 use crate::participation::pre_user_votes_change;
 use crate::repository::era_repository::{
     get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era,
-    set_user_first_era_with_weight_if_empty, set_user_last_resolved_era, FIRST_ERA,
+    set_user_first_era_with_weight_if_empty, set_user_last_resolved_era, EraId, FIRST_ERA,
 };
 use crate::repository::global_indices_repository::{
     global_indices_repository, GlobalIndicesRepository,
@@ -10,7 +10,7 @@ use crate::repository::user_distribution_repository::{
     user_distribution_repository_mut, UserDistributionRepositoryMut,
 };
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
-use crate::state::{EraId, ADMIN};
+use crate::state::ADMIN;
 use common::cw::Context;
 use cosmwasm_std::{Addr, DepsMut, Response, Uint128};
 use cw_storage_plus::Map;
@@ -24,12 +24,6 @@ use funds_distributor_api::response::execute_update_user_weights_response;
 use DistributorError::DuplicateInitialWeight;
 
 pub const USER_WEIGHTS: Map<(EraId, Addr), Uint128> = Map::new("user_weights");
-
-/// Effective user weights are their weights when taking into account minimum eligible weight
-/// for rewards.
-/// This weight will be the same as user's real weight if they're over the minimum eligible weight,
-/// or 0 if they are under the minimum.
-pub const EFFECTIVE_USER_WEIGHTS: Map<Addr, Uint128> = Map::new("effective_user_weights");
 
 /// Saves any initial weights given to the users.
 ///
@@ -94,7 +88,6 @@ fn update_user_weights_checked(
     ctx: &mut Context,
     msg: UpdateUserWeightsMsg,
 ) -> DistributorResult<()> {
-    // TODO: check if we need variable distribution type here, we probably do
     let distribution_type = Membership;
 
     let current_era = get_current_era(ctx.deps.as_ref(), distribution_type.clone())?;
@@ -113,7 +106,7 @@ fn update_user_weights_checked(
         )?;
 
         let old_user_weight = weights_repository(ctx.deps.as_ref(), distribution_type.clone())
-            .get_user_weight(user.clone(), current_era)?; // TODO: definitely just the current era?
+            .get_user_weight(user.clone(), current_era)?;
 
         match old_user_weight {
             None => {
@@ -146,7 +139,6 @@ fn update_user_weights_checked(
         total_weight = total_weight - old_user_weight + new_user_weight;
     }
 
-    // TODO: not sure if current era is correct here
     weights_repository_mut(ctx.deps.branch(), distribution_type)
         .set_total_weight(total_weight, current_era)?;
 

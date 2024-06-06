@@ -1,9 +1,10 @@
-use crate::state::EraId;
 use cosmwasm_std::{Addr, Deps, DepsMut};
 use cw_storage_plus::{Item, Map};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;
 use DistributionType::{Membership, Participation};
+
+pub type EraId = u64;
 
 pub const FIRST_ERA: EraId = 1;
 

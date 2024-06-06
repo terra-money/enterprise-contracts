@@ -1,6 +1,6 @@
-use crate::funds_distributor::funds_distributor_helpers::{
-    cast_vote, create_proposal, distribute_native_funds, execute_proposal,
-    update_minimum_weight_for_rewards,
+use crate::funds_distributor::funds_distributor_helpers::distribute_native_funds;
+use crate::governance::governance_helpers::{
+    cast_vote, create_proposal, execute_proposal, update_minimum_weight_for_rewards,
 };
 use crate::helpers::cw_multitest_helpers::{startup_with_versioning, ADMIN, ULUNA, USER1, USER2};
 use crate::helpers::facade_helpers::facade;
@@ -56,7 +56,7 @@ fn minimum_weight_for_rewards_changes_properly() -> anyhow::Result<()> {
         .funds_distributor()
         .minimum_eligible_weight()?;
 
-    assert_eq!(minimum_eligible_weight.u128(), 3u128,);
+    assert_eq!(minimum_eligible_weight.u128(), 3u128);
 
     distribute_native_funds(&mut app, ADMIN, ULUNA, 3, Membership, dao.clone())?;
 

@@ -406,6 +406,7 @@ impl TestFacade<'_> {
         assert_eq!(total_staked_amount, Uint128::from(total_staked));
     }
 
+    #[allow(dead_code)]
     pub fn assert_asset_whitelist(&self, assets: Vec<AssetInfo>) {
         let asset_whitelist = self
             .query_asset_whitelist(AssetWhitelistParams {
@@ -417,6 +418,7 @@ impl TestFacade<'_> {
         assert_eq!(asset_whitelist, assets);
     }
 
+    #[allow(dead_code)]
     pub fn assert_nft_whitelist(&self, nfts: Vec<&str>) {
         let nft_whitelist = self
             .query_nft_whitelist(NftWhitelistParams {
@@ -438,6 +440,7 @@ impl TestFacade<'_> {
     }
 }
 
+#[allow(dead_code)]
 impl<'a> TestFacade<'a> {
     pub fn membership(&self) -> TestMembershipContract<'a> {
         // todo!()
@@ -543,6 +546,7 @@ impl TestFacade<'_> {
     }
 }
 
+#[allow(dead_code)]
 pub fn from_facade_metadata(metadata: DaoMetadata) -> enterprise_protocol::api::DaoMetadata {
     let logo = match metadata.logo {
         Logo::Url(url) => enterprise_protocol::api::Logo::Url(url),
@@ -561,6 +565,7 @@ pub fn from_facade_metadata(metadata: DaoMetadata) -> enterprise_protocol::api::
     }
 }
 
+#[allow(dead_code)]
 pub fn from_facade_gov_config(gov_config: GovConfigFacade) -> GovConfig {
     GovConfig {
         quorum: gov_config.quorum,
@@ -572,6 +577,7 @@ pub fn from_facade_gov_config(gov_config: GovConfigFacade) -> GovConfig {
     }
 }
 
+#[allow(dead_code)]
 pub fn from_facade_dao_council(council: DaoCouncil) -> DaoCouncilSpec {
     DaoCouncilSpec {
         members: council.members.into_iter().map(Addr::into_string).collect(),

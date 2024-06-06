@@ -45,7 +45,6 @@ pub const CW20_TOKEN1: &str = "token_addr1";
 pub const CW20_TOKEN2: &str = "token_addr2";
 
 pub const NFT_TOKEN1: &str = "nft_token_addr1";
-pub const NFT_TOKEN2: &str = "nft_token_addr2";
 
 pub const CODE_ID_ATTESTATION: u64 = 1;
 pub const CODE_ID_GOV_CONTROLLER: u64 = 2;

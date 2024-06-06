@@ -1,6 +1,8 @@
 use crate::funds_distributor::funds_distributor_helpers::{
-    cast_vote, claim_native_rewards, create_proposal, distribute_native_funds,
-    distribute_native_funds_action, execute_proposal, stake_denom,
+    claim_native_rewards, distribute_native_funds,
+};
+use crate::governance::governance_helpers::{
+    cast_vote, create_proposal, distribute_native_funds_action, execute_proposal, stake_denom,
     update_minimum_weight_for_rewards, update_number_proposals_tracked,
 };
 use crate::helpers::cw_multitest_helpers::{
@@ -609,3 +611,5 @@ fn distribute_membership_after_user_weight_change() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// TODO: test distributing membership rewards, moving participation era, updating min eligibility weight, then reducing user's weight to below min

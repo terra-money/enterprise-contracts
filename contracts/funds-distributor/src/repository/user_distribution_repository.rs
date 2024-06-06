@@ -1,8 +1,8 @@
 use crate::asset_types::RewardAsset;
 use crate::cw20_distributions::{Cw20Distribution, CW20_DISTRIBUTIONS};
 use crate::native_distributions::{NativeDistribution, NATIVE_DISTRIBUTIONS};
+use crate::repository::era_repository::EraId;
 use crate::rewards::calculate_user_reward;
-use crate::state::EraId;
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::error::DistributorResult;

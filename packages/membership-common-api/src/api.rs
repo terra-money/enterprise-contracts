@@ -21,6 +21,13 @@ pub struct TotalWeightParams {
 }
 
 #[cw_serde]
+pub struct TotalWeightAboveParams {
+    /// Weight above which we want to calculate the total user weight.
+    /// Includes users with the weight specified.
+    pub above_weight_inclusive: Uint128,
+}
+
+#[cw_serde]
 pub struct MembersParams {
     pub start_after: Option<String>,
     pub limit: Option<u32>,

@@ -3,6 +3,7 @@ use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
 };
 use cw2::set_contract_version;
+use membership_common::member_weights::query_total_weight_above;
 use membership_common::weight_change_hooks::{add_weight_change_hook, remove_weight_change_hook};
 use multisig_membership_api::error::MultisigMembershipResult;
 use multisig_membership_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -63,6 +64,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> MultisigMembershipResult<Bi
         QueryMsg::Config {} => to_json_binary(&query_config(&qctx)?)?,
         QueryMsg::UserWeight(params) => to_json_binary(&query_user_weight(&qctx, params)?)?,
         QueryMsg::TotalWeight(params) => to_json_binary(&query_total_weight(&qctx, params)?)?,
+        QueryMsg::TotalWeightAbove(params) => {
+            to_json_binary(&query_total_weight_above(&qctx, params)?)?
+        }
         QueryMsg::Members(params) => to_json_binary(&query_members(&qctx, params)?)?,
     };
 

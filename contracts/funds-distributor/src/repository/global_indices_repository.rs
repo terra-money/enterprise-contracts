@@ -3,10 +3,10 @@ use crate::asset_types::RewardAsset::{Cw20, Native};
 use crate::repository::cw20_global_indices::{
     Cw20GlobalIndex, Cw20GlobalIndicesIndexes, CW20_GLOBAL_INDICES,
 };
+use crate::repository::era_repository::EraId;
 use crate::repository::native_global_indices::{
     NativeGlobalIndex, NativeGlobalIndicesIndexes, NATIVE_GLOBAL_INDICES,
 };
-use crate::state::EraId;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut};
 use cw_storage_plus::IndexedMap;
