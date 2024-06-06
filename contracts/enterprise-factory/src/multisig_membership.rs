@@ -67,6 +67,7 @@ pub fn import_cw3_membership(
         initial_weights,
         weight_change_hooks,
         MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+        true,
     )
 }
 
@@ -74,12 +75,14 @@ pub fn instantiate_new_multisig_membership(
     deps: DepsMut,
     msg: NewMultisigMembershipMsg,
     weight_change_hooks: Option<Vec<String>>,
+    store_initial_weights: bool,
 ) -> DaoResult<SubMsg> {
     instantiate_multisig_membership_contract(
         deps,
         msg.multisig_members,
         weight_change_hooks,
         MEMBERSHIP_CONTRACT_INSTANTIATE_REPLY_ID,
+        store_initial_weights,
     )
 }
 
@@ -88,19 +91,23 @@ pub fn instantiate_multisig_membership_contract(
     initial_weights: Vec<UserWeight>,
     weight_change_hooks: Option<Vec<String>>,
     reply_id: u64,
+    store_initial_weights: bool,
 ) -> DaoResult<SubMsg> {
     let dao_being_created = DAO_BEING_CREATED.load(deps.storage)?;
 
     let enterprise_contract = dao_being_created.require_enterprise_address()?;
     let version_info = dao_being_created.require_version_info()?;
 
-    DAO_BEING_CREATED.save(
-        deps.storage,
-        &DaoBeingCreated {
-            initial_weights: Some(initial_weights.clone()),
-            ..dao_being_created
-        },
-    )?;
+    // TODO: this is a dirty hack in order to prevent creation of council multisig from mutating this
+    if store_initial_weights {
+        DAO_BEING_CREATED.save(
+            deps.storage,
+            &DaoBeingCreated {
+                initial_weights: Some(initial_weights.clone()),
+                ..dao_being_created
+            },
+        )?;
+    }
 
     let submsg = SubMsg::reply_on_success(
         Wasm(Instantiate {

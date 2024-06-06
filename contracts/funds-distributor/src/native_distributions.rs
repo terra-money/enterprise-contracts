@@ -1,13 +1,10 @@
+use crate::repository::era_repository::EraId;
 use crate::repository::user_distribution_repository::UserDistributionInfo;
-use crate::rewards::calculate_user_reward;
-use crate::state::NATIVE_GLOBAL_INDICES;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Addr, Decimal, DepsMut, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use funds_distributor_api::api::DistributionType;
 use funds_distributor_api::api::DistributionType::{Membership, Participation};
-use funds_distributor_api::error::DistributorResult;
 
 // TODO: having to use these constants is ugly, but Rust is uglier
 const NAMESPACE_MEMBERSHIP: &str = "native_distributions";
@@ -20,6 +17,7 @@ const NAMESPACE_PARTICIPATION_USER_IDX: &str = "native_distributions_participati
 /// State of a single user's specific native rewards.
 pub struct NativeDistribution {
     pub user: Addr,
+    pub era_id: EraId,
     pub denom: String,
     /// The last global index at which the user's pending rewards were calculated
     pub user_index: Decimal,
@@ -37,7 +35,7 @@ impl From<NativeDistribution> for UserDistributionInfo {
 }
 
 pub struct NativeDistributionIndexes<'a> {
-    pub user: MultiIndex<'a, Addr, NativeDistribution, (Addr, String)>,
+    pub user: MultiIndex<'a, Addr, NativeDistribution, (Addr, EraId, String)>,
 }
 
 impl IndexList<NativeDistribution> for NativeDistributionIndexes<'_> {
@@ -50,7 +48,7 @@ impl IndexList<NativeDistribution> for NativeDistributionIndexes<'_> {
 #[allow(non_snake_case)]
 pub fn NATIVE_DISTRIBUTIONS<'a>(
     distribution_type: DistributionType,
-) -> IndexedMap<'a, (Addr, String), NativeDistribution, NativeDistributionIndexes<'a>> {
+) -> IndexedMap<'a, (Addr, EraId, String), NativeDistribution, NativeDistributionIndexes<'a>> {
     let (namespace, namespace_user_idx) = match distribution_type {
         Membership => (NAMESPACE_MEMBERSHIP, NAMESPACE_MEMBERSHIP_USER_IDX),
         Participation => (NAMESPACE_PARTICIPATION, NAMESPACE_PARTICIPATION_USER_IDX),

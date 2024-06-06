@@ -1,7 +1,8 @@
 use crate::asset_types::RewardAsset;
-use crate::repository::asset_repository::{
-    asset_distribution_repository, asset_distribution_repository_mut, AssetDistributionRepository,
-    AssetDistributionRepositoryMut,
+use crate::repository::era_repository::get_current_era;
+use crate::repository::global_indices_repository::{
+    global_indices_repository, global_indices_repository_mut, GlobalIndicesRepository,
+    GlobalIndicesRepositoryMut,
 };
 use crate::repository::weights_repository::weights_repository;
 use crate::state::ENTERPRISE_CONTRACT;
@@ -73,16 +74,18 @@ fn distribute(
 
     assert_assets_whitelisted(deps.as_ref(), distribution_assets)?;
 
-    let total_weight =
-        weights_repository(deps.as_ref(), distribution_type.clone()).get_total_weight()?;
+    let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
+
+    let total_weight = weights_repository(deps.as_ref(), distribution_type.clone())
+        .get_total_weight(current_era)?;
     if total_weight.is_zero() {
         return Err(ZeroTotalWeight);
     }
 
     for (reward_asset, amount) in assets {
         // TODO: what if an asset appears multiple times?
-        let global_index = asset_distribution_repository(deps.as_ref(), distribution_type.clone())
-            .get_global_index(reward_asset.clone())?
+        let global_index = global_indices_repository(deps.as_ref(), distribution_type.clone())
+            .get_global_index(reward_asset.clone(), current_era)?
             .unwrap_or(Decimal::zero());
 
         // calculate how many units of the asset we're distributing per unit of total user weight
@@ -91,8 +94,11 @@ fn distribute(
 
         let new_global_index = global_index.checked_add(index_increment)?;
 
-        asset_distribution_repository_mut(deps.branch(), distribution_type.clone())
-            .set_global_index(reward_asset, new_global_index)?;
+        global_indices_repository_mut(deps.branch(), distribution_type.clone()).set_global_index(
+            reward_asset,
+            new_global_index,
+            current_era,
+        )?;
     }
 
     Ok(total_weight)

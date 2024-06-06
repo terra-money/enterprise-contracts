@@ -1,7 +1,11 @@
 use crate::asset_types::RewardAsset::{Cw20, Native};
 use crate::asset_types::{to_reward_assets, RewardAsset};
-use crate::repository::asset_repository::{
-    asset_distribution_repository, AssetDistributionRepository,
+use crate::repository::era_repository::EraId;
+use crate::repository::era_repository::{
+    get_current_era, get_user_first_era_with_weight, get_user_last_fully_claimed_era,
+};
+use crate::repository::global_indices_repository::{
+    global_indices_repository, GlobalIndicesRepository,
 };
 use crate::repository::user_distribution_repository::{
     user_distribution_repository, UserDistributionRepository,
@@ -69,7 +73,7 @@ fn query_rewards(
         let claimable_rewards =
             calculate_claimable_rewards(deps, user.clone(), assets.clone(), distribution_type)?;
 
-        for (asset, amount, _) in claimable_rewards {
+        for (asset, _, amount, _) in claimable_rewards {
             match asset {
                 Native { denom } => match native_rewards.get(&denom) {
                     None => {
@@ -111,33 +115,62 @@ pub fn calculate_claimable_rewards(
     user: Addr,
     assets: Vec<RewardAsset>,
     distribution_type: DistributionType,
-) -> DistributorResult<Vec<(RewardAsset, Uint128, Decimal)>> {
-    let mut rewards: Vec<(RewardAsset, Uint128, Decimal)> = vec![];
+) -> DistributorResult<Vec<(RewardAsset, EraId, Uint128, Decimal)>> {
+    let mut rewards: Vec<(RewardAsset, EraId, Uint128, Decimal)> = vec![];
 
-    let user_weight = weights_repository(deps, distribution_type.clone())
-        .get_user_weight(user.clone())?
-        .unwrap_or_default();
+    let current_era = get_current_era(deps, distribution_type.clone())?;
 
-    for asset in assets {
-        let distribution = user_distribution_repository(deps, distribution_type.clone())
-            .get_distribution_info(asset.clone(), user.clone())?;
-        let global_index = asset_distribution_repository(deps, distribution_type.clone())
-            .get_global_index(asset.clone())?
+    let last_claimed_era =
+        get_user_last_fully_claimed_era(deps, user.clone(), distribution_type.clone())?;
+    let first_relevant_era = match last_claimed_era {
+        Some(last_claimed_era) => last_claimed_era,
+        None => {
+            let first_era_with_weight =
+                get_user_first_era_with_weight(deps, user.clone(), distribution_type.clone())?;
+            match first_era_with_weight {
+                Some(first_era_with_weight) => first_era_with_weight,
+                None => {
+                    let mut rewards = vec![];
+                    for asset in assets {
+                        let global_index =
+                            global_indices_repository(deps, distribution_type.clone())
+                                .get_global_index(asset.clone(), current_era)?
+                                .unwrap_or_default();
+                        rewards.push((asset, current_era, Uint128::zero(), global_index))
+                    }
+                    return Ok(rewards);
+                }
+            }
+        }
+    };
+
+    for era in first_relevant_era..=current_era {
+        let user_weight = weights_repository(deps, distribution_type.clone())
+            .get_user_weight(user.clone(), era)?
             .unwrap_or_default();
 
-        // if no rewards for the given asset, just skip
-        if global_index.is_zero() {
-            continue;
+        for asset in &assets {
+            let distribution = user_distribution_repository(deps, distribution_type.clone())
+                .get_distribution_info(asset.clone(), user.clone(), era)?;
+            let global_index = global_indices_repository(deps, distribution_type.clone())
+                .get_global_index(asset.clone(), era)?
+                .unwrap_or_default();
+
+            // if no rewards for the given asset, just skip
+            if global_index.is_zero() {
+                continue;
+            }
+
+            let reward = calculate_user_reward(global_index, distribution, user_weight)?;
+
+            // if no user rewards due for the given asset, just skip - no need to send or store anything
+            if reward.is_zero() {
+                continue;
+            }
+
+            // TODO: don't just push them, this will result in duplicates because we're iterating through eras
+            rewards.push((asset.clone(), era, reward, global_index));
         }
-
-        let reward = calculate_user_reward(global_index, distribution, user_weight)?;
-
-        // if no user rewards due for the given asset, just skip - no need to send or store anything
-        if reward.is_zero() {
-            continue;
-        }
-
-        rewards.push((asset, reward, global_index));
     }
 
     Ok(rewards)

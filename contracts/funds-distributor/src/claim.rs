@@ -1,4 +1,5 @@
 use crate::asset_types::{to_reward_assets, RewardAsset};
+use crate::repository::era_repository::{get_current_era, set_user_last_claimed_era, FIRST_ERA};
 use crate::repository::user_distribution_repository::{
     user_distribution_repository_mut, UserDistributionInfo, UserDistributionRepositoryMut,
 };
@@ -12,6 +13,7 @@ use funds_distributor_api::error::DistributorError::Unauthorized;
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::response::execute_claim_rewards_response;
 use rewards::calculate_claimable_rewards;
+use std::collections::HashMap;
 
 /// Attempt to claim rewards for the given parameters.
 ///
@@ -50,26 +52,45 @@ fn calculate_and_remove_claimable_rewards(
 
     claimable_rewards.append(&mut claimable_rewards_participation);
 
-    let mut rewards = vec![];
+    let mut rewards: HashMap<RewardAsset, Uint128> = HashMap::new();
 
-    for (asset, reward, global_index) in claimable_rewards {
+    for (asset, era, reward, global_index) in claimable_rewards {
         // TODO: duplicates will be present
-        let reward = Asset::new(AssetInfo::from(&asset), reward);
-        rewards.push(reward);
+        // let reward = Asset::new(AssetInfo::from(&asset), reward);
+
+        let new_amount = match rewards.get(&asset) {
+            Some(value) => value.checked_add(reward)?,
+            None => reward,
+        };
+        rewards.insert(asset.clone(), new_amount);
 
         // TODO: what happens when we add another enum value?
         for distribution_type in [Membership, Participation] {
-            user_distribution_repository_mut(deps.branch(), distribution_type)
+            user_distribution_repository_mut(deps.branch(), distribution_type.clone())
                 .set_distribution_info(
                     asset.clone(),
                     user.clone(),
+                    era,
                     UserDistributionInfo {
                         user_index: global_index,
                         pending_rewards: Uint128::zero(),
                     },
                 )?;
+
+            let current_era = get_current_era(deps.as_ref(), distribution_type.clone())?;
+            if current_era > FIRST_ERA {
+                set_user_last_claimed_era(
+                    deps.branch(),
+                    user.clone(),
+                    current_era - 1,
+                    distribution_type,
+                )?;
+            }
         }
     }
 
-    Ok(rewards)
+    Ok(rewards
+        .into_iter()
+        .map(|(asset, amount)| Asset::new(AssetInfo::from(asset), amount))
+        .collect())
 }

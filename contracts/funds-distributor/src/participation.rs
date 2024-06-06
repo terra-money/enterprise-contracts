@@ -1,12 +1,17 @@
 use crate::distributing::query_enterprise_components;
+use crate::repository::era_repository::{
+    get_current_era, get_user_first_era_with_weight, get_user_last_resolved_era, set_current_era,
+    set_user_first_era_with_weight_if_empty, EraId,
+};
 use crate::repository::weights_repository::{weights_repository, weights_repository_mut};
 use crate::state::ADMIN;
 use crate::user_weights::{initialize_user_indices, update_user_indices};
 use common::cw::Order::Descending;
 use common::cw::{Context, QueryContext};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{Deps, Response, StdError, StdResult, Uint128};
-use cw_storage_plus::{Item, Map};
+use cosmwasm_std::{Deps, DepsMut, Response, StdResult, Uint128};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use enterprise_governance_api::msg::QueryMsg::TotalVotes;
 use enterprise_governance_controller_api::api::ProposalType::General;
 use enterprise_governance_controller_api::api::{ProposalId, ProposalsParams, ProposalsResponse};
@@ -22,49 +27,118 @@ use funds_distributor_api::response::{
     execute_update_number_proposals_tracked_response,
 };
 use poll_engine_api::api::{TotalVotesParams, TotalVotesResponse};
+use std::cmp::min;
 
 // TODO: hide those storages behind an interface
 
-pub const PROPOSALS_TRACKED: Item<u8> = Item::new("proposals_tracked");
+pub const NUMBER_PROPOSALS_TRACKED: Item<u8> = Item::new("proposals_tracked");
 
-// TODO: fill up in migration... or do we even offer it in migration? maybe just let them set N through a proposal
-pub const PARTICIPATION_PROPOSAL_IDS: Map<ProposalId, ()> = Map::new("participation_proposal_ids");
+#[cw_serde]
+/// A single proposal ID tracked within a distribution era.
+struct TrackedParticipationProposal {
+    pub era_id: EraId,
+    pub proposal_id: ProposalId,
+}
 
-pub const PARTICIPATION_TOTAL_WEIGHT: Item<Uint128> = Item::new("participation_total_weight");
+struct TrackedParticipationProposalIndexes<'a> {
+    pub proposal: MultiIndex<'a, ProposalId, TrackedParticipationProposal, (EraId, ProposalId)>,
+}
+
+impl IndexList<TrackedParticipationProposal> for TrackedParticipationProposalIndexes<'_> {
+    fn get_indexes(
+        &'_ self,
+    ) -> Box<dyn Iterator<Item = &'_ dyn Index<TrackedParticipationProposal>> + '_> {
+        let v: Vec<&dyn Index<TrackedParticipationProposal>> = vec![&self.proposal];
+        Box::new(v.into_iter())
+    }
+}
+
+#[allow(non_snake_case)]
+fn TRACKED_PARTICIPATION_PROPOSALS<'a>() -> IndexedMap<
+    'a,
+    (EraId, ProposalId),
+    TrackedParticipationProposal,
+    TrackedParticipationProposalIndexes<'a>,
+> {
+    let indexes = TrackedParticipationProposalIndexes {
+        proposal: MultiIndex::new(
+            |_, tracked_proposal| tracked_proposal.proposal_id,
+            "tracked_participation_proposals",
+            "tracked_participation_proposals__proposal",
+        ),
+    };
+    IndexedMap::new("tracked_participation_proposals", indexes)
+}
+
+fn save_tracked_proposal(deps: DepsMut, era_id: EraId, proposal_id: ProposalId) -> StdResult<()> {
+    TRACKED_PARTICIPATION_PROPOSALS().save(
+        deps.storage,
+        (era_id, proposal_id),
+        &TrackedParticipationProposal {
+            era_id,
+            proposal_id,
+        },
+    )
+}
 
 pub fn new_proposal_created(
     ctx: &mut Context,
     msg: NewProposalCreatedMsg,
 ) -> DistributorResult<Response> {
-    // TODO: optimize this, we don't have to read through all of them
-    let proposal_ids_tracked = get_proposal_ids_tracked(ctx.deps.as_ref())?;
+    let current_era = get_current_era(ctx.deps.as_ref(), Participation)?;
 
-    let proposals_to_track = PROPOSALS_TRACKED.load(ctx.deps.storage)?;
+    let proposal_ids_tracked = get_proposal_ids_tracked(ctx.deps.as_ref(), current_era)?;
+
+    let proposals_to_track = NUMBER_PROPOSALS_TRACKED.load(ctx.deps.storage)?;
 
     if proposals_to_track == 0 {
         return Ok(Response::new());
     }
 
-    // TODO: should we fail if it is greater than?
+    let next_era = current_era + 1;
+    set_current_era(ctx.deps.branch(), next_era, Participation)?;
+
+    // TODO: should we fail if it is greater than? shouldn't ever happen
     if (proposal_ids_tracked.len() as u8) == proposals_to_track {
-        let (first_tracked, _) = PARTICIPATION_PROPOSAL_IDS.first(ctx.deps.storage)?.ok_or_else(|| StdError::generic_err("Invalid state - couldn't find first tracked proposal ID for participation rewards"))?;
+        // we are tracking maximum proposals, so we copy over all from the previous era excluding
+        // the oldest proposal ID (lowest number)
 
-        PARTICIPATION_PROPOSAL_IDS.remove(ctx.deps.storage, first_tracked);
+        let mut first_tracked_proposal = None;
+
+        // TODO: do we check here if tracked proposals are empty?
+        for tracked_proposal in proposal_ids_tracked {
+            if let Some(id) = first_tracked_proposal {
+                if id > tracked_proposal {
+                    save_tracked_proposal(ctx.deps.branch(), next_era, id)?;
+                    first_tracked_proposal = Some(tracked_proposal)
+                } else {
+                    save_tracked_proposal(ctx.deps.branch(), next_era, tracked_proposal)?;
+                }
+            } else {
+                first_tracked_proposal = Some(tracked_proposal)
+            }
+        }
+    } else {
+        // we aren't tracking enough proposals yet, just copy over all the ones from the previous era
+        for id in proposal_ids_tracked {
+            save_tracked_proposal(ctx.deps.branch(), next_era, id)?;
+        }
     }
-    PARTICIPATION_PROPOSAL_IDS.save(ctx.deps.storage, msg.proposal_id, &())?;
 
-    // TODO: trigger a new era
+    save_tracked_proposal(ctx.deps.branch(), next_era, msg.proposal_id)?;
 
-    let total_votes = query_total_participation_weight(ctx.deps.as_ref())?;
+    // TODO: we know that the new proposal has 0 votes, just check if we removed one and remove its votes from previous era's total
+    let total_votes = query_total_participation_weight(ctx.deps.as_ref(), next_era)?;
 
-    weights_repository_mut(ctx.deps.branch(), Participation).set_total_weight(total_votes)?;
+    weights_repository_mut(ctx.deps.branch(), Participation)
+        .set_total_weight(total_votes, next_era)?;
 
     Ok(execute_new_proposal_created_response(msg.proposal_id))
 }
 
-pub fn query_total_participation_weight(deps: Deps) -> DistributorResult<Uint128> {
-    // TODO: optimize, we don't have to read it again
-    let proposal_ids_tracked = get_proposal_ids_tracked(deps)?;
+pub fn query_total_participation_weight(deps: Deps, era_id: EraId) -> DistributorResult<Uint128> {
+    // TODO: optimize, we don't have to read it again (this is called from contexts where we already have proposal IDs loaded)
+    let proposal_ids_tracked = get_proposal_ids_tracked(deps, era_id)?;
 
     let components = query_enterprise_components(deps)?;
     let total_votes_response: TotalVotesResponse = deps.querier.query_wasm_smart(
@@ -87,25 +161,35 @@ pub fn execute_update_number_proposals_tracked(
         return Err(Unauthorized);
     }
 
-    let old_number_tracked = PROPOSALS_TRACKED.load(ctx.deps.storage)?;
+    let current_era = get_current_era(ctx.deps.as_ref(), Participation)?;
+    let next_era = current_era + 1;
+
+    set_current_era(ctx.deps.branch(), next_era, Participation)?;
 
     // TODO: we know part of them if we had N > 0 before, we can reuse them
     let new_tracked_proposal_ids: Vec<ProposalId> =
         get_last_n_general_proposal_ids(ctx.deps.as_ref(), msg.number_proposals_tracked)?;
 
-    PARTICIPATION_PROPOSAL_IDS.clear(ctx.deps.storage);
     for proposal_id in new_tracked_proposal_ids {
-        PARTICIPATION_PROPOSAL_IDS.save(ctx.deps.storage, proposal_id, &())?;
+        TRACKED_PARTICIPATION_PROPOSALS().save(
+            ctx.deps.storage,
+            (next_era, proposal_id),
+            &TrackedParticipationProposal {
+                era_id: next_era,
+                proposal_id,
+            },
+        )?;
     }
 
-    // TODO: trigger a new era
+    NUMBER_PROPOSALS_TRACKED.save(ctx.deps.storage, &msg.number_proposals_tracked)?;
 
-    let new_total_weight = query_total_participation_weight(ctx.deps.as_ref())?;
+    // TODO: can be improved: if we figure out the difference between old and new proposal weights, we don't have to query them all
+    let new_total_weight = query_total_participation_weight(ctx.deps.as_ref(), next_era)?;
 
-    weights_repository_mut(ctx.deps.branch(), Participation).set_total_weight(new_total_weight)?;
+    weights_repository_mut(ctx.deps.branch(), Participation)
+        .set_total_weight(new_total_weight, next_era)?;
 
     Ok(execute_update_number_proposals_tracked_response(
-        old_number_tracked,
         msg.number_proposals_tracked,
     ))
 }
@@ -114,26 +198,63 @@ pub fn pre_user_votes_change(
     ctx: &mut Context,
     msg: PreUserVotesChangeMsg,
 ) -> DistributorResult<Response> {
+    let current_era = get_current_era(ctx.deps.as_ref(), Participation)?;
+
     // TODO: when there's multiple users, this will perform a query to gov contract for each user. we can optimize by introducing bulk query
     for user in msg.users {
         let user = ctx.deps.api.addr_validate(&user)?;
 
-        // TODO: we can optimize this for simple vote casts by just storing their last known participation weight,
-        // TODO: querying their current vote amount on this proposal
-        // TODO: and then just using their new weight to deduce the new weight
+        let last_resolved_era =
+            get_user_last_resolved_era(ctx.deps.as_ref(), user.clone(), Participation)?;
 
-        let user_total_votes =
-            weights_repository(ctx.deps.as_ref(), Participation).get_user_weight(user.clone())?;
+        let first_relevant_era = match last_resolved_era {
+            Some(last_resolved_era) => Some(min(last_resolved_era + 1, current_era)), // TODO: this min(...) was not provoked by tests
+            None => get_user_first_era_with_weight(ctx.deps.as_ref(), user.clone(), Participation)?,
+        };
 
-        match user_total_votes {
-            // TODO: not sure if this initialize_user_indices works
-            // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
-            // we'll assume their indices have been initialized
-            None => initialize_user_indices(ctx.deps.branch(), user.clone(), Participation)?,
-            Some(total) => {
-                update_user_indices(ctx.deps.branch(), user.clone(), total, Participation)?
+        // TODO: we probably have to split handling of current era and past eras
+        match first_relevant_era {
+            Some(first_relevant_era) => {
+                for era in first_relevant_era..=current_era {
+                    // TODO: we really shouldn't query it all for each era here
+                    let user_total_votes = weights_repository(ctx.deps.as_ref(), Participation)
+                        .get_user_weight(user.clone(), era)?;
+                    match user_total_votes {
+                        // TODO: check if this initialize_user_indices works
+                        // the reasoning is that we may have had N=0, user voted, N gets incremented to >0, we will then not get None here but
+                        // we'll assume their indices have been initialized
+                        None => {
+                            if era == current_era {
+                                initialize_user_indices(
+                                    ctx.deps.branch(),
+                                    user.clone(),
+                                    Participation,
+                                )?
+                            }
+                        }
+                        Some(total) => update_user_indices(
+                            ctx.deps.branch(),
+                            user.clone(),
+                            total,
+                            Participation,
+                        )?,
+                    }
+                }
+            }
+            None => {
+                set_user_first_era_with_weight_if_empty(
+                    ctx.deps.branch(),
+                    user.clone(),
+                    current_era,
+                    Participation,
+                )?;
+                initialize_user_indices(ctx.deps.branch(), user.clone(), Participation)?;
             }
         }
+
+        // TODO: we can optimize this for simple vote casts by just storing their last known participation weight,
+        // querying their current vote amount on this proposal
+        // and then just using their new weight to deduce the new weight
     }
 
     Ok(execute_pre_user_votes_change_response())
@@ -142,7 +263,7 @@ pub fn pre_user_votes_change(
 pub fn query_number_proposals_tracked(
     qctx: QueryContext,
 ) -> DistributorResult<NumberProposalsTrackedResponse> {
-    let number_proposals_tracked = PROPOSALS_TRACKED.load(qctx.deps.storage)?;
+    let number_proposals_tracked = NUMBER_PROPOSALS_TRACKED.load(qctx.deps.storage)?;
 
     Ok(NumberProposalsTrackedResponse {
         number_proposals_tracked,
@@ -152,15 +273,17 @@ pub fn query_number_proposals_tracked(
 pub fn query_proposal_ids_tracked(
     qctx: QueryContext,
 ) -> DistributorResult<ProposalIdsTrackedResponse> {
-    let proposal_ids = get_proposal_ids_tracked(qctx.deps)?;
+    let current_era = get_current_era(qctx.deps, Participation)?;
+    let proposal_ids = get_proposal_ids_tracked(qctx.deps, current_era)?;
 
     Ok(ProposalIdsTrackedResponse { proposal_ids })
 }
 
-pub fn get_proposal_ids_tracked(deps: Deps) -> DistributorResult<Vec<u64>> {
-    let proposal_ids = PARTICIPATION_PROPOSAL_IDS
+pub fn get_proposal_ids_tracked(deps: Deps, era_id: EraId) -> DistributorResult<Vec<u64>> {
+    let proposal_ids = TRACKED_PARTICIPATION_PROPOSALS()
+        .prefix(era_id)
         .range(deps.storage, None, None, Ascending)
-        .map(|res| res.map(|(id, _)| id))
+        .map(|res| res.map(|(_, it)| it.proposal_id))
         .collect::<StdResult<Vec<ProposalId>>>()?;
 
     Ok(proposal_ids)

@@ -5,8 +5,9 @@ use crate::eligibility::{
 };
 use crate::participation::{
     execute_update_number_proposals_tracked, new_proposal_created, pre_user_votes_change,
-    query_number_proposals_tracked, query_proposal_ids_tracked, PROPOSALS_TRACKED,
+    query_number_proposals_tracked, query_proposal_ids_tracked, NUMBER_PROPOSALS_TRACKED,
 };
+use crate::repository::era_repository::{set_current_era, FIRST_ERA};
 use crate::rewards::query_user_rewards;
 use crate::state::{ADMIN, ENTERPRISE_CONTRACT};
 use crate::user_weights::{save_initial_weights, update_user_weights};
@@ -17,6 +18,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
+use funds_distributor_api::api::DistributionType::{Membership, Participation};
 use funds_distributor_api::error::DistributorResult;
 use funds_distributor_api::msg::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use funds_distributor_api::response::instantiate_response;
@@ -27,7 +29,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -41,12 +43,16 @@ pub fn instantiate(
     ENTERPRISE_CONTRACT.save(deps.storage, &enterprise_contract)?;
 
     let minimum_eligible_weight = msg.minimum_eligible_weight.unwrap_or_default();
-    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, &minimum_eligible_weight)?;
+    MINIMUM_ELIGIBLE_WEIGHT.save(deps.storage, FIRST_ERA, &minimum_eligible_weight)?;
 
-    PROPOSALS_TRACKED.save(
+    NUMBER_PROPOSALS_TRACKED.save(
         deps.storage,
         &msg.participation_proposals_tracked.unwrap_or_default(),
     )?;
+
+    // TODO: unify this under a single function (like set_initial_eras)
+    set_current_era(deps.branch(), FIRST_ERA, Membership)?;
+    set_current_era(deps.branch(), FIRST_ERA, Participation)?;
 
     let mut ctx = Context { deps, env, info };
 

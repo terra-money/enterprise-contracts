@@ -1212,9 +1212,11 @@ fn update_number_proposals_tracked(
 
     let submsg = SubMsg::new(wasm_execute(
         funds_distributor.to_string(),
-        &UpdateNumberProposalsTrackedMsg {
-            number_proposals_tracked: msg.number_proposals_tracked,
-        },
+        &funds_distributor_api::msg::ExecuteMsg::UpdateNumberProposalsTracked(
+            funds_distributor_api::api::UpdateNumberProposalsTrackedMsg {
+                number_proposals_tracked: msg.number_proposals_tracked,
+            },
+        ),
         vec![],
     )?);
 

@@ -33,8 +33,6 @@ use enterprise_versioning_api::msg::QueryMsg::Versions;
 use std::collections::HashMap;
 use DaoType::Nft;
 
-pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
-
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:enterprise";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

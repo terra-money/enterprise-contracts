@@ -52,11 +52,14 @@ pub fn set_members(ctx: &mut Context, msg: SetMembersMsg) -> MultisigMembershipR
     // only governance controller can execute this
     enterprise_governance_controller_only(ctx, None)?;
 
-    let old_member_weights = MEMBER_WEIGHTS
+    let old_member_weights = MEMBER_WEIGHTS()
+        .idx
+        .user
         .range(ctx.deps.storage, None, None, Order::Ascending)
+        .map(|res| res.map(|(addr, weight)| (addr, weight.weight)))
         .collect::<StdResult<HashMap<Addr, Uint128>>>()?;
 
-    MEMBER_WEIGHTS.clear(ctx.deps.storage);
+    MEMBER_WEIGHTS().clear(ctx.deps.storage);
 
     let deduped_edit_members = dedup_user_weights(ctx, msg.new_members)?;
 
