@@ -43,6 +43,20 @@ pub fn execute_upgrade_dao_response(new_dao_version: String) -> Response {
         .add_attribute("new_version", new_dao_version)
 }
 
+pub fn execute_update_config_response(
+    old_versioning_addr: String,
+    new_versioning_addr: String,
+    old_factory_addr: String,
+    new_factory_addr: String,
+) -> Response {
+    Response::new()
+        .add_attribute("action", "update_config")
+        .add_attribute("old_versioning_addr", old_versioning_addr)
+        .add_attribute("new_versioning_addr", new_versioning_addr)
+        .add_attribute("old_factory_addr", old_factory_addr)
+        .add_attribute("new_factory_addr", new_factory_addr)
+}
+
 pub fn execute_execute_msgs_response() -> Response {
     Response::new().add_attribute("action", "execute_msgs")
 }

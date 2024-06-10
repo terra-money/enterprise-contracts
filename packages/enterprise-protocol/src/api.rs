@@ -107,6 +107,12 @@ pub struct ExecuteMsgsMsg {
     pub msgs: Vec<String>,
 }
 
+#[cw_serde]
+pub struct UpdateConfigMsg {
+    pub new_versioning_contract: ModifyValue<String>,
+    pub new_factory_contract: ModifyValue<String>,
+}
+
 // Responses
 
 #[cw_serde]
