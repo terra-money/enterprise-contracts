@@ -113,6 +113,12 @@ pub struct ExecuteMsgsMsg {
 }
 
 #[cw_serde]
+pub struct UpdateConfigMsg {
+    pub new_versioning_contract: ModifyValue<String>,
+    pub new_factory_contract: ModifyValue<String>,
+}
+
+#[cw_serde]
 pub struct IsRestrictedUserParams {
     pub user: String,
 }

@@ -6,6 +6,7 @@ use crate::state::{
 use crate::validate::enterprise_governance_controller_caller_only;
 use attestation_api::api::{HasUserSignedParams, HasUserSignedResponse};
 use attestation_api::msg::QueryMsg::HasUserSigned;
+use common::commons::ModifyValue;
 use common::commons::ModifyValue::Change;
 use common::cw::{Context, QueryContext};
 use cosmwasm_std::CosmosMsg::Wasm;
@@ -18,8 +19,8 @@ use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, DaoType, ExecuteMsgsMsg, FinalizeInstantiationMsg,
-    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg,
-    UpgradeDaoMsg,
+    IsRestrictedUserParams, IsRestrictedUserResponse, SetAttestationMsg, UpdateConfigMsg,
+    UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::error::DaoError::{
     AlreadyInitialized, DuplicateVersionMigrateMsgFound, MigratingToLowerVersion, Unauthorized,
@@ -29,7 +30,8 @@ use enterprise_protocol::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg}
 use enterprise_protocol::response::{
     execute_execute_msgs_response, execute_finalize_instantiation_response,
     execute_remove_attestation_response, execute_set_attestation_response,
-    execute_update_metadata_response, execute_upgrade_dao_response, instantiate_response,
+    execute_update_config_response, execute_update_metadata_response, execute_upgrade_dao_response,
+    instantiate_response,
 };
 use enterprise_versioning_api::api::{
     Version, VersionInfo, VersionParams, VersionResponse, VersionsParams, VersionsResponse,
@@ -38,6 +40,7 @@ use enterprise_versioning_api::msg::QueryMsg::Versions;
 use std::collections::HashMap;
 use std::ops::Not;
 use DaoType::Nft;
+use ModifyValue::NoChange;
 
 pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
 
@@ -89,6 +92,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::FinalizeInstantiation(msg) => finalize_instantiation(ctx, msg),
         ExecuteMsg::UpdateMetadata(msg) => update_metadata(ctx, msg),
         ExecuteMsg::UpgradeDao(msg) => upgrade_dao(ctx, msg),
+        ExecuteMsg::UpdateConfig(msg) => update_config(ctx, msg),
         ExecuteMsg::SetAttestation(msg) => set_attestation(ctx, msg),
         ExecuteMsg::RemoveAttestation {} => remove_attestation(ctx),
         ExecuteMsg::ExecuteMsgs(msg) => execute_msgs(ctx, msg),
@@ -292,6 +296,41 @@ fn get_versions_between_current_and_target(
     }
 
     Ok(versions)
+}
+
+fn update_config(ctx: &mut Context, msg: UpdateConfigMsg) -> DaoResult<Response> {
+    enterprise_governance_controller_caller_only(ctx)?;
+
+    let old_versioning = ENTERPRISE_VERSIONING_CONTRACT.load(ctx.deps.storage)?;
+
+    let new_versioning_addr = match msg.new_versioning_contract {
+        Change(versioning) => {
+            let new_versioning = ctx.deps.api.addr_validate(&versioning)?;
+            ENTERPRISE_VERSIONING_CONTRACT.save(ctx.deps.storage, &new_versioning)?;
+
+            new_versioning.to_string()
+        }
+        NoChange => old_versioning.to_string(),
+    };
+
+    let old_factory = ENTERPRISE_FACTORY_CONTRACT.load(ctx.deps.storage)?;
+
+    let new_factory_addr = match msg.new_factory_contract {
+        Change(factory) => {
+            let new_factory = ctx.deps.api.addr_validate(&factory)?;
+            ENTERPRISE_FACTORY_CONTRACT.save(ctx.deps.storage, &new_factory)?;
+
+            new_factory.to_string()
+        }
+        NoChange => old_factory.to_string(),
+    };
+
+    Ok(execute_update_config_response(
+        old_versioning.to_string(),
+        new_versioning_addr,
+        old_factory.to_string(),
+        new_factory_addr,
+    ))
 }
 
 fn set_attestation(ctx: &mut Context, msg: SetAttestationMsg) -> DaoResult<Response> {
