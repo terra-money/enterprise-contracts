@@ -4,6 +4,8 @@ members = [
     "packages/*",
 ]
 exclude = [
+    "packages/interface",
+    "packages/deployment",
 ]
 
 [profile.dev]

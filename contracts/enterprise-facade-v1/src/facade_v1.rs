@@ -115,6 +115,7 @@ impl EnterpriseFacade for EnterpriseFacadeV1 {
 
         Ok(ComponentContractsResponse {
             enterprise_factory_contract: dao_info.enterprise_factory_contract,
+            enterprise_versioning_contract: None,
             enterprise_contract: self.enterprise_address.clone(),
             funds_distributor_contract: dao_info.funds_distributor_contract,
             enterprise_governance_contract: None,

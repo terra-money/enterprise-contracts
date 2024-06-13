@@ -1,4 +1,5 @@
 use common::cw::QueryContext;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coins, to_json_binary, Addr, Decimal, Deps, Uint128, Uint64};
 use cw721::Cw721ExecuteMsg::Approve;
 use cw_utils::Duration;
@@ -32,7 +33,6 @@ use enterprise_governance_controller_api::msg::ExecuteMsg::{
 };
 use enterprise_outposts_api::api::{CrossChainTreasuriesParams, CrossChainTreasuriesResponse};
 use enterprise_outposts_api::msg::QueryMsg::CrossChainTreasuries;
-use enterprise_protocol::api::ComponentContractsResponse;
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo};
 use enterprise_treasury_api::api::{
     HasIncompleteV2MigrationResponse, HasUnmovedStakesOrClaimsResponse,
@@ -214,6 +214,7 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
 
         Ok(enterprise_facade_api::api::ComponentContractsResponse {
             enterprise_factory_contract: component_contracts.enterprise_factory_contract,
+            enterprise_versioning_contract: component_contracts.enterprise_versioning_contract,
             enterprise_contract: self.enterprise_address.clone(),
             funds_distributor_contract: component_contracts.funds_distributor_contract,
             enterprise_governance_contract: Some(
@@ -1198,11 +1199,28 @@ impl EnterpriseFacade for EnterpriseFacadeV2 {
     }
 }
 
+/// A structure that unifies the response model of v1.0.0 and v1.2.0 DAOs.
+///
+/// v1.0.0 did not have versioning contract in the response, so it is optional here.
+#[cw_serde]
+struct UnifiedComponentContractsResponse {
+    pub enterprise_factory_contract: Addr,
+    pub enterprise_versioning_contract: Option<Addr>,
+    pub enterprise_governance_contract: Addr,
+    pub enterprise_governance_controller_contract: Addr,
+    pub enterprise_outposts_contract: Addr,
+    pub enterprise_treasury_contract: Addr,
+    pub funds_distributor_contract: Addr,
+    pub membership_contract: Addr,
+    pub council_membership_contract: Addr,
+    pub attestation_contract: Option<Addr>,
+}
+
 impl EnterpriseFacadeV2 {
     fn component_contracts(
         &self,
         deps: Deps,
-    ) -> EnterpriseFacadeResult<ComponentContractsResponse> {
+    ) -> EnterpriseFacadeResult<UnifiedComponentContractsResponse> {
         let component_contracts = deps
             .querier
             .query_wasm_smart(self.enterprise_address.to_string(), &ComponentContracts {})?;
