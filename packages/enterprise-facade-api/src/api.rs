@@ -236,6 +236,7 @@ pub struct DaoInfoResponse {
 #[cw_serde]
 pub struct ComponentContractsResponse {
     pub enterprise_factory_contract: Addr,
+    pub enterprise_versioning_contract: Option<Addr>,
     pub enterprise_contract: Addr,
     pub funds_distributor_contract: Addr,
     pub enterprise_governance_contract: Option<Addr>,

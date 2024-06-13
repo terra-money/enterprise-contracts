@@ -368,9 +368,11 @@ pub fn query_dao_info(qctx: QueryContext) -> DaoResult<DaoInfoResponse> {
 pub fn query_component_contracts(qctx: QueryContext) -> DaoResult<ComponentContractsResponse> {
     let component_contracts = COMPONENT_CONTRACTS.load(qctx.deps.storage)?;
     let enterprise_factory_contract = ENTERPRISE_FACTORY_CONTRACT.load(qctx.deps.storage)?;
+    let enterprise_versioning_contract = ENTERPRISE_VERSIONING_CONTRACT.load(qctx.deps.storage)?;
 
     Ok(ComponentContractsResponse {
         enterprise_factory_contract,
+        enterprise_versioning_contract,
         enterprise_governance_contract: component_contracts.enterprise_governance_contract,
         enterprise_governance_controller_contract: component_contracts
             .enterprise_governance_controller_contract,
