@@ -28,22 +28,21 @@ use denom_staking_api::msg::QueryMsg::DenomConfig;
 use enterprise_governance_api::msg::ExecuteMsg::UpdateVotes;
 use enterprise_governance_api::msg::QueryMsg::SimulateEndPollStatus;
 use enterprise_governance_controller_api::api::ProposalAction::{
-    AddAttestation, DistributeFunds, ExecuteEnterpriseMsgs, ExecuteMsgs, ModifyMultisigMembership,
-    RemoveAttestation, RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig,
-    UpdateMetadata, UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
+    DistributeFunds, ExecuteEnterpriseMsgs, ExecuteMsgs, ModifyMultisigMembership,
+    RequestFundingFromDao, UpdateAssetWhitelist, UpdateCouncil, UpdateGovConfig, UpdateMetadata,
+    UpdateMinimumWeightForRewards, UpdateNftWhitelist, UpgradeDao,
 };
 use enterprise_governance_controller_api::api::ProposalType::{Council, General};
 use enterprise_governance_controller_api::api::{
-    AddAttestationMsg, CastVoteMsg, ConfigResponse, CreateProposalMsg,
-    CreateProposalWithNftDepositMsg, DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg,
-    ExecuteProposalMsg, ExecuteTreasuryMsgsMsg, GovConfig, GovConfigResponse, MemberVoteParams,
-    MemberVoteResponse, ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType,
-    ProposalDeposit, ProposalDepositAsset, ProposalId, ProposalInfo, ProposalParams,
-    ProposalResponse, ProposalStatus, ProposalStatusFilter, ProposalStatusParams,
-    ProposalStatusResponse, ProposalType, ProposalVotesParams, ProposalVotesResponse,
-    ProposalsParams, ProposalsResponse, RequestFundingFromDaoMsg,
-    UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg, UpdateGovConfigMsg,
-    UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
+    CastVoteMsg, ConfigResponse, CreateProposalMsg, CreateProposalWithNftDepositMsg,
+    DistributeFundsMsg, ExecuteEnterpriseMsgsMsg, ExecuteMsgsMsg, ExecuteProposalMsg,
+    ExecuteTreasuryMsgsMsg, GovConfig, GovConfigResponse, MemberVoteParams, MemberVoteResponse,
+    ModifyMultisigMembershipMsg, Proposal, ProposalAction, ProposalActionType, ProposalDeposit,
+    ProposalDepositAsset, ProposalId, ProposalInfo, ProposalParams, ProposalResponse,
+    ProposalStatus, ProposalStatusFilter, ProposalStatusParams, ProposalStatusResponse,
+    ProposalType, ProposalVotesParams, ProposalVotesResponse, ProposalsParams, ProposalsResponse,
+    RequestFundingFromDaoMsg, UpdateAssetWhitelistProposalActionMsg, UpdateCouncilMsg,
+    UpdateGovConfigMsg, UpdateMinimumWeightForRewardsMsg, UpdateNftWhitelistProposalActionMsg,
 };
 use enterprise_governance_controller_api::error::GovernanceControllerError::{
     CustomError, DuplicateNftDeposit, InsufficientProposalDeposit, InvalidCosmosMessage,
@@ -66,7 +65,7 @@ use enterprise_outposts_api::api::{
 };
 use enterprise_protocol::api::{
     ComponentContractsResponse, DaoInfoResponse, DaoType, IsRestrictedUserParams,
-    IsRestrictedUserResponse, SetAttestationMsg, UpdateMetadataMsg, UpgradeDaoMsg,
+    IsRestrictedUserResponse, UpdateMetadataMsg, UpgradeDaoMsg,
 };
 use enterprise_protocol::msg::QueryMsg::{ComponentContracts, DaoInfo, IsRestrictedUser};
 use enterprise_treasury_api::api::{
@@ -474,8 +473,6 @@ fn to_proposal_action_type(proposal_action: &ProposalAction) -> ProposalActionTy
         ModifyMultisigMembership(_) => ProposalActionType::ModifyMultisigMembership,
         DistributeFunds(_) => ProposalActionType::DistributeFunds,
         UpdateMinimumWeightForRewards(_) => ProposalActionType::UpdateMinimumWeightForRewards,
-        AddAttestation(_) => ProposalActionType::AddAttestation,
-        RemoveAttestation {} => ProposalActionType::RemoveAttestation,
         DeployCrossChainTreasury(_) => ProposalActionType::DeployCrossChainTreasury,
     }
 }
@@ -889,8 +886,6 @@ fn execute_proposal_actions_submsgs(
             }
             DistributeFunds(msg) => distribute_funds(ctx, msg)?,
             UpdateMinimumWeightForRewards(msg) => update_minimum_weight_for_rewards(ctx, msg)?,
-            AddAttestation(msg) => add_attestation(ctx, msg)?,
-            RemoveAttestation {} => remove_attestation(ctx)?,
             DeployCrossChainTreasury(msg) => deploy_cross_chain_treasury(ctx, msg)?,
         };
         submsgs.append(&mut actions)
@@ -1192,35 +1187,6 @@ fn update_minimum_weight_for_rewards(
                 minimum_eligible_weight: msg.minimum_weight_for_rewards,
             },
         ),
-        vec![],
-    )?);
-
-    Ok(vec![submsg])
-}
-
-fn add_attestation(
-    ctx: &mut Context,
-    msg: AddAttestationMsg,
-) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
-
-    let submsg = SubMsg::new(wasm_execute(
-        enterprise_contract.to_string(),
-        &enterprise_protocol::msg::ExecuteMsg::SetAttestation(SetAttestationMsg {
-            attestation_text: msg.attestation_text,
-        }),
-        vec![],
-    )?);
-
-    Ok(vec![submsg])
-}
-
-fn remove_attestation(ctx: &mut Context) -> GovernanceControllerResult<Vec<SubMsg>> {
-    let enterprise_contract = ENTERPRISE_CONTRACT.load(ctx.deps.storage)?;
-
-    let submsg = SubMsg::new(wasm_execute(
-        enterprise_contract.to_string(),
-        &enterprise_protocol::msg::ExecuteMsg::RemoveAttestation {},
         vec![],
     )?);
 
