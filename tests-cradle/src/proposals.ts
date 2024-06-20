@@ -27,7 +27,7 @@ export const createProposal = async (ctx: ExecuteCtx, dao: DaoContracts, proposa
 
 export const createGeneralProposal = async (ctx: ExecuteCtx, dao: DaoContracts, proposalAction: ProposalAction): Promise<number> => {
     const govConfig = await queryGovConfig(ctx.lcd, dao);
-    if (govConfig.gov_config.minimum_deposit === undefined || govConfig.gov_config.minimum_deposit === null) {
+    if (govConfig.gov_config.minimum_deposit === undefined || govConfig.gov_config.minimum_deposit === null || govConfig.gov_config.minimum_deposit === '0') {
         return await createGeneralProposalWithoutDeposit(ctx, dao, proposalAction);
     } else {
         const minimumDeposit = parseInt(govConfig.gov_config.minimum_deposit, 10);
