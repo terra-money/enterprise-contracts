@@ -1059,7 +1059,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise-facade"
-version = "1.0.2"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -1132,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise-facade-v1"
-version = "1.0.2"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -1160,7 +1160,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise-facade-v2"
-version = "1.0.2"
+version = "1.2.0"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -1189,7 +1189,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise-factory"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "attestation-api",
