@@ -89,14 +89,14 @@
   },
   "mainnet": {
     "enterprise": {
-      "codeId": "2497"
+      "codeId": "3028"
     },
     "enterprise-factory": {
-      "codeId": "2500",
+      "codeId": "3026",
       "address": "terra1y2dwydnnnctdwwmvs23ct60fj626t66qk53cae2gc55k3ce92jmqldj0sf"
     },
     "enterprise-facade": {
-      "codeId": "2514",
+      "codeId": "3025",
       "address": "terra136k05x7uzu0awwxgr8wtqunedjpnv4jzmc4ery40czx5338ht8vq0ja9xq"
     },
     "enterprise-versioning": {
@@ -113,42 +113,42 @@
       "codeId": "1318"
     },
     "enterprise-governance": {
-      "codeId": "2179"
+      "codeId": "3029"
     },
     "funds-distributor": {
-      "codeId": "2499"
+      "codeId": "3033"
     },
     "attestation": {
-      "codeId": "2177"
+      "codeId": "3027"
     },
     "denom-staking-membership": {
-      "codeId": "2185"
+      "codeId": "3035"
     },
     "enterprise-governance-controller": {
-      "codeId": "2498"
+      "codeId": "3030"
     },
     "enterprise-treasury": {
-      "codeId": "2247"
+      "codeId": "3031"
     },
     "enterprise-outposts": {
-      "codeId": "2389"
+      "codeId": "3032"
     },
     "token-staking-membership": {
-      "codeId": "2184"
+      "codeId": "3034"
     },
     "nft-staking-membership": {
-      "codeId": "2186"
+      "codeId": "3036"
     },
     "multisig-membership": {
-      "codeId": "2187"
+      "codeId": "3037"
     },
     "enterprise-facade-v1": {
-      "codeId": "2512",
-      "address": "terra1scm08396nmqe4ld289x62qvxtjrm3g6h4qrmxy9m7wnvpcw9vkasrzdzz3"
+      "codeId": "3023",
+      "address": "terra1f4daukruwj02frutsefkfg6se9j0q06qj47m4eg7nprj5mfntmjq6pm59n"
     },
     "enterprise-facade-v2": {
-      "codeId": "2513",
-      "address": "terra1ynjgm5arrajh3qk0af6mlgma70zn7k5xagtftasfsc2m7dex0fcs06y2lp"
+      "codeId": "3024",
+      "address": "terra1y2qvx893hp8d8wpmjyh5ja048v4phqxze573qlr7m7fmpplzl7aqmv2kpk"
     },
     "cw721_metadata_onchain": {
       "codeId": "2111"
