@@ -55,6 +55,4 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {
-    pub move_excess_membership_assets_to: Option<String>,
-}
+pub struct MigrateMsg {}

@@ -39,7 +39,7 @@ use enterprise_versioning_api::api::{
 use enterprise_versioning_api::msg::QueryMsg::Versions;
 use std::collections::HashMap;
 use std::ops::Not;
-use DaoType::Nft;
+use DaoType::{Denom, Multisig, Nft, Token};
 use ModifyValue::NoChange;
 
 pub const INSTANTIATE_ATTESTATION_REPLY_ID: u64 = 1;
@@ -499,37 +499,62 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> DaoResult<Response
             version: Version {
                 major: 1,
                 minor: 2,
-                patch: 0,
+                patch: 1,
             },
         }),
     )?;
 
     let component_contracts = COMPONENT_CONTRACTS.load(deps.storage)?;
 
-    let migrate_governance_controller_msg = SubMsg::new(Wasm(Migrate {
-        contract_addr: component_contracts
-            .enterprise_governance_controller_contract
-            .to_string(),
-        new_code_id: version_info
-            .version
-            .enterprise_governance_controller_code_id,
-        msg: to_json_binary(&enterprise_governance_controller_api::msg::MigrateMsg {})?,
+    let migrate_outposts_msg = SubMsg::new(Wasm(Migrate {
+        contract_addr: component_contracts.enterprise_outposts_contract.to_string(),
+        new_code_id: version_info.version.enterprise_outposts_code_id,
+        msg: to_json_binary(&enterprise_outposts_api::msg::MigrateMsg {})?,
     }));
 
-    let mut response = Response::new()
-        .add_attribute("action", "migrate")
-        .add_submessage(migrate_governance_controller_msg);
+    let migrate_funds_distributor_msg = SubMsg::new(Wasm(Migrate {
+        contract_addr: component_contracts.funds_distributor_contract.to_string(),
+        new_code_id: version_info.version.funds_distributor_code_id,
+        msg: to_json_binary(&funds_distributor_api::msg::MigrateMsg {})?,
+    }));
 
     let dao_type = DAO_TYPE.load(deps.storage)?;
 
-    if dao_type == Nft {
-        let migrate_nft_membership_msg = SubMsg::new(Wasm(Migrate {
-            contract_addr: component_contracts.membership_contract.to_string(),
-            new_code_id: version_info.version.nft_staking_membership_code_id,
-            msg: to_json_binary(&nft_staking_api::msg::MigrateMsg {})?,
-        }));
-        response = response.add_submessage(migrate_nft_membership_msg);
-    }
+    let (new_membership_code_id, membership_migrate_msg) = match dao_type {
+        Denom => (
+            version_info.version.denom_staking_membership_code_id,
+            to_json_binary(&denom_staking_api::msg::MigrateMsg {})?,
+        ),
+        Token => (
+            version_info.version.token_staking_membership_code_id,
+            to_json_binary(&token_staking_api::msg::MigrateMsg {})?,
+        ),
+        Nft => (
+            version_info.version.nft_staking_membership_code_id,
+            to_json_binary(&nft_staking_api::msg::MigrateMsg {})?,
+        ),
+        Multisig => (
+            version_info.version.multisig_membership_code_id,
+            to_json_binary(&multisig_membership_api::msg::MigrateMsg {})?,
+        ),
+    };
 
-    Ok(response)
+    let migrate_membership_submsg = SubMsg::new(Wasm(Migrate {
+        contract_addr: component_contracts.membership_contract.to_string(),
+        new_code_id: new_membership_code_id,
+        msg: membership_migrate_msg,
+    }));
+
+    let migrate_council_membership_msg = SubMsg::new(Wasm(Migrate {
+        contract_addr: component_contracts.council_membership_contract.to_string(),
+        new_code_id: version_info.version.multisig_membership_code_id,
+        msg: to_json_binary(&multisig_membership_api::msg::MigrateMsg {})?,
+    }));
+
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_submessage(migrate_outposts_msg)
+        .add_submessage(migrate_funds_distributor_msg)
+        .add_submessage(migrate_membership_submsg)
+        .add_submessage(migrate_council_membership_msg))
 }

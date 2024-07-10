@@ -846,7 +846,7 @@ dependencies = [
 
 [[package]]
 name = "denom-staking-membership"
-version = "1.0.0"
+version = "1.2.1"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -1046,6 +1046,7 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.2",
  "cw2 1.1.2",
+ "denom-staking-api",
  "enterprise-factory-api",
  "enterprise-governance-controller-api",
  "enterprise-outposts-api",
@@ -1053,8 +1054,10 @@ dependencies = [
  "enterprise-treasury-api",
  "enterprise-versioning-api",
  "funds-distributor-api",
+ "multisig-membership-api",
  "nft-staking-api",
  "serde-json-wasm",
+ "token-staking-api",
 ]
 
 [[package]]
@@ -1337,7 +1340,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise-outposts"
-version = "1.0.3"
+version = "1.2.1"
 dependencies = [
  "anyhow",
  "bech32-no_std",
@@ -1502,7 +1505,7 @@ checksum = "c8cbd1169bd7b4a0a20d92b9af7a7e0422888bd38a6f5ec29c1fd8c1558a272e"
 
 [[package]]
 name = "funds-distributor"
-version = "1.1.1"
+version = "1.2.1"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -1835,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "multisig-membership"
-version = "1.0.0"
+version = "1.2.1"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -1911,7 +1914,7 @@ dependencies = [
 
 [[package]]
 name = "nft-staking-membership"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "common",
  "cosmwasm-schema",
@@ -2563,7 +2566,7 @@ dependencies = [
 
 [[package]]
 name = "token-staking-membership"
-version = "1.1.1"
+version = "1.2.1"
 dependencies = [
  "common",
  "cosmwasm-schema",
