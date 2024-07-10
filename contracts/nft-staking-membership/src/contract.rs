@@ -84,7 +84,5 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> NftStakingResult<Binary> {
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> NftStakingResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    nft_staking_impl::migrate::migrate(deps)?;
-
     Ok(Response::new().add_attribute("action", "migrate"))
 }
