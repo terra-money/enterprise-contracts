@@ -16,7 +16,7 @@ const NFT_STAKING_MEMBERSHIP = "nft-staking-membership";
 
 task(async ({deployer, executor, network, signer, refs}) => {
     try {
-        await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 2, 0);
+        await deployNewEnterpriseVersion(refs, network, deployer, executor, 1, 2, 1);
     } catch (e) {
         console.log(e);
     }
