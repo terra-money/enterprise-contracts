@@ -1,4 +1,6 @@
-import task, {Executor, Refs} from "@terra-money/terrariums";
+import task, {Executor, info, Refs} from "@terra-money/terrariums";
+import {MsgUpdateContractAdmin} from "@terra-money/terra.js";
+import {Signer} from "@terra-money/terrariums/lib/src/signers";
 
 const ENTERPRISE_FACTORY = "enterprise-factory";
 
@@ -121,6 +123,35 @@ task(async ({network, executor, refs}) => {
         console.log(e);
     }
 });
+
+const updateContractAdmin = async (contract: string, signer: Signer, refs: Refs, network: string): Promise<void> => {
+    try {
+        let contractAddr = refs.getAddress(network, contract);
+
+        let new_admin = 'terra1n7tt982ksrwhlsa6s8cftyjnsj6gwnl7rln3sj';
+
+        info(`Updating admin of ${contract} at ${contractAddr} to ${new_admin}`);
+
+        let msg = new MsgUpdateContractAdmin(
+            signer.key.accAddress,
+            new_admin,
+            contractAddr,
+        );
+        try {
+            let tx = await signer.createAndSignTx({
+                msgs: [msg],
+            });
+            await signer.lcd.tx.broadcast(tx);
+            info(`Updated admin of ${contract} contract.`);
+        } catch (e) {
+            info(`Updating admin of ${contract} contract has failed.`);
+            info(JSON.stringify(e));
+            console.log(e);
+        }
+    } catch (e) {
+        console.log(e);
+    }
+}
 
 const stakeTokens = async (executor: Executor, token_contract: string, membership_contract: string): Promise<void> => {
     await executor.execute(

@@ -42,6 +42,8 @@
     "migrate:enterprise-facade": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_facade.ts --network testnet --signer pisco",
     "migrate:enterprise-facade:mainnet": "yarn terrariums run tasks/migrate_enterprise_facade.ts --network mainnet --signer phoenix",
     "migrate:enterprise-facade:staging": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_facade.ts --network staging --signer staging",
+    "migrate:enterprise-versioning:mainnet": "yarn terrariums run tasks/migrate_enterprise_versioning.ts --network mainnet --signer phoenix",
+    "migrate:enterprise-versioning:staging": "TERRARIUMS_ARCH_ARM64=true yarn terrariums run tasks/migrate_enterprise_versioning.ts --network staging --signer staging",
     "warp:migration-jobs": "yarn terrariums run tasks/warp_migration_jobs.ts --network testnet --signer pisco",
     "warp:migration-jobs:mainnet": "yarn terrariums run tasks/warp_migration_jobs.ts --network mainnet --signer phoenix",
     "docker:enterprise-api": "docker build . -f apps/enterprise-api/Dockerfile -t payments/api",

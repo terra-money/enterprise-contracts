@@ -8,8 +8,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use enterprise_versioning_api::api::{
-    AddVersionMsg, AdminResponse, EditVersionMsg, VersionInfo, VersionParams, VersionResponse,
-    VersionsParams, VersionsResponse,
+    AddVersionMsg, AdminResponse, EditVersionMsg, UpdateAdminMsg, VersionInfo, VersionParams,
+    VersionResponse, VersionsParams, VersionsResponse,
 };
 use enterprise_versioning_api::error::EnterpriseVersioningError::{
     NoVersionsExist, Unauthorized, VersionAlreadyExists, VersionNotFound,
@@ -17,7 +17,8 @@ use enterprise_versioning_api::error::EnterpriseVersioningError::{
 use enterprise_versioning_api::error::EnterpriseVersioningResult;
 use enterprise_versioning_api::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use enterprise_versioning_api::response::{
-    execute_add_version_response, execute_edit_version_response, instantiate_response,
+    execute_add_version_response, execute_edit_version_response, execute_update_admin_response,
+    instantiate_response,
 };
 
 // version info for migration info
@@ -52,9 +53,27 @@ pub fn execute(
     let ctx = &mut Context { deps, env, info };
 
     match msg {
+        ExecuteMsg::UpdateAdmin(msg) => update_admin(ctx, msg),
         ExecuteMsg::AddVersion(msg) => add_version(ctx, msg),
         ExecuteMsg::EditVersion(msg) => edit_version(ctx, msg),
     }
+}
+
+fn update_admin(ctx: &mut Context, msg: UpdateAdminMsg) -> EnterpriseVersioningResult<Response> {
+    let admin = ADMIN.load(ctx.deps.storage)?;
+
+    if ctx.info.sender != admin {
+        return Err(Unauthorized);
+    }
+
+    let new_admin = ctx.deps.api.addr_validate(&msg.new_admin)?;
+
+    ADMIN.save(ctx.deps.storage, &new_admin)?;
+
+    Ok(execute_update_admin_response(
+        admin.to_string(),
+        new_admin.to_string(),
+    ))
 }
 
 fn add_version(ctx: &mut Context, msg: AddVersionMsg) -> EnterpriseVersioningResult<Response> {
@@ -91,7 +110,7 @@ fn edit_version(ctx: &mut Context, msg: EditVersionMsg) -> EnterpriseVersioningR
         None => {
             return Err(VersionNotFound {
                 version: msg.version,
-            })
+            });
         }
         Some(version_info) => {
             let edited_version = apply_edit_changes(version_info, &msg)?;

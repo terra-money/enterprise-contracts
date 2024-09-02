@@ -83,6 +83,11 @@ pub struct VersionInfo {
 }
 
 #[cw_serde]
+pub struct UpdateAdminMsg {
+    pub new_admin: String,
+}
+
+#[cw_serde]
 pub struct AddVersionMsg {
     pub version: VersionInfo,
 }
